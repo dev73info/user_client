@@ -90,16 +90,16 @@ const notice = defineModel<boolean>('notice', { required: true })
 
 <style scoped>
 .sign-panel {
-  border: 1px solid #fde68a;
+  border: 1px solid var(--73-warning);
   border-radius: 8px;
   padding: 1rem;
   margin-bottom: 1.2rem;
-  background: #fffdf5;
+  background: var(--73-warning-soft);
 }
 
 .is-workbench .sign-panel {
-  background: #f5fafa;
-  border-color: #cce3e2;
+  background: var(--73-surface-strong);
+  border-color: var(--73-ink-disabled);
 }
 
 .sign-panel__identity {
@@ -108,7 +108,7 @@ const notice = defineModel<boolean>('notice', { required: true })
 
 .sign-panel h3 {
   margin: 0 0 0.65rem;
-  color: #172033;
+  color: var(--73-ink);
   font-size: 1.02rem;
   font-weight: 800;
 }
@@ -127,13 +127,13 @@ const notice = defineModel<boolean>('notice', { required: true })
 }
 
 .signer-fields dt {
-  color: #64748b;
+  color: var(--73-ink-muted);
   font-size: 0.86rem;
 }
 
 .signer-fields dd {
   margin: 0;
-  color: #172033;
+  color: var(--73-ink);
   font-size: 0.94rem;
   font-weight: 700;
   overflow-wrap: anywhere;
@@ -141,7 +141,7 @@ const notice = defineModel<boolean>('notice', { required: true })
 
 .identity-warning {
   margin: 0.7rem 0 0;
-  color: #b91c1c;
+  color: var(--73-danger);
   font-size: 0.9rem;
   font-weight: 700;
 }
@@ -151,10 +151,10 @@ const notice = defineModel<boolean>('notice', { required: true })
   align-items: center;
   margin-top: 0.75rem;
   padding: 8px 20px;
-  border: 1px solid #bfdbfe;
+  border: 1px solid var(--73-accent-soft);
   border-radius: 6px;
-  background: #eff6ff;
-  color: #1d4ed8;
+  background: var(--73-accent-soft);
+  color: var(--73-accent);
   font-size: 0.9rem;
   font-weight: 700;
   cursor: pointer;
@@ -165,8 +165,8 @@ const notice = defineModel<boolean>('notice', { required: true })
 }
 
 .btn-realname:hover {
-  background: #dbeafe;
-  border-color: #93c5fd;
+  background: var(--73-accent-soft);
+  border-color: var(--73-accent);
   transform: translateY(-1px);
 }
 
@@ -176,7 +176,7 @@ const notice = defineModel<boolean>('notice', { required: true })
   align-items: center;
   gap: 0.75rem;
   padding-top: 1rem;
-  border-top: 1px solid #e2e8f0;
+  border-top: 1px solid var(--73-border);
 }
 
 .notice-toggle {
@@ -184,7 +184,7 @@ const notice = defineModel<boolean>('notice', { required: true })
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  color: #475569;
+  color: var(--73-ink-soft);
   font-size: 0.9rem;
   cursor: pointer;
   user-select: none;
@@ -194,20 +194,20 @@ const notice = defineModel<boolean>('notice', { required: true })
   width: 16px;
   height: 16px;
   cursor: pointer;
-  accent-color: #f59e0b;
+  accent-color: var(--73-warning);
 }
 
 .btn-primary {
   min-height: 42px;
   padding: 0.75rem 1.8rem;
-  background: #f59e0b;
-  color: #fff;
+  background: var(--73-warning);
+  color: var(--73-surface-strong);
   border: none;
   border-radius: 8px;
   cursor: pointer;
   font-size: 0.98rem;
   font-weight: 800;
-  box-shadow: 0 10px 18px rgba(245, 158, 11, 0.22);
+  box-shadow: 0 10px 18px color-mix(in srgb, var(--73-warning) 22%, transparent);
 }
 
 .btn-primary:disabled {
@@ -217,18 +217,18 @@ const notice = defineModel<boolean>('notice', { required: true })
 
 /* 工作台外壳下的按钮配色（原 `.page-shell--workbench .btn-primary`） */
 .is-workbench .btn-primary {
-  background: #247f7d;
-  border-color: #247f7d;
-  color: #fff;
+  background: var(--73-success);
+  border-color: var(--73-success);
+  color: var(--73-surface-strong);
   box-shadow: none;
 }
 
 .badge-pending {
   display: inline-block;
   padding: 0.55rem 1rem;
-  background: #fff7ed;
-  color: #c2410c;
-  border: 1px solid #fed7aa;
+  background: var(--73-warning-soft);
+  color: var(--73-danger);
+  border: 1px solid var(--73-warning);
   border-radius: 999px;
   font-size: 0.9rem;
   font-weight: 800;

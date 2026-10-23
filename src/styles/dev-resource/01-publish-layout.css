@@ -5,7 +5,7 @@
 /* 资源模块曾经自带三套平行视觉，现在都已并入统一层，这里不再保留：
    - .dev-platform-switch / .dev-platform-card（22px 圆角 + 悬停上浮的平台选择卡）；
    - .dev-card-grid / .dev-task-card / .dev-resource-grid / .dev-resource-card（22px 圆角、
-     暖白渐变底的旧卡片，其中 .dev-task-card 的底是 rgba(255, 249, 240, .9) 的暖色）；
+     暖白渐变底的旧卡片，其中 .dev-task-card 的底是 color-mix(in srgb, var(--73-warning-soft) 90%, transparent) 的暖色）；
    - .dev-upload-dropzone（占位虚框，已被 ResourceIconPicker / .dev-icon-upload 取代）；
    - .dev-filter-panel / .dev-publish-specs / .dev-publish-spec（未接线的空壳）。
    卡片一律 .dev-surface-card，卡片头 .dev-card-head，列表项 .dev-stack-item，见 dev-base.css。 */

@@ -85,15 +85,15 @@ function open(): void {
 }
 
 .requirement-hall__card:hover {
-  border-color: rgba(37, 99, 235, 0.32);
+  border-color: color-mix(in srgb, var(--73-accent) 32%, transparent);
   transform: translateY(-1px);
-  box-shadow: 0 16px 30px rgba(76, 103, 172, 0.14);
+  box-shadow: 0 16px 30px color-mix(in srgb, var(--73-accent) 14%, transparent);
 }
 
 .requirement-hall__card:focus-visible {
-  border-color: rgba(37, 99, 235, 0.52);
+  border-color: color-mix(in srgb, var(--73-accent) 52%, transparent);
   outline: none;
-  box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.12);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--73-accent) 12%, transparent);
 }
 
 .requirement-hall__card p {
@@ -106,7 +106,7 @@ function open(): void {
 }
 
 .requirement-hall__card .portal-page__card-footer span {
-  color: #2563eb;
+  color: var(--73-accent);
   font-size: 13px;
   font-weight: 800;
 }
@@ -121,7 +121,7 @@ function open(): void {
   display: flex;
   flex-wrap: wrap;
   gap: 8px 12px;
-  color: #64748b;
+  color: var(--73-ink-muted);
   font-size: 12px;
   font-weight: 700;
 }

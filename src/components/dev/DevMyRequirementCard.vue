@@ -273,8 +273,8 @@ const flags = computed(() => {
   gap: 6px;
 }
 
-/* 配色统一：这里原先混用了青绿 #4caf81、琥珀 #b45309、Element 灰 #909399/#c0c4cc/#303133、
-   暖黄 rgba(251,191,36)，与开发者体系的蓝/青/金三支强调色都对不上，一律换成令牌。 */
+/* 配色统一：这里原先混用了青绿 var(--73-success)、琥珀 var(--73-warning)、Element 灰 var(--73-ink-placeholder)/var(--73-ink-disabled)/var(--73-ink)、
+   暖黄 var(--73-warning)，与开发者体系的蓝/青/金三支强调色都对不上，一律换成令牌。 */
 .dev-requirement-card__actions {
   display: flex;
   justify-content: space-between;
@@ -321,7 +321,7 @@ const flags = computed(() => {
 }
 
 /* 破坏性状态徽标的那支红由页面根给（`--dmr-danger`）：原先写的是
-   `var(--dev-danger, #dc2626)`，而 `--dev-danger` 从来没定义过，真正生效的一直是兜底值。
+   `var(--dev-danger, var(--73-danger))`，而 `--dev-danger` 从来没定义过，真正生效的一直是兜底值。
    拆卡片时把这一支红提到页面根上（取值一字未改），本文件只写变量、零裸色值。 */
 .signing-status-badge--danger {
   background: color-mix(in srgb, var(--dmr-danger) 12%, transparent);

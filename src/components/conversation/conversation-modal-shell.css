@@ -6,7 +6,7 @@
   align-items: center;
   justify-content: center;
   padding: 18px;
-  background: rgba(15, 23, 42, 0.42);
+  background: color-mix(in srgb, var(--73-ink) 42%, transparent);
 }
 
 .conversation-modal-wrap--inline {
@@ -50,7 +50,7 @@
 
 .conversation-modal__messages::-webkit-scrollbar-thumb {
   border-radius: 999px;
-  background: rgba(79, 140, 255, 0.5);
+  background: color-mix(in srgb, var(--73-accent) 50%, transparent);
 }
 
 @media (max-width: 640px) {
@@ -68,20 +68,20 @@
 }
 
 .conversation-modal {
-  border-color: rgba(216, 228, 244, 0.98);
-  background: #f8fbff;
+  border-color: color-mix(in srgb, var(--73-accent-soft) 98%, transparent);
+  background: var(--73-accent-soft);
   max-height: min(760px, calc(100dvh - 36px));
   display: flex;
   flex-direction: column;
   overflow: hidden;
   border-radius: 18px;
-  border: 1px solid rgba(226, 232, 240, 0.95);
-  box-shadow: 0 24px 70px rgba(15, 23, 42, 0.22);
+  border: 1px solid color-mix(in srgb, var(--73-border) 95%, transparent);
+  box-shadow: 0 24px 70px color-mix(in srgb, var(--73-ink) 22%, transparent);
   width: min(760px, 100%);
 }
 
 .conversation-modal-wrap--inline .conversation-modal {
-  box-shadow: 0 16px 38px rgba(71, 102, 148, 0.1);
+  box-shadow: 0 16px 38px color-mix(in srgb, var(--73-accent) 10%, transparent);
   width: 100%;
   border-radius: 16px;
   height: min(860px, calc(100dvh - 109px));
@@ -112,9 +112,9 @@
   padding: 20px 14px 8px;
   background: linear-gradient(
     180deg,
-    rgba(237, 245, 252, 0) 0,
-    rgba(237, 245, 252, 0.92) 20px,
-    #edf5fc 100%
+    color-mix(in srgb, var(--73-accent-soft) 0%, transparent) 0,
+    color-mix(in srgb, var(--73-accent-soft) 92%, transparent) 20px,
+    var(--73-accent-soft) 100%
   );
   pointer-events: none;
   display: flex;
@@ -130,8 +130,8 @@
 /* 消息区顶部同样淡出：用遮罩让最上面 24px 的内容渐隐，不另叠色块，背景怎么变都对得上；
    滚动条隐藏，滚轮、触摸与键盘滚动不受影响 */
 .conversation-modal__messages {
-  -webkit-mask-image: linear-gradient(180deg, transparent 0, #000 24px);
-  mask-image: linear-gradient(180deg, transparent 0, #000 24px);
+  -webkit-mask-image: linear-gradient(180deg, transparent 0, var(--73-ink) 24px);
+  mask-image: linear-gradient(180deg, transparent 0, var(--73-ink) 24px);
   scrollbar-width: none;
   flex: 1 1 auto;
   min-height: 0;
@@ -139,24 +139,36 @@
   overscroll-behavior: contain;
   background: linear-gradient(
     135deg,
-    rgba(225, 241, 255, 0.78),
-    rgba(248, 252, 255, 0.9) 44%,
-    rgba(235, 250, 244, 0.78)
+    color-mix(in srgb, var(--73-accent-soft) 78%, transparent),
+    color-mix(in srgb, var(--73-accent-soft) 90%, transparent) 44%,
+    color-mix(in srgb, var(--73-success-soft) 78%, transparent)
   );
   display: flex;
   flex-direction: column;
   gap: 0;
-  background-color: #f3f7fc;
+  background-color: var(--73-accent-soft);
   background-image:
-    radial-gradient(circle at 18px 18px, rgba(79, 140, 255, 0.08) 0 1px, transparent 2px),
-    radial-gradient(circle at 88px 52px, rgba(94, 200, 168, 0.07) 0 1px, transparent 2px),
-    linear-gradient(180deg, rgba(248, 251, 255, 0.96), rgba(237, 245, 252, 0.96));
+    radial-gradient(
+      circle at 18px 18px,
+      color-mix(in srgb, var(--73-accent) 8%, transparent) 0 1px,
+      transparent 2px
+    ),
+    radial-gradient(
+      circle at 88px 52px,
+      color-mix(in srgb, var(--73-success) 7%, transparent) 0 1px,
+      transparent 2px
+    ),
+    linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--73-accent-soft) 96%, transparent),
+      color-mix(in srgb, var(--73-accent-soft) 96%, transparent)
+    );
   background-size:
     96px 76px,
     128px 104px,
     auto;
   padding: 16px 18px 18px;
-  scrollbar-color: rgba(79, 140, 255, 0.42) transparent;
+  scrollbar-color: color-mix(in srgb, var(--73-accent) 42%, transparent) transparent;
 }
 
 .conversation-modal__messages::-webkit-scrollbar {

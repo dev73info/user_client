@@ -7,8 +7,16 @@
   border: 0;
   border-radius: 0;
   background:
-    radial-gradient(circle at top right, rgba(84, 124, 255, 0.18), transparent 30%),
-    linear-gradient(160deg, rgba(219, 234, 254, 0.95), rgba(239, 246, 255, 0.92));
+    radial-gradient(
+      circle at top right,
+      color-mix(in srgb, var(--73-accent) 18%, transparent),
+      transparent 30%
+    ),
+    linear-gradient(
+      160deg,
+      color-mix(in srgb, var(--73-accent-soft) 95%, transparent),
+      color-mix(in srgb, var(--73-accent-soft) 92%, transparent)
+    );
 }
 
 /* 封面图与占位块共用尺寸；`display` 只有图是块级——占位块要居中，见下一条（原来是同一条规则里

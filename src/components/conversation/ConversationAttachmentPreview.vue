@@ -59,13 +59,13 @@ const emit = defineEmits<{
 }
 
 .conversation-modal__attachment-preview strong {
-  color: #172033;
+  color: var(--73-ink);
   font-size: 13px;
   line-height: 1.25;
 }
 
 .conversation-modal__attachment-preview span {
-  color: #6b7f6d;
+  color: var(--73-ink-muted);
   font-size: 12px;
 }
 
@@ -73,31 +73,31 @@ const emit = defineEmits<{
   width: 30px;
   height: 30px;
   border-radius: 999px;
-  color: #64748b;
+  color: var(--73-ink-muted);
 }
 
 .conversation-modal__composer .conversation-modal__attachment-remove:hover {
-  border-color: rgba(190, 18, 60, 0.2);
-  background: #fff1f2;
-  color: #be123c;
+  border-color: color-mix(in srgb, var(--73-danger) 20%, transparent);
+  background: var(--73-danger-soft);
+  color: var(--73-danger);
 }
 
 .conversation-modal__attachment-preview {
-  border-color: rgba(207, 220, 238, 0.96);
-  background: #ffffff;
-  box-shadow: 0 12px 24px rgba(71, 102, 148, 0.1);
+  border-color: color-mix(in srgb, var(--73-accent-soft) 96%, transparent);
+  background: var(--73-surface-strong);
+  box-shadow: 0 12px 24px color-mix(in srgb, var(--73-accent) 10%, transparent);
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: center;
   gap: 10px;
   width: min(420px, 100%);
   padding: 8px;
-  border: 1px solid rgba(185, 204, 190, 0.72);
+  border: 1px solid color-mix(in srgb, var(--73-ink-disabled) 72%, transparent);
   border-radius: 14px;
 }
 
 .conversation-modal__attachment-preview img {
-  background: #f1f6fb;
+  background: var(--73-surface-strong);
   height: 48px;
   border-radius: 10px;
 }

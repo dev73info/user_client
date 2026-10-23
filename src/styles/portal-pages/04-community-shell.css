@@ -10,8 +10,8 @@
    `CommunityPostDetail.vue` 之后搬到这里。为什么放全局层而不是各组件自己的 scoped 块：
 
    1. `check-frontend` 的裸色值门禁——新组件里出现 `#rrggbb` / `rgba()` 就是新增违规；
-      而这份样式里的色值一个都不能换成 `--73-*` 令牌（门户蓝 `#2563eb` 与
-      `--73-accent` = `#1f4ad1` 不是同一个值，换过去就是改视觉，要单独走查）。
+      而这份样式里的色值一个都不能换成 `--73-*` 令牌（门户蓝 `var(--73-accent)` 与
+      `--73-accent` = `var(--73-accent)` 不是同一个值，换过去就是改视觉，要单独走查）。
       搬到全局层是「搬迁不增债」：裸色值总数一分不变，只是从 `.vue` 挪到 `.css`。
    2. 左右两栏共用骨架（`.community-stream` / `.community-detail` / `.community-panel` /
       `.community-empty`）：scoped 块各有作用域，拆栏后两边互不认识，
@@ -41,11 +41,11 @@
   height: 42px;
   align-items: center;
   justify-content: center;
-  border: 1px solid rgba(191, 219, 254, 0.96);
+  border: 1px solid color-mix(in srgb, var(--73-accent-soft) 96%, transparent);
   border-radius: 50%;
-  background: rgba(255, 255, 255, 0.96);
-  color: #2563eb;
-  box-shadow: 0 10px 22px rgba(37, 99, 235, 0.16);
+  background: color-mix(in srgb, var(--73-surface-strong) 96%, transparent);
+  color: var(--73-accent);
+  box-shadow: 0 10px 22px color-mix(in srgb, var(--73-accent) 16%, transparent);
   cursor: pointer;
   transition:
     background-color 140ms ease,
@@ -55,18 +55,18 @@
 
 .community-scroll-top:hover,
 .community-scroll-top:focus-visible {
-  background: #eff6ff;
-  box-shadow: 0 12px 26px rgba(37, 99, 235, 0.22);
+  background: var(--73-accent-soft);
+  box-shadow: 0 12px 26px color-mix(in srgb, var(--73-accent) 22%, transparent);
   transform: translateY(-2px);
 }
 
 .community-stream,
 .community-panel {
   min-width: 0;
-  border: 1px solid rgba(198, 210, 236, 0.72);
+  border: 1px solid color-mix(in srgb, var(--73-accent) 72%, transparent);
   border-radius: 14px;
-  background: rgba(255, 255, 255, 0.95);
-  box-shadow: 0 10px 24px rgba(90, 120, 180, 0.08);
+  background: color-mix(in srgb, var(--73-surface-strong) 95%, transparent);
+  box-shadow: 0 10px 24px color-mix(in srgb, var(--73-accent) 8%, transparent);
 }
 
 .community-stream,
@@ -100,14 +100,14 @@
   gap: 12px;
   margin-bottom: 10px;
   padding: 0 0 12px;
-  border-bottom: 1px solid rgba(226, 232, 240, 0.86);
+  border-bottom: 1px solid color-mix(in srgb, var(--73-border) 86%, transparent);
 }
 
 .community-hero h2,
 .community-panel h2,
 .community-post-card h3 {
   margin: 0;
-  color: #0f172a;
+  color: var(--73-ink);
 }
 
 .community-hero h2 {
@@ -143,9 +143,9 @@
   line-height: 1.6;
   vertical-align: middle;
   white-space: nowrap;
-  color: #92400e;
-  background: #fef3c7;
-  border: 1px solid #fcd34d;
+  color: var(--73-warning-text);
+  background: var(--73-warning-soft);
+  border: 1px solid var(--73-warning);
 }
 .community-post-card__badges .community-featured-badge {
   margin-left: 0;
@@ -163,9 +163,9 @@
   line-height: 1.6;
   vertical-align: middle;
   white-space: nowrap;
-  color: #6d28d9;
-  background: #ede9fe;
-  border: 1px solid #c4b5fd;
+  color: var(--73-accent);
+  background: var(--73-accent-soft);
+  border: 1px solid var(--73-accent);
 }
 .community-post-card__badges .community-boost-badge {
   margin-left: 0;
@@ -191,7 +191,7 @@
 
 .community-detail__header .community-detail__author strong {
   font-size: 15px;
-  color: #0f172a;
+  color: var(--73-ink);
   font-weight: 700;
 }
 
@@ -205,7 +205,7 @@
 .community-post-card__meta,
 .community-actions,
 .community-empty {
-  color: #64748b;
+  color: var(--73-ink-muted);
   line-height: 1.7;
 }
 
@@ -252,18 +252,18 @@
 .community-hero__button--ghost {
   border-color: transparent;
   background: transparent;
-  color: #2563eb;
+  color: var(--73-accent);
 }
 
 .community-hero__button--primary {
-  background: #2563eb;
-  color: #fff;
-  box-shadow: 0 8px 18px rgba(37, 99, 235, 0.18);
+  background: var(--73-accent);
+  color: var(--73-surface-strong);
+  box-shadow: 0 8px 18px color-mix(in srgb, var(--73-accent) 18%, transparent);
 }
 
 .community-hero__button--primary:hover:not(:disabled) {
-  background: #1d4ed8;
-  box-shadow: 0 10px 22px rgba(37, 99, 235, 0.22);
+  background: var(--73-accent);
+  box-shadow: 0 10px 22px color-mix(in srgb, var(--73-accent) 22%, transparent);
   transform: translateY(-1px);
 }
 

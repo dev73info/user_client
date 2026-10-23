@@ -89,13 +89,13 @@ const refreshButtonLabel = computed(() => (props.loading ? '刷新中...' : '刷
     min-width: 0;
   }
   #workbench-mobile-bar-extra .my-requirements-strip .wb-strip__label {
-    color: #94a3b8;
+    color: var(--73-ink-placeholder);
     font-size: 11px;
     font-weight: 500;
     line-height: 1.2;
   }
   #workbench-mobile-bar-extra .my-requirements-strip .wb-strip__value {
-    color: #0f172a;
+    color: var(--73-ink);
     font-size: 15px;
     font-weight: 700;
     line-height: 1.2;

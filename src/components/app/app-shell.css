@@ -9,7 +9,7 @@
   position: relative;
   z-index: 2;
   min-height: 100vh;
-  background: #f6f8fb;
+  background: var(--73-surface-strong);
 }
 
 .app-scrollbar {

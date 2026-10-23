@@ -8,7 +8,7 @@
 }
 
 .catalog-chipbar__hint {
-  color: #64748b;
+  color: var(--73-ink-muted);
   font-size: 12px;
 }
 
@@ -18,9 +18,9 @@
   gap: 6px;
   height: 24px;
   padding: 0 10px;
-  border: 1px solid rgba(31, 74, 209, 0.28);
+  border: 1px solid color-mix(in srgb, var(--73-accent) 28%, transparent);
   border-radius: 999px;
-  background: rgba(31, 74, 209, 0.06);
+  background: color-mix(in srgb, var(--73-accent) 6%, transparent);
   color: var(--accent);
   font: inherit;
   font-size: 12px;
@@ -30,7 +30,7 @@
 }
 
 .catalog-chip:hover {
-  background: rgba(31, 74, 209, 0.14);
+  background: color-mix(in srgb, var(--73-accent) 14%, transparent);
 }
 
 .catalog-chip__close {
@@ -44,7 +44,7 @@
   padding: 0 6px;
   border: 0;
   background: transparent;
-  color: #64748b;
+  color: var(--73-ink-muted);
   font: inherit;
   font-size: 12px;
   font-weight: 700;
@@ -75,7 +75,7 @@
   border: 1px solid var(--card-border);
   border-radius: 8px;
   background: var(--bg-soft);
-  color: #334155;
+  color: var(--73-ink-soft);
   font: inherit;
   font-size: 13px;
   font-weight: 700;
@@ -87,7 +87,7 @@
 
 .catalog-sort-trigger:hover,
 .catalog-back-btn:hover {
-  border-color: rgba(31, 74, 209, 0.4);
+  border-color: color-mix(in srgb, var(--73-accent) 40%, transparent);
   color: var(--accent);
 }
 
@@ -98,7 +98,7 @@
 }
 
 .catalog-count {
-  color: #64748b;
+  color: var(--73-ink-muted);
   font-size: 12px;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
@@ -121,7 +121,7 @@
   border: 1px solid var(--card-border);
   border-radius: 999px;
   background: var(--bg-soft);
-  color: #334155;
+  color: var(--73-ink-soft);
   font: inherit;
   font-size: 12px;
   font-weight: 700;
@@ -134,7 +134,7 @@
 }
 
 .catalog-pager__btn:hover:not(:disabled) {
-  border-color: rgba(31, 74, 209, 0.4);
+  border-color: color-mix(in srgb, var(--73-accent) 40%, transparent);
   color: var(--accent);
 }
 
@@ -146,12 +146,12 @@
 .catalog-pager__btn--active {
   border-color: transparent;
   background: var(--accent);
-  color: #fff;
+  color: var(--73-surface-strong);
 }
 
 .catalog-pager__ellipsis {
   padding: 0 2px;
-  color: #94a3b8;
+  color: var(--73-ink-placeholder);
   font-size: 12px;
   font-weight: 700;
 }

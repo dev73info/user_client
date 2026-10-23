@@ -7,25 +7,25 @@
   flex-wrap: wrap;
   align-items: center;
   gap: 8px;
-  border-bottom: 1px solid #e5e9ef;
+  border-bottom: 1px solid var(--73-border);
   padding-bottom: 10px;
 }
 
 .attachment-tab {
   padding: 6px 14px;
-  border: 1px solid #cce3e2;
+  border: 1px solid var(--73-ink-disabled);
   border-radius: 999px;
-  background: #fff;
-  color: #247f7d;
+  background: var(--73-surface-strong);
+  color: var(--73-success);
   font-size: 13px;
   font-weight: 700;
   cursor: pointer;
 }
 
 .attachment-tab--active {
-  background: #247f7d;
-  border-color: #247f7d;
-  color: #fff;
+  background: var(--73-success);
+  border-color: var(--73-success);
+  color: var(--73-surface-strong);
 }
 
 .attachment-prepare__template {
@@ -34,7 +34,7 @@
 
 .attachment-prepare__hint {
   margin: 10px 0;
-  color: #667085;
+  color: var(--73-ink-muted);
   font-size: 12.5px;
   line-height: 1.7;
 }
@@ -51,7 +51,7 @@
   align-items: center;
   gap: 10px;
   font-size: 13px;
-  color: #172033;
+  color: var(--73-ink);
 }
 
 .attachment-upload__picker input[type='file'] {
@@ -61,7 +61,7 @@
 .attachment-upload__file {
   margin: 0;
   font-size: 13px;
-  color: #334155;
+  color: var(--73-ink-soft);
   font-weight: 600;
 }
 
@@ -77,11 +77,11 @@
   gap: 6px;
   width: 100%;
   font-size: 13px;
-  color: #334155;
+  color: var(--73-ink-soft);
 }
 
 .attachment-field small {
-  color: #667085;
+  color: var(--73-ink-muted);
   font-size: 12px;
 }
 
@@ -90,10 +90,10 @@
 .attachment-field textarea {
   width: 100%;
   padding: 8px 10px;
-  border: 1px solid #cbd5e1;
+  border: 1px solid var(--73-ink-disabled);
   border-radius: 8px;
-  background: #fff;
-  color: #0f172a;
+  background: var(--73-surface-strong);
+  color: var(--73-ink);
   font: inherit;
   font-size: 13px;
   line-height: 1.6;
@@ -106,10 +106,10 @@
   justify-content: center;
   min-height: 34px;
   padding: 6px 16px;
-  border: 1px solid #cbd5e1;
+  border: 1px solid var(--73-ink-disabled);
   border-radius: 8px;
-  background: #fff;
-  color: #334155;
+  background: var(--73-surface-strong);
+  color: var(--73-ink-soft);
   font-size: 13px;
   font-weight: 700;
   cursor: pointer;
@@ -121,19 +121,19 @@
 }
 
 .attachment-btn--primary {
-  border-color: #247f7d;
-  background: #247f7d;
-  color: #fff;
+  border-color: var(--73-success);
+  background: var(--73-success);
+  color: var(--73-surface-strong);
 }
 
 .attachment-btn--ghost {
-  border-color: #cce3e2;
-  color: #247f7d;
+  border-color: var(--73-ink-disabled);
+  color: var(--73-success);
 }
 
 .attachment-btn--danger {
-  border-color: #fecaca;
-  color: #b91c1c;
+  border-color: var(--73-danger-soft);
+  color: var(--73-danger);
 }
 
 .attachment-msg {
@@ -145,15 +145,15 @@
 }
 
 .attachment-msg--success {
-  background: #ecfdf5;
-  border: 1px solid #bbf7d0;
-  color: #047857;
+  background: var(--73-success-soft);
+  border: 1px solid var(--73-success);
+  color: var(--73-success);
 }
 
 .attachment-msg--error {
-  background: #fef2f2;
-  border: 1px solid #fecaca;
-  color: #b91c1c;
+  background: var(--73-danger-soft);
+  border: 1px solid var(--73-danger-soft);
+  color: var(--73-danger);
 }
 
 /* R047 断点收敛：原档位 600px → 640px */

@@ -7,13 +7,13 @@
   padding: 18px;
   text-align: center;
   border-radius: 10px;
-  background: #fff;
-  border: 1px solid #dbe2ef;
-  color: #64748b;
+  background: var(--73-surface-strong);
+  border: 1px solid var(--73-accent-soft);
+  color: var(--73-ink-muted);
 }
 
 .mobile-empty strong {
-  color: #0f172a;
+  color: var(--73-ink);
   font-size: 15px;
 }
 
@@ -34,10 +34,10 @@
 .mobile-empty-btn {
   min-height: 44px;
   padding: 0 16px;
-  border: 1px solid #dbe2ef;
+  border: 1px solid var(--73-accent-soft);
   border-radius: 10px;
-  background: #fff;
-  color: #334155;
+  background: var(--73-surface-strong);
+  color: var(--73-ink-soft);
   font: inherit;
   font-size: 13px;
   font-weight: 700;
@@ -45,12 +45,12 @@
 
 .mobile-empty-btn--primary {
   border-color: transparent;
-  background: linear-gradient(135deg, #2563eb, #4f8cff);
-  color: #fff;
+  background: linear-gradient(135deg, var(--73-accent), var(--73-accent));
+  color: var(--73-surface-strong);
 }
 
 .mobile-empty-btn--ghost {
   border-color: transparent;
   background: transparent;
-  color: #64748b;
+  color: var(--73-ink-muted);
 }

@@ -3,9 +3,9 @@
 
 .mobile-sort-dropdown {
   border-radius: 14px !important;
-  border: 1px solid rgba(224, 232, 255, 0.96) !important;
-  background: rgba(255, 255, 255, 0.98) !important;
-  box-shadow: 0 14px 34px rgba(76, 103, 172, 0.14) !important;
+  border: 1px solid color-mix(in srgb, var(--73-accent-soft) 96%, transparent) !important;
+  background: color-mix(in srgb, var(--73-surface-strong) 98%, transparent) !important;
+  box-shadow: 0 14px 34px color-mix(in srgb, var(--73-accent) 14%, transparent) !important;
   padding: 4px !important;
   min-width: 0 !important;
   width: auto !important;

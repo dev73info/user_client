@@ -113,9 +113,13 @@ const emit = defineEmits<{
   width: min(420px, 92%);
   margin: 0 0 14px;
   padding: 12px 14px;
-  border: 1px solid rgba(37, 99, 235, 0.22);
+  border: 1px solid color-mix(in srgb, var(--73-accent) 22%, transparent);
   border-radius: 12px;
-  background: linear-gradient(180deg, rgba(239, 246, 255, 0.96), rgba(255, 255, 255, 0.98));
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--73-accent-soft) 96%, transparent),
+    color-mix(in srgb, var(--73-surface-strong) 98%, transparent)
+  );
 }
 
 .conversation-card--other {
@@ -143,11 +147,11 @@ const emit = defineEmits<{
 
 .conversation-card--system .conversation-card__head {
   justify-content: center;
-  color: #64748b;
+  color: var(--73-ink-muted);
 }
 
 .conversation-card--system .conversation-card__desc {
-  color: #94a3b8;
+  color: var(--73-ink-placeholder);
 }
 
 .conversation-card--system .conversation-card__foot {
@@ -158,7 +162,7 @@ const emit = defineEmits<{
   display: flex;
   align-items: center;
   gap: 6px;
-  color: #1d4ed8;
+  color: var(--73-accent);
   font-size: 13.5px;
 }
 
@@ -168,7 +172,7 @@ const emit = defineEmits<{
 
 .conversation-card__desc {
   margin: 0;
-  color: #475569;
+  color: var(--73-ink-soft);
   font-size: 12.5px;
   line-height: 1.6;
   word-break: break-word;
@@ -184,7 +188,7 @@ const emit = defineEmits<{
 }
 
 .conversation-card__foot time {
-  color: #94a3b8;
+  color: var(--73-ink-placeholder);
   font-size: 11.5px;
 }
 

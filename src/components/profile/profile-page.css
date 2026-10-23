@@ -12,9 +12,9 @@
 .overview-hero,
 .overview-focus-panel,
 .overview-panel {
-  border: 1px solid rgba(224, 232, 255, 0.96);
-  background: rgba(255, 255, 255, 0.94);
-  box-shadow: 0 14px 34px rgba(76, 103, 172, 0.08);
+  border: 1px solid color-mix(in srgb, var(--73-accent-soft) 96%, transparent);
+  background: color-mix(in srgb, var(--73-surface-strong) 94%, transparent);
+  box-shadow: 0 14px 34px color-mix(in srgb, var(--73-accent) 8%, transparent);
 }
 
 .overview-hero {
@@ -52,15 +52,15 @@
   height: 76px;
   padding: 0;
   overflow: hidden;
-  border: 1px solid rgba(183, 201, 238, 0.95);
+  border: 1px solid color-mix(in srgb, var(--73-accent) 95%, transparent);
   border-radius: 50%;
-  background: linear-gradient(135deg, #eef5ff, #ffffff);
-  color: #1d4ed8;
+  background: linear-gradient(135deg, var(--73-accent-soft), var(--73-surface-strong));
+  color: var(--73-accent);
   cursor: pointer;
   font-size: 28px;
   font-weight: 900;
   line-height: 1;
-  box-shadow: 0 10px 22px rgba(76, 103, 172, 0.12);
+  box-shadow: 0 10px 22px color-mix(in srgb, var(--73-accent) 12%, transparent);
 }
 
 .profile-avatar-button:disabled {
@@ -89,8 +89,8 @@
   left: 0;
   z-index: 2;
   padding: 5px 0;
-  background: rgba(15, 23, 42, 0.72);
-  color: #ffffff;
+  background: color-mix(in srgb, var(--73-ink) 72%, transparent);
+  color: var(--73-surface-strong);
   font-size: 11px;
   font-weight: 800;
   line-height: 1;
@@ -106,7 +106,7 @@
 
 .overview-hero__head h1 {
   margin: 0;
-  color: #0f172a;
+  color: var(--73-ink);
 }
 
 .overview-hero__head h1 {
@@ -120,7 +120,7 @@
 
 .overview-hero__head p {
   margin: 10px 0 0;
-  color: #64748b;
+  color: var(--73-ink-muted);
   font-size: 18px;
   line-height: 1.5;
 }
@@ -132,7 +132,7 @@
 .overview-hero__main p {
   margin: 0;
   max-width: 680px;
-  color: #64748b;
+  color: var(--73-ink-muted);
   line-height: 1.7;
 }
 
@@ -152,10 +152,10 @@
   align-items: center;
   min-height: 30px;
   padding: 6px 10px;
-  border: 1px solid rgba(209, 220, 243, 0.95);
+  border: 1px solid color-mix(in srgb, var(--73-accent-soft) 95%, transparent);
   border-radius: 999px;
-  background: #f8fbff;
-  color: #475569;
+  background: var(--73-accent-soft);
+  color: var(--73-ink-soft);
   font-size: 12px;
   font-weight: 700;
 }
@@ -170,7 +170,7 @@
 }
 
 .overview-hero__name-link:hover {
-  color: #1d4ed8;
+  color: var(--73-accent);
 }
 
 /* 面板内边距与圆角（三块面板共用；内里的骨架样式见 styles/profile.css 的「面板通用骨架」一节） */

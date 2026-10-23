@@ -1,156 +1,164 @@
 /* Shared code-block presentation for editor and rendered rich text. */
 .rich-text-body pre {
-    --rich-code-accent: #64748b;
-    --rich-code-label: 'CODE';
-    position: relative;
-    overflow: auto;
-    margin: 0 0 12px;
-    padding: 38px 16px 14px;
-    border: 1px solid rgba(30, 41, 59, 0.88);
-    border-left: 4px solid var(--rich-code-accent);
-    border-radius: 14px;
-    background:
-        linear-gradient(135deg, rgba(255, 255, 255, 0.045), transparent 42%),
-        #0f172a;
-    color: #e2e8f0;
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  --rich-code-accent: var(--73-ink-muted);
+  --rich-code-label: 'CODE';
+  position: relative;
+  overflow: auto;
+  margin: 0 0 12px;
+  padding: 38px 16px 14px;
+  border: 1px solid color-mix(in srgb, var(--73-ink) 88%, transparent);
+  border-left: 4px solid var(--rich-code-accent);
+  border-radius: 14px;
+  background:
+    linear-gradient(
+      135deg,
+      color-mix(in srgb, var(--73-surface-strong) 4.5%, transparent),
+      transparent 42%
+    ),
+    var(--73-ink);
+  color: var(--73-border);
+  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--73-surface-strong) 5%, transparent);
 }
 
 .rich-text-body pre::before {
-    position: absolute;
-    top: 10px;
-    left: 14px;
-    display: inline-flex;
-    align-items: center;
-    min-height: 18px;
-    padding: 2px 8px;
-    border: 1px solid color-mix(in srgb, var(--rich-code-accent) 54%, transparent);
-    border-radius: 999px;
-    background: color-mix(in srgb, var(--rich-code-accent) 18%, rgba(15, 23, 42, 0.86));
-    color: #f8fafc;
-    content: var(--rich-code-label);
-    font-family: 'IBM Plex Mono', 'SFMono-Regular', Consolas, monospace;
-    font-size: 11px;
-    font-weight: 900;
-    line-height: 1.2;
-    letter-spacing: 0;
-    pointer-events: none;
+  position: absolute;
+  top: 10px;
+  left: 14px;
+  display: inline-flex;
+  align-items: center;
+  min-height: 18px;
+  padding: 2px 8px;
+  border: 1px solid color-mix(in srgb, var(--rich-code-accent) 54%, transparent);
+  border-radius: 999px;
+  background: color-mix(
+    in srgb,
+    var(--rich-code-accent) 18%,
+    color-mix(in srgb, var(--73-ink) 86%, transparent)
+  );
+  color: var(--73-surface-strong);
+  content: var(--rich-code-label);
+  font-family: 'IBM Plex Mono', 'SFMono-Regular', Consolas, monospace;
+  font-size: 11px;
+  font-weight: 900;
+  line-height: 1.2;
+  letter-spacing: 0;
+  pointer-events: none;
 }
 
 .rich-text-body pre:has(code.language-json) {
-    --rich-code-accent: #f97316;
-    --rich-code-label: 'JSON';
+  --rich-code-accent: var(--73-warning);
+  --rich-code-label: 'JSON';
 }
 
 .rich-text-body pre:has(code.language-rust),
 .rich-text-body pre:has(code.language-rs) {
-    --rich-code-accent: #d97706;
-    --rich-code-label: 'RUST';
+  --rich-code-accent: var(--73-warning);
+  --rich-code-label: 'RUST';
 }
 
 .rich-text-body pre:has(code.language-cpp),
 .rich-text-body pre:has(code.language-cxx),
 .rich-text-body pre:has(code.language-cc) {
-    --rich-code-accent: #38bdf8;
-    --rich-code-label: 'C++';
+  --rich-code-accent: var(--73-accent);
+  --rich-code-label: 'C++';
 }
 
 .rich-text-body pre:has(code.language-c) {
-    --rich-code-accent: #94a3b8;
-    --rich-code-label: 'C';
+  --rich-code-accent: var(--73-ink-placeholder);
+  --rich-code-label: 'C';
 }
 
 .rich-text-body pre:has(code.language-csharp),
 .rich-text-body pre:has(code.language-cs) {
-    --rich-code-accent: #8b5cf6;
-    --rich-code-label: 'C#';
+  --rich-code-accent: var(--73-accent);
+  --rich-code-label: 'C#';
 }
 
 .rich-text-body pre:has(code.language-java) {
-    --rich-code-accent: #ef4444;
-    --rich-code-label: 'JAVA';
+  --rich-code-accent: var(--73-danger);
+  --rich-code-label: 'JAVA';
 }
 
 .rich-text-body pre:has(code.language-javascript),
 .rich-text-body pre:has(code.language-js) {
-    --rich-code-accent: #facc15;
-    --rich-code-label: 'JS';
+  --rich-code-accent: var(--73-warning);
+  --rich-code-label: 'JS';
 }
 
 .rich-text-body pre:has(code.language-typescript),
 .rich-text-body pre:has(code.language-ts) {
-    --rich-code-accent: #3b82f6;
-    --rich-code-label: 'TS';
+  --rich-code-accent: var(--73-accent);
+  --rich-code-label: 'TS';
 }
 
 .rich-text-body pre:has(code.language-python),
 .rich-text-body pre:has(code.language-py) {
-    --rich-code-accent: #22c55e;
-    --rich-code-label: 'PYTHON';
+  --rich-code-accent: var(--73-success);
+  --rich-code-label: 'PYTHON';
 }
 
 .rich-text-body pre:has(code.language-go),
 .rich-text-body pre:has(code.language-golang) {
-    --rich-code-accent: #06b6d4;
-    --rich-code-label: 'GO';
+  --rich-code-accent: var(--73-accent);
+  --rich-code-label: 'GO';
 }
 
 .rich-text-body pre:has(code.language-sql) {
-    --rich-code-accent: #a78bfa;
-    --rich-code-label: 'SQL';
+  --rich-code-accent: var(--73-accent);
+  --rich-code-label: 'SQL';
 }
 
 .rich-text-body pre:has(code.language-shell),
 .rich-text-body pre:has(code.language-bash),
 .rich-text-body pre:has(code.language-sh),
 .rich-text-body pre:has(code.language-zsh) {
-    --rich-code-accent: #10b981;
-    --rich-code-label: 'SHELL';
+  --rich-code-accent: var(--73-success);
+  --rich-code-label: 'SHELL';
 }
 
 .rich-text-body pre:has(code.language-html) {
-    --rich-code-accent: #fb7185;
-    --rich-code-label: 'HTML';
+  --rich-code-accent: var(--73-danger);
+  --rich-code-label: 'HTML';
 }
 
 .rich-text-body pre:has(code.language-css) {
-    --rich-code-accent: #60a5fa;
-    --rich-code-label: 'CSS';
+  --rich-code-accent: var(--73-accent);
+  --rich-code-label: 'CSS';
 }
 
 .rich-text-body pre:has(code.language-xml) {
-    --rich-code-accent: #f472b6;
-    --rich-code-label: 'XML';
+  --rich-code-accent: var(--73-danger);
+  --rich-code-label: 'XML';
 }
 
 .rich-text-body pre:has(code.language-yaml),
 .rich-text-body pre:has(code.language-yml) {
-    --rich-code-accent: #f59e0b;
-    --rich-code-label: 'YAML';
+  --rich-code-accent: var(--73-warning);
+  --rich-code-label: 'YAML';
 }
 
 .rich-text-body pre:has(code.language-md),
 .rich-text-body pre:has(code.language-markdown) {
-    --rich-code-accent: #2563eb;
-    --rich-code-label: 'MD';
+  --rich-code-accent: var(--73-accent);
+  --rich-code-label: 'MD';
 }
 
 .rich-text-body code {
-    font-family: 'IBM Plex Mono', 'SFMono-Regular', Consolas, monospace;
+  font-family: 'IBM Plex Mono', 'SFMono-Regular', Consolas, monospace;
 }
 
 .rich-text-body pre code {
-    display: block;
-    min-width: max-content;
-    color: inherit;
-    line-height: 1.75;
-    tab-size: 4;
+  display: block;
+  min-width: max-content;
+  color: inherit;
+  line-height: 1.75;
+  tab-size: 4;
 }
 
 .rich-text-body pre .hljs-comment,
 .rich-text-body pre .hljs-quote {
-    color: #94a3b8;
-    font-style: italic;
+  color: var(--73-ink-placeholder);
+  font-style: italic;
 }
 
 .rich-text-body pre .hljs-doctag,
@@ -158,42 +166,42 @@
 .rich-text-body pre .hljs-meta .hljs-keyword,
 .rich-text-body pre .hljs-template-tag,
 .rich-text-body pre .hljs-template-variable {
-    color: #f472b6;
-    font-weight: 800;
+  color: var(--73-danger);
+  font-weight: 800;
 }
 
 .rich-text-body pre .hljs-attr,
 .rich-text-body pre .hljs-attribute,
 .rich-text-body pre .hljs-property,
 .rich-text-body pre .hljs-variable {
-    color: #7dd3fc;
+  color: var(--73-accent);
 }
 
 .rich-text-body pre .hljs-string,
 .rich-text-body pre .hljs-regexp {
-    color: #86efac;
+  color: var(--73-success);
 }
 
 .rich-text-body pre .hljs-number,
 .rich-text-body pre .hljs-literal,
 .rich-text-body pre .hljs-symbol,
 .rich-text-body pre .hljs-bullet {
-    color: #fbbf24;
+  color: var(--73-warning);
 }
 
 .rich-text-body pre .hljs-built_in,
 .rich-text-body pre .hljs-class .hljs-title,
 .rich-text-body pre .hljs-title.class_,
 .rich-text-body pre .hljs-type {
-    color: #67e8f9;
-    font-weight: 700;
+  color: var(--73-accent);
+  font-weight: 700;
 }
 
 .rich-text-body pre .hljs-function .hljs-title,
 .rich-text-body pre .hljs-title.function_,
 .rich-text-body pre .hljs-title {
-    color: #93c5fd;
-    font-weight: 700;
+  color: var(--73-accent);
+  font-weight: 700;
 }
 
 .rich-text-body pre .hljs-meta,
@@ -201,31 +209,30 @@
 .rich-text-body pre .hljs-selector-tag,
 .rich-text-body pre .hljs-tag,
 .rich-text-body pre .hljs-name {
-    color: #fb7185;
+  color: var(--73-danger);
 }
 
 .rich-text-body pre .hljs-link,
 .rich-text-body pre .hljs-operator,
 .rich-text-body pre .hljs-params,
 .rich-text-body pre .hljs-subst {
-    color: #cbd5e1;
+  color: var(--73-ink-disabled);
 }
 
 .rich-text-body pre .hljs-addition {
-    color: #86efac;
-    background: rgba(34, 197, 94, 0.12);
+  color: var(--73-success);
+  background: color-mix(in srgb, var(--73-success) 12%, transparent);
 }
 
 .rich-text-body pre .hljs-deletion {
-    color: #fca5a5;
-    background: rgba(239, 68, 68, 0.12);
+  color: var(--73-danger);
+  background: color-mix(in srgb, var(--73-danger) 12%, transparent);
 }
 
 .rich-text-body pre .hljs-emphasis {
-    font-style: italic;
+  font-style: italic;
 }
 
 .rich-text-body pre .hljs-strong {
-    font-weight: 800;
+  font-weight: 800;
 }
-

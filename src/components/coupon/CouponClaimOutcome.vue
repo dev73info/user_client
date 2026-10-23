@@ -83,11 +83,11 @@ function openAuth(mode: 'login' | 'register') {
 .claim-outcome {
   padding: 20px;
   border-radius: 20px;
-  background: rgba(255, 255, 255, 0.05);
+  background: color-mix(in srgb, var(--73-surface-strong) 5%, transparent);
 }
 
 .claim-outcome--loading {
-  color: #9fd8ff;
+  color: var(--73-accent);
 }
 
 .claim-outcome strong {
@@ -98,11 +98,11 @@ function openAuth(mode: 'login' | 'register') {
 
 .claim-outcome p {
   margin: 8px 0;
-  color: rgba(244, 247, 255, 0.82);
+  color: color-mix(in srgb, var(--73-accent-soft) 82%, transparent);
 }
 
 .claim-outcome__points {
-  color: #fbbf24;
+  color: var(--73-warning);
 }
 
 .claim-outcome__actions {
@@ -122,15 +122,15 @@ function openAuth(mode: 'login' | 'register') {
 }
 
 .claim-outcome__primary {
-  background: linear-gradient(135deg, #8bd0ff, #4ba7ff);
-  color: #04111f;
+  background: linear-gradient(135deg, var(--73-accent), var(--73-accent));
+  color: var(--73-accent);
   font-weight: 700;
 }
 
 .claim-outcome__ghost {
   background: transparent;
-  color: #dfe9ff;
-  border: 1px solid rgba(223, 233, 255, 0.24);
+  color: var(--73-accent-soft);
+  border: 1px solid color-mix(in srgb, var(--73-accent-soft) 24%, transparent);
 }
 
 @media (max-width: 640px) {

@@ -7,29 +7,29 @@
    ── 裸色值留在这个文件里（已在 `raw-color` 基线内，只减不增），子组件只取 `var()`。
    ============================================================ */
 .resource-purchase-modal-wrap {
-  --rdp-purchase-scrim: rgba(15, 23, 42, 0.28);
-  --rdp-purchase-border: rgba(198, 210, 236, 0.95);
-  --rdp-purchase-glow: rgba(191, 219, 254, 0.55);
-  --rdp-purchase-surface: rgba(255, 255, 255, 0.97);
-  --rdp-purchase-shadow: rgba(37, 66, 130, 0.18);
-  --rdp-purchase-ink: #0f172a;
-  --rdp-purchase-body: #334155;
-  --rdp-purchase-muted: #64748b;
-  --rdp-purchase-soft-ink: #475569;
-  --rdp-purchase-white: #fff;
-  --rdp-purchase-close-border: rgba(203, 213, 225, 0.95);
-  --rdp-purchase-close-border-hover: rgba(148, 163, 184, 0.9);
-  --rdp-purchase-plate-border: rgba(226, 232, 240, 0.95);
-  --rdp-purchase-plate-surface: rgba(248, 250, 252, 0.96);
-  --rdp-purchase-dashed: rgba(148, 163, 184, 0.7);
-  --rdp-purchase-dashed-surface: rgba(248, 250, 252, 0.9);
-  --rdp-purchase-amount-border: rgba(253, 186, 116, 0.55);
-  --rdp-purchase-amount-from: rgba(255, 247, 237, 0.98);
-  --rdp-purchase-amount-to: rgba(255, 237, 213, 0.72);
-  --rdp-purchase-amount-ink: #9a3412;
-  --rdp-purchase-notes-border: rgba(191, 219, 254, 0.85);
-  --rdp-purchase-notes-surface: rgba(239, 246, 255, 0.72);
-  --rdp-purchase-error-border: rgba(252, 165, 165, 0.85);
-  --rdp-purchase-error-surface: rgba(254, 242, 242, 0.9);
-  --rdp-purchase-error-ink: #b91c1c;
+  --rdp-purchase-scrim: color-mix(in srgb, var(--73-ink) 28%, transparent);
+  --rdp-purchase-border: color-mix(in srgb, var(--73-accent) 95%, transparent);
+  --rdp-purchase-glow: color-mix(in srgb, var(--73-accent-soft) 55%, transparent);
+  --rdp-purchase-surface: color-mix(in srgb, var(--73-surface-strong) 97%, transparent);
+  --rdp-purchase-shadow: color-mix(in srgb, var(--73-accent) 18%, transparent);
+  --rdp-purchase-ink: var(--73-ink);
+  --rdp-purchase-body: var(--73-ink-soft);
+  --rdp-purchase-muted: var(--73-ink-muted);
+  --rdp-purchase-soft-ink: var(--73-ink-soft);
+  --rdp-purchase-white: var(--73-surface-strong);
+  --rdp-purchase-close-border: color-mix(in srgb, var(--73-ink-disabled) 95%, transparent);
+  --rdp-purchase-close-border-hover: color-mix(in srgb, var(--73-ink-placeholder) 90%, transparent);
+  --rdp-purchase-plate-border: color-mix(in srgb, var(--73-border) 95%, transparent);
+  --rdp-purchase-plate-surface: color-mix(in srgb, var(--73-surface-strong) 96%, transparent);
+  --rdp-purchase-dashed: color-mix(in srgb, var(--73-ink-placeholder) 70%, transparent);
+  --rdp-purchase-dashed-surface: color-mix(in srgb, var(--73-surface-strong) 90%, transparent);
+  --rdp-purchase-amount-border: color-mix(in srgb, var(--73-warning) 55%, transparent);
+  --rdp-purchase-amount-from: color-mix(in srgb, var(--73-warning-soft) 98%, transparent);
+  --rdp-purchase-amount-to: color-mix(in srgb, var(--73-warning-soft) 72%, transparent);
+  --rdp-purchase-amount-ink: var(--73-danger-text);
+  --rdp-purchase-notes-border: color-mix(in srgb, var(--73-accent-soft) 85%, transparent);
+  --rdp-purchase-notes-surface: color-mix(in srgb, var(--73-accent-soft) 72%, transparent);
+  --rdp-purchase-error-border: color-mix(in srgb, var(--73-danger) 85%, transparent);
+  --rdp-purchase-error-surface: color-mix(in srgb, var(--73-danger-soft) 90%, transparent);
+  --rdp-purchase-error-ink: var(--73-danger);
 }

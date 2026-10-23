@@ -6,24 +6,24 @@
   gap: 12px;
   padding: 12px;
   border-radius: 14px;
-  border: 1px solid rgba(203, 213, 225, 0.7);
-  background: #fff;
+  border: 1px solid color-mix(in srgb, var(--73-ink-disabled) 70%, transparent);
+  background: var(--73-surface-strong);
   cursor: pointer;
   transition:
     box-shadow 200ms ease,
     border-color 200ms ease,
     transform 200ms ease;
-  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
+  box-shadow: 0 1px 3px color-mix(in srgb, var(--73-ink) 4%, transparent);
 }
 
 .mobile-card:hover {
-  border-color: rgba(147, 197, 253, 0.6);
-  box-shadow: 0 4px 20px rgba(76, 103, 172, 0.1);
+  border-color: color-mix(in srgb, var(--73-accent) 60%, transparent);
+  box-shadow: 0 4px 20px color-mix(in srgb, var(--73-accent) 10%, transparent);
 }
 
 .mobile-card:active {
   transform: scale(0.985);
-  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
+  box-shadow: 0 1px 3px color-mix(in srgb, var(--73-ink) 4%, transparent);
   transition-duration: 80ms;
 }
 
@@ -33,9 +33,9 @@
   border-radius: 12px;
   overflow: hidden;
   flex-shrink: 0;
-  background: #e2e8f0;
-  border: 1px solid rgba(203, 213, 225, 0.5);
-  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.06);
+  background: var(--73-border);
+  border: 1px solid color-mix(in srgb, var(--73-ink-disabled) 50%, transparent);
+  box-shadow: 0 2px 8px color-mix(in srgb, var(--73-ink) 6%, transparent);
 }
 
 .card-thumb img {
@@ -50,7 +50,7 @@
   width: 100%;
   height: 100%;
   font-size: 26px;
-  background: linear-gradient(135deg, #eef2ff, #dbeafe);
+  background: linear-gradient(135deg, var(--73-accent-soft), var(--73-accent-soft));
 }
 
 .card-body {
@@ -65,7 +65,7 @@
   margin: 0;
   font-size: 18px;
   line-height: 1.3;
-  color: #0f172a;
+  color: var(--73-ink);
   display: -webkit-box;
   -webkit-line-clamp: 1;
   -webkit-box-orient: vertical;
@@ -78,8 +78,8 @@
   margin-left: 6px;
   padding: 1px 7px;
   border-radius: 999px;
-  background: rgba(22, 163, 74, 0.12);
-  color: #166534;
+  background: color-mix(in srgb, var(--73-success) 12%, transparent);
+  color: var(--73-success);
   font-size: 11px;
   font-weight: 800;
   line-height: 1.5;
@@ -87,8 +87,8 @@
 }
 
 .card-price-badge.is-paid {
-  background: rgba(234, 88, 12, 0.14);
-  color: #9a3412;
+  background: color-mix(in srgb, var(--73-warning) 14%, transparent);
+  color: var(--73-danger-text);
 }
 
 .card-repost-badge {
@@ -97,8 +97,8 @@
   margin-left: 6px;
   padding: 1px 7px;
   border-radius: 999px;
-  background: rgba(99, 102, 241, 0.12);
-  color: #4f46e5;
+  background: color-mix(in srgb, var(--73-accent) 12%, transparent);
+  color: var(--73-accent);
   font-size: 11px;
   font-weight: 800;
   line-height: 1.5;
@@ -106,15 +106,15 @@
 }
 
 .card-repost-badge.is-repost {
-  background: rgba(245, 158, 11, 0.14);
-  color: #b45309;
+  background: color-mix(in srgb, var(--73-warning) 14%, transparent);
+  color: var(--73-warning);
 }
 
 .card-desc {
   margin: 6px 0;
   font-size: 15px;
   line-height: 1.4;
-  color: #475569;
+  color: var(--73-ink-soft);
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
@@ -130,7 +130,7 @@
   align-items: center;
   gap: 8px;
   margin-bottom: 3px;
-  color: #64748b;
+  color: var(--73-ink-muted);
   font-size: 12px;
   font-weight: 500;
 }
@@ -145,16 +145,16 @@
 .card-stat + .card-stat::before {
   content: '·';
   margin-right: 8px;
-  color: #cbd5e1;
+  color: var(--73-ink-disabled);
 }
 
 .card-stat__heart {
-  color: #e11d48;
+  color: var(--73-danger);
   line-height: 1;
 }
 
 .card-stat__num {
-  color: #475569;
+  color: var(--73-ink-soft);
   font-weight: 700;
   font-variant-numeric: tabular-nums;
 }
@@ -163,16 +163,16 @@
   display: flex;
   align-items: center;
   gap: 6px;
-  color: #94a3b8;
+  color: var(--73-ink-placeholder);
   font-size: 12px;
   font-weight: 500;
 }
 
 .card-meta__dot {
-  color: #cbd5e1;
+  color: var(--73-ink-disabled);
 }
 
 /* 作者比更新日期重要一档：同字号下用色深区分，不靠字重加粗整行 */
 .card-meta__author {
-  color: #64748b;
+  color: var(--73-ink-muted);
 }

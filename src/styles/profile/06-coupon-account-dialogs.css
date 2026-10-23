@@ -20,9 +20,9 @@
 }
 
 .coupon-item:hover {
-  border-color: rgba(125, 155, 225, 0.92);
-  background: #f8fbff;
-  box-shadow: 0 10px 24px rgba(76, 103, 172, 0.08);
+  border-color: color-mix(in srgb, var(--73-accent) 92%, transparent);
+  background: var(--73-accent-soft);
+  box-shadow: 0 10px 24px color-mix(in srgb, var(--73-accent) 8%, transparent);
 }
 
 .coupon-head {
@@ -67,23 +67,23 @@
   padding: 20px 18px;
   font-size: 14px;
   line-height: 1.6;
-  border: 1px dashed rgba(204, 214, 237, 0.98);
+  border: 1px dashed color-mix(in srgb, var(--73-accent-soft) 98%, transparent);
   border-radius: 16px;
-  background: rgba(248, 251, 255, 0.8);
+  background: color-mix(in srgb, var(--73-accent-soft) 80%, transparent);
 }
 
 .profile-page button.ghost,
 .profile-page button.ghost.small {
-  border-color: rgba(209, 220, 243, 0.95);
-  background: #ffffff;
+  border-color: color-mix(in srgb, var(--73-accent-soft) 95%, transparent);
+  background: var(--73-surface-strong);
   color: var(--profile-text-main);
-  box-shadow: 0 8px 20px rgba(76, 103, 172, 0.06);
+  box-shadow: 0 8px 20px color-mix(in srgb, var(--73-accent) 6%, transparent);
 }
 
 .profile-page button.ghost:hover:not(:disabled) {
-  background: #f8fbff;
-  border-color: rgba(125, 155, 225, 0.92);
-  box-shadow: 0 12px 24px rgba(76, 103, 172, 0.1);
+  background: var(--73-accent-soft);
+  border-color: color-mix(in srgb, var(--73-accent) 92%, transparent);
+  box-shadow: 0 12px 24px color-mix(in srgb, var(--73-accent) 10%, transparent);
 }
 
 /* === 账号弹窗的共用样式（R047 收口） ===
@@ -110,7 +110,7 @@
   margin-bottom: 0;
 }
 
-/* 说明行：颜色取 `--73-ink-muted`，与原先的字面量 #64748b 同值（两套主题一致），
+/* 说明行：颜色取 `--73-ink-muted`，与原先的字面量 var(--73-ink-muted) 同值（两套主题一致），
    换令牌不改观感，只是把它从裸色值里摘出来。 */
 .asign-hint {
   margin: 0 0 12px;
@@ -120,10 +120,10 @@
 }
 
 /* 危险操作弹窗的确认词说明（注销账号 / 注销结算账户共用）。
-   这里保留字面量 #475569：最接近的 `--73-ink-soft` 在 portal 主题下是 #52627a，并非同值，
+   这里保留字面量 var(--73-ink-soft)：最接近的 `--73-ink-soft` 在 portal 主题下是 var(--73-ink-muted)，并非同值，
    换令牌会改动颜色，先原样搬过来。 */
 .account-close-confirm-label {
-  color: #475569;
+  color: var(--73-ink-soft);
   font-size: 13px;
   font-weight: 700;
 }

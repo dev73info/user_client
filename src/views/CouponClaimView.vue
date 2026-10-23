@@ -184,11 +184,11 @@ onMounted(() => {
 .claim-page__panel {
   width: min(680px, 100%);
   padding: 36px;
-  border: 1px solid rgba(140, 184, 255, 0.18);
+  border: 1px solid color-mix(in srgb, var(--73-accent) 18%, transparent);
   border-radius: 28px;
-  background: rgba(6, 18, 34, 0.86);
-  box-shadow: 0 24px 90px rgba(0, 0, 0, 0.34);
-  color: #f4f7ff;
+  background: color-mix(in srgb, var(--73-accent) 86%, transparent);
+  box-shadow: 0 24px 90px color-mix(in srgb, var(--73-ink) 34%, transparent);
+  color: var(--73-accent-soft);
 }
 
 .claim-page h1 {
@@ -198,7 +198,7 @@ onMounted(() => {
 
 .claim-page__lead {
   margin: 0 0 24px;
-  color: rgba(244, 247, 255, 0.72);
+  color: color-mix(in srgb, var(--73-accent-soft) 72%, transparent);
   line-height: 1.8;
 }
 

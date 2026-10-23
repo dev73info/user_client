@@ -1,7 +1,7 @@
 .team-profile__resource-card {
-  border: 1px solid rgba(226, 232, 240, 0.96);
+  border: 1px solid color-mix(in srgb, var(--73-border) 96%, transparent);
   border-radius: 12px;
-  background: rgba(255, 255, 255, 0.94);
+  background: color-mix(in srgb, var(--73-surface-strong) 94%, transparent);
   overflow: hidden;
   cursor: pointer;
   transition:
@@ -11,15 +11,15 @@
 }
 
 .team-profile__resource-card:hover {
-  border-color: rgba(99, 102, 241, 0.36);
-  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.08);
+  border-color: color-mix(in srgb, var(--73-accent) 36%, transparent);
+  box-shadow: 0 8px 24px color-mix(in srgb, var(--73-ink) 8%, transparent);
   transform: translateY(-2px);
 }
 
 .team-profile__resource-cover-wrap {
   width: 100%;
   height: 160px;
-  border-bottom: 1px solid rgba(226, 232, 240, 0.6);
+  border-bottom: 1px solid color-mix(in srgb, var(--73-border) 60%, transparent);
   overflow: hidden;
 }
 
@@ -34,8 +34,8 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(135deg, #f5f3ff, #ede9fe);
-  color: #a78bfa;
+  background: linear-gradient(135deg, var(--73-accent-soft), var(--73-accent-soft));
+  color: var(--73-accent);
   font-size: 36px;
   font-weight: 700;
   object-fit: unset;
@@ -51,7 +51,7 @@
   margin: 0;
   font-size: 15px;
   font-weight: 700;
-  color: #0f172a;
+  color: var(--73-ink);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -60,7 +60,7 @@
 .team-profile__resource-desc {
   margin: 0;
   font-size: 13px;
-  color: #64748b;
+  color: var(--73-ink-muted);
   line-height: 1.5;
   display: -webkit-box;
   overflow: hidden;
@@ -72,6 +72,6 @@
   display: flex;
   gap: 12px;
   font-size: 12px;
-  color: #94a3b8;
+  color: var(--73-ink-placeholder);
   padding-top: 4px;
 }

@@ -166,7 +166,7 @@ const draft = defineModel<string>('draft', { required: true })
 /* 评论区标题原来吃的是视图里 `.community-panel h3` 那条（margin 0 + 深墨色） */
 .community-comments__head h3 {
   margin: 0;
-  color: #0f172a;
+  color: var(--73-ink);
 }
 
 /* 同步指示的小胶囊：淡蓝底 + 蓝描边 + 蓝字 */
@@ -176,22 +176,22 @@ const draft = defineModel<string>('draft', { required: true })
   align-items: center;
   gap: 7px;
   padding: 0 10px;
-  border: 1px solid rgba(191, 219, 254, 0.86);
+  border: 1px solid color-mix(in srgb, var(--73-accent-soft) 86%, transparent);
   border-radius: var(--73-radius-pill);
-  background: rgba(239, 246, 255, 0.92);
-  color: #2563eb;
+  background: color-mix(in srgb, var(--73-accent-soft) 92%, transparent);
+  color: var(--73-accent);
   font-size: 12px;
   font-weight: 800;
   line-height: 1;
-  box-shadow: 0 8px 18px rgba(37, 99, 235, 0.08);
+  box-shadow: 0 8px 18px color-mix(in srgb, var(--73-accent) 8%, transparent);
 }
 
 .community-comments__spinner {
   width: 11px;
   height: 11px;
   flex-shrink: 0;
-  border: 2px solid rgba(37, 99, 235, 0.18);
-  border-top-color: #2563eb;
+  border: 2px solid color-mix(in srgb, var(--73-accent) 18%, transparent);
+  border-top-color: var(--73-accent);
   border-radius: var(--73-radius-pill);
   animation: community-comments-spin 720ms linear infinite;
 }
@@ -206,10 +206,10 @@ const draft = defineModel<string>('draft', { required: true })
 .community-status-note {
   margin-bottom: 18px;
   padding: 12px 14px;
-  border: 1px solid rgba(245, 158, 11, 0.22);
+  border: 1px solid color-mix(in srgb, var(--73-warning) 22%, transparent);
   border-radius: var(--73-radius-inner);
-  background: rgba(255, 251, 235, 0.82);
-  color: #92400e;
+  background: color-mix(in srgb, var(--73-warning-soft) 82%, transparent);
+  color: var(--73-warning-text);
   font-size: 13px;
   font-weight: 700;
 }
@@ -226,8 +226,8 @@ const draft = defineModel<string>('draft', { required: true })
   gap: 8px;
   padding: 18px;
   border-radius: var(--73-radius-inner);
-  background: rgba(248, 250, 252, 0.92);
-  color: #64748b;
+  background: color-mix(in srgb, var(--73-surface-strong) 92%, transparent);
+  color: var(--73-ink-muted);
   line-height: 1.7;
 }
 
@@ -253,7 +253,7 @@ const draft = defineModel<string>('draft', { required: true })
   padding: 0;
   border: 0;
   background: transparent;
-  color: #2563eb;
+  color: var(--73-accent);
   font: inherit;
   font-size: 12px;
   font-weight: 700;
@@ -262,7 +262,7 @@ const draft = defineModel<string>('draft', { required: true })
 
 .community-replies-toggle:hover,
 .community-replies-toggle:focus-visible {
-  color: #1d4ed8;
+  color: var(--73-accent);
   text-decoration: underline;
 }
 </style>

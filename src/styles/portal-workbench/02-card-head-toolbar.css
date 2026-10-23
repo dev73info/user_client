@@ -20,14 +20,14 @@
 
 .wb-card-head__title {
   margin: 0;
-  color: var(--profile-text-main, #0f172a);
+  color: var(--profile-text-main, var(--73-ink));
   font-size: 18px;
   font-weight: 700;
 }
 
 .wb-card-head__desc {
   margin: 0;
-  color: var(--profile-text-sub, #64748b);
+  color: var(--profile-text-sub, var(--73-ink-muted));
   font-size: 13px;
   line-height: 1.6;
 }
@@ -85,7 +85,7 @@
 
 /* 计数、口径说明之类的弱文字 */
 .wb-toolbar__hint {
-  color: var(--profile-text-sub, #64748b);
+  color: var(--profile-text-sub, var(--73-ink-muted));
   font-size: 12px;
   font-variant-numeric: tabular-nums;
 }

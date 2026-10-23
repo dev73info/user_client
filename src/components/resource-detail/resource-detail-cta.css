@@ -18,7 +18,7 @@
 .resource-detail-page__cta-row {
   margin-top: auto;
   padding-top: 18px;
-  border-top: 1px solid rgba(219, 229, 247, 0.82);
+  border-top: 1px solid color-mix(in srgb, var(--73-accent-soft) 82%, transparent);
 }
 
 /* 主按钮的描边 / 光标 / 过渡（版本下载按钮已搬进 ResourceVersionList，它那份在子组件里） */
@@ -40,10 +40,10 @@
   border-radius: 12px;
   min-height: 44px;
   padding: 0 16px;
-  color: #fff;
-  background: linear-gradient(135deg, #2563eb, #4f8cff);
+  color: var(--73-surface-strong);
+  background: linear-gradient(135deg, var(--73-accent), var(--73-accent));
   font-weight: 700;
-  box-shadow: 0 14px 26px rgba(37, 99, 235, 0.2);
+  box-shadow: 0 14px 26px color-mix(in srgb, var(--73-accent) 20%, transparent);
 }
 
 .resource-detail-page__primary-btn:disabled {
@@ -74,8 +74,8 @@
   min-height: 44px;
   padding: 0 14px;
   border-radius: 12px;
-  background: rgba(248, 250, 252, 0.96);
-  border: 1px solid rgba(219, 229, 247, 0.82);
+  background: color-mix(in srgb, var(--73-surface-strong) 96%, transparent);
+  border: 1px solid color-mix(in srgb, var(--73-accent-soft) 82%, transparent);
 }
 
 .resource-detail-page__download-progress__track {
@@ -83,7 +83,7 @@
   flex: 1;
   height: 8px;
   border-radius: 999px;
-  background: rgba(219, 229, 247, 0.9);
+  background: color-mix(in srgb, var(--73-accent-soft) 90%, transparent);
   overflow: hidden;
 }
 
@@ -92,7 +92,7 @@
   inset: 0 auto 0 0;
   height: 100%;
   border-radius: 999px;
-  background: linear-gradient(90deg, #2563eb, #4f8cff);
+  background: linear-gradient(90deg, var(--73-accent), var(--73-accent));
   transition: width 120ms linear;
 }
 
@@ -102,7 +102,7 @@
   text-align: right;
   font-size: 13px;
   font-weight: 800;
-  color: #1d4ed8;
+  color: var(--73-accent);
   font-variant-numeric: tabular-nums;
 }
 
@@ -123,7 +123,7 @@
   border: 0;
   border-radius: 12px;
   background: transparent;
-  color: #64748b;
+  color: var(--73-ink-muted);
   cursor: pointer;
   transition:
     color 180ms ease,
@@ -145,8 +145,8 @@
 }
 
 .resource-detail-page__like-btn:hover:not(:disabled) {
-  color: #dc2626;
-  background: rgba(244, 63, 94, 0.08);
+  color: var(--73-danger);
+  background: color-mix(in srgb, var(--73-danger) 8%, transparent);
 }
 
 .resource-detail-page__like-btn:hover:not(:disabled) .resource-detail-page__like-icon {
@@ -154,11 +154,11 @@
 }
 
 .resource-detail-page__like-btn--active {
-  color: #dc2626;
+  color: var(--73-danger);
 }
 
 .resource-detail-page__like-btn:focus-visible {
-  outline: 2px solid rgba(37, 99, 235, 0.45);
+  outline: 2px solid color-mix(in srgb, var(--73-accent) 45%, transparent);
   outline-offset: 2px;
 }
 
@@ -170,13 +170,13 @@
 .resource-detail-page__primary-actions :deep(.share-card-generator__start) {
   min-height: 44px;
   border-radius: 12px;
-  background: rgba(239, 246, 255, 0.9);
+  background: color-mix(in srgb, var(--73-accent-soft) 90%, transparent);
   box-shadow: none;
 }
 
 .resource-detail-page__primary-actions :deep(.share-card-generator__start:hover:not(:disabled)) {
-  background: #fff;
-  box-shadow: 0 10px 22px rgba(37, 99, 235, 0.12);
+  background: var(--73-surface-strong);
+  box-shadow: 0 10px 22px color-mix(in srgb, var(--73-accent) 12%, transparent);
 }
 
 @media (max-width: 640px) {

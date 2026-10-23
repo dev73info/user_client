@@ -99,8 +99,8 @@
   min-height: 28px;
   padding: 0 12px;
   border-radius: 999px;
-  border: 1px solid rgba(31, 74, 209, 0.16);
-  background: rgba(31, 74, 209, 0.08);
+  border: 1px solid color-mix(in srgb, var(--73-accent) 16%, transparent);
+  background: color-mix(in srgb, var(--73-accent) 8%, transparent);
   font-size: 12px;
   font-weight: 700;
   color: var(--dev-blue);
@@ -124,8 +124,8 @@
   appearance: none;
   min-height: 28px;
   padding: 0 12px;
-  border-color: rgba(31, 74, 209, 0.16);
-  background: rgba(31, 74, 209, 0.08);
+  border-color: color-mix(in srgb, var(--73-accent) 16%, transparent);
+  background: color-mix(in srgb, var(--73-accent) 8%, transparent);
   color: var(--dev-blue);
   font: inherit;
   font-size: 12px;
@@ -138,13 +138,13 @@
 }
 
 .dev-chip--button:hover {
-  border-color: rgba(31, 74, 209, 0.32);
+  border-color: color-mix(in srgb, var(--73-accent) 32%, transparent);
 }
 
 .dev-chip--button.is-active {
   background: var(--dev-blue);
   border-color: var(--dev-blue);
-  color: #fff;
+  color: var(--73-surface-strong);
 }
 
 .dev-chip--button:focus-visible {

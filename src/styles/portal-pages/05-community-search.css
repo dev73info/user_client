@@ -7,9 +7,9 @@
   gap: 6px;
   margin-bottom: 12px;
   padding: 0 4px 0 10px;
-  border: 1px solid rgba(191, 219, 254, 0.96);
+  border: 1px solid color-mix(in srgb, var(--73-accent-soft) 96%, transparent);
   border-radius: 10px;
-  background: rgba(248, 250, 252, 0.92);
+  background: color-mix(in srgb, var(--73-surface-strong) 92%, transparent);
   transition:
     background-color 160ms ease,
     border-color 160ms ease,
@@ -17,9 +17,9 @@
 }
 
 .community-search-bar:focus-within {
-  border-color: rgba(37, 99, 235, 0.44);
-  background: #fff;
-  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.08);
+  border-color: color-mix(in srgb, var(--73-accent) 44%, transparent);
+  background: var(--73-surface-strong);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--73-accent) 8%, transparent);
 }
 
 .community-search-field {
@@ -32,7 +32,7 @@
   padding: 0;
   border: 0;
   background: transparent;
-  color: #64748b;
+  color: var(--73-ink-muted);
 }
 
 .community-search-field input {
@@ -41,13 +41,13 @@
   border: 0;
   outline: 0;
   background: transparent;
-  color: #0f172a;
+  color: var(--73-ink);
   font: inherit;
   font-size: 13px;
 }
 
 .community-search-field input::placeholder {
-  color: #94a3b8;
+  color: var(--73-ink-placeholder);
 }
 
 .community-search-clear,
@@ -77,12 +77,12 @@
   height: 26px;
   padding: 0;
   border-radius: 999px;
-  background: rgba(219, 234, 254, 0.74);
-  color: #2563eb;
+  background: color-mix(in srgb, var(--73-accent-soft) 74%, transparent);
+  color: var(--73-accent);
 }
 
 .community-search-clear:hover {
-  background: rgba(191, 219, 254, 0.96);
+  background: color-mix(in srgb, var(--73-accent-soft) 96%, transparent);
 }
 
 .community-search-submit {
@@ -92,12 +92,12 @@
   padding: 0 12px;
   border-color: transparent;
   border-radius: 8px;
-  background: rgba(219, 234, 254, 0.72);
-  color: #2563eb;
+  background: color-mix(in srgb, var(--73-accent-soft) 72%, transparent);
+  color: var(--73-accent);
 }
 
 .community-search-submit:hover:not(:disabled) {
-  background: rgba(191, 219, 254, 0.96);
+  background: color-mix(in srgb, var(--73-accent-soft) 96%, transparent);
 }
 
 .community-search-submit:disabled,

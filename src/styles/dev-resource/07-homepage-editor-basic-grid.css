@@ -113,11 +113,11 @@
   margin: 4px 0 0;
   font-size: 12px;
   line-height: 1.45;
-  color: var(--text-secondary, #64748b);
+  color: var(--text-secondary, var(--73-ink-muted));
 }
 
 /* 校验失败时的字段提示（与「创建资源」页同构）：R028 的回调地址 / 允许来源与
    R029 的推广分成比例都用它标红，此前只有类名、没有样式。 */
 .dev-field-hint--error {
-  color: var(--73-danger, #b42318);
+  color: var(--73-danger, var(--73-danger));
 }

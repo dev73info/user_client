@@ -8,10 +8,10 @@
   max-height: calc(100vh - 32px);
   display: flex;
   flex-direction: column;
-  background: #fff;
-  border: 1px solid #ebeef5;
+  background: var(--73-surface-strong);
+  border: 1px solid var(--73-surface-strong);
   border-radius: 12px;
-  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.16);
+  box-shadow: 0 12px 40px color-mix(in srgb, var(--73-ink) 16%, transparent);
   overflow: hidden;
 }
 
@@ -28,8 +28,8 @@
   align-items: center;
   justify-content: space-between;
   padding: 14px 16px;
-  background: #2ba88f;
-  color: #fff;
+  background: var(--73-success);
+  color: var(--73-surface-strong);
 }
 
 .support-panel__title {
@@ -45,7 +45,7 @@
 .support-panel__close {
   border: none;
   background: transparent;
-  color: #fff;
+  color: var(--73-surface-strong);
   font-size: 22px;
   line-height: 1;
   cursor: pointer;
@@ -55,12 +55,12 @@
   flex: 1;
   padding: 14px;
   overflow-y: auto;
-  background: #f7f9fb;
+  background: var(--73-surface-strong);
 }
 
 .support-hint {
   text-align: center;
-  color: #909399;
+  color: var(--73-ink-placeholder);
   font-size: 13px;
   margin-top: 24px;
 }
@@ -90,28 +90,28 @@
 }
 
 .support-msg--user .support-msg__bubble {
-  background: #2ba88f;
-  color: #fff;
+  background: var(--73-success);
+  color: var(--73-surface-strong);
 }
 
 .support-msg--agent .support-msg__bubble {
-  background: #fff;
-  border: 1px solid #ebeef5;
-  color: #303133;
+  background: var(--73-surface-strong);
+  border: 1px solid var(--73-surface-strong);
+  color: var(--73-ink);
 }
 
 .support-msg__time {
   margin-top: 4px;
   font-size: 11px;
-  color: #c0c4cc;
+  color: var(--73-ink-disabled);
 }
 
 .support-error {
   margin: 0;
   padding: 6px 16px;
   font-size: 12px;
-  color: #f56c6c;
-  background: #fef0f0;
+  color: var(--73-danger);
+  background: var(--73-danger-soft);
 }
 
 .support-panel__foot {
@@ -119,16 +119,16 @@
   gap: 8px;
   padding: 12px;
   align-items: flex-end;
-  border-top: 1px solid #f0f2f5;
+  border-top: 1px solid var(--73-surface-strong);
   /* 覆盖全局 footer 样式，避免出现灰色大块和错误间距 */
   margin-top: 0;
-  background: #fff;
+  background: var(--73-surface-strong);
   text-align: left;
 }
 
 .support-input {
   flex: 1;
-  border: 1px solid #dcdfe6;
+  border: 1px solid var(--73-border);
   border-radius: 6px;
   padding: 8px 10px;
   font-size: 14px;
@@ -137,7 +137,7 @@
 }
 
 .support-input:focus {
-  border-color: #2ba88f;
+  border-color: var(--73-success);
 }
 
 .support-send {
@@ -145,8 +145,8 @@
   padding: 0 16px;
   border: none;
   border-radius: 6px;
-  background: #2ba88f;
-  color: #fff;
+  background: var(--73-success);
+  color: var(--73-surface-strong);
   font-size: 14px;
   cursor: pointer;
 }

@@ -36,7 +36,7 @@
   padding: 0 6px;
   border-radius: 999px;
   background: var(--accent);
-  color: #fff;
+  color: var(--73-surface-strong);
   font-size: 11px;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
@@ -50,7 +50,7 @@
   border: 0;
   border-radius: 999px;
   background: transparent;
-  color: #64748b;
+  color: var(--73-ink-muted);
   font: inherit;
   font-size: 12px;
   font-weight: 700;
@@ -61,7 +61,7 @@
 }
 
 .portal-resource-browser__menu-clear:hover {
-  background: rgba(31, 74, 209, 0.08);
+  background: color-mix(in srgb, var(--73-accent) 8%, transparent);
   color: var(--accent);
 }
 
@@ -80,7 +80,7 @@
   /* 常驻 1px 透明描边：选中 / 悬停只换描边色，不用阴影也不用内描边环 */
   border: 1px solid transparent;
   background: transparent;
-  color: #334155;
+  color: var(--73-ink-soft);
   cursor: pointer;
   text-align: left;
   transition:
@@ -121,7 +121,7 @@
   bottom: 9px;
   width: 3px;
   border-radius: 999px;
-  background: #2563eb;
+  background: var(--73-accent);
   opacity: 0;
   transform: scaleY(0.45);
   transform-origin: center;
@@ -133,9 +133,9 @@
 .portal-resource-browser__menu-trigger:hover,
 .portal-resource-browser__menu-trigger--active,
 .portal-resource-browser__menu-group--open > .portal-resource-browser__menu-trigger {
-  background: rgba(239, 246, 255, 0.96);
-  color: #1d4ed8;
-  border-color: rgba(191, 219, 254, 0.52);
+  background: color-mix(in srgb, var(--73-accent-soft) 96%, transparent);
+  color: var(--73-accent);
+  border-color: color-mix(in srgb, var(--73-accent-soft) 52%, transparent);
 }
 
 .portal-resource-browser__menu-trigger:hover {
@@ -156,7 +156,7 @@
   white-space: nowrap;
   font-size: 13px;
   font-weight: 800;
-  color: #334155;
+  color: var(--73-ink-soft);
 }
 
 .portal-resource-browser__submenu {
@@ -164,7 +164,7 @@
   gap: 6px;
   margin-left: 12px;
   padding-left: 12px;
-  border-left: 1px solid rgba(209, 220, 243, 0.95);
+  border-left: 1px solid color-mix(in srgb, var(--73-accent-soft) 95%, transparent);
 }
 
 .portal-resource-browser__submenu-link {
@@ -174,7 +174,7 @@
   border-radius: 10px;
   padding: 7px 10px;
   background: transparent;
-  color: #334155;
+  color: var(--73-ink-soft);
   font: inherit;
   font-size: 13px;
   font-weight: 800;
@@ -192,8 +192,8 @@
 
 .portal-resource-browser__submenu-link:hover,
 .portal-resource-browser__submenu-link--active {
-  background: rgba(248, 251, 255, 0.96);
-  color: #1d4ed8;
+  background: color-mix(in srgb, var(--73-accent-soft) 96%, transparent);
+  color: var(--73-accent);
 }
 
 @media (max-width: 900px) {

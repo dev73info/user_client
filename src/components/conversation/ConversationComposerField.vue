@@ -127,10 +127,10 @@ defineExpose({ insertEmoji })
 .conversation-modal__composer textarea {
   min-height: 72px;
   resize: vertical;
-  border: 1px solid rgba(203, 213, 225, 0.95);
+  border: 1px solid color-mix(in srgb, var(--73-ink-disabled) 95%, transparent);
   border-radius: 12px;
   padding: 10px 12px;
-  color: #0f172a;
+  color: var(--73-ink);
   font: inherit;
   line-height: 1.6;
 }
@@ -147,14 +147,14 @@ defineExpose({ insertEmoji })
   border: 0;
   outline: 0;
   padding: 6px 0;
-  color: #0f172a;
+  color: var(--73-ink);
   background: transparent;
   font: inherit;
   line-height: 1.55;
 }
 
 .conversation-modal__input-shell span {
-  color: #94a3b8;
+  color: var(--73-ink-placeholder);
   font-size: 11px;
   white-space: nowrap;
 }
@@ -179,10 +179,10 @@ defineExpose({ insertEmoji })
   align-items: end;
   gap: 10px;
   padding: 8px 10px 8px 12px;
-  border: 1px solid rgba(203, 213, 225, 0.95);
+  border: 1px solid color-mix(in srgb, var(--73-ink-disabled) 95%, transparent);
   border-radius: 18px;
-  background: #ffffff;
-  box-shadow: inset 0 1px 2px rgba(15, 23, 42, 0.03);
+  background: var(--73-surface-strong);
+  box-shadow: inset 0 1px 2px color-mix(in srgb, var(--73-ink) 3%, transparent);
 }
 
 .conversation-modal-wrap--inline .conversation-modal__input-shell textarea {
@@ -212,18 +212,18 @@ defineExpose({ insertEmoji })
   outline: 0;
   padding: 0 82px 0 0;
   background: transparent;
-  color: #111827;
+  color: var(--73-ink);
   font: inherit;
   font-size: 15px;
   line-height: 24px;
 }
 
 .conversation-modal__composer .conversation-modal__input-shell input::placeholder {
-  color: #8a95a5;
+  color: var(--73-ink-placeholder);
 }
 
 .conversation-modal__composer .conversation-modal__input-shell textarea::placeholder {
-  color: #8a95a5;
+  color: var(--73-ink-placeholder);
 }
 
 @media (max-width: 640px) {
@@ -249,11 +249,11 @@ defineExpose({ insertEmoji })
 .conversation-modal__composer .conversation-modal__input-shell {
   min-height: 50px;
   height: 50px;
-  border-color: rgba(207, 220, 238, 0.96);
-  background: #ffffff;
+  border-color: color-mix(in srgb, var(--73-accent-soft) 96%, transparent);
+  background: var(--73-surface-strong);
   box-shadow:
-    0 8px 22px rgba(71, 102, 148, 0.08),
-    inset 0 1px 0 rgba(255, 255, 255, 0.96);
+    0 8px 22px color-mix(in srgb, var(--73-accent) 8%, transparent),
+    inset 0 1px 0 color-mix(in srgb, var(--73-surface-strong) 96%, transparent);
   position: relative;
   display: flex;
   align-items: center;
@@ -262,14 +262,14 @@ defineExpose({ insertEmoji })
 }
 
 .conversation-modal__composer .conversation-modal__input-shell:focus-within {
-  border-color: rgba(79, 140, 255, 0.7);
+  border-color: color-mix(in srgb, var(--73-accent) 70%, transparent);
   box-shadow:
-    0 0 0 3px rgba(79, 140, 255, 0.13),
-    0 10px 24px rgba(71, 102, 148, 0.1);
+    0 0 0 3px color-mix(in srgb, var(--73-accent) 13%, transparent),
+    0 10px 24px color-mix(in srgb, var(--73-accent) 10%, transparent);
 }
 
 .conversation-modal__composer .conversation-modal__input-shell textarea {
-  color: #182335;
+  color: var(--73-ink);
   appearance: none;
   -webkit-appearance: none;
   height: 24px;
@@ -284,14 +284,14 @@ defineExpose({ insertEmoji })
 }
 
 .conversation-modal__composer .conversation-modal__input-shell span {
-  color: #9aa8ba;
+  color: var(--73-ink-placeholder);
   position: absolute;
   top: 50%;
   right: 16px;
   z-index: 2;
   transform: translateY(-50%);
   padding-left: 8px;
-  background: #ffffff;
+  background: var(--73-surface-strong);
   font-size: 12px;
   line-height: 1;
   pointer-events: none;

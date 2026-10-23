@@ -1,7 +1,7 @@
 /* 售出订单表格与退款弹窗共用的次级文本与金额排布 */
 .sold-purchases__meta {
   margin-top: 4px;
-  color: var(--dev-ink-muted, #64748b);
+  color: var(--dev-ink-muted, var(--73-ink-muted));
   font-size: 12px;
   line-height: 1.5;
   word-break: break-all;
@@ -10,6 +10,6 @@
 .sold-purchases__amount {
   font-variant-numeric: tabular-nums;
   font-weight: 700;
-  color: var(--dev-ink, #0f172a);
+  color: var(--dev-ink, var(--73-ink));
   line-height: 1.2;
 }

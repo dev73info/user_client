@@ -184,13 +184,16 @@
     border-color: transparent !important;
     background: transparent !important;
     box-shadow: none !important;
-    color: var(--profile-text-sub, #64748b);
+    color: var(--profile-text-sub, var(--73-ink-muted));
     font-size: 18px;
   }
 
   .wb-toolbar__actions .t73-button:has(.t73-icon + span):active {
-    background: var(--wb-accent-soft, rgba(37, 99, 235, 0.08)) !important;
-    color: var(--wb-accent, #2563eb);
+    background: var(
+      --wb-accent-soft,
+      color-mix(in srgb, var(--73-accent) 8%, transparent)
+    ) !important;
+    color: var(--wb-accent, var(--73-accent));
   }
 
   .wb-toolbar__actions .t73-button:has(.t73-icon + span):disabled {

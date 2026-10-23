@@ -36,18 +36,18 @@
   align-items: center;
   justify-content: center;
   padding: 10px;
-  border: 1px solid rgba(209, 220, 243, 0.95);
+  border: 1px solid color-mix(in srgb, var(--73-accent-soft) 95%, transparent);
   border-radius: 14px;
-  background: #ffffff;
-  color: #0f172a;
+  background: var(--73-surface-strong);
+  color: var(--73-ink);
   text-decoration: none;
   font-size: 13px;
   font-weight: 800;
 }
 
 .overview-dev-links a:hover {
-  border-color: rgba(125, 155, 225, 0.92);
-  background: #f8fbff;
-  color: #1d4ed8;
+  border-color: color-mix(in srgb, var(--73-accent) 92%, transparent);
+  background: var(--73-accent-soft);
+  color: var(--73-accent);
 }
 </style>

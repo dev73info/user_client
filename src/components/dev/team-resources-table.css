@@ -10,7 +10,7 @@
 }
 
 .dev-resource-table__title-link:hover {
-  color: #6280df;
+  color: var(--73-accent);
 }
 
 /* 状态列里「可见性」与「已锁定」两个标签并排时要留缝 */

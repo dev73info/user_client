@@ -9,7 +9,7 @@
   justify-content: center;
   align-items: center;
   padding: 18px;
-  background: rgba(15, 23, 42, 0.16);
+  background: color-mix(in srgb, var(--73-ink) 16%, transparent);
 }
 
 .auth-modal-wrap {
@@ -20,10 +20,10 @@
 .pay-modal {
   width: min(540px, 100%);
   border-radius: 22px;
-  border: 1px solid rgba(228, 234, 246, 0.95);
-  background: rgba(255, 255, 255, 0.94);
+  border: 1px solid color-mix(in srgb, var(--73-accent-soft) 95%, transparent);
+  background: color-mix(in srgb, var(--73-surface-strong) 94%, transparent);
   backdrop-filter: blur(10px);
-  box-shadow: 0 18px 44px rgba(90, 120, 180, 0.12);
+  box-shadow: 0 18px 44px color-mix(in srgb, var(--73-accent) 12%, transparent);
   padding: 22px;
 }
 
@@ -46,7 +46,7 @@
 .auth-modal h3,
 .pay-modal h3 {
   margin: 0 0 12px;
-  color: #0f172a;
+  color: var(--73-ink);
   font-size: 24px;
   font-weight: 800;
 }
@@ -70,7 +70,7 @@
 
 .pay-modal .pay-line strong {
   flex: 0 0 auto;
-  color: #64748b;
+  color: var(--73-ink-muted);
   font-weight: 700;
 }
 
@@ -79,9 +79,9 @@
   margin-top: 4px;
   padding: 10px 12px;
   border-radius: 12px;
-  border: 1px solid rgba(198, 210, 236, 0.9);
-  background: rgba(248, 250, 252, 0.92);
-  color: #0f172a;
+  border: 1px solid color-mix(in srgb, var(--73-accent) 90%, transparent);
+  background: color-mix(in srgb, var(--73-surface-strong) 92%, transparent);
+  color: var(--73-ink);
   font-family: inherit;
   font-size: 14px;
   line-height: 1.6;
@@ -94,17 +94,17 @@
 }
 
 .pay-modal .pay-line textarea:focus {
-  border-color: rgba(37, 99, 235, 0.58);
-  background: #fff;
-  box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.1);
+  border-color: color-mix(in srgb, var(--73-accent) 58%, transparent);
+  background: var(--73-surface-strong);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--73-accent) 10%, transparent);
 }
 
 .pay-modal .tip {
   margin: 14px 0 0;
   padding: 8px 12px;
   border-radius: 10px;
-  background: rgba(239, 246, 255, 0.9);
-  color: #475569;
+  background: color-mix(in srgb, var(--73-accent-soft) 90%, transparent);
+  color: var(--73-ink-soft);
   font-size: 13px;
   line-height: 1.6;
   text-align: left;

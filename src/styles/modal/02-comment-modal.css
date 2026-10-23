@@ -1,8 +1,8 @@
 .comment-modal {
   width: min(480px, 100%);
   padding: 18px 18px 16px;
-  background: #ffffff;
-  color: #0f172a;
+  background: var(--73-surface-strong);
+  color: var(--73-ink);
 }
 
 .comment-modal__head {
@@ -14,16 +14,16 @@
   font-size: 20px;
   font-weight: 800;
   line-height: 1.25;
-  color: #0f172a;
+  color: var(--73-ink);
 }
 
 .comment-modal__meta {
   display: grid;
   gap: 6px;
   padding: 10px 12px;
-  border: 1px solid rgba(226, 232, 240, 0.95);
+  border: 1px solid color-mix(in srgb, var(--73-border) 95%, transparent);
   border-radius: 12px;
-  background: rgba(248, 250, 252, 0.92);
+  background: color-mix(in srgb, var(--73-surface-strong) 92%, transparent);
 }
 
 .comment-modal__meta-row {
@@ -34,7 +34,7 @@
 }
 
 .comment-modal__meta-label {
-  color: #94a3b8;
+  color: var(--73-ink-placeholder);
   font-size: 12px;
   font-weight: 700;
   line-height: 1.5;
@@ -42,7 +42,7 @@
 
 .comment-modal__meta-value {
   min-width: 0;
-  color: #0f172a;
+  color: var(--73-ink);
   font-size: 13px;
   font-weight: 650;
   line-height: 1.5;
@@ -52,7 +52,7 @@
 .comment-modal__meta-value--mono {
   font-variant-numeric: tabular-nums;
   font-weight: 600;
-  color: #475569;
+  color: var(--73-ink-soft);
 }
 
 .comment-modal__section {
@@ -62,7 +62,7 @@
 }
 
 .comment-modal__field {
-  background: #ffffff;
+  background: var(--73-surface-strong);
 }
 
 .comment-modal__section-head {
@@ -70,7 +70,7 @@
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  color: #334155;
+  color: var(--73-ink-soft);
   font-size: 13px;
   font-weight: 800;
 }
@@ -81,7 +81,7 @@
 
 .comment-modal__score {
   flex: 0 0 auto;
-  color: #b45309;
+  color: var(--73-warning);
   font-size: 14px;
   font-weight: 800;
   font-variant-numeric: tabular-nums;
@@ -89,7 +89,7 @@
 
 .comment-modal__counter {
   flex: 0 0 auto;
-  color: #94a3b8;
+  color: var(--73-ink-placeholder);
   font-size: 12px;
   font-weight: 600;
   font-variant-numeric: tabular-nums;

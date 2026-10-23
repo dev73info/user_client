@@ -6,16 +6,16 @@
   min-height: 22px;
   padding: 2px 10px;
   border-radius: 999px;
-  background: rgba(99, 102, 241, 0.12);
-  color: #4f46e5;
+  background: color-mix(in srgb, var(--73-accent) 12%, transparent);
+  color: var(--73-accent);
   font-size: 12px;
   font-weight: 800;
   line-height: 1;
 }
 
 .portal-spotlight-card__footer .portal-spotlight-card__origin.is-repost {
-  background: rgba(245, 158, 11, 0.14);
-  color: #b45309;
+  background: color-mix(in srgb, var(--73-warning) 14%, transparent);
+  color: var(--73-warning);
 }
 
 .portal-spotlight-card__footer .portal-spotlight-card__footer-bottom .portal-spotlight-card__time {
@@ -30,7 +30,7 @@
   /* 描述短时卡片底部不留空洞：统计行贴卡片底边 */
   margin-top: auto;
   padding-top: 10px;
-  border-top: 1px solid rgba(226, 232, 240, 0.92);
+  border-top: 1px solid color-mix(in srgb, var(--73-border) 92%, transparent);
 }
 
 .portal-spotlight-card__footer-main {
@@ -86,7 +86,7 @@
 }
 
 .portal-spotlight-card__footer span {
-  color: #94a3b8;
+  color: var(--73-ink-placeholder);
   font-size: 12px;
   line-height: 1.4;
 }

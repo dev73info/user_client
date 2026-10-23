@@ -59,29 +59,29 @@ const emit = defineEmits<{ open: [card: RequirementConversationCard] }>()
   gap: 6px;
   min-height: 112px;
   padding: 14px 16px;
-  border: 1px solid rgba(209, 220, 243, 0.95);
+  border: 1px solid color-mix(in srgb, var(--73-accent-soft) 95%, transparent);
   border-radius: 16px;
-  background: #ffffff;
+  background: var(--73-surface-strong);
   color: inherit;
   text-align: left;
   cursor: pointer;
-  box-shadow: 0 10px 24px rgba(76, 103, 172, 0.08);
+  box-shadow: 0 10px 24px color-mix(in srgb, var(--73-accent) 8%, transparent);
 }
 
 .conversation-card:hover {
-  border-color: rgba(75, 120, 225, 0.5);
-  box-shadow: 0 14px 28px rgba(76, 103, 172, 0.12);
+  border-color: color-mix(in srgb, var(--73-accent) 50%, transparent);
+  box-shadow: 0 14px 28px color-mix(in srgb, var(--73-accent) 12%, transparent);
 }
 
 .conversation-card__title {
-  color: #0f172a;
+  color: var(--73-ink);
   font-weight: 800;
   line-height: 1.4;
 }
 
 .conversation-card__id,
 .conversation-card__meta {
-  color: #64748b;
+  color: var(--73-ink-muted);
   font-size: 12px;
   line-height: 1.5;
 }

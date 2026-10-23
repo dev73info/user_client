@@ -1,14 +1,14 @@
 /* 关于我们 / about-story 区块样式（R047 从 AboutView 的 scoped 样式搬出，按区块拆分）。 */
 .about-section--story {
-  background: #f8fbff;
-  border-color: rgba(191, 219, 254, 0.7);
+  background: var(--73-accent-soft);
+  border-color: color-mix(in srgb, var(--73-accent-soft) 70%, transparent);
 }
 
 .about-story p {
   margin: 0 0 14px;
   font-size: 15px;
   line-height: 2;
-  color: #334155;
+  color: var(--73-ink-soft);
 }
 
 .about-story p:last-child {
@@ -19,8 +19,8 @@
   margin-top: 4px;
   padding: 12px 16px;
   border-radius: 10px;
-  background: rgba(239, 246, 255, 0.8);
-  border: 1px solid rgba(191, 219, 254, 0.6);
+  background: color-mix(in srgb, var(--73-accent-soft) 80%, transparent);
+  border: 1px solid color-mix(in srgb, var(--73-accent-soft) 60%, transparent);
   font-size: 13.5px;
-  color: #1e3a5f;
+  color: var(--73-accent);
 }

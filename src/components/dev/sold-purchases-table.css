@@ -18,7 +18,7 @@
 }
 
 .sold-purchases__title-link:hover {
-  color: var(--73-accent, #1f4ad1);
+  color: var(--73-accent, var(--73-accent));
 }
 
 .sold-purchases__buyer {
@@ -35,7 +35,7 @@
 
 .sold-purchases__promo-name {
   font-weight: 700;
-  color: var(--dev-ink, #0f172a);
+  color: var(--dev-ink, var(--73-ink));
   word-break: break-all;
 }
 
@@ -56,8 +56,8 @@
   align-items: center;
   padding: 2px 8px;
   border-radius: 999px;
-  background: var(--73-warning-soft, rgba(217, 119, 6, 0.12));
-  color: var(--73-warning, #b9812b);
+  background: var(--73-warning-soft, color-mix(in srgb, var(--73-warning) 12%, transparent));
+  color: var(--73-warning, var(--73-warning));
   font-size: 11px;
   font-weight: 600;
   font-variant-numeric: tabular-nums;

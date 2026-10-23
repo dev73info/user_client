@@ -23,7 +23,7 @@
 
 .resource-detail-page__section-head h2 {
   margin: 0;
-  color: #0f172a;
+  color: var(--73-ink);
 }
 
 .resource-detail-page__content-flow {
@@ -38,22 +38,22 @@
    按文件聚合，新样式文件带裸色值会被算新增违规，而本文件的裸色值已在基线里（只减不增）。
    挂在正文容器上（模板里 `v-html` 的那个 div），由继承传给渲染出来的后代。 */
 .resource-detail-page__rich-text {
-  --rdp-rich-muted: #64748b;
-  --rdp-rich-ink: #0f172a;
-  --rdp-rich-link: #2563eb;
-  --rdp-rich-quote-border: rgba(96, 165, 250, 0.34);
-  --rdp-rich-media-border: rgba(203, 213, 225, 0.86);
-  --rdp-rich-media-bg: #f8fafc;
-  --rdp-rich-attachment-border: rgba(191, 219, 254, 0.96);
-  --rdp-rich-attachment-bg: rgba(239, 246, 255, 0.9);
-  --rdp-rich-attachment-ink: #1d4ed8;
-  --rdp-rich-hairline: rgba(226, 232, 240, 0.9);
-  --rdp-rich-th-bg: rgba(239, 246, 255, 0.96);
+  --rdp-rich-muted: var(--73-ink-muted);
+  --rdp-rich-ink: var(--73-ink);
+  --rdp-rich-link: var(--73-accent);
+  --rdp-rich-quote-border: color-mix(in srgb, var(--73-accent) 34%, transparent);
+  --rdp-rich-media-border: color-mix(in srgb, var(--73-ink-disabled) 86%, transparent);
+  --rdp-rich-media-bg: var(--73-surface-strong);
+  --rdp-rich-attachment-border: color-mix(in srgb, var(--73-accent-soft) 96%, transparent);
+  --rdp-rich-attachment-bg: color-mix(in srgb, var(--73-accent-soft) 90%, transparent);
+  --rdp-rich-attachment-ink: var(--73-accent);
+  --rdp-rich-hairline: color-mix(in srgb, var(--73-border) 90%, transparent);
+  --rdp-rich-th-bg: color-mix(in srgb, var(--73-accent-soft) 96%, transparent);
 }
 
 /* 空内容时的占位段落：原与摘要卡的 meta / summary 同一条规则，拆开后留在这里；
 
-   取色走面板色板里的 `--rdp-muted`（同值 `#64748b`），免得同一处声明在两个文件里各留一份色值。 */
+   取色走面板色板里的 `--rdp-muted`（同值 `var(--73-ink-muted)`），免得同一处声明在两个文件里各留一份色值。 */
 
 .resource-detail-page__paragraph {
   margin: 0;

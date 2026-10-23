@@ -4,9 +4,9 @@
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 8px;
   padding: 6px;
-  border: 1px solid rgba(228, 234, 246, 0.95);
+  border: 1px solid color-mix(in srgb, var(--73-accent-soft) 95%, transparent);
   border-radius: 12px;
-  background: rgba(247, 249, 252, 0.9);
+  background: color-mix(in srgb, var(--73-surface-strong) 90%, transparent);
 }
 
 .auth-mode-btn {
@@ -14,7 +14,7 @@
   border: 1px solid transparent;
   border-radius: 9px;
   background: transparent;
-  color: #64748b;
+  color: var(--73-ink-muted);
   font-size: 13px;
   font-weight: 700;
   letter-spacing: 0.01em;
@@ -28,17 +28,17 @@
 }
 
 .auth-mode-btn:hover:not(:disabled) {
-  color: #1d4ed8;
-  border-color: rgba(147, 197, 253, 0.5);
-  background: rgba(239, 246, 255, 0.9);
+  color: var(--73-accent);
+  border-color: color-mix(in srgb, var(--73-accent) 50%, transparent);
+  background: color-mix(in srgb, var(--73-accent-soft) 90%, transparent);
 }
 
 .auth-mode-btn.active,
 .auth-mode-btn:disabled {
-  color: #1d4ed8;
-  border-color: rgba(147, 197, 253, 0.72);
-  background: rgba(239, 246, 255, 0.96);
-  box-shadow: 0 8px 18px rgba(37, 99, 235, 0.08);
+  color: var(--73-accent);
+  border-color: color-mix(in srgb, var(--73-accent) 72%, transparent);
+  background: color-mix(in srgb, var(--73-accent-soft) 96%, transparent);
+  box-shadow: 0 8px 18px color-mix(in srgb, var(--73-accent) 8%, transparent);
   cursor: default;
 }
 
@@ -53,7 +53,7 @@
   gap: 6px;
   margin-bottom: 12px;
   font-size: 13px;
-  color: #475569;
+  color: var(--73-ink-soft);
   font-weight: 600;
 }
 
@@ -61,10 +61,10 @@
 .auth-modal textarea,
 .profile-update-row input {
   width: 100%;
-  border: 1px solid rgba(226, 232, 240, 0.96);
+  border: 1px solid color-mix(in srgb, var(--73-border) 96%, transparent);
   border-radius: 12px;
-  background: rgba(255, 255, 255, 0.94);
-  color: #0f172a;
+  background: color-mix(in srgb, var(--73-surface-strong) 94%, transparent);
+  color: var(--73-ink);
   padding: 10px 12px;
   outline: none;
 }
@@ -72,7 +72,7 @@
 .auth-modal input::placeholder,
 .auth-modal textarea::placeholder,
 .profile-update-row input::placeholder {
-  color: #94a3b8;
+  color: var(--73-ink-placeholder);
 }
 
 .auth-modal input[type='checkbox'] {
@@ -113,7 +113,7 @@
 .auth-link {
   border: none;
   background: transparent;
-  color: #2563eb;
+  color: var(--73-accent);
   font-size: 13px;
   text-decoration: underline;
   cursor: pointer;
@@ -135,14 +135,14 @@
   display: flex;
   align-items: center;
   gap: 10px;
-  color: #64748b;
+  color: var(--73-ink-muted);
   font-size: 13px;
   line-height: 1.7;
   flex-wrap: wrap;
   padding: 10px 12px;
   border-radius: 12px;
-  border: 1px solid rgba(228, 234, 246, 0.95);
-  background: rgba(248, 250, 252, 0.9);
+  border: 1px solid color-mix(in srgb, var(--73-accent-soft) 95%, transparent);
+  background: color-mix(in srgb, var(--73-surface-strong) 90%, transparent);
 }
 
 .auth-agreement-row .checkbox-label .checkbox-input {
@@ -152,9 +152,9 @@
   min-height: 18px;
   padding: 0;
   margin: 0;
-  border: 1px solid rgba(147, 197, 253, 0.72);
+  border: 1px solid color-mix(in srgb, var(--73-accent) 72%, transparent);
   border-radius: 5px;
-  background: rgba(255, 255, 255, 0.94);
+  background: color-mix(in srgb, var(--73-surface-strong) 94%, transparent);
   appearance: none;
   box-sizing: border-box;
   flex: 0 0 18px;
@@ -174,13 +174,13 @@
   border-radius: 2px;
   transform: scale(0);
   transition: transform 120ms ease;
-  background: #2563eb;
+  background: var(--73-accent);
 }
 
 .auth-agreement-row .checkbox-label .checkbox-input:checked {
-  border-color: rgba(59, 130, 246, 0.85);
-  background: rgba(219, 234, 254, 0.96);
-  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+  border-color: color-mix(in srgb, var(--73-accent) 85%, transparent);
+  background: color-mix(in srgb, var(--73-accent-soft) 96%, transparent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--73-accent) 12%, transparent);
 }
 
 .auth-agreement-row .checkbox-label .checkbox-input:checked::after {
@@ -189,11 +189,11 @@
 
 .auth-agreement-row .checkbox-label .checkbox-input:focus-visible {
   outline: none;
-  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.16);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--73-accent) 16%, transparent);
 }
 
 .auth-agreement-row .checkbox-label .checkbox-text {
-  color: #334155;
+  color: var(--73-ink-soft);
   font-weight: 600;
 }
 
@@ -205,17 +205,17 @@
 }
 
 .auth-agreement-row .checkbox-label .agreement-links > span {
-  color: #94a3b8;
+  color: var(--73-ink-placeholder);
 }
 
 .auth-agreement-row .checkbox-label .agreement-links a {
-  color: #2563eb;
+  color: var(--73-accent);
   text-decoration: underline;
   text-underline-offset: 2px;
 }
 
 .auth-agreement-row .checkbox-label .agreement-links a:hover {
-  color: #1d4ed8;
+  color: var(--73-accent);
 }
 
 .auth-modal textarea {
@@ -225,8 +225,8 @@
 
 .auth-modal input:focus,
 .auth-modal textarea:focus {
-  border-color: rgba(96, 165, 250, 0.72);
-  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+  border-color: color-mix(in srgb, var(--73-accent) 72%, transparent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--73-accent) 12%, transparent);
 }
 
 .auth-modal-actions {

@@ -18,9 +18,9 @@
   gap: 10px;
   padding: 12px 14px;
   cursor: pointer;
-  border: 1px solid rgba(226, 232, 240, 0.78);
+  border: 1px solid color-mix(in srgb, var(--73-border) 78%, transparent);
   border-radius: 14px;
-  background: rgba(248, 250, 252, 0.68);
+  background: color-mix(in srgb, var(--73-surface-strong) 68%, transparent);
   transition:
     border-color 180ms ease,
     background-color 180ms ease,
@@ -29,19 +29,19 @@
 }
 
 .portal-contrib-item:hover {
-  border-color: rgba(147, 197, 253, 0.96);
-  background: rgba(255, 255, 255, 0.98);
-  box-shadow: 0 12px 26px rgba(37, 99, 235, 0.09);
+  border-color: color-mix(in srgb, var(--73-accent) 96%, transparent);
+  background: color-mix(in srgb, var(--73-surface-strong) 98%, transparent);
+  box-shadow: 0 12px 26px color-mix(in srgb, var(--73-accent) 9%, transparent);
   transform: translateY(-2px);
 }
 
 .portal-contrib-item:hover .portal-contrib-item__avatar {
-  box-shadow: 0 8px 18px rgba(37, 99, 235, 0.16);
+  box-shadow: 0 8px 18px color-mix(in srgb, var(--73-accent) 16%, transparent);
   transform: scale(1.04);
 }
 
 .portal-contrib-item:hover .portal-contrib-item__count {
-  color: #2563eb;
+  color: var(--73-accent);
 }
 
 .portal-contrib-item__rank {
@@ -51,8 +51,8 @@
   height: 24px;
   flex: 0 0 auto;
   border-radius: 50%;
-  background: rgba(148, 163, 184, 0.18);
-  color: #475569;
+  background: color-mix(in srgb, var(--73-ink-placeholder) 18%, transparent);
+  color: var(--73-ink-soft);
   font-size: 12px;
   font-weight: 800;
   transition:
@@ -61,21 +61,21 @@
 }
 
 .portal-contrib-item--rank-1 .portal-contrib-item__rank {
-  background: linear-gradient(135deg, #fbbf24, #f59e0b);
-  color: #7c2d12;
-  box-shadow: 0 6px 14px rgba(245, 158, 11, 0.28);
+  background: linear-gradient(135deg, var(--73-warning), var(--73-warning));
+  color: var(--73-danger-text);
+  box-shadow: 0 6px 14px color-mix(in srgb, var(--73-warning) 28%, transparent);
 }
 
 .portal-contrib-item--rank-2 .portal-contrib-item__rank {
-  background: linear-gradient(135deg, #e2e8f0, #94a3b8);
-  color: #1e293b;
-  box-shadow: 0 6px 14px rgba(100, 116, 139, 0.2);
+  background: linear-gradient(135deg, var(--73-border), var(--73-ink-placeholder));
+  color: var(--73-ink);
+  box-shadow: 0 6px 14px color-mix(in srgb, var(--73-ink-muted) 20%, transparent);
 }
 
 .portal-contrib-item--rank-3 .portal-contrib-item__rank {
-  background: linear-gradient(135deg, #fdba74, #ea580c);
-  color: #7c2d12;
-  box-shadow: 0 6px 14px rgba(234, 88, 12, 0.22);
+  background: linear-gradient(135deg, var(--73-warning), var(--73-warning));
+  color: var(--73-danger-text);
+  box-shadow: 0 6px 14px color-mix(in srgb, var(--73-warning) 22%, transparent);
 }
 
 .portal-contrib-item:hover .portal-contrib-item__rank {
@@ -90,8 +90,12 @@
   flex: 0 0 auto;
   border-radius: 50%;
   overflow: hidden;
-  background: linear-gradient(135deg, rgba(37, 99, 235, 0.12), rgba(125, 211, 252, 0.18));
-  color: #1d4ed8;
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--73-accent) 12%, transparent),
+    color-mix(in srgb, var(--73-accent) 18%, transparent)
+  );
+  color: var(--73-accent);
   font-weight: 800;
   transition:
     box-shadow 150ms ease,
@@ -121,7 +125,7 @@
 
 .portal-contrib-item__meta strong {
   overflow: hidden;
-  color: #0f172a;
+  color: var(--73-ink);
   font-size: 14px;
   font-weight: 700;
   text-overflow: ellipsis;
@@ -145,9 +149,9 @@
   width: 20px;
   height: 20px;
   border-radius: 6px;
-  border: 1px solid rgba(191, 219, 254, 0.72);
-  background: rgba(239, 246, 255, 0.9);
-  color: #1e3a8a;
+  border: 1px solid color-mix(in srgb, var(--73-accent-soft) 72%, transparent);
+  background: color-mix(in srgb, var(--73-accent-soft) 90%, transparent);
+  color: var(--73-accent);
   font-size: 11px;
   line-height: 1;
 }
@@ -160,7 +164,7 @@
 
 .portal-contrib-item__badge-more {
   flex: none;
-  color: #64748b;
+  color: var(--73-ink-muted);
   font-size: 10px;
   font-weight: 800;
 }
@@ -174,7 +178,7 @@
 
 .portal-contrib-item__count {
   display: inline-block;
-  color: #0f172a;
+  color: var(--73-ink);
   font-size: 13px;
   font-weight: 700;
   white-space: nowrap;
@@ -188,12 +192,12 @@
   gap: 4px;
   margin-top: 12px;
   padding-top: 12px;
-  border-top: 1px solid rgba(203, 213, 225, 0.55);
-  color: #64748b;
+  border-top: 1px solid color-mix(in srgb, var(--73-ink-disabled) 55%, transparent);
+  color: var(--73-ink-muted);
   font-size: 12px;
 }
 
 .portal-contrib-footer strong {
-  color: #0f172a;
+  color: var(--73-ink);
   font-weight: 800;
 }

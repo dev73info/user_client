@@ -21,8 +21,8 @@
     gap: 4px;
     padding: 14px 6px 12px;
     border-radius: 14px;
-    background: #ffffff;
-    box-shadow: 0 6px 18px rgba(37, 99, 235, 0.06);
+    background: var(--73-surface-strong);
+    box-shadow: 0 6px 18px color-mix(in srgb, var(--73-accent) 6%, transparent);
   }
 
   .portal-entry {
@@ -35,18 +35,18 @@
     border: 0;
     border-radius: 12px;
     background: transparent;
-    color: #1e293b;
+    color: var(--73-ink);
     font: inherit;
     cursor: pointer;
     -webkit-tap-highlight-color: transparent;
   }
 
   .portal-entry:active {
-    background: #f1f5f9;
+    background: var(--73-surface-strong);
   }
 
   .portal-entry:focus-visible {
-    outline: 2px solid rgba(37, 99, 235, 0.5);
+    outline: 2px solid color-mix(in srgb, var(--73-accent) 50%, transparent);
     outline-offset: 2px;
   }
 
@@ -79,23 +79,23 @@
 
   /* 四个入口各一支色：发布=主蓝、接单=靛紫、免费资源=暖橙（沿用原礼物卡的色）、社区=青绿 */
   .portal-entry--publish .portal-entry__icon {
-    background: #e8f0ff;
-    color: #2563eb;
+    background: var(--73-accent-soft);
+    color: var(--73-accent);
   }
 
   .portal-entry--take .portal-entry__icon {
-    background: #efeafe;
-    color: #6d28d9;
+    background: var(--73-accent-soft);
+    color: var(--73-accent);
   }
 
   .portal-entry--free .portal-entry__icon {
-    background: #fff1e6;
-    color: #ea580c;
+    background: var(--73-warning-soft);
+    color: var(--73-warning);
   }
 
   .portal-entry--community .portal-entry__icon {
-    background: #e6f7f1;
-    color: #0f9f6e;
+    background: var(--73-success-soft);
+    color: var(--73-success);
   }
 }
 

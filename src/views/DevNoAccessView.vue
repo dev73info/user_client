@@ -108,9 +108,7 @@ async function retryAccessCheck() {
           申请开发者权限
         </TButton>
         <TButton @click="backToLogin">退出当前账号</TButton>
-        <TButton :loading="retrying" @click="retryAccessCheck">
-          重试权限校验
-        </TButton>
+        <TButton :loading="retrying" @click="retryAccessCheck"> 重试权限校验 </TButton>
       </div>
     </section>
   </main>
@@ -118,8 +116,8 @@ async function retryAccessCheck() {
 
 <style scoped>
 /* 这一页是「没有开发者权限」的落地面，不在侧边栏菜单里，形态上刻意与菜单页不同（居中单卡而不是读数条 + 列表）。
-   但配色必须与开发者工作台同源：原来标题写的是 #10233f、强调色写的是 #1a73e8、正文写的是 #516173，
-   三支都是别处没有的颜色，与侧边栏顶栏的 #1f4ad1 摆在一起能看出是两个网站。
+   但配色必须与开发者工作台同源：原来标题写的是 var(--73-ink)、强调色写的是 var(--73-accent)、正文写的是 var(--73-ink-soft)，
+   三支都是别处没有的颜色，与侧边栏顶栏的 var(--73-accent) 摆在一起能看出是两个网站。
    这里统一取 dev-base.css 的令牌，字号也收到与 .dev-card-head__title 同一档附近，
    避免这一页的标题比菜单页大出三倍。 */
 .dev-no-access {

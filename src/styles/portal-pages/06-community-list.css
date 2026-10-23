@@ -6,7 +6,7 @@
   gap: 6px;
   margin-bottom: 12px;
   padding-bottom: 12px;
-  border-bottom: 1px solid rgba(226, 232, 240, 0.78);
+  border-bottom: 1px solid color-mix(in srgb, var(--73-border) 78%, transparent);
   overflow-x: auto;
   overflow-y: hidden;
   scrollbar-width: thin;
@@ -18,10 +18,10 @@
   flex: 0 0 auto;
   min-height: 28px;
   padding: 4px 10px;
-  border: 1px solid rgba(219, 234, 254, 0.92);
+  border: 1px solid color-mix(in srgb, var(--73-accent-soft) 92%, transparent);
   border-radius: 999px;
-  background: rgba(239, 246, 255, 0.76);
-  color: #1d4ed8;
+  background: color-mix(in srgb, var(--73-accent-soft) 76%, transparent);
+  color: var(--73-accent);
   cursor: pointer;
   font: inherit;
   font-size: 13px;
@@ -29,8 +29,8 @@
 }
 
 .community-tag.is-active {
-  background: #2563eb;
-  color: #fff;
+  background: var(--73-accent);
+  color: var(--73-surface-strong);
 }
 
 .community-post-list {
@@ -44,9 +44,9 @@
   flex-direction: column;
   gap: 2px;
   padding: 7px 10px;
-  border: 1px solid rgba(226, 232, 240, 0.92);
+  border: 1px solid color-mix(in srgb, var(--73-border) 92%, transparent);
   border-radius: 10px;
-  background: #fff;
+  background: var(--73-surface-strong);
   cursor: pointer;
   transition:
     border-color 140ms ease,
@@ -56,8 +56,8 @@
 
 .community-post-card:hover,
 .community-post-card.is-active {
-  border-color: rgba(37, 99, 235, 0.48);
-  box-shadow: 0 12px 24px rgba(37, 99, 235, 0.09);
+  border-color: color-mix(in srgb, var(--73-accent) 48%, transparent);
+  box-shadow: 0 12px 24px color-mix(in srgb, var(--73-accent) 9%, transparent);
   transform: translateY(-1px);
 }
 
@@ -68,27 +68,27 @@
   gap: 10px;
   margin-top: 12px;
   padding-top: 12px;
-  border-top: 1px solid rgba(226, 232, 240, 0.78);
+  border-top: 1px solid color-mix(in srgb, var(--73-border) 78%, transparent);
 }
 
 .community-page-button {
   gap: 5px;
   min-height: 34px;
   padding: 0 12px;
-  border-color: rgba(191, 219, 254, 0.96);
+  border-color: color-mix(in srgb, var(--73-accent-soft) 96%, transparent);
   border-radius: 9px;
-  background: rgba(239, 246, 255, 0.82);
-  color: #2563eb;
+  background: color-mix(in srgb, var(--73-accent-soft) 82%, transparent);
+  color: var(--73-accent);
 }
 
 .community-page-button:hover:not(:disabled) {
-  border-color: rgba(37, 99, 235, 0.34);
-  background: rgba(219, 234, 254, 0.92);
+  border-color: color-mix(in srgb, var(--73-accent) 34%, transparent);
+  background: color-mix(in srgb, var(--73-accent-soft) 92%, transparent);
 }
 
 .community-page-status {
   min-width: 0;
-  color: #64748b;
+  color: var(--73-ink-muted);
   font-size: 13px;
   font-weight: 800;
   text-align: center;
@@ -114,7 +114,7 @@
 
 .community-post-card__head span {
   flex-shrink: 0;
-  color: #2563eb;
+  color: var(--73-accent);
   font-size: 12px;
   font-weight: 800;
 }
@@ -134,14 +134,14 @@
   align-items: center;
   padding: 0 9px;
   border-radius: 999px;
-  background: rgba(99, 102, 241, 0.12);
-  color: #4f46e5;
+  background: color-mix(in srgb, var(--73-accent) 12%, transparent);
+  color: var(--73-accent);
   font-size: 12px;
   font-weight: 800;
   line-height: 1;
 }
 
 .community-repost-badge.is-repost {
-  background: rgba(245, 158, 11, 0.14);
-  color: #b45309;
+  background: color-mix(in srgb, var(--73-warning) 14%, transparent);
+  color: var(--73-warning);
 }

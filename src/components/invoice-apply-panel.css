@@ -1,11 +1,11 @@
 .invoice-panel {
   display: grid;
   gap: 14px;
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--73-border);
   border-radius: 12px;
-  background: #fff;
+  background: var(--73-surface-strong);
   padding: 18px;
-  box-shadow: 0 12px 30px rgba(15, 23, 42, 0.06);
+  box-shadow: 0 12px 30px color-mix(in srgb, var(--73-ink) 6%, transparent);
 }
 
 .invoice-panel__head {
@@ -20,12 +20,12 @@
 }
 
 .invoice-panel__head strong {
-  color: #b26b1c;
+  color: var(--73-warning);
   font-size: 13px;
 }
 
 .invoice-panel__hint {
-  color: #667085;
+  color: var(--73-ink-muted);
   font-size: 13px;
   line-height: 1.6;
   margin: 0;
@@ -35,8 +35,8 @@
   margin: 0;
   padding: 8px 10px;
   border-radius: 8px;
-  background: #fffaeb;
-  color: #9a6700;
+  background: var(--73-warning-soft);
+  color: var(--73-warning-text);
   font-size: 12px;
   line-height: 1.6;
 }
@@ -44,7 +44,7 @@
 /* 自动预填的说明：只是交代抬头/税号从哪来，不抢警示色的注意力。 */
 .invoice-panel__prefill {
   margin: 0;
-  color: #667085;
+  color: var(--73-ink-muted);
   font-size: 12px;
   line-height: 1.6;
 }
@@ -54,20 +54,20 @@
 .invoice-amount {
   display: grid;
   gap: 4px;
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--73-border);
   border-radius: 10px;
   padding: 12px 14px;
-  background: #f8fafc;
+  background: var(--73-surface-strong);
 }
 
 .invoice-amount__label {
-  color: #667085;
+  color: var(--73-ink-muted);
   font-size: 12px;
   font-weight: 700;
 }
 
 .invoice-amount__value {
-  color: #172033;
+  color: var(--73-ink);
   font-size: 24px;
   font-weight: 800;
   font-variant-numeric: tabular-nums;
@@ -75,7 +75,7 @@
 }
 
 .invoice-amount__note {
-  color: #98a2b3;
+  color: var(--73-ink-placeholder);
   font-size: 12px;
   line-height: 1.5;
 }
@@ -84,8 +84,8 @@
   border: 0;
   border-radius: 8px;
   padding: 9px 14px;
-  background: #247f7d;
-  color: #fff;
+  background: var(--73-success);
+  color: var(--73-surface-strong);
   cursor: pointer;
 }
 

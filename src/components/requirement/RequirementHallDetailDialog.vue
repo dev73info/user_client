@@ -128,7 +128,7 @@ function openWorkbench(): void {
   justify-content: center;
   padding: max(16px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right))
     max(16px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));
-  background: rgba(15, 23, 42, 0.28);
+  background: color-mix(in srgb, var(--73-ink) 28%, transparent);
   backdrop-filter: blur(5px);
 }
 
@@ -136,10 +136,10 @@ function openWorkbench(): void {
   width: min(860px, 100%);
   max-height: min(760px, calc(100dvh - 32px));
   overflow-y: auto;
-  border: 1px solid rgba(203, 213, 225, 0.82);
+  border: 1px solid color-mix(in srgb, var(--73-ink-disabled) 82%, transparent);
   border-radius: 18px;
-  background: #fff;
-  box-shadow: 0 28px 72px rgba(15, 23, 42, 0.22);
+  background: var(--73-surface-strong);
+  box-shadow: 0 28px 72px color-mix(in srgb, var(--73-ink) 22%, transparent);
 }
 
 .requirement-hall-detail__head {
@@ -151,21 +151,21 @@ function openWorkbench(): void {
   justify-content: space-between;
   gap: 16px;
   padding: 20px 22px 16px;
-  border-bottom: 1px solid rgba(226, 232, 240, 0.84);
-  background: rgba(255, 255, 255, 0.96);
+  border-bottom: 1px solid color-mix(in srgb, var(--73-border) 84%, transparent);
+  background: color-mix(in srgb, var(--73-surface-strong) 96%, transparent);
   backdrop-filter: blur(12px);
 }
 
 .requirement-hall-detail__head h3 {
   margin: 10px 0 6px;
-  color: #0f172a;
+  color: var(--73-ink);
   font-size: 22px;
   line-height: 1.3;
 }
 
 .requirement-hall-detail__head p {
   margin: 0;
-  color: #64748b;
+  color: var(--73-ink-muted);
   font-size: 13px;
   font-weight: 700;
 }
@@ -177,10 +177,10 @@ function openWorkbench(): void {
   flex: 0 0 auto;
   width: 36px;
   height: 36px;
-  border: 1px solid rgba(203, 213, 225, 0.86);
+  border: 1px solid color-mix(in srgb, var(--73-ink-disabled) 86%, transparent);
   border-radius: 10px;
-  background: #fff;
-  color: #334155;
+  background: var(--73-surface-strong);
+  color: var(--73-ink-soft);
   cursor: pointer;
 }
 
@@ -189,8 +189,8 @@ function openWorkbench(): void {
   flex-wrap: wrap;
   gap: 8px 14px;
   padding: 14px 22px;
-  border-bottom: 1px solid rgba(226, 232, 240, 0.76);
-  color: #475569;
+  border-bottom: 1px solid color-mix(in srgb, var(--73-border) 76%, transparent);
+  color: var(--73-ink-soft);
   font-size: 13px;
   font-weight: 800;
 }
@@ -200,7 +200,7 @@ function openWorkbench(): void {
   justify-content: flex-end;
   gap: 10px;
   padding: 0 22px 22px;
-  background: rgba(248, 250, 252, 0.62);
+  background: color-mix(in srgb, var(--73-surface-strong) 62%, transparent);
 }
 
 .requirement-hall-detail__bind {
@@ -210,15 +210,15 @@ function openWorkbench(): void {
   gap: 6px;
   min-height: 38px;
   padding: 0 16px;
-  border: 1px solid rgba(37, 99, 235, 0.34);
+  border: 1px solid color-mix(in srgb, var(--73-accent) 34%, transparent);
   border-radius: 8px;
-  background: #2563eb;
-  color: #fff;
+  background: var(--73-accent);
+  color: var(--73-surface-strong);
   font-size: 14px;
   font-weight: 800;
   line-height: 1;
   cursor: pointer;
-  box-shadow: 0 8px 18px rgba(37, 99, 235, 0.16);
+  box-shadow: 0 8px 18px color-mix(in srgb, var(--73-accent) 16%, transparent);
   transition:
     background-color 160ms ease,
     border-color 160ms ease,
@@ -227,15 +227,15 @@ function openWorkbench(): void {
 }
 
 .requirement-hall-detail__bind:hover {
-  border-color: rgba(29, 78, 216, 0.42);
-  background: #1d4ed8;
-  box-shadow: 0 10px 22px rgba(37, 99, 235, 0.22);
+  border-color: color-mix(in srgb, var(--73-accent) 42%, transparent);
+  background: var(--73-accent);
+  box-shadow: 0 10px 22px color-mix(in srgb, var(--73-accent) 22%, transparent);
   transform: translateY(-1px);
 }
 
 .requirement-hall-detail__bind:focus-visible {
   outline: none;
-  box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.16);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--73-accent) 16%, transparent);
 }
 
 .requirement-hall-detail__review-panel {
@@ -243,9 +243,13 @@ function openWorkbench(): void {
   gap: 12px;
   margin: 16px 22px;
   padding: 16px;
-  border: 1px solid rgba(17, 24, 39, 0.08);
+  border: 1px solid color-mix(in srgb, var(--73-ink) 8%, transparent);
   border-radius: 18px;
-  background: linear-gradient(180deg, rgba(248, 250, 252, 0.96), rgba(241, 245, 249, 0.92));
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--73-surface-strong) 96%, transparent),
+    color-mix(in srgb, var(--73-surface-strong) 92%, transparent)
+  );
 }
 
 .requirement-hall-detail__review-grid {
@@ -266,7 +270,7 @@ function openWorkbench(): void {
 }
 
 .requirement-hall-detail__review-label {
-  color: #64748b;
+  color: var(--73-ink-muted);
   font-size: 12px;
   font-weight: 800;
   letter-spacing: 0.08em;
@@ -277,11 +281,11 @@ function openWorkbench(): void {
   min-width: 0;
   padding: 12px 14px;
   border-radius: 12px;
-  background: rgba(255, 255, 255, 0.9);
-  color: #0f172a;
+  background: color-mix(in srgb, var(--73-surface-strong) 90%, transparent);
+  color: var(--73-ink);
   font-weight: 700;
   line-height: 1.7;
-  box-shadow: inset 0 0 0 1px rgba(148, 163, 184, 0.12);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--73-ink-placeholder) 12%, transparent);
 }
 
 .requirement-hall-detail__review-grid .requirement-hall-detail__review-value {
@@ -307,7 +311,7 @@ function openWorkbench(): void {
 
 .requirement-hall-detail__section h4 {
   margin: 0 0 12px;
-  color: #0f172a;
+  color: var(--73-ink);
   font-size: 16px;
   line-height: 1.35;
 }

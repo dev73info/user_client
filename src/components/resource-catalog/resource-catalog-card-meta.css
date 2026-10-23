@@ -11,13 +11,13 @@
   font-size: 12px;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
-  color: #475569;
-  background: rgba(241, 245, 249, 0.96);
+  color: var(--73-ink-soft);
+  background: color-mix(in srgb, var(--73-surface-strong) 96%, transparent);
 }
 
 .portal-resource-browser__price-badge.is-paid {
-  color: #334155;
-  background: rgba(226, 232, 240, 0.96);
+  color: var(--73-ink-soft);
+  background: color-mix(in srgb, var(--73-border) 96%, transparent);
 }
 
 .portal-resource-browser__author-pill {
@@ -26,8 +26,8 @@
   gap: 6px;
   border-radius: 999px;
   padding: 6px 12px;
-  background: rgba(219, 234, 254, 0.92);
-  color: #1d4ed8;
+  background: color-mix(in srgb, var(--73-accent-soft) 92%, transparent);
+  color: var(--73-accent);
   font-size: 12px;
   font-weight: 700;
   line-height: normal;
@@ -102,7 +102,7 @@
 
 .portal-resource-browser__desc {
   margin: 0;
-  color: #475569;
+  color: var(--73-ink-soft);
 }
 
 .portal-resource-browser__tags {
@@ -132,8 +132,8 @@
   min-height: 22px;
   padding: 2px 9px;
   border-radius: 999px;
-  background: rgba(241, 245, 249, 0.96);
-  color: #475569;
+  background: color-mix(in srgb, var(--73-surface-strong) 96%, transparent);
+  color: var(--73-ink-soft);
   font-size: 12px;
   font-weight: 700;
   line-height: 1.2;
@@ -148,22 +148,22 @@
   min-height: 20px;
   padding: 1px 8px;
   border-radius: 999px;
-  background: rgba(241, 245, 249, 0.96);
-  color: #475569;
+  background: color-mix(in srgb, var(--73-surface-strong) 96%, transparent);
+  color: var(--73-ink-soft);
   font-size: 12px;
   font-weight: 700;
 }
 
 .portal-resource-browser__meta.is-repost {
-  background: rgba(241, 245, 249, 0.96);
-  color: #475569;
+  background: color-mix(in srgb, var(--73-surface-strong) 96%, transparent);
+  color: var(--73-ink-soft);
 }
 
 .portal-resource-browser__action {
   padding: 10px 16px;
   border-radius: 12px;
-  background: rgba(239, 246, 255, 0.9);
-  color: #1d4ed8;
+  background: color-mix(in srgb, var(--73-accent-soft) 90%, transparent);
+  color: var(--73-accent);
   font-weight: 700;
 }
 
@@ -175,14 +175,14 @@
   min-width: 66px;
   padding: 10px 12px;
   border-radius: 12px;
-  background: rgba(248, 250, 252, 0.96);
-  color: #64748b;
+  background: color-mix(in srgb, var(--73-surface-strong) 96%, transparent);
+  color: var(--73-ink-muted);
   font-weight: 800;
 }
 
 .portal-resource-browser__like--active {
-  background: rgba(254, 226, 226, 0.94);
-  color: #dc2626;
+  background: color-mix(in srgb, var(--73-danger-soft) 94%, transparent);
+  color: var(--73-danger);
 }
 
 .portal-resource-browser__like:disabled {

@@ -67,7 +67,7 @@ const PARTY_LABELS = ['甲方', '乙方', '丙方'] as const
 }
 
 .signature-parties dt {
-  color: #667085;
+  color: var(--73-ink-muted);
 }
 
 .signature-parties dd {
@@ -77,7 +77,7 @@ const PARTY_LABELS = ['甲方', '乙方', '丙方'] as const
 }
 
 .signature-parties dd span {
-  color: #667085;
+  color: var(--73-ink-muted);
   font-size: 12px;
 }
 
@@ -86,7 +86,7 @@ const PARTY_LABELS = ['甲方', '乙方', '丙方'] as const
   font-weight: 600;
   font-size: 15px;
   padding: 14px 0;
-  border-top: 1px solid #e5e9ef;
+  border-top: 1px solid var(--73-border);
 }
 
 /* R012：正文区上方的来源说明（平台正文才是主文件，附件只是条款补充）。 */
@@ -94,26 +94,26 @@ const PARTY_LABELS = ['甲方', '乙方', '丙方'] as const
   margin: 0 0 14px;
   padding: 10px 12px;
   border-radius: 6px;
-  background: #eef6f6;
-  color: #3f5b59;
+  background: var(--73-surface-strong);
+  color: var(--73-ink-soft);
   font-size: 12.5px;
   line-height: 1.7;
 }
 
 .contract-content {
-  border: 1px solid #cfd8e3;
+  border: 1px solid var(--73-ink-disabled);
   border-radius: 8px;
   padding: 1.35rem 1.5rem;
   min-height: 200px;
-  background: #ffffff;
-  color: #1f2937;
+  background: var(--73-surface-strong);
+  color: var(--73-ink);
   font-size: 0.94rem;
   line-height: 1.8;
   white-space: pre-wrap;
   margin-bottom: 1.5rem;
   max-height: 60vh;
   overflow-y: auto;
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.7);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--73-surface-strong) 70%, transparent);
 }
 
 @media (max-width: 640px) {

@@ -67,13 +67,13 @@
     align-items: stretch;
     min-height: 0;
     border-radius: 14px;
-    box-shadow: 0 8px 18px rgba(37, 99, 235, 0.08);
+    box-shadow: 0 8px 18px color-mix(in srgb, var(--73-accent) 8%, transparent);
   }
 
   .portal-spotlight-card:hover,
   .portal-spotlight-card:focus-visible {
     transform: none;
-    box-shadow: 0 10px 22px rgba(37, 99, 235, 0.12);
+    box-shadow: 0 10px 22px color-mix(in srgb, var(--73-accent) 12%, transparent);
   }
 
   .portal-spotlight-card__cover {
@@ -103,7 +103,7 @@
     min-height: 20px;
     padding: 3px 7px 3px 6px;
     font-size: 10px;
-    box-shadow: 0 4px 10px rgba(15, 23, 42, 0.14);
+    box-shadow: 0 4px 10px color-mix(in srgb, var(--73-ink) 14%, transparent);
   }
 
   .portal-spotlight-card__screen {

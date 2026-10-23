@@ -112,15 +112,15 @@
 }
 
 /* 出款通道未就绪的提示：配色改用体系里的金（= 需要开发者先处理的提示那一支），
-   原来是 rgba(185, 129, 43, 0.08) / var(--dev-gold) / var(--dev-gold) 这一套橙，与页内其它提示是两个色。 */
+   原来是 color-mix(in srgb, var(--73-warning) 8%, transparent) / var(--dev-gold) / var(--dev-gold) 这一套橙，与页内其它提示是两个色。 */
 .wallet-payout__alert {
   display: flex;
   align-items: center;
   gap: 8px;
   padding: 10px 12px;
-  border: 1px solid rgba(185, 129, 43, 0.24);
+  border: 1px solid color-mix(in srgb, var(--73-warning) 24%, transparent);
   border-radius: var(--dev-radius-control);
-  background: rgba(185, 129, 43, 0.08);
+  background: color-mix(in srgb, var(--73-warning) 8%, transparent);
   color: var(--dev-gold);
   font-size: 12px;
   line-height: 1.6;

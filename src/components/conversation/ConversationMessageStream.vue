@@ -99,19 +99,19 @@ const emit = defineEmits<{
 
 <style scoped>
 .conversation-modal__empty {
-  color: #64748b;
+  color: var(--73-ink-muted);
 }
 
 .conversation-modal__empty--error {
-  color: #b42318;
+  color: var(--73-danger);
   gap: 12px;
 }
 
 .conversation-modal__empty--error button {
-  border: 1px solid rgba(180, 35, 24, 0.24);
+  border: 1px solid color-mix(in srgb, var(--73-danger) 24%, transparent);
   border-radius: 10px;
-  background: #fff7f5;
-  color: #b42318;
+  background: var(--73-danger-soft);
+  color: var(--73-danger);
   padding: 7px 12px;
   cursor: pointer;
 }
@@ -144,9 +144,9 @@ const emit = defineEmits<{
   margin-bottom: 10px;
   margin: 2px auto 12px;
   padding: 4px 11px;
-  border: 1px solid rgba(209, 222, 239, 0.86);
-  background: rgba(255, 255, 255, 0.9);
-  color: #64748b;
-  box-shadow: 0 8px 18px rgba(71, 102, 148, 0.08);
+  border: 1px solid color-mix(in srgb, var(--73-accent-soft) 86%, transparent);
+  background: color-mix(in srgb, var(--73-surface-strong) 90%, transparent);
+  color: var(--73-ink-muted);
+  box-shadow: 0 8px 18px color-mix(in srgb, var(--73-accent) 8%, transparent);
 }
 </style>

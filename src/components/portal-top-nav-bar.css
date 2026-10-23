@@ -6,40 +6,40 @@
   /* 顶栏自用色板：拆出去的三个子组件（导航 / 搜索 / 用户菜单）从这里继承 —— CSS 自定义
      属性顺着 DOM 往下传，子组件的 scoped 样式直接 var() 取值，裸色值就只在本文件出现一次。
      取值与原直接写在各选择器里的字面量**完全一致**，没有换成 --73-* 令牌：那套令牌跟这里
-     用的色值不是同一个数（例如 --73-accent 是 #1f4ad1，本页用的是 #2563eb），换过去就是改视觉。 */
-  --ptn-ink-strong: #0f172a;
-  --ptn-ink-body: #334155;
-  --ptn-ink-soft: #475569;
-  --ptn-ink-muted: #64748b;
-  --ptn-ink-placeholder: #94a3b8;
-  --ptn-accent-brand: #2563eb;
-  --ptn-accent-bright: #4f8cff;
-  --ptn-accent-ink: #1d4ed8;
-  --ptn-danger-ink: #dc2626;
-  --ptn-inverse: #fff;
-  --ptn-accent-gradient: linear-gradient(135deg, #2563eb, #4f8cff);
-  --ptn-line: rgba(203, 213, 225, 0.86);
-  --ptn-line-soft: rgba(203, 213, 225, 0.82);
-  --ptn-line-menu: rgba(203, 213, 225, 0.92);
-  --ptn-line-accent: rgba(191, 219, 254, 0.92);
-  --ptn-line-accent-soft: rgba(191, 219, 254, 0.9);
-  --ptn-line-hover: rgba(147, 197, 253, 0.96);
-  --ptn-line-hover-soft: rgba(147, 197, 253, 0.6);
-  --ptn-accent-wash: rgba(239, 246, 255, 0.96);
-  --ptn-accent-wash-faint: rgba(239, 246, 255, 0.95);
-  --ptn-accent-tint-soft: rgba(219, 234, 254, 0.86);
-  --ptn-accent-tint-strong: rgba(219, 234, 254, 0.98);
-  --ptn-surface: rgba(255, 255, 255, 0.98);
-  --ptn-surface-soft: rgba(255, 255, 255, 0.94);
-  --ptn-surface-sunken: rgba(248, 250, 252, 0.94);
-  --ptn-surface-highlight: rgba(255, 255, 255, 0.82);
-  --ptn-surface-muted: rgba(241, 245, 249, 0.96);
-  --ptn-surface-muted-strong: rgba(241, 245, 249, 0.98);
-  --ptn-neutral-wash: rgba(226, 232, 240, 0.66);
-  --ptn-accent-glow-18: rgba(37, 99, 235, 0.18);
-  --ptn-focus-halo: rgba(37, 99, 235, 0.16);
-  --ptn-shadow-soft: rgba(15, 23, 42, 0.08);
-  --ptn-shadow-strong: rgba(15, 23, 42, 0.12);
+     用的色值不是同一个数（例如 --73-accent 是 var(--73-accent)，本页用的是 var(--73-accent)），换过去就是改视觉。 */
+  --ptn-ink-strong: var(--73-ink);
+  --ptn-ink-body: var(--73-ink-soft);
+  --ptn-ink-soft: var(--73-ink-soft);
+  --ptn-ink-muted: var(--73-ink-muted);
+  --ptn-ink-placeholder: var(--73-ink-placeholder);
+  --ptn-accent-brand: var(--73-accent);
+  --ptn-accent-bright: var(--73-accent);
+  --ptn-accent-ink: var(--73-accent);
+  --ptn-danger-ink: var(--73-danger);
+  --ptn-inverse: var(--73-surface-strong);
+  --ptn-accent-gradient: linear-gradient(135deg, var(--73-accent), var(--73-accent));
+  --ptn-line: color-mix(in srgb, var(--73-ink-disabled) 86%, transparent);
+  --ptn-line-soft: color-mix(in srgb, var(--73-ink-disabled) 82%, transparent);
+  --ptn-line-menu: color-mix(in srgb, var(--73-ink-disabled) 92%, transparent);
+  --ptn-line-accent: color-mix(in srgb, var(--73-accent-soft) 92%, transparent);
+  --ptn-line-accent-soft: color-mix(in srgb, var(--73-accent-soft) 90%, transparent);
+  --ptn-line-hover: color-mix(in srgb, var(--73-accent) 96%, transparent);
+  --ptn-line-hover-soft: color-mix(in srgb, var(--73-accent) 60%, transparent);
+  --ptn-accent-wash: color-mix(in srgb, var(--73-accent-soft) 96%, transparent);
+  --ptn-accent-wash-faint: color-mix(in srgb, var(--73-accent-soft) 95%, transparent);
+  --ptn-accent-tint-soft: color-mix(in srgb, var(--73-accent-soft) 86%, transparent);
+  --ptn-accent-tint-strong: color-mix(in srgb, var(--73-accent-soft) 98%, transparent);
+  --ptn-surface: color-mix(in srgb, var(--73-surface-strong) 98%, transparent);
+  --ptn-surface-soft: color-mix(in srgb, var(--73-surface-strong) 94%, transparent);
+  --ptn-surface-sunken: color-mix(in srgb, var(--73-surface-strong) 94%, transparent);
+  --ptn-surface-highlight: color-mix(in srgb, var(--73-surface-strong) 82%, transparent);
+  --ptn-surface-muted: color-mix(in srgb, var(--73-surface-strong) 96%, transparent);
+  --ptn-surface-muted-strong: color-mix(in srgb, var(--73-surface-strong) 98%, transparent);
+  --ptn-neutral-wash: color-mix(in srgb, var(--73-border) 66%, transparent);
+  --ptn-accent-glow-18: color-mix(in srgb, var(--73-accent) 18%, transparent);
+  --ptn-focus-halo: color-mix(in srgb, var(--73-accent) 16%, transparent);
+  --ptn-shadow-soft: color-mix(in srgb, var(--73-ink) 8%, transparent);
+  --ptn-shadow-strong: color-mix(in srgb, var(--73-ink) 12%, transparent);
   --portal-nav-motion: cubic-bezier(0.22, 1, 0.36, 1);
   position: sticky;
   top: 10px;
@@ -51,10 +51,10 @@
   width: min(1280px, calc(100% - 24px));
   margin: 10px auto 14px;
   padding: 12px 16px;
-  border: 1px solid rgba(224, 232, 255, 0.96);
+  border: 1px solid color-mix(in srgb, var(--73-accent-soft) 96%, transparent);
   border-radius: 18px;
   background: var(--ptn-surface-soft);
-  box-shadow: 0 12px 30px rgba(76, 103, 172, 0.08);
+  box-shadow: 0 12px 30px color-mix(in srgb, var(--73-accent) 8%, transparent);
   backdrop-filter: blur(12px);
 }
 
@@ -108,13 +108,13 @@
   padding: 0 14px;
   border-radius: 14px;
   border: 1px solid var(--ptn-line-accent);
-  background: rgba(239, 246, 255, 0.94);
+  background: color-mix(in srgb, var(--73-accent-soft) 94%, transparent);
   color: var(--ptn-accent-ink);
   font-size: 14px;
   font-weight: 800;
   line-height: 1;
   text-decoration: none;
-  box-shadow: 0 8px 18px rgba(37, 99, 235, 0.08);
+  box-shadow: 0 8px 18px color-mix(in srgb, var(--73-accent) 8%, transparent);
   transition:
     background-color 160ms ease,
     border-color 160ms ease,
@@ -125,10 +125,10 @@
 
 .portal-search-menu:hover,
 .portal-search-menu:focus-visible {
-  border-color: rgba(37, 99, 235, 0.34);
-  background: rgba(219, 234, 254, 0.96);
+  border-color: color-mix(in srgb, var(--73-accent) 34%, transparent);
+  background: color-mix(in srgb, var(--73-accent-soft) 96%, transparent);
   color: var(--ptn-accent-ink);
-  box-shadow: 0 10px 22px rgba(37, 99, 235, 0.12);
+  box-shadow: 0 10px 22px color-mix(in srgb, var(--73-accent) 12%, transparent);
   transform: translateY(-1px);
 }
 
@@ -154,7 +154,7 @@
   border-radius: 50%;
   color: var(--ptn-ink-body);
   background: var(--ptn-surface-soft);
-  border: 1px solid rgba(226, 232, 240, 0.96);
+  border: 1px solid color-mix(in srgb, var(--73-border) 96%, transparent);
   transition: 160ms ease;
 }
 
@@ -167,16 +167,16 @@
 
 .portal-icon-btn--subscription:hover:not(:disabled) {
   color: var(--ptn-accent-ink);
-  border-color: rgba(37, 99, 235, 0.28);
+  border-color: color-mix(in srgb, var(--73-accent) 28%, transparent);
   background: var(--ptn-accent-wash);
 }
 
 .portal-icon-btn--subscription.is-active,
 .portal-icon-btn--subscription.is-active:hover:not(:disabled) {
   color: var(--ptn-inverse);
-  border-color: rgba(37, 99, 235, 0.5);
+  border-color: color-mix(in srgb, var(--73-accent) 50%, transparent);
   background: var(--ptn-accent-gradient);
-  box-shadow: 0 10px 22px rgba(37, 99, 235, 0.26);
+  box-shadow: 0 10px 22px color-mix(in srgb, var(--73-accent) 26%, transparent);
 }
 
 .portal-icon-btn--subscription.is-loading {
@@ -198,8 +198,8 @@
   padding: 10px;
   border-radius: 18px;
   border: 1px solid var(--ptn-line-menu);
-  background: rgba(255, 255, 255, 0.96);
-  box-shadow: 0 18px 40px rgba(15, 23, 42, 0.14);
+  background: color-mix(in srgb, var(--73-surface-strong) 96%, transparent);
+  box-shadow: 0 18px 40px color-mix(in srgb, var(--73-ink) 14%, transparent);
   backdrop-filter: blur(12px);
 }
 
@@ -223,9 +223,9 @@
   gap: 12px;
   width: 100%;
   padding: 10px 10px 10px 12px;
-  border: 1px solid rgba(226, 232, 240, 0.94);
+  border: 1px solid color-mix(in srgb, var(--73-border) 94%, transparent);
   border-radius: 14px;
-  background: rgba(248, 250, 252, 0.86);
+  background: color-mix(in srgb, var(--73-surface-strong) 86%, transparent);
   color: var(--ptn-ink-strong);
   cursor: pointer;
   text-align: left;
@@ -234,12 +234,12 @@
 }
 
 .portal-subscription-item:hover:not(:disabled) {
-  border-color: rgba(37, 99, 235, 0.22);
-  background: rgba(239, 246, 255, 0.94);
+  border-color: color-mix(in srgb, var(--73-accent) 22%, transparent);
+  background: color-mix(in srgb, var(--73-accent-soft) 94%, transparent);
 }
 
 .portal-subscription-item.active {
-  border-color: rgba(37, 99, 235, 0.3);
+  border-color: color-mix(in srgb, var(--73-accent) 30%, transparent);
   background: var(--ptn-accent-wash);
 }
 
@@ -277,7 +277,7 @@
   height: 24px;
   padding: 0 8px;
   border-radius: 999px;
-  background: rgba(148, 163, 184, 0.16);
+  background: color-mix(in srgb, var(--73-ink-placeholder) 16%, transparent);
   color: var(--ptn-ink-muted);
   font-size: 12px;
   font-weight: 800;
@@ -286,5 +286,5 @@
 .portal-subscription-item.active .portal-subscription-item__state {
   background: var(--ptn-accent-gradient);
   color: var(--ptn-inverse);
-  box-shadow: 0 8px 18px rgba(37, 99, 235, 0.22);
+  box-shadow: 0 8px 18px color-mix(in srgb, var(--73-accent) 22%, transparent);
 }

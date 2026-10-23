@@ -4,7 +4,7 @@
 
    背景：用户工作台那一列（我的需求、账户详情、我的合同、我的发票、我的背包、我的收藏、我的邀请、
    消息中心、工单中心）原来各写各的——顶部读数有的是四张卡片、有的是三张、有的是渐变介绍卡、有的没有；
-   搜索框、刷新按钮、列表行、分页器各一套形状；配色还分出青色（#247f7d）与绿色（#0f766e）两支。
+   搜索框、刷新按钮、列表行、分页器各一套形状；配色还分出青色（var(--73-success)）与绿色（var(--73-success)）两支。
    这一层把这几件事收成一套：结构、尺寸档、配色都只有一处定义。
 
    **本层与开发者侧（dev-base.css 的 .dev-meta-strip / .dev-toolbar / .dev-stack-list / .dev-empty-state /
@@ -24,10 +24,10 @@
    | 提示文案 | .wb-note | —（同上） | 12px / 1.6 / 说明色 |
    | 胶囊 | .wb-chip | .dev-chip | 28px 高 / 0 12px 内边距 / 999px |
    | 分页 | .wb-pager | .dev-pager | 控件 36px、页码 10px 圆角 |
-   | 主色 | --wb-accent | --dev-blue | #1f4ad1 |
+   | 主色 | --wb-accent | --dev-blue | var(--73-accent) |
 
-   主色取 `#1f4ad1`（设计规范登记的门户与开发者共同主色，也是工作台外壳顶栏与侧边栏用的那一支），
-   **不再用个人中心的页面级强调色 `#4f8cff`**——那是 profile.css 给 .profile-page 登记的独立色板，
+   主色取 `var(--73-accent)`（设计规范登记的门户与开发者共同主色，也是工作台外壳顶栏与侧边栏用的那一支），
+   **不再用个人中心的页面级强调色 `var(--73-accent)`**——那是 profile.css 给 .profile-page 登记的独立色板，
    拿它当整个工作台按钮的颜色，会让菜单页的蓝比它自己的侧边栏更亮一档。
 
    令牌：表面与文字沿用门户侧 --profile-*，尺寸与强调色收在本文件顶部的 --wb-* 里
@@ -44,14 +44,14 @@
   --wb-control-height: 36px;
   /* 主色与冷灰三件套：取值与 dev-base.css 的 --dev-blue / --dev-line / --dev-shadow /
      --dev-ink-soft / --dev-muted 完全相同，两边必须一起改。 */
-  --wb-accent: #1f4ad1;
-  --wb-accent-soft: rgba(31, 74, 209, 0.08);
-  --wb-accent-line: rgba(31, 74, 209, 0.32);
-  --wb-line: rgba(203, 213, 225, 0.66);
+  --wb-accent: var(--73-accent);
+  --wb-accent-soft: color-mix(in srgb, var(--73-accent) 8%, transparent);
+  --wb-accent-line: color-mix(in srgb, var(--73-accent) 32%, transparent);
+  --wb-line: color-mix(in srgb, var(--73-ink-disabled) 66%, transparent);
   /* 中性标签底（.wb-badge 与卡片内的小角标共用；原来两处各写一遍同一个 rgba） */
-  --wb-tag-bg: rgba(148, 163, 184, 0.12);
-  --wb-ink-soft: #475569;
-  --wb-shadow: 0 20px 44px rgba(71, 85, 105, 0.1);
+  --wb-tag-bg: color-mix(in srgb, var(--73-ink-placeholder) 12%, transparent);
+  --wb-ink-soft: var(--73-ink-soft);
+  --wb-shadow: 0 20px 44px color-mix(in srgb, var(--73-ink-soft) 10%, transparent);
 }
 
 /* 用户工作台的作用域根：`.profile-page` 是工作台各页的根元素，弹窗会被 teleport 到
@@ -59,7 +59,7 @@
    .profile-page 只出现在用户工作台各页，开发者侧（.user-workbench--dev 下的 .dev-page）不受影响。 */
 .profile-page,
 .wb-dialog {
-  color: var(--profile-text-main, #0f172a);
+  color: var(--profile-text-main, var(--73-ink));
 }
 
 /* === 顶部读数条 ===
@@ -75,9 +75,9 @@
   padding: 10px 20px;
   border: 1px solid var(--wb-line);
   border-radius: var(--wb-radius-card);
-  background: var(--profile-card-bg, rgba(255, 255, 255, 0.96));
+  background: var(--profile-card-bg, color-mix(in srgb, var(--73-surface-strong) 96%, transparent));
   box-shadow: var(--wb-shadow);
-  color: var(--profile-text-main, #0f172a);
+  color: var(--profile-text-main, var(--73-ink));
 }
 
 .wb-strip__item {
@@ -95,13 +95,13 @@
 }
 
 .wb-strip__label {
-  color: var(--profile-text-sub, #64748b);
+  color: var(--profile-text-sub, var(--73-ink-muted));
   font-size: 12px;
   white-space: nowrap;
 }
 
 .wb-strip__value {
-  color: var(--profile-text-main, #0f172a);
+  color: var(--profile-text-main, var(--73-ink));
   font-size: 15px;
   font-weight: 700;
   font-variant-numeric: tabular-nums;

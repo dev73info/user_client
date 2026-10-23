@@ -11,39 +11,39 @@
       它那一套变量在文件末尾的全局 style 块里单独声明（挂在弹窗根类名上）。
    ============================================================ */
 .resource-detail-page {
-  --rdp-ink: #0f172a;
-  --rdp-body: #334155;
-  --rdp-muted: #64748b;
-  --rdp-link: #1d4ed8;
-  --rdp-card-border: rgba(198, 210, 236, 0.72);
-  --rdp-card-surface: rgba(248, 250, 252, 0.92);
-  --rdp-hairline: rgba(219, 229, 247, 0.78);
-  --rdp-soft-surface: rgba(239, 246, 255, 0.9);
-  --rdp-toggle-bg: rgba(100, 116, 139, 0.09);
-  --rdp-toggle-bg-hover: rgba(100, 116, 139, 0.18);
-  --rdp-accent: #2563eb;
-  --rdp-accent-alt: #4f8cff;
-  --rdp-accent-border: rgba(37, 99, 235, 0.58);
-  --rdp-accent-ring: rgba(37, 99, 235, 0.1);
-  --rdp-btn-shadow: rgba(37, 99, 235, 0.18);
-  --rdp-on-accent: #fff;
-  --rdp-danger: #dc2626;
-  --rdp-comment-surface: rgba(255, 255, 255, 0.78);
-  --rdp-input-border: rgba(198, 210, 236, 0.86);
-  --rdp-input-surface: rgba(248, 250, 252, 0.96);
-  --rdp-input-surface-focus: #fff;
-  --rdp-mine-border: rgba(37, 99, 235, 0.26);
-  --rdp-mine-surface: rgba(239, 246, 255, 0.82);
-  --rdp-avatar-surface: rgba(219, 234, 254, 0.95);
+  --rdp-ink: var(--73-ink);
+  --rdp-body: var(--73-ink-soft);
+  --rdp-muted: var(--73-ink-muted);
+  --rdp-link: var(--73-accent);
+  --rdp-card-border: color-mix(in srgb, var(--73-accent) 72%, transparent);
+  --rdp-card-surface: color-mix(in srgb, var(--73-surface-strong) 92%, transparent);
+  --rdp-hairline: color-mix(in srgb, var(--73-accent-soft) 78%, transparent);
+  --rdp-soft-surface: color-mix(in srgb, var(--73-accent-soft) 90%, transparent);
+  --rdp-toggle-bg: color-mix(in srgb, var(--73-ink-muted) 9%, transparent);
+  --rdp-toggle-bg-hover: color-mix(in srgb, var(--73-ink-muted) 18%, transparent);
+  --rdp-accent: var(--73-accent);
+  --rdp-accent-alt: var(--73-accent);
+  --rdp-accent-border: color-mix(in srgb, var(--73-accent) 58%, transparent);
+  --rdp-accent-ring: color-mix(in srgb, var(--73-accent) 10%, transparent);
+  --rdp-btn-shadow: color-mix(in srgb, var(--73-accent) 18%, transparent);
+  --rdp-on-accent: var(--73-surface-strong);
+  --rdp-danger: var(--73-danger);
+  --rdp-comment-surface: color-mix(in srgb, var(--73-surface-strong) 78%, transparent);
+  --rdp-input-border: color-mix(in srgb, var(--73-accent) 86%, transparent);
+  --rdp-input-surface: color-mix(in srgb, var(--73-surface-strong) 96%, transparent);
+  --rdp-input-surface-focus: var(--73-surface-strong);
+  --rdp-mine-border: color-mix(in srgb, var(--73-accent) 26%, transparent);
+  --rdp-mine-surface: color-mix(in srgb, var(--73-accent-soft) 82%, transparent);
+  --rdp-avatar-surface: color-mix(in srgb, var(--73-accent-soft) 95%, transparent);
   width: min(1280px, calc(100% - 24px));
   gap: 28px;
 }
 
 .resource-detail-page__panel {
   border-radius: 28px;
-  border: 1px solid rgba(198, 210, 236, 0.72);
-  background: rgba(255, 255, 255, 0.84);
-  box-shadow: 0 18px 42px rgba(76, 103, 172, 0.12);
+  border: 1px solid color-mix(in srgb, var(--73-accent) 72%, transparent);
+  background: color-mix(in srgb, var(--73-surface-strong) 84%, transparent);
+  box-shadow: 0 18px 42px color-mix(in srgb, var(--73-accent) 12%, transparent);
   backdrop-filter: blur(18px);
   padding: 24px;
 }
@@ -60,8 +60,8 @@
   min-width: 0;
   overflow: hidden;
   border-radius: 24px;
-  border: 1px solid rgba(198, 210, 236, 0.72);
-  background: rgba(248, 250, 252, 0.92);
+  border: 1px solid color-mix(in srgb, var(--73-accent) 72%, transparent);
+  background: color-mix(in srgb, var(--73-surface-strong) 92%, transparent);
 }
 
 .resource-detail-page__versions-side-card {
@@ -172,7 +172,7 @@
   border: 1px solid var(--card-border);
   border-radius: 8px;
   background: var(--bg-soft);
-  color: #334155;
+  color: var(--73-ink-soft);
   font: inherit;
   font-size: 13px;
   font-weight: 700;
@@ -184,13 +184,13 @@
 }
 
 .resource-detail-page__panel-back:hover {
-  border-color: rgba(31, 74, 209, 0.4);
+  border-color: color-mix(in srgb, var(--73-accent) 40%, transparent);
   color: var(--accent);
-  background: #fff;
+  background: var(--73-surface-strong);
 }
 
 .resource-detail-page__panel-back:focus-visible {
-  outline: 2px solid rgba(37, 99, 235, 0.45);
+  outline: 2px solid color-mix(in srgb, var(--73-accent) 45%, transparent);
   outline-offset: 2px;
 }
 
@@ -207,12 +207,12 @@
   gap: 6px;
   padding: 44px 16px;
   text-align: center;
-  color: #64748b;
+  color: var(--73-ink-muted);
   font-size: 13px;
   line-height: 1.7;
 }
 
 .resource-detail-page__load-error strong {
-  color: #0f172a;
+  color: var(--73-ink);
   font-size: 15px;
 }

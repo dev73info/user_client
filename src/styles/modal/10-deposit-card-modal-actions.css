@@ -7,25 +7,25 @@
 .order-string,
 .pay-line {
   margin: 0 0 10px;
-  color: #475569;
+  color: var(--73-ink-soft);
   font-size: 14px;
 }
 
 .deposit-line strong,
 .order-string strong,
 .pay-line strong {
-  color: #0f172a;
+  color: var(--73-ink);
   font-weight: 700;
 }
 
 .deposit-amount {
   margin: 14px 0 0;
   font-size: 16px;
-  color: #334155;
+  color: var(--73-ink-soft);
 }
 
 .deposit-amount strong {
-  color: #b45309;
+  color: var(--73-warning);
   font-size: 28px;
   font-weight: 800;
 }
@@ -42,10 +42,10 @@
   border-radius: 12px;
   font-size: 13px;
   font-weight: 700;
-  border: 1px solid rgba(209, 220, 243, 0.95);
-  background: #ffffff;
-  color: #334155;
-  box-shadow: 0 6px 16px rgba(76, 103, 172, 0.06);
+  border: 1px solid color-mix(in srgb, var(--73-accent-soft) 95%, transparent);
+  background: var(--73-surface-strong);
+  color: var(--73-ink-soft);
+  box-shadow: 0 6px 16px color-mix(in srgb, var(--73-accent) 6%, transparent);
   transition:
     transform 180ms ease,
     box-shadow 180ms ease,
@@ -56,47 +56,47 @@
 
 .modal-wrap .pay-modal .actions .ghost:hover:not(:disabled) {
   transform: translateY(-1px);
-  background: #f8fbff;
-  border-color: rgba(125, 155, 225, 0.92);
-  box-shadow: 0 10px 22px rgba(76, 103, 172, 0.1);
+  background: var(--73-accent-soft);
+  border-color: color-mix(in srgb, var(--73-accent) 92%, transparent);
+  box-shadow: 0 10px 22px color-mix(in srgb, var(--73-accent) 10%, transparent);
 }
 
 /* 主操作：蓝色实心 */
 .modal-wrap .pay-modal .actions .ghost.primary {
-  border-color: #2563eb;
-  background: #2563eb;
-  color: #ffffff;
-  box-shadow: 0 10px 22px rgba(37, 99, 235, 0.2);
+  border-color: var(--73-accent);
+  background: var(--73-accent);
+  color: var(--73-surface-strong);
+  box-shadow: 0 10px 22px color-mix(in srgb, var(--73-accent) 20%, transparent);
 }
 
 .modal-wrap .pay-modal .actions .ghost.primary:hover:not(:disabled) {
-  background: #1d4ed8;
-  border-color: #1d4ed8;
-  box-shadow: 0 12px 26px rgba(37, 99, 235, 0.26);
+  background: var(--73-accent);
+  border-color: var(--73-accent);
+  box-shadow: 0 12px 26px color-mix(in srgb, var(--73-accent) 26%, transparent);
 }
 
 /* 危险操作：红色实心 */
 .modal-wrap .pay-modal .actions .ghost.danger {
-  border-color: #dc2626;
-  background: #dc2626;
-  color: #ffffff;
-  box-shadow: 0 10px 22px rgba(220, 38, 38, 0.18);
+  border-color: var(--73-danger);
+  background: var(--73-danger);
+  color: var(--73-surface-strong);
+  box-shadow: 0 10px 22px color-mix(in srgb, var(--73-danger) 18%, transparent);
 }
 
 .modal-wrap .pay-modal .actions .ghost.danger:hover:not(:disabled) {
-  background: #b91c1c;
-  border-color: #b91c1c;
-  box-shadow: 0 12px 26px rgba(220, 38, 38, 0.24);
+  background: var(--73-danger);
+  border-color: var(--73-danger);
+  box-shadow: 0 12px 26px color-mix(in srgb, var(--73-danger) 24%, transparent);
 }
 
 /* 危险操作（弱化）：红色描边 */
 .modal-wrap .pay-modal .actions .ghost.danger-plain {
-  border-color: rgba(220, 38, 38, 0.4);
-  background: rgba(254, 242, 242, 0.92);
-  color: #b91c1c;
+  border-color: color-mix(in srgb, var(--73-danger) 40%, transparent);
+  background: color-mix(in srgb, var(--73-danger-soft) 92%, transparent);
+  color: var(--73-danger);
 }
 
 .modal-wrap .pay-modal .actions .ghost.danger-plain:hover:not(:disabled) {
-  background: rgba(254, 226, 226, 0.96);
-  border-color: rgba(220, 38, 38, 0.6);
+  background: color-mix(in srgb, var(--73-danger-soft) 96%, transparent);
+  border-color: color-mix(in srgb, var(--73-danger) 60%, transparent);
 }

@@ -14,17 +14,17 @@
 .logo-btn {
   font-size: 13px;
   font-weight: 700;
-  color: #f8fafc;
-  border: 1px solid rgba(56, 189, 248, 0.5);
+  color: var(--73-surface-strong);
+  border: 1px solid color-mix(in srgb, var(--73-accent) 50%, transparent);
   padding: 8px 18px;
   border-radius: 999px;
-  background: rgba(14, 165, 233, 0.12);
+  background: color-mix(in srgb, var(--73-accent) 12%, transparent);
   cursor: pointer;
   transition: all 0.2s;
 }
 
 .logo-btn:hover {
-  background: rgba(14, 165, 233, 0.25);
+  background: color-mix(in srgb, var(--73-accent) 25%, transparent);
   box-shadow: 0 0 20px var(--blue-glow);
   transform: translateY(-1px);
 }
@@ -54,7 +54,7 @@
 .nav-links a:hover,
 .nav-links a.active {
   color: var(--text-main);
-  text-shadow: 0 0 10px rgba(255, 255, 255, 0.3);
+  text-shadow: 0 0 10px color-mix(in srgb, var(--73-surface-strong) 30%, transparent);
 }
 
 .nav-links a.active,
@@ -85,7 +85,7 @@
   -webkit-backdrop-filter: blur(10px);
   color: var(--text-main);
   border: 1px solid var(--card-border);
-  background: rgba(255, 255, 255, 0.05);
+  background: color-mix(in srgb, var(--73-surface-strong) 5%, transparent);
   transition:
     transform 180ms ease,
     box-shadow 180ms ease,
@@ -95,8 +95,8 @@
 
 .platform-button:hover {
   transform: translateY(-1px);
-  background: rgba(255, 255, 255, 0.12);
-  border-color: rgba(255, 255, 255, 0.4);
+  background: color-mix(in srgb, var(--73-surface-strong) 12%, transparent);
+  border-color: color-mix(in srgb, var(--73-surface-strong) 40%, transparent);
 }
 
 .platform-button:active {
@@ -105,31 +105,31 @@
 
 .platform-icon {
   font-size: 15px;
-  filter: drop-shadow(0 0 4px rgba(255, 255, 255, 0.3));
+  filter: drop-shadow(0 0 4px color-mix(in srgb, var(--73-surface-strong) 30%, transparent));
 }
 
 .platform-button.is-java {
-  border-color: rgba(255, 209, 102, 0.3);
-  background: rgba(255, 209, 102, 0.08);
-  box-shadow: 0 4px 15px rgba(255, 209, 102, 0.1);
+  border-color: color-mix(in srgb, var(--73-warning) 30%, transparent);
+  background: color-mix(in srgb, var(--73-warning) 8%, transparent);
+  box-shadow: 0 4px 15px color-mix(in srgb, var(--73-warning) 10%, transparent);
 }
 
 .platform-button.is-java:hover {
   border-color: var(--accent);
-  box-shadow: 0 6px 20px rgba(255, 209, 102, 0.25);
-  color: #fff;
+  box-shadow: 0 6px 20px color-mix(in srgb, var(--73-warning) 25%, transparent);
+  color: var(--73-surface-strong);
 }
 
 .platform-button.is-bedrock {
-  border-color: rgba(149, 213, 178, 0.3);
-  background: rgba(149, 213, 178, 0.08);
-  box-shadow: 0 4px 15px rgba(149, 213, 178, 0.1);
+  border-color: color-mix(in srgb, var(--73-success) 30%, transparent);
+  background: color-mix(in srgb, var(--73-success) 8%, transparent);
+  box-shadow: 0 4px 15px color-mix(in srgb, var(--73-success) 10%, transparent);
 }
 
 .platform-button.is-bedrock:hover {
   border-color: var(--success);
-  box-shadow: 0 6px 20px rgba(149, 213, 178, 0.25);
-  color: #fff;
+  box-shadow: 0 6px 20px color-mix(in srgb, var(--73-success) 25%, transparent);
+  color: var(--73-surface-strong);
 }
 
 /* ============================================================
@@ -185,7 +185,7 @@
 }
 
 .catalog-zone-trigger:hover {
-  background: rgba(31, 74, 209, 0.08);
+  background: color-mix(in srgb, var(--73-accent) 8%, transparent);
 }
 
 .catalog-zone-trigger__chevron {
@@ -214,7 +214,7 @@
 
 .catalog-toolbar__row + .catalog-toolbar__row {
   padding-top: 10px;
-  border-top: 1px solid rgba(226, 232, 240, 0.9);
+  border-top: 1px solid color-mix(in srgb, var(--73-border) 90%, transparent);
 }
 
 /* 工具条第一行左段：专区下拉 + 子类页签紧挨在一起，
@@ -242,7 +242,7 @@
   border: 0;
   border-radius: 8px;
   background: transparent;
-  color: #52627a;
+  color: var(--73-ink-muted);
   font: inherit;
   font-size: 13px;
   font-weight: 700;

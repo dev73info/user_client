@@ -6,7 +6,7 @@
 .portal-resource-browser__author-pill,
 .portal-resource-browser__updated,
 .portal-resource-browser__meta {
-  color: #64748b;
+  color: var(--73-ink-muted);
 }
 
 .portal-resource-browser__action,
@@ -28,7 +28,7 @@
 
 /* 悬停只变描边色：不做位移、不加投影 */
 .portal-resource-browser__card:hover {
-  border-color: rgba(31, 74, 209, 0.4);
+  border-color: color-mix(in srgb, var(--73-accent) 40%, transparent);
 }
 
 .portal-resource-browser__card-main {
@@ -47,12 +47,12 @@
   place-items: center;
   border-radius: 18px;
   font-size: 34px;
-  color: #fff;
+  color: var(--73-surface-strong);
 }
 
 .portal-resource-browser__cover--image {
   overflow: hidden;
-  background: rgba(226, 232, 240, 0.72);
+  background: color-mix(in srgb, var(--73-border) 72%, transparent);
 }
 
 .portal-resource-browser__cover-image {
@@ -94,7 +94,7 @@
 
 .portal-resource-browser__headline h3 {
   margin: 0;
-  color: #0f172a;
+  color: var(--73-ink);
 }
 
 .portal-resource-browser__headline-main {

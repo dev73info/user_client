@@ -1,15 +1,15 @@
 .portal-home {
-  --portal-panel: rgba(255, 255, 255, 0.96);
-  --portal-panel-strong: #ffffff;
-  --portal-border: rgba(203, 213, 225, 0.72);
-  --portal-shadow: 0 14px 34px rgba(71, 85, 105, 0.08);
-  --portal-shadow-hover: 0 20px 44px rgba(71, 85, 105, 0.13);
-  --portal-muted: #64748b;
-  --portal-ink: #0f172a;
+  --portal-panel: color-mix(in srgb, var(--73-surface-strong) 96%, transparent);
+  --portal-panel-strong: var(--73-surface-strong);
+  --portal-border: color-mix(in srgb, var(--73-ink-disabled) 72%, transparent);
+  --portal-shadow: 0 14px 34px color-mix(in srgb, var(--73-ink-soft) 8%, transparent);
+  --portal-shadow-hover: 0 20px 44px color-mix(in srgb, var(--73-ink-soft) 13%, transparent);
+  --portal-muted: var(--73-ink-muted);
+  --portal-ink: var(--73-ink);
   min-height: 100vh;
   padding: 0 0 40px;
-  background: #f6f8fb;
-  color: #1e293b;
+  background: var(--73-surface-strong);
+  color: var(--73-ink);
 }
 
 .portal-home *,
@@ -73,7 +73,7 @@
 .portal-inline-action:focus-visible,
 .portal-primary-action:focus-visible,
 .portal-secondary-action:focus-visible {
-  outline: 3px solid rgba(37, 99, 235, 0.2);
+  outline: 3px solid color-mix(in srgb, var(--73-accent) 20%, transparent);
   outline-offset: 3px;
 }
 
@@ -82,26 +82,26 @@
   min-height: 42px;
   padding: 10px 22px;
   border-radius: 6px;
-  background: linear-gradient(135deg, #1d72ff, #5138f5);
-  color: #fff;
+  background: linear-gradient(135deg, var(--73-accent), var(--73-accent));
+  color: var(--73-surface-strong);
   font-weight: 700;
-  box-shadow: 0 10px 20px rgba(37, 99, 235, 0.24);
+  box-shadow: 0 10px 20px color-mix(in srgb, var(--73-accent) 24%, transparent);
   transition:
     box-shadow 140ms ease,
     transform 140ms ease;
 }
 
 .portal-primary-action:hover {
-  box-shadow: 0 12px 24px rgba(37, 99, 235, 0.3);
+  box-shadow: 0 12px 24px color-mix(in srgb, var(--73-accent) 30%, transparent);
   transform: translateY(-1px);
 }
 
 .portal-publish-action {
-  background: #2563eb;
+  background: var(--73-accent);
 }
 
 .portal-publish-action:hover {
-  background: #1d4ed8;
+  background: var(--73-accent);
 }
 
 .portal-hero {
@@ -123,7 +123,13 @@
   padding: 34px 22px 30px;
   background:
     url('/icons/hero_r.png') center / cover no-repeat,
-    linear-gradient(100deg, #ffffff 0%, #fbfdff 38%, #f3f6fe 68%, #ecf7fc 100%);
+    linear-gradient(
+      100deg,
+      var(--73-surface-strong) 0%,
+      var(--73-accent-soft) 38%,
+      var(--73-accent-soft) 68%,
+      var(--73-accent-soft) 100%
+    );
   background-position:
     center calc(50% + 8px),
     0 0;
@@ -141,7 +147,7 @@
 .portal-hero__copy h1 {
   margin: 0;
   max-width: none;
-  color: #050816;
+  color: var(--73-accent);
   font-size: 40px;
   font-weight: 900;
   line-height: 1.16;
@@ -150,7 +156,7 @@
 }
 
 .portal-title-accent {
-  color: #2563eb;
+  color: var(--73-accent);
 }
 
 .portal-signal-list,
@@ -172,7 +178,7 @@
   padding: 0;
   border-radius: 999px;
   background: transparent;
-  color: #64748b;
+  color: var(--73-ink-muted);
   font-size: 12px;
   font-weight: 700;
   box-shadow: none;
@@ -185,8 +191,8 @@
   height: 14px;
   place-items: center;
   border-radius: 50%;
-  background: #2563eb;
-  color: #fff;
+  background: var(--73-accent);
+  color: var(--73-surface-strong);
   font-size: 9px;
   font-weight: 900;
   line-height: 1;
@@ -197,11 +203,11 @@
   min-height: 42px;
   padding: 9px 21px;
   border-radius: 6px;
-  background: #ffffff;
-  color: #2563eb;
+  background: var(--73-surface-strong);
+  color: var(--73-accent);
   font-weight: 700;
-  border: 1px solid #dbe4f0;
-  box-shadow: 0 8px 18px rgba(15, 23, 42, 0.05);
+  border: 1px solid var(--73-accent-soft);
+  box-shadow: 0 8px 18px color-mix(in srgb, var(--73-ink) 5%, transparent);
   transition:
     background 140ms ease,
     border-color 140ms ease,
@@ -209,8 +215,8 @@
 }
 
 .portal-secondary-action:hover {
-  background: #ffffff;
-  border-color: #bfdbfe;
+  background: var(--73-surface-strong);
+  border-color: var(--73-accent-soft);
   transform: translateY(-1px);
 }
 

@@ -4,7 +4,7 @@
 .mobile-resource-page {
   width: 100%;
   margin: 0 auto;
-  background: #f8fafc;
+  background: var(--73-surface-strong);
   padding: 0 0 0px;
 }
 
@@ -18,7 +18,7 @@
   position: fixed;
   inset: 0;
   z-index: 70;
-  background: rgba(15, 23, 42, 0.36);
+  background: color-mix(in srgb, var(--73-ink) 36%, transparent);
   backdrop-filter: blur(2px);
   animation: mobile-resource-backdrop-in 220ms ease;
 }
@@ -41,8 +41,8 @@
   flex-wrap: wrap;
   gap: 8px;
   padding: 10px 12px;
-  background: rgba(255, 255, 255, 0.96);
-  border-bottom: 1px solid #e5e7eb;
+  background: color-mix(in srgb, var(--73-surface-strong) 96%, transparent);
+  border-bottom: 1px solid var(--73-border);
 }
 
 .mobile-filter-bar button {
@@ -51,15 +51,15 @@
   border: 0;
   border-radius: 999px;
   padding: 10px 14px;
-  background: #eef2ff;
-  color: #1d4ed8;
+  background: var(--73-accent-soft);
+  color: var(--73-accent);
   font-size: 14px;
   font-weight: 700;
 }
 
 .mobile-filter-bar button.active {
-  color: #fff;
-  background: linear-gradient(135deg, #2563eb, #4f8cff);
+  color: var(--73-surface-strong);
+  background: linear-gradient(135deg, var(--73-accent), var(--73-accent));
 }
 
 .mobile-card-list {
@@ -72,8 +72,8 @@
   border: 0;
   border-radius: 10px;
   padding: 11px 0;
-  background: #2563eb;
-  color: #fff;
+  background: var(--73-accent);
+  color: var(--73-surface-strong);
   font-size: 15px;
   font-weight: 700;
 }

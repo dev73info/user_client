@@ -109,12 +109,12 @@ const emit = defineEmits<{
 
 <style scoped>
 .conversation-modal__header {
-  border-bottom: 1px solid rgba(226, 232, 240, 0.9);
+  border-bottom: 1px solid color-mix(in srgb, var(--73-border) 90%, transparent);
 }
 
 .conversation-modal__header h3 {
   margin: 0;
-  color: #0f172a;
+  color: var(--73-ink);
   /* 标题字号只此一处：原来基础是 20px、内嵌形态覆写成 18px、身份块又覆写成 16px，
      同一颗标题在两种形态下三种大小，后两条还互相盖。两种形态一律 18px，
      触屏档再小一档（见 .conversation-modal__identity h3 的媒体查询）。 */
@@ -123,7 +123,7 @@ const emit = defineEmits<{
 
 /* 副信息的颜色；间距、字号与截断在 .conversation-modal__identity 那两处（两种形态一致） */
 .conversation-modal__header p {
-  color: #64748b;
+  color: var(--73-ink-muted);
 }
 
 /* 副信息一行：对方 · 实时状态 · 最近动静。段间用一个间隔点分开，不给每段套胶囊——
@@ -141,7 +141,7 @@ const emit = defineEmits<{
 .conversation-modal__identity-meta > .conversation-modal__live::after {
   content: '·';
   margin-left: 6px;
-  color: #cbd5e1;
+  color: var(--73-ink-disabled);
 }
 
 /* 一方名过长时自己省略，不要顶破标题栏 */
@@ -163,20 +163,20 @@ const emit = defineEmits<{
   width: 6px;
   height: 6px;
   border-radius: 999px;
-  background: #94a3b8;
+  background: var(--73-ink-placeholder);
   flex: 0 0 auto;
 }
 
 .conversation-modal__live--connected::before {
-  background: #16a34a;
+  background: var(--73-success);
 }
 
 .conversation-modal__live--connecting::before {
-  background: #2563eb;
+  background: var(--73-accent);
 }
 
 .conversation-modal__live--error::before {
-  background: #d97706;
+  background: var(--73-warning);
 }
 
 .conversation-modal__header-actions {
@@ -208,7 +208,7 @@ const emit = defineEmits<{
 .conversation-modal__identity h3 {
   margin: 0;
   overflow: hidden;
-  color: #0f172a;
+  color: var(--73-ink);
   line-height: 1.35;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -220,7 +220,7 @@ const emit = defineEmits<{
 .conversation-modal__identity p {
   margin: 4px 0 0;
   overflow: hidden;
-  color: #64748b;
+  color: var(--73-ink-muted);
   font-size: 12px;
   line-height: 1.35;
   text-overflow: ellipsis;
@@ -253,13 +253,13 @@ const emit = defineEmits<{
   height: 36px;
   border-radius: 999px;
   background: transparent;
-  color: #475569;
+  color: var(--73-ink-soft);
   font-size: 18px;
 }
 
 .conversation-modal__icon-btn:hover:not(:disabled) {
-  background: #eef6ff;
-  color: #1d4ed8;
+  background: var(--73-accent-soft);
+  color: var(--73-accent);
 }
 
 .conversation-modal__icon-btn:disabled {
@@ -297,8 +297,8 @@ const emit = defineEmits<{
 }
 
 .conversation-modal__header {
-  border-bottom-color: rgba(216, 228, 244, 0.95);
-  background: rgba(255, 255, 255, 0.96);
+  border-bottom-color: color-mix(in srgb, var(--73-accent-soft) 95%, transparent);
+  background: color-mix(in srgb, var(--73-surface-strong) 96%, transparent);
   justify-content: space-between;
   flex: 0 0 auto;
   display: grid;
@@ -312,8 +312,8 @@ const emit = defineEmits<{
 /* 副信息的配色见 .conversation-modal__identity-meta：一行灰字 + 彩色小圆点，不再铺胶囊底 */
 
 .conversation-modal__header-actions .conversation-modal__icon-btn.is-active {
-  border-color: rgba(79, 140, 255, 0.9);
-  color: #1f4ad1;
+  border-color: color-mix(in srgb, var(--73-accent) 90%, transparent);
+  color: var(--73-accent);
 }
 </style>
 

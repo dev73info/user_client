@@ -257,11 +257,11 @@ async function handleDeliverySubmitted() {
 
 <style scoped>
 /* 本页色板：卡片上破坏性状态那支红（`signing-status-badge--danger`）原先写的是
-   `var(--dev-danger, #dc2626)`——而 `--dev-danger` 从来没定义过，真正生效的一直是兜底值。
+   `var(--dev-danger, var(--73-danger))`——而 `--dev-danger` 从来没定义过，真正生效的一直是兜底值。
    拆卡片时把这一支红提到页面根上（取值一字未改），新组件只写 `var(--dmr-danger)`，
    新文件因此零裸色值。（记账：本页裸色值 2 处 → 1 处，见 frontend-baseline.json 的 raw-color 条目。） */
 .dev-page--my-requirements {
-  --dmr-danger: #dc2626;
+  --dmr-danger: var(--73-danger);
 }
 
 /* 发票上传的原生 file input：行上「上传发票」共用这一个（`useInvoiceUpload` 的 ref 挂在本页），

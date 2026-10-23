@@ -134,21 +134,21 @@ const { votingId, respondingTransferId, vote, respondTransfer, cancelTransfer } 
 /* 类别色与中性色都在这里下发：根元素定义 --nc-*，各构件只引用变量、不写色值。
    变量值与原页面逐条一致（含 color-mix 的合成基色），换名不改色。 */
 .notifications-page {
-  --nc-accent-default: #64748b;
-  --nc-accent-comment-warning: #d97706;
-  --nc-accent-history-disclosure: #1f4ad1;
-  --nc-accent-resource-transfer: #0f766e;
-  --nc-accent-after-sales: #dc2626;
-  --nc-accent-announcement: #7c3aed;
-  --nc-surface: #ffffff;
-  --nc-text-sub: var(--profile-text-sub, #64748b);
-  --nc-text-muted: var(--profile-text-sub, #94a3b8);
-  --nc-pending-border: rgba(217, 119, 6, 0.2);
-  --nc-pending-bg: rgba(217, 119, 6, 0.09);
-  --nc-pending-text: #b45309;
-  --nc-empty-icon-bg: rgba(148, 163, 184, 0.12);
-  --nc-empty-icon-text: #94a3b8;
-  --nc-warning-text: var(--profile-warning-text, #92400e);
+  --nc-accent-default: var(--73-ink-muted);
+  --nc-accent-comment-warning: var(--73-warning);
+  --nc-accent-history-disclosure: var(--73-accent);
+  --nc-accent-resource-transfer: var(--73-success);
+  --nc-accent-after-sales: var(--73-danger);
+  --nc-accent-announcement: var(--73-accent);
+  --nc-surface: var(--73-surface-strong);
+  --nc-text-sub: var(--profile-text-sub, var(--73-ink-muted));
+  --nc-text-muted: var(--profile-text-sub, var(--73-ink-placeholder));
+  --nc-pending-border: color-mix(in srgb, var(--73-warning) 20%, transparent);
+  --nc-pending-bg: color-mix(in srgb, var(--73-warning) 9%, transparent);
+  --nc-pending-text: var(--73-warning);
+  --nc-empty-icon-bg: color-mix(in srgb, var(--73-ink-placeholder) 12%, transparent);
+  --nc-empty-icon-text: var(--73-ink-placeholder);
+  --nc-warning-text: var(--profile-warning-text, var(--73-warning-text));
 
   align-content: start;
 }

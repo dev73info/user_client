@@ -67,19 +67,19 @@ const hiddenDevelopers = computed(() =>
   max-width: 880px;
   margin: 0 auto 14px;
   padding: 12px 14px;
-  border: 1px dashed rgba(180, 143, 60, 0.42);
+  border: 1px dashed color-mix(in srgb, var(--73-warning) 42%, transparent);
   border-radius: 12px;
-  background: rgba(255, 252, 244, 0.94);
+  background: color-mix(in srgb, var(--73-warning-soft) 94%, transparent);
 }
 
 .conversation-history-notice strong {
-  color: #92400e;
+  color: var(--73-warning-text);
   font-size: 13px;
 }
 
 .conversation-history-notice p {
   margin: 0;
-  color: #78594a;
+  color: var(--73-ink-soft);
   font-size: 12.5px;
   line-height: 1.6;
 }
@@ -97,12 +97,12 @@ const hiddenDevelopers = computed(() =>
   flex-wrap: wrap;
   align-items: baseline;
   gap: 8px;
-  color: #475569;
+  color: var(--73-ink-soft);
   font-size: 12px;
 }
 
 .conversation-history-notice__segments small {
-  color: #94a3b8;
+  color: var(--73-ink-placeholder);
   font-size: 11.5px;
 }
 
@@ -110,8 +110,8 @@ const hiddenDevelopers = computed(() =>
   margin-left: auto;
   padding: 2px 8px;
   border-radius: 999px;
-  background: rgba(245, 158, 11, 0.16);
-  color: #92400e;
+  background: color-mix(in srgb, var(--73-warning) 16%, transparent);
+  color: var(--73-warning-text);
   font-size: 11px;
   font-style: normal;
   font-weight: 800;
@@ -123,8 +123,8 @@ const hiddenDevelopers = computed(() =>
   padding: 0 16px;
   border: 0;
   border-radius: 10px;
-  background: #2d76ec;
-  color: #ffffff;
+  background: var(--73-accent);
+  color: var(--73-surface-strong);
   font: inherit;
   font-size: 13px;
   font-weight: 800;
@@ -137,7 +137,7 @@ const hiddenDevelopers = computed(() =>
 }
 
 .conversation-history-notice__tip {
-  color: #64748b;
+  color: var(--73-ink-muted);
 }
 
 @media (max-width: 640px) {

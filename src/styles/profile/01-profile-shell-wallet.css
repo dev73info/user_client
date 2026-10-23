@@ -1,22 +1,22 @@
 /* === 个人中心：钱包、需求单、优惠券 === */
 
 .profile-page {
-  --profile-card-bg: rgba(255, 255, 255, 0.96);
-  --profile-card-bg-strong: #ffffff;
-  --profile-card-border: rgba(224, 232, 255, 0.96);
-  --profile-card-shadow: 0 14px 34px rgba(76, 103, 172, 0.08);
-  --profile-text-main: #0f172a;
-  --profile-text-sub: #64748b;
-  --profile-text-soft: #8a94a6;
-  --profile-accent: #4f8cff;
-  --profile-accent-soft: rgba(79, 140, 255, 0.12);
-  --profile-success-soft: rgba(34, 197, 94, 0.12);
-  --profile-success-border: rgba(134, 239, 172, 0.9);
-  --profile-success-text: #166534;
-  --profile-warning-soft: rgba(245, 158, 11, 0.14);
-  --profile-warning-text: #92400e;
-  --profile-danger-soft: rgba(239, 68, 68, 0.12);
-  --profile-danger-text: #b42318;
+  --profile-card-bg: color-mix(in srgb, var(--73-surface-strong) 96%, transparent);
+  --profile-card-bg-strong: var(--73-surface-strong);
+  --profile-card-border: color-mix(in srgb, var(--73-accent-soft) 96%, transparent);
+  --profile-card-shadow: 0 14px 34px color-mix(in srgb, var(--73-accent) 8%, transparent);
+  --profile-text-main: var(--73-ink);
+  --profile-text-sub: var(--73-ink-muted);
+  --profile-text-soft: var(--73-ink-placeholder);
+  --profile-accent: var(--73-accent);
+  --profile-accent-soft: color-mix(in srgb, var(--73-accent) 12%, transparent);
+  --profile-success-soft: color-mix(in srgb, var(--73-success) 12%, transparent);
+  --profile-success-border: color-mix(in srgb, var(--73-success) 90%, transparent);
+  --profile-success-text: var(--73-success);
+  --profile-warning-soft: color-mix(in srgb, var(--73-warning) 14%, transparent);
+  --profile-warning-text: var(--73-warning-text);
+  --profile-danger-soft: color-mix(in srgb, var(--73-danger) 12%, transparent);
+  --profile-danger-text: var(--73-danger);
 }
 
 .profile-update-row {
@@ -37,7 +37,7 @@
   padding: 12px 14px;
   background: var(--profile-card-bg-strong);
   color: var(--profile-text-main);
-  box-shadow: inset 0 1px 2px rgba(15, 23, 42, 0.03);
+  box-shadow: inset 0 1px 2px color-mix(in srgb, var(--73-ink) 3%, transparent);
 }
 
 .profile-update-row input:disabled {
@@ -85,10 +85,10 @@
 .wallet-section {
   margin-top: 0;
   padding: 24px;
-  border: 1px solid var(--wb-line, rgba(203, 213, 225, 0.66));
+  border: 1px solid var(--wb-line, color-mix(in srgb, var(--73-ink-disabled) 66%, transparent));
   border-radius: var(--wb-radius-card, 24px);
   background: var(--profile-card-bg);
-  box-shadow: var(--wb-shadow, 0 20px 44px rgba(71, 85, 105, 0.1));
+  box-shadow: var(--wb-shadow, 0 20px 44px color-mix(in srgb, var(--73-ink-soft) 10%, transparent));
 }
 
 .wallet-header {

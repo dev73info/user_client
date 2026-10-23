@@ -7,15 +7,15 @@
   margin: 0 0 16px;
   padding: 10px 12px;
   border-radius: 10px;
-  background: var(--73-warning-soft, rgba(217, 119, 6, 0.12));
-  color: var(--73-warning, #b9812b);
+  background: var(--73-warning-soft, color-mix(in srgb, var(--73-warning) 12%, transparent));
+  color: var(--73-warning, var(--73-warning));
   font-size: 12px;
   line-height: 1.6;
 }
 
 .sold-purchases__refund-error {
   margin: 0 auto 0 0;
-  color: var(--73-danger, #b42318);
+  color: var(--73-danger, var(--73-danger));
   font-size: 12px;
   text-align: left;
 }
@@ -32,7 +32,7 @@
 
 .sold-purchases__confirm-list dt {
   flex: 0 0 72px;
-  color: var(--dev-ink-muted, #64748b);
+  color: var(--dev-ink-muted, var(--73-ink-muted));
   font-size: 12px;
 }
 

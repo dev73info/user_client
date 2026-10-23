@@ -40,13 +40,13 @@ const emit = defineEmits<{
   display: grid;
   gap: 8px;
   padding: 10px 14px;
-  border-top: 1px solid rgba(216, 228, 244, 0.95);
-  background: #fffaf0;
+  border-top: 1px solid color-mix(in srgb, var(--73-accent-soft) 95%, transparent);
+  background: var(--73-warning-soft);
 }
 
 .conversation-history-vote p {
   margin: 0;
-  color: #78594a;
+  color: var(--73-ink-soft);
   font-size: 12.5px;
   line-height: 1.6;
 }
@@ -60,10 +60,10 @@ const emit = defineEmits<{
 .conversation-history-vote__actions button {
   min-height: 40px;
   padding: 0 16px;
-  border: 1px solid rgba(203, 213, 225, 0.95);
+  border: 1px solid color-mix(in srgb, var(--73-ink-disabled) 95%, transparent);
   border-radius: 10px;
-  background: #ffffff;
-  color: #0f172a;
+  background: var(--73-surface-strong);
+  color: var(--73-ink);
   font: inherit;
   font-size: 13px;
   font-weight: 800;
@@ -71,9 +71,9 @@ const emit = defineEmits<{
 }
 
 .conversation-history-vote__actions button:first-child {
-  border-color: #2d76ec;
-  background: #2d76ec;
-  color: #ffffff;
+  border-color: var(--73-accent);
+  background: var(--73-accent);
+  color: var(--73-surface-strong);
 }
 
 .conversation-history-vote__actions button:disabled {

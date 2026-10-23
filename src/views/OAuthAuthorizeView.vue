@@ -199,9 +199,9 @@ onMounted(() => {
   gap: 18px;
   padding: 26px;
   border-radius: 24px;
-  border: 1px solid rgba(198, 210, 236, 0.72);
-  background: rgba(255, 255, 255, 0.96);
-  box-shadow: 0 18px 42px rgba(76, 103, 172, 0.12);
+  border: 1px solid color-mix(in srgb, var(--73-accent) 72%, transparent);
+  background: color-mix(in srgb, var(--73-surface-strong) 96%, transparent);
+  box-shadow: 0 18px 42px color-mix(in srgb, var(--73-accent) 12%, transparent);
 }
 
 .oauth-card__head {
@@ -215,28 +215,28 @@ onMounted(() => {
   margin: 0;
   font-size: 22px;
   font-weight: 800;
-  color: #0f172a;
+  color: var(--73-ink);
 }
 
 .oauth-card__resource {
   padding: 4px 10px;
   border-radius: 999px;
-  background: rgba(219, 234, 254, 0.92);
-  color: #1d4ed8;
+  background: color-mix(in srgb, var(--73-accent-soft) 92%, transparent);
+  color: var(--73-accent);
   font-size: 12px;
   font-weight: 700;
 }
 
 .oauth-card__lead {
   margin: 0;
-  color: #334155;
+  color: var(--73-ink-soft);
   font-size: 14px;
   line-height: 1.7;
 }
 
 .oauth-card__status {
   margin: 0;
-  color: #475569;
+  color: var(--73-ink-soft);
   font-size: 13px;
   line-height: 1.6;
 }
@@ -245,22 +245,22 @@ onMounted(() => {
   margin: 0;
   padding: 12px 14px;
   border-radius: 14px;
-  background: rgba(241, 245, 249, 0.9);
-  color: #475569;
+  background: color-mix(in srgb, var(--73-surface-strong) 90%, transparent);
+  color: var(--73-ink-soft);
   font-size: 13px;
   line-height: 1.7;
 }
 
 .oauth-card__hint--warn {
-  background: rgba(254, 242, 242, 0.9);
-  color: #b91c1c;
+  background: color-mix(in srgb, var(--73-danger-soft) 90%, transparent);
+  color: var(--73-danger);
 }
 
 .oauth-card__error {
   display: grid;
   gap: 14px;
   justify-items: start;
-  color: #b91c1c;
+  color: var(--73-danger);
   font-size: 13px;
 }
 
@@ -278,12 +278,12 @@ onMounted(() => {
 }
 
 .oauth-summary__row dt {
-  color: #64748b;
+  color: var(--73-ink-muted);
 }
 
 .oauth-summary__row dd {
   margin: 0;
-  color: #0f172a;
+  color: var(--73-ink);
   font-weight: 600;
   text-align: right;
   word-break: break-all;

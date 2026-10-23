@@ -8,7 +8,7 @@
   justify-items: center;
   gap: 6px;
   min-width: 0;
-  color: #334155;
+  color: var(--73-ink-soft);
   font-size: 12px;
   font-weight: 700;
   text-decoration: none;
@@ -28,9 +28,9 @@
   width: 44px;
   height: 44px;
   border-radius: 14px;
-  background: #ffffff;
-  color: #2563eb;
-  box-shadow: 0 4px 10px rgba(76, 103, 172, 0.08);
+  background: var(--73-surface-strong);
+  color: var(--73-accent);
+  box-shadow: 0 4px 10px color-mix(in srgb, var(--73-accent) 8%, transparent);
 }
 
 @media (max-width: 640px) {
@@ -40,6 +40,6 @@
     gap: 14px 8px;
     padding: 14px 4px;
     border-radius: 12px;
-    background: #f6f9ff;
+    background: var(--73-accent-soft);
   }
 }

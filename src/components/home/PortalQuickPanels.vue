@@ -49,7 +49,7 @@ const emit = defineEmits<{ (e: 'open', panel: PortalQuickPanel): void }>()
                 dx="0"
                 dy="9"
                 stdDeviation="7"
-                flood-color="#ef4444"
+                flood-color="var(--73-danger)"
                 flood-opacity="0.22"
               />
             </filter>
@@ -76,7 +76,7 @@ const emit = defineEmits<{ (e: 'open', panel: PortalQuickPanel): void }>()
                 dx="0"
                 dy="9"
                 stdDeviation="7"
-                flood-color="#f97316"
+                flood-color="var(--73-warning)"
                 flood-opacity="0.2"
               />
             </filter>

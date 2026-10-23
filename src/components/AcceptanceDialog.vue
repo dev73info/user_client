@@ -112,13 +112,21 @@ async function submit() {
         <p class="pay-line"><strong>需求编号：</strong>{{ requirementId }}</p>
 
         <div class="acceptance-modal__choice" role="group" aria-label="验收结论">
-          <button class="acceptance-modal__choice-btn" :class="{ 'is-active': result === 'passed' }" type="button"
-            @click="result = 'passed'">
+          <button
+            class="acceptance-modal__choice-btn"
+            :class="{ 'is-active': result === 'passed' }"
+            type="button"
+            @click="result = 'passed'"
+          >
             验收通过
             <small>推进到待付尾款，随后可继续支付尾款</small>
           </button>
-          <button class="acceptance-modal__choice-btn" :class="{ 'is-active': result === 'rejected' }" type="button"
-            @click="result = 'rejected'">
+          <button
+            class="acceptance-modal__choice-btn"
+            :class="{ 'is-active': result === 'rejected' }"
+            type="button"
+            @click="result = 'rejected'"
+          >
             验收不通过
             <small>只留档并通知开发者整改，需求留在开发中</small>
           </button>
@@ -126,10 +134,16 @@ async function submit() {
 
         <label class="pay-line acceptance-modal__field">
           <strong>验收说明</strong>
-          <textarea v-model="note" rows="4" maxlength="1000"
-            :placeholder="result === 'rejected'
-              ? '请写明需要整改的问题，开发者会收到整改通知'
-              : '可选：记录本次验收的范围与结论'"></textarea>
+          <textarea
+            v-model="note"
+            rows="4"
+            maxlength="1000"
+            :placeholder="
+              result === 'rejected'
+                ? '请写明需要整改的问题，开发者会收到整改通知'
+                : '可选：记录本次验收的范围与结论'
+            "
+          ></textarea>
         </label>
 
         <p class="tip">
@@ -203,10 +217,10 @@ async function submit() {
   gap: 4px;
   min-height: 64px;
   padding: 12px 14px;
-  border: 1px solid rgba(209, 220, 243, 0.95);
+  border: 1px solid color-mix(in srgb, var(--73-accent-soft) 95%, transparent);
   border-radius: 14px;
-  background: #ffffff;
-  color: #334155;
+  background: var(--73-surface-strong);
+  color: var(--73-ink-soft);
   font-size: 14px;
   font-weight: 800;
   text-align: left;
@@ -218,17 +232,17 @@ async function submit() {
 }
 
 .pay-modal .acceptance-modal__choice-btn small {
-  color: #64748b;
+  color: var(--73-ink-muted);
   font-size: 12px;
   font-weight: 600;
   line-height: 1.5;
 }
 
 .pay-modal .acceptance-modal__choice-btn.is-active {
-  border-color: rgba(37, 99, 235, 0.62);
-  background: rgba(239, 246, 255, 0.96);
-  color: #1d4ed8;
-  box-shadow: 0 8px 18px rgba(37, 99, 235, 0.1);
+  border-color: color-mix(in srgb, var(--73-accent) 62%, transparent);
+  background: color-mix(in srgb, var(--73-accent-soft) 96%, transparent);
+  color: var(--73-accent);
+  box-shadow: 0 8px 18px color-mix(in srgb, var(--73-accent) 10%, transparent);
 }
 
 .pay-modal .acceptance-modal__field {
@@ -239,7 +253,7 @@ async function submit() {
 }
 
 .pay-modal .acceptance-modal__field > strong {
-  color: #64748b;
+  color: var(--73-ink-muted);
   font-size: 13px;
   font-weight: 700;
 }
@@ -248,9 +262,9 @@ async function submit() {
 .pay-modal .acceptance-modal__history {
   margin-top: 16px;
   padding: 12px 14px;
-  border: 1px solid rgba(226, 232, 240, 0.95);
+  border: 1px solid color-mix(in srgb, var(--73-border) 95%, transparent);
   border-radius: 14px;
-  background: rgba(248, 250, 252, 0.72);
+  background: color-mix(in srgb, var(--73-surface-strong) 72%, transparent);
 }
 
 .pay-modal .acceptance-modal__history-head {
@@ -258,21 +272,21 @@ async function submit() {
   align-items: center;
   justify-content: space-between;
   gap: 10px;
-  color: #0f172a;
+  color: var(--73-ink);
   font-size: 13px;
   font-weight: 800;
 }
 
 .pay-modal .acceptance-modal__history-head span,
 .pay-modal .acceptance-modal__history-head time {
-  color: #64748b;
+  color: var(--73-ink-muted);
   font-size: 12px;
   font-weight: 600;
 }
 
 .pay-modal .acceptance-modal__empty {
   margin: 10px 0 0;
-  color: #64748b;
+  color: var(--73-ink-muted);
   font-size: 13px;
 }
 
@@ -290,9 +304,9 @@ async function submit() {
   display: grid;
   gap: 4px;
   padding: 10px 12px;
-  border: 1px solid rgba(226, 232, 240, 0.95);
+  border: 1px solid color-mix(in srgb, var(--73-border) 95%, transparent);
   border-radius: 12px;
-  background: #ffffff;
+  background: var(--73-surface-strong);
 }
 
 .pay-modal .acceptance-modal__record-head {
@@ -304,29 +318,29 @@ async function submit() {
 
 .pay-modal .acceptance-modal__records p {
   margin: 0;
-  color: #334155;
+  color: var(--73-ink-soft);
   font-size: 13px;
   line-height: 1.6;
   overflow-wrap: anywhere;
 }
 
 .pay-modal .acceptance-modal__record-version {
-  color: #475569;
+  color: var(--73-ink-soft);
   font-size: 12px;
   font-weight: 600;
 }
 
 .pay-modal .acceptance-modal__records small {
-  color: #94a3b8;
+  color: var(--73-ink-placeholder);
   font-size: 12px;
 }
 
 .pay-modal .acceptance-modal__record-head strong.is-passed {
-  color: #15803d;
+  color: var(--73-success);
 }
 
 .pay-modal .acceptance-modal__record-head strong.is-rejected {
-  color: #b91c1c;
+  color: var(--73-danger);
 }
 
 @media (max-width: 640px) {

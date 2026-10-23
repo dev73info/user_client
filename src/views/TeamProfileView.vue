@@ -134,10 +134,14 @@ function onAvatarError() {
   align-items: center;
   gap: 20px;
   padding: 28px 32px;
-  border: 1px solid rgba(226, 232, 240, 0.96);
+  border: 1px solid color-mix(in srgb, var(--73-border) 96%, transparent);
   border-radius: 16px;
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.98), rgba(248, 250, 252, 0.94));
-  box-shadow: 0 4px 16px rgba(15, 23, 42, 0.04);
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--73-surface-strong) 98%, transparent),
+    color-mix(in srgb, var(--73-surface-strong) 94%, transparent)
+  );
+  box-shadow: 0 4px 16px color-mix(in srgb, var(--73-ink) 4%, transparent);
 }
 
 .team-profile__avatar-wrap {
@@ -151,7 +155,7 @@ function onAvatarError() {
   height: 72px;
   border-radius: 50%;
   object-fit: cover;
-  border: 2px solid rgba(96, 165, 250, 0.4);
+  border: 2px solid color-mix(in srgb, var(--73-accent) 40%, transparent);
   display: block;
 }
 
@@ -159,8 +163,8 @@ function onAvatarError() {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(135deg, #7c3aed, #6366f1);
-  color: #fff;
+  background: linear-gradient(135deg, var(--73-accent), var(--73-accent));
+  color: var(--73-surface-strong);
   font-size: 28px;
   font-weight: 700;
 }
@@ -173,12 +177,12 @@ function onAvatarError() {
   margin: 0 0 4px;
   font-size: 28px;
   font-weight: 700;
-  color: #0f172a;
+  color: var(--73-ink);
 }
 
 .team-profile__desc {
   margin: 0 0 6px;
-  color: #475569;
+  color: var(--73-ink-soft);
   font-size: 14px;
   line-height: 1.5;
 }
@@ -189,7 +193,7 @@ function onAvatarError() {
   flex-wrap: wrap;
   gap: 12px;
   font-size: 13px;
-  color: #94a3b8;
+  color: var(--73-ink-placeholder);
 }
 
 .team-profile__stats {
@@ -200,9 +204,9 @@ function onAvatarError() {
 
 .team-profile__stat {
   padding: 20px 16px;
-  border: 1px solid rgba(226, 232, 240, 0.96);
+  border: 1px solid color-mix(in srgb, var(--73-border) 96%, transparent);
   border-radius: 12px;
-  background: rgba(255, 255, 255, 0.92);
+  background: color-mix(in srgb, var(--73-surface-strong) 92%, transparent);
   text-align: center;
   display: grid;
   gap: 4px;
@@ -211,27 +215,27 @@ function onAvatarError() {
 .team-profile__stat strong {
   font-size: 28px;
   font-weight: 700;
-  color: #0f172a;
+  color: var(--73-ink);
 }
 
 .team-profile__stat span {
   font-size: 13px;
-  color: #64748b;
+  color: var(--73-ink-muted);
 }
 
 .team-profile__section-title {
   margin: 0 0 14px;
   font-size: 18px;
   font-weight: 700;
-  color: #0f172a;
+  color: var(--73-ink);
 }
 
 .team-profile__empty {
   padding: 48px 16px;
-  border: 1px dashed rgba(148, 163, 184, 0.36);
+  border: 1px dashed color-mix(in srgb, var(--73-ink-placeholder) 36%, transparent);
   border-radius: 12px;
   text-align: center;
-  color: #94a3b8;
+  color: var(--73-ink-placeholder);
   font-size: 14px;
 }
 

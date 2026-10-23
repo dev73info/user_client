@@ -9,6 +9,6 @@
 .resource-detail-page__summary-card,
 .resource-detail-page__content-card {
   border-radius: 24px;
-  border: 1px solid rgba(198, 210, 236, 0.72);
-  background: rgba(248, 250, 252, 0.92);
+  border: 1px solid color-mix(in srgb, var(--73-accent) 72%, transparent);
+  background: color-mix(in srgb, var(--73-surface-strong) 92%, transparent);
 }

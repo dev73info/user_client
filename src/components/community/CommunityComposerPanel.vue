@@ -169,7 +169,7 @@ function forwardNotify(message: string, type?: 'success' | 'warning' | 'error') 
 /* 原来吃的是视图里 `.community-panel h3` 那条（margin 0 + 深墨色） */
 .community-composer h3 {
   margin: 0;
-  color: #0f172a;
+  color: var(--73-ink);
 }
 
 .community-form {
@@ -221,10 +221,10 @@ function forwardNotify(message: string, type?: 'success' | 'warning' | 'error') 
   z-index: 46;
   margin: 0;
   padding: 10px 12px;
-  border: 1px solid rgba(191, 219, 254, 0.92);
+  border: 1px solid color-mix(in srgb, var(--73-accent-soft) 92%, transparent);
   border-radius: 14px;
-  background: rgba(248, 250, 252, 0.94);
-  box-shadow: 0 16px 34px rgba(15, 23, 42, 0.14);
+  background: color-mix(in srgb, var(--73-surface-strong) 94%, transparent);
+  box-shadow: 0 16px 34px color-mix(in srgb, var(--73-ink) 14%, transparent);
   backdrop-filter: blur(14px);
 }
 

@@ -8,10 +8,10 @@
   align-items: center;
   gap: 6px;
   padding: 10px;
-  border: 1px solid rgba(203, 213, 225, 0.82);
+  border: 1px solid color-mix(in srgb, var(--73-ink-disabled) 82%, transparent);
   border-radius: 12px;
-  background: rgba(248, 250, 252, 0.9);
-  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.1);
+  background: color-mix(in srgb, var(--73-surface-strong) 90%, transparent);
+  box-shadow: 0 12px 28px color-mix(in srgb, var(--73-ink) 10%, transparent);
   backdrop-filter: blur(14px);
 }
 
@@ -26,10 +26,10 @@
 .rich-text-editor__tool {
   min-height: 34px;
   padding: 4px 9px;
-  border: 1px solid rgba(203, 213, 225, 0.86);
+  border: 1px solid color-mix(in srgb, var(--73-ink-disabled) 86%, transparent);
   border-radius: 8px;
-  background: #fff;
-  color: #334155;
+  background: var(--73-surface-strong);
+  color: var(--73-ink-soft);
   cursor: pointer;
   font: inherit;
   font-size: 13px;
@@ -61,10 +61,10 @@
   width: auto;
   min-height: 34px;
   margin-bottom: 0;
-  border: 1px solid rgba(203, 213, 225, 0.86);
+  border: 1px solid color-mix(in srgb, var(--73-ink-disabled) 86%, transparent);
   border-radius: 8px;
-  background: #fff;
-  color: #64748b;
+  background: var(--73-surface-strong);
+  color: var(--73-ink-muted);
   font-size: 12px;
   font-weight: 800;
   line-height: 1;
@@ -73,15 +73,15 @@
 .rich-text-editor__font-size:focus-within,
 .rich-text-editor__dropdown-trigger:focus-visible,
 .rich-text-editor__tool:focus-visible {
-  border-color: #2563eb;
+  border-color: var(--73-accent);
   outline: none;
-  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.12);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--73-accent) 12%, transparent);
 }
 
 .rich-text-editor__dropdown-trigger.is-open {
-  border-color: rgba(37, 99, 235, 0.7);
-  background: #eff6ff;
-  color: #1d4ed8;
+  border-color: color-mix(in srgb, var(--73-accent) 70%, transparent);
+  background: var(--73-accent-soft);
+  color: var(--73-accent);
 }
 
 .rich-text-editor__dropdown-caret {
@@ -102,10 +102,10 @@
   min-width: 132px;
   gap: 3px;
   padding: 6px;
-  border: 1px solid rgba(191, 219, 254, 0.9);
+  border: 1px solid color-mix(in srgb, var(--73-accent-soft) 90%, transparent);
   border-radius: 12px;
-  background: rgba(255, 255, 255, 0.98);
-  box-shadow: 0 16px 32px rgba(15, 23, 42, 0.14);
+  background: color-mix(in srgb, var(--73-surface-strong) 98%, transparent);
+  box-shadow: 0 16px 32px color-mix(in srgb, var(--73-ink) 14%, transparent);
   backdrop-filter: blur(14px);
 }
 
@@ -123,7 +123,7 @@
   border: 0;
   border-radius: 9px;
   background: transparent;
-  color: #334155;
+  color: var(--73-ink-soft);
   cursor: pointer;
   font: inherit;
   font-size: 13px;
@@ -138,13 +138,13 @@
 .rich-text-editor__dropdown-option:hover,
 .rich-text-editor__dropdown-option:focus-visible {
   outline: none;
-  background: rgba(219, 234, 254, 0.78);
-  color: #1d4ed8;
+  background: color-mix(in srgb, var(--73-accent-soft) 78%, transparent);
+  color: var(--73-accent);
 }
 
 .rich-text-editor__dropdown-option.is-active {
-  background: #2563eb;
-  color: #fff;
+  background: var(--73-accent);
+  color: var(--73-surface-strong);
 }
 
 .rich-text-editor__font-size-input {
@@ -154,7 +154,7 @@
   padding: 0 4px 0 9px;
   border: 0;
   background: transparent;
-  color: #334155;
+  color: var(--73-ink-soft);
   font: inherit;
   font-size: 13px;
   font-weight: 800;
@@ -162,7 +162,7 @@
 }
 
 .rich-text-editor__font-size-input::placeholder {
-  color: #94a3b8;
+  color: var(--73-ink-placeholder);
 }
 
 .rich-text-editor__font-size span {
@@ -175,7 +175,7 @@
   align-items: center;
   justify-content: center;
   gap: 6px;
-  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.04);
+  box-shadow: 0 2px 8px color-mix(in srgb, var(--73-ink) 4%, transparent);
   transition:
     border-color 160ms ease,
     background-color 160ms ease,
@@ -186,10 +186,10 @@
 }
 
 .rich-text-editor__tool:hover:not(:disabled) {
-  border-color: rgba(37, 99, 235, 0.52);
-  background: #fff;
-  color: #1d4ed8;
-  box-shadow: 0 7px 16px rgba(37, 99, 235, 0.1);
+  border-color: color-mix(in srgb, var(--73-accent) 52%, transparent);
+  background: var(--73-surface-strong);
+  color: var(--73-accent);
+  box-shadow: 0 7px 16px color-mix(in srgb, var(--73-accent) 10%, transparent);
   transform: translateY(-1px);
 }
 
@@ -204,9 +204,9 @@
 }
 
 .rich-text-editor__tool.is-active {
-  border-color: #2563eb;
-  background: rgba(219, 234, 254, 0.92);
-  color: #1d4ed8;
+  border-color: var(--73-accent);
+  background: color-mix(in srgb, var(--73-accent-soft) 92%, transparent);
+  color: var(--73-accent);
 }
 
 .rich-text-editor__tool--italic {

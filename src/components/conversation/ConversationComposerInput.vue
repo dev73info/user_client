@@ -144,21 +144,21 @@ defineExpose({ insertEmoji })
   min-width: 0;
   padding: 0;
   border-radius: 999px;
-  background: #2563eb;
-  color: #ffffff;
+  background: var(--73-accent);
+  color: var(--73-surface-strong);
   font-size: 20px;
-  box-shadow: 0 10px 22px rgba(37, 99, 235, 0.22);
+  box-shadow: 0 10px 22px color-mix(in srgb, var(--73-accent) 22%, transparent);
 }
 
 .conversation-modal__send-btn:hover:not(:disabled) {
   transform: translateY(-1px);
-  background: #1d4ed8;
-  box-shadow: 0 12px 26px rgba(37, 99, 235, 0.26);
+  background: var(--73-accent);
+  box-shadow: 0 12px 26px color-mix(in srgb, var(--73-accent) 26%, transparent);
 }
 
 .conversation-modal__send-btn:disabled {
   cursor: not-allowed;
-  background: #cbd5e1;
+  background: var(--73-ink-disabled);
   box-shadow: none;
   opacity: 0.8;
 }
@@ -182,29 +182,29 @@ defineExpose({ insertEmoji })
 .conversation-modal__composer .conversation-modal__tool-btn {
   width: 36px;
   height: 36px;
-  box-shadow: 0 8px 18px rgba(71, 102, 148, 0.08);
+  box-shadow: 0 8px 18px color-mix(in srgb, var(--73-accent) 8%, transparent);
   border-radius: 999px;
   font-size: 17px;
 }
 
 .conversation-modal__composer .conversation-modal__tool-btn:hover:not(:disabled),
 .conversation-modal__composer .conversation-modal__tool-btn.is-active {
-  border-color: rgba(79, 140, 255, 0.44);
-  background: #eef6ff;
-  color: #2563eb;
-  box-shadow: 0 10px 20px rgba(79, 140, 255, 0.14);
+  border-color: color-mix(in srgb, var(--73-accent) 44%, transparent);
+  background: var(--73-accent-soft);
+  color: var(--73-accent);
+  box-shadow: 0 10px 20px color-mix(in srgb, var(--73-accent) 14%, transparent);
   transform: translateY(-1px);
 }
 
 .conversation-modal__composer .conversation-modal__send-btn:disabled {
-  background: #d5dce6;
-  color: #ffffff;
+  background: var(--73-ink-disabled);
+  color: var(--73-surface-strong);
   box-shadow: none;
 }
 
 .conversation-modal__composer .conversation-modal__send-btn {
-  background: #2d76ec;
-  box-shadow: 0 12px 24px rgba(45, 118, 236, 0.24);
+  background: var(--73-accent);
+  box-shadow: 0 12px 24px color-mix(in srgb, var(--73-accent) 24%, transparent);
   align-self: center;
   width: 48px;
   min-width: 48px;
@@ -212,13 +212,13 @@ defineExpose({ insertEmoji })
   padding: 0;
   border: 0;
   border-radius: 999px;
-  color: #ffffff;
+  color: var(--73-surface-strong);
   font-size: 22px;
 }
 
 .conversation-modal__composer .conversation-modal__send-btn:hover:not(:disabled) {
-  background: #2467d8;
-  box-shadow: 0 14px 28px rgba(45, 118, 236, 0.28);
+  background: var(--73-accent);
+  box-shadow: 0 14px 28px color-mix(in srgb, var(--73-accent) 28%, transparent);
 }
 
 .conversation-modal__input-row .conversation-modal__tool-btn,

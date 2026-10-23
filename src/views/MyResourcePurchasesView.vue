@@ -261,9 +261,9 @@ function openResource(order: ResourcePurchaseOrder) {
   flex: 0 0 auto;
   padding: 2px 8px;
   border-radius: 999px;
-  border: 1px solid rgba(147, 197, 253, 0.85);
-  background: rgba(239, 246, 255, 0.92);
-  color: #1d4ed8;
+  border: 1px solid color-mix(in srgb, var(--73-accent) 85%, transparent);
+  background: color-mix(in srgb, var(--73-accent-soft) 92%, transparent);
+  color: var(--73-accent);
   font-size: 12px;
   font-weight: 700;
   line-height: 1.5;

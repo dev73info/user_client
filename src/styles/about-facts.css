@@ -10,8 +10,8 @@
   padding: 26px 16px;
   text-align: center;
   border-radius: 16px;
-  background: linear-gradient(180deg, #f8fbff, #eef4ff);
-  border: 1px solid rgba(191, 219, 254, 0.8);
+  background: linear-gradient(180deg, var(--73-accent-soft), var(--73-accent-soft));
+  border: 1px solid color-mix(in srgb, var(--73-accent-soft) 80%, transparent);
   transition:
     transform 160ms ease,
     box-shadow 160ms ease;
@@ -19,14 +19,14 @@
 
 .about-fact:hover {
   transform: translateY(-3px);
-  box-shadow: 0 14px 34px rgba(37, 99, 235, 0.12);
+  box-shadow: 0 14px 34px color-mix(in srgb, var(--73-accent) 12%, transparent);
 }
 
 .about-fact__big {
   display: block;
   font-size: 30px;
   font-weight: 900;
-  color: #123a63;
+  color: var(--73-accent);
   letter-spacing: -0.01em;
 }
 
@@ -35,7 +35,7 @@
   margin-top: 6px;
   font-size: 13px;
   font-weight: 600;
-  color: #64748b;
+  color: var(--73-ink-muted);
 }
 
 .about-facts {

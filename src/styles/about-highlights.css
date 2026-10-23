@@ -3,9 +3,9 @@
   margin: 18px 0;
   padding: 34px 36px;
   border-radius: 18px;
-  background: rgba(255, 255, 255, 0.96);
-  border: 1px solid rgba(219, 229, 247, 0.9);
-  box-shadow: 0 12px 32px rgba(148, 163, 184, 0.08);
+  background: color-mix(in srgb, var(--73-surface-strong) 96%, transparent);
+  border: 1px solid color-mix(in srgb, var(--73-accent-soft) 90%, transparent);
+  box-shadow: 0 12px 32px color-mix(in srgb, var(--73-ink-placeholder) 8%, transparent);
 }
 
 .about-section__head {
@@ -16,7 +16,7 @@
   margin: 0;
   font-size: 24px;
   font-weight: 800;
-  color: #0f172a;
+  color: var(--73-ink);
   letter-spacing: -0.01em;
 }
 
@@ -32,8 +32,8 @@
   gap: 16px;
   padding: 18px 20px;
   border-radius: 14px;
-  background: #f8fbff;
-  border: 1px solid rgba(219, 229, 247, 0.9);
+  background: var(--73-accent-soft);
+  border: 1px solid color-mix(in srgb, var(--73-accent-soft) 90%, transparent);
   transition:
     transform 160ms ease,
     box-shadow 160ms ease,
@@ -42,8 +42,8 @@
 
 .about-highlight:hover {
   transform: translateX(4px);
-  border-color: rgba(37, 99, 235, 0.3);
-  box-shadow: 0 10px 26px rgba(37, 99, 235, 0.1);
+  border-color: color-mix(in srgb, var(--73-accent) 30%, transparent);
+  box-shadow: 0 10px 26px color-mix(in srgb, var(--73-accent) 10%, transparent);
 }
 
 .about-highlight__bar {
@@ -51,21 +51,21 @@
   width: 4px;
   height: 46px;
   border-radius: 999px;
-  background: linear-gradient(180deg, #2563eb, #60a5fa);
+  background: linear-gradient(180deg, var(--73-accent), var(--73-accent));
 }
 
 .about-highlight__text h3 {
   margin: 0 0 6px;
   font-size: 17px;
   font-weight: 800;
-  color: #0f172a;
+  color: var(--73-ink);
 }
 
 .about-highlight__text p {
   margin: 0;
   font-size: 14px;
   line-height: 1.8;
-  color: #64748b;
+  color: var(--73-ink-muted);
 }
 
 @media (max-width: 640px) {

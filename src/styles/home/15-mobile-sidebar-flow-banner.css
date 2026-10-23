@@ -193,12 +193,12 @@
     background:
       linear-gradient(
         90deg,
-        rgba(255, 255, 255, 0.94) 0%,
-        rgba(255, 255, 255, 0.82) 42%,
-        rgba(255, 255, 255, 0) 72%
+        color-mix(in srgb, var(--73-surface-strong) 94%, transparent) 0%,
+        color-mix(in srgb, var(--73-surface-strong) 82%, transparent) 42%,
+        color-mix(in srgb, var(--73-surface-strong) 0%, transparent) 72%
       ),
       url('/icons/hero_r.png') right center / cover no-repeat,
-      linear-gradient(100deg, #ffffff 0%, #ecf7fc 100%);
+      linear-gradient(100deg, var(--73-surface-strong) 0%, var(--73-accent-soft) 100%);
   }
 
   .portal-hero__copy {
@@ -218,7 +218,7 @@
   }
 
   .portal-signal {
-    color: #475569;
+    color: var(--73-ink-soft);
     font-size: 13px;
   }
 }

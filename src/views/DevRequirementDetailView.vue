@@ -266,16 +266,16 @@ function goSignDeveloperAgreement() {
   margin: 0 0 12px;
   padding: 10px 12px;
   border-radius: 10px;
-  border: 1px solid #fde68a;
-  background: #fffbeb;
-  color: #92400e;
+  border: 1px solid var(--73-warning);
+  background: var(--73-warning-soft);
+  color: var(--73-warning-text);
   line-height: 1.7;
 }
 
 .dev-archive-banner--cleared {
-  border-color: #cbd5e1;
-  background: #f8fafc;
-  color: #475569;
+  border-color: var(--73-ink-disabled);
+  background: var(--73-surface-strong);
+  color: var(--73-ink-soft);
 }
 
 .dev-archive-banner strong {

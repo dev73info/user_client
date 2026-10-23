@@ -16,7 +16,7 @@
   }
 
   /* 移动端总览的卡片统一一套语言：白底卡 + 18px 圆角 + 16px 内边距，
-     卡内的次级块（标签、入口区、进度条）一律 #f6f9ff 浅蓝底、无描边，强调色统一用蓝 */
+     卡内的次级块（标签、入口区、进度条）一律 var(--73-accent-soft) 浅蓝底、无描边，强调色统一用蓝 */
   .overview-hero {
     gap: 14px;
     padding: 16px;
@@ -26,9 +26,9 @@
   .profile-avatar-button {
     width: 60px;
     height: 60px;
-    border: 3px solid #ffffff;
+    border: 3px solid var(--73-surface-strong);
     font-size: 24px;
-    box-shadow: 0 8px 18px rgba(76, 103, 172, 0.18);
+    box-shadow: 0 8px 18px color-mix(in srgb, var(--73-accent) 18%, transparent);
   }
 
   .profile-avatar-button small {
@@ -40,7 +40,7 @@
   .overview-hero__name-link::after {
     content: '›';
     margin-left: 6px;
-    color: #94a3b8;
+    color: var(--73-ink-placeholder);
     font-weight: 600;
   }
 
@@ -68,7 +68,7 @@
 
   .overview-hero__head p {
     margin-top: 4px;
-    color: #64748b;
+    color: var(--73-ink-muted);
     font-size: 13px;
   }
 
@@ -85,8 +85,8 @@
     padding: 4px 10px;
     overflow: hidden;
     border-color: transparent;
-    background: #f6f9ff;
-    color: #475569;
+    background: var(--73-accent-soft);
+    color: var(--73-ink-soft);
     font-size: 11px;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -145,6 +145,6 @@
     right: 16px;
     left: 16px;
     height: 1px;
-    background: rgba(224, 232, 255, 0.96);
+    background: color-mix(in srgb, var(--73-accent-soft) 96%, transparent);
   }
 }

@@ -33,13 +33,13 @@
 .dev-btn--primary {
   background: var(--dev-blue);
   border-color: var(--dev-blue);
-  color: #fff;
+  color: var(--73-surface-strong);
 }
 
 .dev-btn--primary:hover,
 .dev-btn--primary:focus-visible {
-  color: #fff;
-  box-shadow: 0 10px 22px rgba(31, 74, 209, 0.22);
+  color: var(--73-surface-strong);
+  box-shadow: 0 10px 22px color-mix(in srgb, var(--73-accent) 22%, transparent);
 }
 
 .dev-btn--ghost {
@@ -50,10 +50,10 @@
 
 .dev-btn--ghost:hover,
 .dev-btn--ghost:focus-visible {
-  border-color: rgba(31, 74, 209, 0.32);
-  background: rgba(31, 74, 209, 0.08);
+  border-color: color-mix(in srgb, var(--73-accent) 32%, transparent);
+  background: color-mix(in srgb, var(--73-accent) 8%, transparent);
   color: var(--dev-blue);
-  box-shadow: 0 8px 18px rgba(31, 74, 209, 0.1);
+  box-shadow: 0 8px 18px color-mix(in srgb, var(--73-accent) 10%, transparent);
 }
 
 /* 金色变体：给「金额与提示」这一类动作用（保证金不足时的充值、金色读数旁的按钮）。
@@ -61,27 +61,27 @@
 .dev-btn--gold {
   background: var(--dev-gold);
   border-color: var(--dev-gold);
-  color: #fff;
+  color: var(--73-surface-strong);
 }
 
 .dev-btn--gold:hover,
 .dev-btn--gold:focus-visible {
-  color: #fff;
-  box-shadow: 0 10px 22px rgba(185, 129, 43, 0.24);
+  color: var(--73-surface-strong);
+  box-shadow: 0 10px 22px color-mix(in srgb, var(--73-warning) 24%, transparent);
 }
 
 .dev-btn--danger {
   background: var(--dev-surface-strong);
-  border-color: rgba(220, 38, 38, 0.32);
-  color: #dc2626;
+  border-color: color-mix(in srgb, var(--73-danger) 32%, transparent);
+  color: var(--73-danger);
 }
 
 .dev-btn--danger:hover,
 .dev-btn--danger:focus-visible {
-  border-color: rgba(220, 38, 38, 0.5);
-  background: rgba(220, 38, 38, 0.08);
-  color: #dc2626;
-  box-shadow: 0 8px 18px rgba(220, 38, 38, 0.1);
+  border-color: color-mix(in srgb, var(--73-danger) 50%, transparent);
+  background: color-mix(in srgb, var(--73-danger) 8%, transparent);
+  color: var(--73-danger);
+  box-shadow: 0 8px 18px color-mix(in srgb, var(--73-danger) 10%, transparent);
 }
 
 .dev-btn:disabled,

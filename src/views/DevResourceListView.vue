@@ -260,7 +260,7 @@ onMounted(async () => {
    挂成页容器上的自定义属性，表格组件（DevResourceTable）读同一份，
    这样新拆出来的文件里没有裸色值。 */
 .dev-page--resource-list {
-  --dev-resource-link-hover: #6280df;
+  --dev-resource-link-hover: var(--73-accent);
 }
 
 /* R014：锁定资源的整体说明横幅，放在资源列表表格上方；观感取自 TAlert 的 warning 态。 */

@@ -102,7 +102,7 @@
   }
 
   .dev-toolbar__actions .t73-button:has(.t73-icon + span):active {
-    background: rgba(31, 74, 209, 0.08) !important;
+    background: color-mix(in srgb, var(--73-accent) 8%, transparent) !important;
     color: var(--dev-blue);
   }
 
@@ -148,9 +148,9 @@
     flex-wrap: nowrap;
     gap: 10px;
     padding: 10px 12px;
-    border-color: rgba(185, 129, 43, 0.18);
+    border-color: color-mix(in srgb, var(--73-warning) 18%, transparent);
     border-radius: 14px;
-    background: #fff8ec;
+    background: var(--73-warning-soft);
     box-shadow: none;
   }
 

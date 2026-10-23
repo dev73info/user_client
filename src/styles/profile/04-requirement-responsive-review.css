@@ -76,7 +76,7 @@
   padding: 18px;
   border: 1px solid var(--profile-card-border);
   border-radius: 16px;
-  background: #f8fbff;
+  background: var(--73-accent-soft);
   color: var(--profile-text-main);
 }
 
@@ -160,9 +160,9 @@
 }
 
 .requirement-review-item__actions .ghost.active {
-  border-color: rgba(125, 155, 225, 0.92);
+  border-color: color-mix(in srgb, var(--73-accent) 92%, transparent);
   background: var(--profile-accent-soft);
-  color: #1d4ed8;
+  color: var(--73-accent);
 }
 
 .requirement-review-item__reject-panel {

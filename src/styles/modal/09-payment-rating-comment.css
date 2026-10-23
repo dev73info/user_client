@@ -4,17 +4,17 @@
   grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
   gap: 8px;
   padding: 6px;
-  border: 1px solid rgba(148, 163, 184, 0.42);
+  border: 1px solid color-mix(in srgb, var(--73-ink-placeholder) 42%, transparent);
   border-radius: 12px;
-  background: rgba(248, 250, 252, 0.92);
-  box-shadow: inset 0 0 0 1px rgba(15, 23, 42, 0.04);
+  background: color-mix(in srgb, var(--73-surface-strong) 92%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--73-ink) 4%, transparent);
 }
 
 .payment-option {
-  border: 1px solid rgba(203, 213, 225, 0.9);
+  border: 1px solid color-mix(in srgb, var(--73-ink-disabled) 90%, transparent);
   border-radius: 8px;
-  background: #ffffff;
-  color: #334155;
+  background: var(--73-surface-strong);
+  color: var(--73-ink-soft);
   padding: 10px 6px;
   font-size: 12px;
   font-weight: 700;
@@ -33,36 +33,36 @@
 }
 
 .payment-option:hover {
-  border-color: rgba(100, 116, 139, 0.58);
-  background: #f8fafc;
+  border-color: color-mix(in srgb, var(--73-ink-muted) 58%, transparent);
+  background: var(--73-surface-strong);
 }
 
 .payment-option.active {
-  background: #f1f5f9;
-  border-color: #94a3b8;
-  color: #1e293b;
-  box-shadow: 0 5px 12px rgba(71, 85, 105, 0.1);
+  background: var(--73-surface-strong);
+  border-color: var(--73-ink-placeholder);
+  color: var(--73-ink);
+  box-shadow: 0 5px 12px color-mix(in srgb, var(--73-ink-soft) 10%, transparent);
 }
 
 .payment-option.active.payment-option--alipay {
-  background: #eaf2ff;
-  border-color: #70a0ee;
-  color: #1554a5;
-  box-shadow: 0 5px 12px rgba(37, 99, 235, 0.14);
+  background: var(--73-accent-soft);
+  border-color: var(--73-accent);
+  color: var(--73-accent);
+  box-shadow: 0 5px 12px color-mix(in srgb, var(--73-accent) 14%, transparent);
 }
 
 .payment-option.active.payment-option--wechat {
-  background: #e8f8ef;
-  border-color: #65bf91;
-  color: #14613f;
-  box-shadow: 0 5px 12px rgba(22, 163, 74, 0.14);
+  background: var(--73-surface-strong);
+  border-color: var(--73-success);
+  color: var(--73-success);
+  box-shadow: 0 5px 12px color-mix(in srgb, var(--73-success) 14%, transparent);
 }
 
 .payment-option.active.payment-option--union {
-  background: #eaf4ff;
-  border-color: #73a9e8;
-  color: #14508c;
-  box-shadow: 0 5px 12px rgba(30, 97, 168, 0.14);
+  background: var(--73-accent-soft);
+  border-color: var(--73-accent);
+  color: var(--73-accent);
+  box-shadow: 0 5px 12px color-mix(in srgb, var(--73-accent) 14%, transparent);
 }
 
 .payment-option-icon {
@@ -77,8 +77,8 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  background: #1d6fc1;
-  color: #fff;
+  background: var(--73-accent);
+  color: var(--73-surface-strong);
   font-size: 11px;
   font-weight: 800;
 }
@@ -105,14 +105,14 @@
   appearance: none;
   width: 36px;
   height: 36px;
-  border: 1px solid rgba(255, 255, 255, 0.14);
+  border: 1px solid color-mix(in srgb, var(--73-surface-strong) 14%, transparent);
   border-radius: 12px;
-  background: rgba(255, 255, 255, 0.04);
+  background: color-mix(in srgb, var(--73-surface-strong) 4%, transparent);
   cursor: pointer;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  color: rgba(255, 255, 255, 0.22);
+  color: color-mix(in srgb, var(--73-surface-strong) 22%, transparent);
   font-size: 20px;
   transition:
     background-color 180ms ease,
@@ -126,45 +126,53 @@
   border: 0;
   border-radius: 0;
   background: transparent;
-  color: #cbd5e1;
+  color: var(--73-ink-disabled);
   font-size: 24px;
   line-height: 1;
   box-shadow: none;
 }
 
 .rating-star.full {
-  color: #ffd166;
+  color: var(--73-warning);
 }
 
 .comment-modal .rating-star.full {
-  color: #f59e0b;
+  color: var(--73-warning);
 }
 
 .rating-star.half {
   color: transparent;
-  background: linear-gradient(90deg, #ffd166 50%, rgba(255, 255, 255, 0.22) 50%);
+  background: linear-gradient(
+    90deg,
+    var(--73-warning) 50%,
+    color-mix(in srgb, var(--73-surface-strong) 22%, transparent) 50%
+  );
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;
 }
 
 .comment-modal .rating-star.half {
-  background: linear-gradient(90deg, #f59e0b 50%, #cbd5e1 50%);
+  background: linear-gradient(90deg, var(--73-warning) 50%, var(--73-ink-disabled) 50%);
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;
 }
 
 .rating-star:hover {
-  background: rgba(149, 213, 178, 0.12);
-  border-color: rgba(149, 213, 178, 0.6);
+  background: color-mix(in srgb, var(--73-success) 12%, transparent);
+  border-color: color-mix(in srgb, var(--73-success) 60%, transparent);
   transform: translateY(-1px);
 }
 
 /* 半星是用渐变背景绘制出的字符（background-clip: text + 文字填充透明），
    hover 时必须保留渐变背景，否则星形会「消失」 */
 .rating-star.half:hover {
-  background: linear-gradient(90deg, #ffd166 50%, rgba(255, 255, 255, 0.22) 50%);
+  background: linear-gradient(
+    90deg,
+    var(--73-warning) 50%,
+    color-mix(in srgb, var(--73-surface-strong) 22%, transparent) 50%
+  );
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;
@@ -175,15 +183,15 @@
   background: transparent;
   box-shadow: none;
   transform: none;
-  color: #f59e0b;
+  color: var(--73-warning);
 }
 
 .comment-modal .rating-star.full:hover {
-  color: #d97706;
+  color: var(--73-warning);
 }
 
 .comment-modal .rating-star.half:hover {
-  background: linear-gradient(90deg, #f59e0b 50%, #cbd5e1 50%);
+  background: linear-gradient(90deg, var(--73-warning) 50%, var(--73-ink-disabled) 50%);
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;
@@ -198,10 +206,10 @@
   width: 100%;
   min-height: 120px;
   margin-top: 8px;
-  border: 1px solid rgba(255, 255, 255, 0.18);
+  border: 1px solid color-mix(in srgb, var(--73-surface-strong) 18%, transparent);
   border-radius: 12px;
   padding: 12px 14px;
-  background: rgba(255, 255, 255, 0.04);
+  background: color-mix(in srgb, var(--73-surface-strong) 4%, transparent);
   color: var(--text-main);
   resize: vertical;
   outline: none;
@@ -210,9 +218,9 @@
 .comment-modal .comment-input {
   min-height: 96px;
   margin-top: 0;
-  border-color: rgba(203, 213, 225, 0.95);
-  background: #ffffff;
-  color: #0f172a;
+  border-color: color-mix(in srgb, var(--73-ink-disabled) 95%, transparent);
+  background: var(--73-surface-strong);
+  color: var(--73-ink);
   font-size: 14px;
   line-height: 1.6;
   box-shadow: none;
@@ -220,15 +228,15 @@
 }
 
 .comment-modal .comment-input::placeholder {
-  color: #94a3b8;
+  color: var(--73-ink-placeholder);
 }
 
 .comment-input:focus {
-  border-color: rgba(149, 213, 178, 0.72);
-  box-shadow: 0 0 0 3px rgba(149, 213, 178, 0.16);
+  border-color: color-mix(in srgb, var(--73-success) 72%, transparent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--73-success) 16%, transparent);
 }
 
 .comment-modal .comment-input:focus {
-  border-color: rgba(37, 99, 235, 0.68);
-  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+  border-color: color-mix(in srgb, var(--73-accent) 68%, transparent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--73-accent) 12%, transparent);
 }

@@ -28,7 +28,7 @@
   border-radius: 12px;
   overflow: hidden;
   border: 1px solid var(--dev-line);
-  background: rgba(255, 255, 255, 0.82);
+  background: color-mix(in srgb, var(--73-surface-strong) 82%, transparent);
 }
 
 .dev-page--publish .dev-icon-upload__image {
@@ -51,7 +51,7 @@
   padding: 14px;
   border-radius: 18px;
   border: 1px solid var(--dev-line);
-  background: rgba(255, 255, 255, 0.9);
+  background: color-mix(in srgb, var(--73-surface-strong) 90%, transparent);
 }
 
 /* 根节点 / 二级节点各一个下拉：宽度与列数交给 .dev-upload-grid--two，
@@ -120,17 +120,21 @@
   width: max-content;
   max-width: 100%;
   padding: 12px;
-  border: 1px solid rgba(31, 74, 209, 0.1);
+  border: 1px solid color-mix(in srgb, var(--73-accent) 10%, transparent);
   border-radius: 12px;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(247, 250, 255, 0.82));
-  box-shadow: 0 6px 14px rgba(31, 74, 209, 0.04);
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--73-surface-strong) 96%, transparent),
+    color-mix(in srgb, var(--73-accent-soft) 82%, transparent)
+  );
+  box-shadow: 0 6px 14px color-mix(in srgb, var(--73-accent) 4%, transparent);
   /* 不可 overflow:hidden：会裁掉 TSelect 底边描边与圆角 */
   overflow: visible;
 }
 
 .dev-page--publish .dev-tag-group-row:last-child {
   padding-bottom: 10px;
-  border-bottom: 1px solid rgba(31, 74, 209, 0.1);
+  border-bottom: 1px solid color-mix(in srgb, var(--73-accent) 10%, transparent);
 }
 
 .dev-page--publish .dev-tag-group-row__head {
@@ -166,7 +170,7 @@
   min-width: 34px;
   padding: 3px 7px;
   border-radius: 999px;
-  background: rgba(148, 163, 184, 0.12);
+  background: color-mix(in srgb, var(--73-ink-placeholder) 12%, transparent);
   font-size: 10px;
   font-weight: 700;
   color: var(--dev-muted);
@@ -185,14 +189,14 @@
 
 .dev-tag-group-panel::-webkit-scrollbar-thumb {
   border-radius: 999px;
-  background: rgba(100, 116, 139, 0.32);
+  background: color-mix(in srgb, var(--73-ink-muted) 32%, transparent);
 }
 
 .dev-page--publish .dev-preview-card {
   gap: 14px;
   padding: 16px;
   border-radius: 18px;
-  border: 1px solid rgba(31, 74, 209, 0.1);
-  background: rgba(255, 255, 255, 0.92);
-  box-shadow: 0 12px 24px rgba(31, 74, 209, 0.06);
+  border: 1px solid color-mix(in srgb, var(--73-accent) 10%, transparent);
+  background: color-mix(in srgb, var(--73-surface-strong) 92%, transparent);
+  box-shadow: 0 12px 24px color-mix(in srgb, var(--73-accent) 6%, transparent);
 }

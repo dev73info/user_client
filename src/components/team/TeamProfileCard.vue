@@ -128,8 +128,8 @@ function handleAvatarFileChange(event: Event) {
 </template>
 
 <style scoped>
-/* 本页原先自带一套视觉（16px 圆角的 #fff 卡 + #e5e7eb 描边、靛蓝渐变主按钮、#8b5cf6 管理员紫、
-   #f59e0b 所有者橙、999px 头像圆），现在全部改为统一层：卡片 .dev-surface-card、卡片头
+/* 本页原先自带一套视觉（16px 圆角的 var(--73-surface-strong) 卡 + var(--73-border) 描边、靛蓝渐变主按钮、var(--73-accent) 管理员紫、
+   var(--73-warning) 所有者橙、999px 头像圆），现在全部改为统一层：卡片 .dev-surface-card、卡片头
    .dev-card-head、按钮 .dev-btn*。这里只保留本页特有的排版与头像圆。 */
 .dev-team-detail__meta {
   margin: 8px 0 0;

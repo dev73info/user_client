@@ -14,14 +14,17 @@
   min-width: 66px;
   height: 30px;
   padding: 0 11px 0 10px;
-  border: 1px solid rgba(191, 219, 254, 0.72);
+  border: 1px solid color-mix(in srgb, var(--73-accent-soft) 72%, transparent);
   border-radius: 999px;
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(239, 246, 255, 0.9));
-  color: #1d4ed8;
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--73-surface-strong) 96%, transparent),
+    color-mix(in srgb, var(--73-accent-soft) 90%, transparent)
+  );
+  color: var(--73-accent);
   box-shadow:
-    0 12px 28px rgba(15, 23, 42, 0.18),
-    inset 0 1px 0 rgba(255, 255, 255, 0.96);
+    0 12px 28px color-mix(in srgb, var(--73-ink) 18%, transparent),
+    inset 0 1px 0 color-mix(in srgb, var(--73-surface-strong) 96%, transparent);
   font-size: 12px;
   font-weight: 800;
   line-height: 1;
@@ -44,7 +47,7 @@
   height: 12px;
   border: 1.6px solid currentColor;
   border-radius: 3px;
-  box-shadow: -3px -3px 0 -1px rgba(37, 99, 235, 0.34);
+  box-shadow: -3px -3px 0 -1px color-mix(in srgb, var(--73-accent) 34%, transparent);
   content: '';
   opacity: 0.9;
 }
@@ -57,29 +60,35 @@
 
 .rich-code-copy-button:hover,
 .rich-code-copy-button:focus-visible {
-  border-color: rgba(59, 130, 246, 0.82);
-  background:
-    linear-gradient(180deg, rgba(37, 99, 235, 0.96), rgba(29, 78, 216, 0.94));
-  color: #ffffff;
+  border-color: color-mix(in srgb, var(--73-accent) 82%, transparent);
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--73-accent) 96%, transparent),
+    color-mix(in srgb, var(--73-accent) 94%, transparent)
+  );
+  color: var(--73-surface-strong);
   outline: none;
   box-shadow:
-    0 14px 30px rgba(37, 99, 235, 0.26),
-    inset 0 1px 0 rgba(255, 255, 255, 0.22);
+    0 14px 30px color-mix(in srgb, var(--73-accent) 26%, transparent),
+    inset 0 1px 0 color-mix(in srgb, var(--73-surface-strong) 22%, transparent);
 }
 
 .rich-code-copy-button:hover::before,
 .rich-code-copy-button:focus-visible::before {
-  box-shadow: -3px -3px 0 -1px rgba(255, 255, 255, 0.5);
+  box-shadow: -3px -3px 0 -1px color-mix(in srgb, var(--73-surface-strong) 50%, transparent);
 }
 
 .rich-code-copy-button.is-copied {
-  border-color: rgba(134, 239, 172, 0.9);
-  background:
-    linear-gradient(180deg, rgba(22, 163, 74, 0.96), rgba(21, 128, 61, 0.94));
-  color: #f0fdf4;
+  border-color: color-mix(in srgb, var(--73-success) 90%, transparent);
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--73-success) 96%, transparent),
+    color-mix(in srgb, var(--73-success) 94%, transparent)
+  );
+  color: var(--73-success-soft);
   box-shadow:
-    0 14px 30px rgba(22, 163, 74, 0.24),
-    inset 0 1px 0 rgba(255, 255, 255, 0.2);
+    0 14px 30px color-mix(in srgb, var(--73-success) 24%, transparent),
+    inset 0 1px 0 color-mix(in srgb, var(--73-surface-strong) 20%, transparent);
 }
 
 .rich-code-copy-button.is-copied::before {

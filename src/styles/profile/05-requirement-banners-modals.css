@@ -10,15 +10,15 @@
   margin: 10px 0 4px;
   padding: 10px 12px;
   border-radius: 10px;
-  border: 1px solid #fde68a;
-  background: #fffbeb;
-  color: #92400e;
+  border: 1px solid var(--73-warning);
+  background: var(--73-warning-soft);
+  color: var(--73-warning-text);
 }
 
 .requirement-archive-banner--cleared {
-  border-color: #cbd5e1;
-  background: #f8fafc;
-  color: #475569;
+  border-color: var(--73-ink-disabled);
+  background: var(--73-surface-strong);
+  color: var(--73-ink-soft);
 }
 
 .requirement-archive-banner strong {
@@ -29,7 +29,7 @@
 .requirement-archive-banner__remaining {
   padding: 1px 8px;
   border-radius: 999px;
-  background: rgba(146, 64, 14, 0.1);
+  background: color-mix(in srgb, var(--73-warning-text) 10%, transparent);
   font-size: 12px;
   font-weight: 700;
 }
@@ -52,7 +52,7 @@
 }
 
 .pay-modal .breach-modal__field > strong {
-  color: #64748b;
+  color: var(--73-ink-muted);
   font-size: 13px;
   font-weight: 700;
 }
@@ -60,9 +60,9 @@
 .pay-modal .breach-modal__decision {
   margin-top: 14px;
   padding: 12px 14px;
-  border: 1px solid rgba(191, 219, 254, 0.9);
+  border: 1px solid color-mix(in srgb, var(--73-accent-soft) 90%, transparent);
   border-radius: 14px;
-  background: rgba(239, 246, 255, 0.72);
+  background: color-mix(in srgb, var(--73-accent-soft) 72%, transparent);
 }
 
 .pay-modal .breach-modal__decision .pay-line {
@@ -101,9 +101,9 @@
   justify-content: space-between;
   gap: 12px;
   padding: 10px 12px;
-  border: 1px solid rgba(198, 210, 236, 0.72);
+  border: 1px solid color-mix(in srgb, var(--73-accent) 72%, transparent);
   border-radius: 10px;
-  background: #f8fbff;
+  background: var(--73-accent-soft);
 }
 
 .download-picker__meta {
@@ -119,7 +119,7 @@
 .download-picker__meta small,
 .download-picker__meta p {
   margin: 0;
-  color: var(--profile-text-sub, #64748b);
+  color: var(--profile-text-sub, var(--73-ink-muted));
   font-size: 12px;
   word-break: break-word;
 }
@@ -131,8 +131,8 @@
   margin: 14px 0 0;
   padding: 10px 12px 10px 28px;
   border-radius: 10px;
-  background: rgba(239, 246, 255, 0.9);
-  color: #475569;
+  background: color-mix(in srgb, var(--73-accent-soft) 90%, transparent);
+  color: var(--73-ink-soft);
   font-size: 13px;
   line-height: 1.6;
   text-align: left;
@@ -143,5 +143,5 @@
 }
 
 .pay-modal .claim-notes strong {
-  color: #b45309;
+  color: var(--73-warning);
 }

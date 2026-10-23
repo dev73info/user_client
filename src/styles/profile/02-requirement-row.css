@@ -14,8 +14,8 @@
 
 /* 展开审核卡片的那一行是「当前行」：配色要压过统一层整行可点的悬停色，故选择器更深一层。 */
 .profile-page .requirement-row.expanded {
-  border-color: rgba(125, 155, 225, 0.95);
-  background: #f6f9ff;
+  border-color: color-mix(in srgb, var(--73-accent) 95%, transparent);
+  background: var(--73-accent-soft);
 }
 
 /* 第一行：正文占满剩余宽度，右侧摘要按内容宽度贴右。 */
@@ -98,9 +98,9 @@
 }
 
 .requirement-status--contract {
-  color: #b45309;
-  background: #fffbeb;
-  border: 1px solid #fbbf24;
+  color: var(--73-warning);
+  background: var(--73-warning-soft);
+  border: 1px solid var(--73-warning);
 }
 
 /* 摘要与正文同排：状态徽标、预算、更新时间横排贴右（原先是一列竖排 + 左侧竖线，占掉 190px 宽）。

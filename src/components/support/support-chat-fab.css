@@ -15,11 +15,11 @@
   height: 140px;
   padding: 10px 0;
   border: none;
-  background: #2ba88f;
-  color: #fff;
+  background: var(--73-success);
+  color: var(--73-surface-strong);
   font-size: 13px;
   cursor: pointer;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.18);
+  box-shadow: 0 4px 16px color-mix(in srgb, var(--73-ink) 18%, transparent);
   touch-action: none;
   user-select: none;
 }
@@ -39,7 +39,7 @@
 }
 
 .support-fab:hover {
-  background: #1f8f76;
+  background: var(--73-success);
 }
 
 .support-fab__icon {

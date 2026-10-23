@@ -167,9 +167,9 @@ function onToggle(event: Event): void {
   align-items: center;
   gap: 16px;
   padding: 14px;
-  border: 1px solid rgba(224, 232, 255, 0.92);
+  border: 1px solid color-mix(in srgb, var(--73-accent-soft) 92%, transparent);
   border-radius: 14px;
-  background: linear-gradient(180deg, #f8fbff 0%, #ffffff 100%);
+  background: linear-gradient(180deg, var(--73-accent-soft) 0%, var(--73-surface-strong) 100%);
 }
 
 .account-security-toggle-copy {
@@ -179,7 +179,7 @@ function onToggle(event: Event): void {
 }
 
 .account-security-toggle-copy strong {
-  color: #0f172a;
+  color: var(--73-ink);
   font-weight: 800;
 }
 
@@ -210,9 +210,9 @@ function onToggle(event: Event): void {
   display: block;
   width: 100%;
   height: 100%;
-  border: 1px solid rgba(203, 213, 225, 0.98);
+  border: 1px solid color-mix(in srgb, var(--73-ink-disabled) 98%, transparent);
   border-radius: 999px;
-  background: #e2e8f0;
+  background: var(--73-border);
   transition:
     background 0.18s ease,
     border-color 0.18s ease;
@@ -225,14 +225,14 @@ function onToggle(event: Event): void {
   width: 18px;
   height: 18px;
   border-radius: 50%;
-  background: #ffffff;
-  box-shadow: 0 2px 5px rgba(15, 23, 42, 0.2);
+  background: var(--73-surface-strong);
+  box-shadow: 0 2px 5px color-mix(in srgb, var(--73-ink) 20%, transparent);
   transition: transform 0.18s ease;
 }
 
 .account-switch-control.active .account-switch-track {
-  border-color: rgba(37, 99, 235, 0.92);
-  background: #2563eb;
+  border-color: color-mix(in srgb, var(--73-accent) 92%, transparent);
+  background: var(--73-accent);
 }
 
 .account-switch-control.active .account-switch-thumb {
@@ -248,22 +248,22 @@ function onToggle(event: Event): void {
 .account-security-actions input {
   width: 100%;
   min-width: 0;
-  border: 1px solid rgba(224, 232, 255, 0.96);
+  border: 1px solid color-mix(in srgb, var(--73-accent-soft) 96%, transparent);
   border-radius: 16px;
   padding: 12px 14px;
-  background: #ffffff;
-  color: #0f172a;
+  background: var(--73-surface-strong);
+  color: var(--73-ink);
   outline: none;
-  box-shadow: inset 0 1px 2px rgba(15, 23, 42, 0.03);
+  box-shadow: inset 0 1px 2px color-mix(in srgb, var(--73-ink) 3%, transparent);
 }
 
 .account-security-actions input:disabled {
-  background: #f8fafc;
-  color: #94a3b8;
+  background: var(--73-surface-strong);
+  color: var(--73-ink-placeholder);
 }
 
 .account-security-actions input::placeholder {
-  color: #94a3b8;
+  color: var(--73-ink-placeholder);
 }
 
 .account-2fa-methods {
@@ -281,10 +281,10 @@ function onToggle(event: Event): void {
   display: grid;
   gap: 4px;
   padding: 14px 16px;
-  border: 1px solid rgba(224, 232, 255, 0.92);
+  border: 1px solid color-mix(in srgb, var(--73-accent-soft) 92%, transparent);
   border-radius: 14px;
-  background: linear-gradient(180deg, #f8fbff 0%, #ffffff 100%);
-  color: #0f172a;
+  background: linear-gradient(180deg, var(--73-accent-soft) 0%, var(--73-surface-strong) 100%);
+  color: var(--73-ink);
   text-align: left;
   cursor: pointer;
   transition:
@@ -294,9 +294,9 @@ function onToggle(event: Event): void {
 }
 
 .account-2fa-method.active {
-  border-color: rgba(37, 99, 235, 0.92);
-  box-shadow: 0 10px 26px rgba(76, 103, 172, 0.14);
-  background: linear-gradient(180deg, #eef4ff 0%, #ffffff 100%);
+  border-color: color-mix(in srgb, var(--73-accent) 92%, transparent);
+  box-shadow: 0 10px 26px color-mix(in srgb, var(--73-accent) 14%, transparent);
+  background: linear-gradient(180deg, var(--73-accent-soft) 0%, var(--73-surface-strong) 100%);
 }
 
 .account-2fa-method:disabled {
@@ -310,7 +310,7 @@ function onToggle(event: Event): void {
 }
 
 .account-2fa-method__desc {
-  color: #64748b;
+  color: var(--73-ink-muted);
   font-size: 12px;
 }
 
@@ -330,9 +330,9 @@ function onToggle(event: Event): void {
 }
 
 .account-security-actions .ghost.small:disabled {
-  border-color: rgba(226, 232, 240, 0.96);
-  background: #f8fafc;
-  color: #94a3b8;
+  border-color: color-mix(in srgb, var(--73-border) 96%, transparent);
+  background: var(--73-surface-strong);
+  color: var(--73-ink-placeholder);
   box-shadow: none;
 }
 </style>

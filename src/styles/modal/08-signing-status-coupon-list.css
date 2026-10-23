@@ -7,8 +7,8 @@
   padding: 14px 10px 10px;
   margin-bottom: 4px;
   border-radius: 10px;
-  background: #f8fafc;
-  border: 1px solid #e2e8f0;
+  background: var(--73-surface-strong);
+  border: 1px solid var(--73-border);
 }
 
 .css-step {
@@ -32,8 +32,8 @@
 }
 
 .css-step.done .css-step-dot {
-  background: #0f766e;
-  border-color: #0f766e;
+  background: var(--73-success);
+  border-color: var(--73-success);
 }
 
 .css-step.done .css-step-dot::after {
@@ -44,33 +44,33 @@
   top: 0px;
   width: 5px;
   height: 8px;
-  border-right: 2px solid #fff;
-  border-bottom: 2px solid #fff;
+  border-right: 2px solid var(--73-surface-strong);
+  border-bottom: 2px solid var(--73-surface-strong);
   transform: rotate(45deg);
 }
 
 .css-step.pending .css-step-dot {
-  background: #ffffff;
-  border-color: #cbd5e1;
+  background: var(--73-surface-strong);
+  border-color: var(--73-ink-disabled);
 }
 
 .css-step-label {
   font-size: 11px;
-  color: #64748b;
+  color: var(--73-ink-muted);
   white-space: nowrap;
   text-align: center;
   line-height: 1.3;
 }
 
 .css-step.done .css-step-label {
-  color: #115e59;
+  color: var(--73-success);
   font-weight: 700;
 }
 
 .css-step-line {
   flex: 1;
   height: 2px;
-  background: #cbd5e1;
+  background: var(--73-ink-disabled);
   margin-top: -16px;
   min-width: 12px;
   position: relative;
@@ -115,11 +115,11 @@
   gap: 4px;
   width: 100%;
   padding: 10px 12px;
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  border: 1px solid color-mix(in srgb, var(--73-surface-strong) 12%, transparent);
   border-radius: 12px;
   text-align: left;
   color: var(--text-main);
-  background: rgba(255, 255, 255, 0.05);
+  background: color-mix(in srgb, var(--73-surface-strong) 5%, transparent);
   cursor: pointer;
   transition:
     border-color 0.2s ease,
@@ -128,8 +128,8 @@
 
 .coupon-item.active,
 .coupon-item:hover {
-  border-color: rgba(149, 213, 178, 0.45);
-  background: rgba(149, 213, 178, 0.12);
+  border-color: color-mix(in srgb, var(--73-success) 45%, transparent);
+  background: color-mix(in srgb, var(--73-success) 12%, transparent);
 }
 
 .coupon-item strong {

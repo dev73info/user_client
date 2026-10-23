@@ -36,9 +36,9 @@
   border-radius: 999px;
   padding: 7px 12px;
   font-size: 12px;
-  color: #ddffef;
-  background: rgba(149, 213, 178, 0.2);
-  border: 1px solid rgba(149, 213, 178, 0.4);
+  color: var(--73-success-soft);
+  background: color-mix(in srgb, var(--73-success) 20%, transparent);
+  border: 1px solid color-mix(in srgb, var(--73-success) 40%, transparent);
 }
 
 .auth-btn {
@@ -65,34 +65,34 @@
 }
 
 .auth-btn.ghost {
-  border: 1px solid rgba(226, 232, 240, 0.96);
-  color: #334155;
-  background: rgba(255, 255, 255, 0.94);
+  border: 1px solid color-mix(in srgb, var(--73-border) 96%, transparent);
+  color: var(--73-ink-soft);
+  background: color-mix(in srgb, var(--73-surface-strong) 94%, transparent);
 }
 
 .auth-btn.ghost:hover {
-  box-shadow: 0 8px 18px rgba(37, 99, 235, 0.08);
+  box-shadow: 0 8px 18px color-mix(in srgb, var(--73-accent) 8%, transparent);
 }
 
 .auth-btn.ghost:disabled {
-  color: #94a3b8;
-  background: rgba(248, 250, 252, 0.96);
-  border-color: rgba(226, 232, 240, 0.96);
+  color: var(--73-ink-placeholder);
+  background: color-mix(in srgb, var(--73-surface-strong) 96%, transparent);
+  border-color: color-mix(in srgb, var(--73-border) 96%, transparent);
 }
 
 .auth-btn.solid {
   border: 0;
-  color: #fff;
+  color: var(--73-surface-strong);
   background: var(--primary-gradient);
 }
 
 .auth-btn.solid:hover:not(:disabled) {
-  box-shadow: 0 10px 20px rgba(37, 99, 235, 0.22);
+  box-shadow: 0 10px 20px color-mix(in srgb, var(--73-accent) 22%, transparent);
 }
 
 .auth-btn.solid:disabled {
-  color: rgba(255, 255, 255, 0.9);
-  background: linear-gradient(135deg, #bfd3ff, #d7e5ff);
+  color: color-mix(in srgb, var(--73-surface-strong) 90%, transparent);
+  background: linear-gradient(135deg, var(--73-accent-soft), var(--73-accent-soft));
 }
 
 .user-menu-wrapper {
@@ -115,7 +115,7 @@
   background: var(--card-bg);
   border: 1px solid var(--card-border);
   backdrop-filter: blur(20px);
-  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.18);
+  box-shadow: 0 18px 40px color-mix(in srgb, var(--73-ink) 18%, transparent);
   opacity: 0;
   transform: translateY(-10px);
   transition:
@@ -155,17 +155,17 @@
 }
 
 .user-menu-item:hover {
-  background: rgba(255, 255, 255, 0.08);
+  background: color-mix(in srgb, var(--73-surface-strong) 8%, transparent);
 }
 
 .menu-divider {
   height: 1px;
   margin: 6px 0;
-  background: rgba(255, 255, 255, 0.08);
+  background: color-mix(in srgb, var(--73-surface-strong) 8%, transparent);
 }
 
 .user-menu-item.danger:hover {
-  background: rgba(255, 95, 95, 0.15);
+  background: color-mix(in srgb, var(--73-danger) 15%, transparent);
 }
 
 /* --- 标题与描述 --- */

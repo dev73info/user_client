@@ -3,7 +3,7 @@
    选择器与顺序都不变。 */
 html {
   scrollbar-width: thin;
-  scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
+  scrollbar-color: color-mix(in srgb, var(--73-surface-strong) 20%, transparent) transparent;
 }
 
 html::-webkit-scrollbar {
@@ -21,12 +21,12 @@ html::-webkit-scrollbar-track {
 }
 
 html::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.22);
+  background: color-mix(in srgb, var(--73-surface-strong) 22%, transparent);
   border-radius: 999px;
 }
 
 html::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.42);
+  background: color-mix(in srgb, var(--73-surface-strong) 42%, transparent);
 }
 
 /* R047 断点收敛：原档位 780px → 640px */
@@ -46,12 +46,20 @@ html::-webkit-scrollbar-thumb:hover {
 }
 
 .app-scrollbar .t73-scrollbar__bar--vertical .t73-scrollbar__thumb {
-  background: linear-gradient(180deg, rgba(56, 189, 248, 0.7), rgba(149, 213, 178, 0.8));
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--73-accent) 70%, transparent),
+    color-mix(in srgb, var(--73-success) 80%, transparent)
+  );
   border-radius: 999px;
 }
 
 .app-scrollbar .t73-scrollbar__bar--vertical .t73-scrollbar__thumb:hover {
-  background: linear-gradient(180deg, rgba(125, 211, 252, 0.9), rgba(149, 213, 178, 1));
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--73-accent) 90%, transparent),
+    var(--73-success)
+  );
 }
 
 /* 页脚贴底的弹性底座。

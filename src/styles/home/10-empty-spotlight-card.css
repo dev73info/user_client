@@ -6,10 +6,10 @@
   justify-content: center;
   gap: 8px;
   padding: 22px;
-  border: 1px dashed rgba(148, 163, 184, 0.62);
+  border: 1px dashed color-mix(in srgb, var(--73-ink-placeholder) 62%, transparent);
   border-radius: 16px;
-  background: rgba(248, 250, 252, 0.82);
-  color: #64748b;
+  background: color-mix(in srgb, var(--73-surface-strong) 82%, transparent);
+  color: var(--73-ink-muted);
   text-align: center;
 }
 
@@ -24,14 +24,23 @@
   min-height: 124px;
   margin-top: 16px;
   overflow: hidden;
-  border: 1px solid rgba(203, 213, 225, 0.58);
+  border: 1px solid color-mix(in srgb, var(--73-ink-disabled) 58%, transparent);
   border-radius: 14px;
   background:
-    linear-gradient(90deg, rgba(37, 99, 235, 0.06), rgba(245, 158, 11, 0.08), transparent),
-    linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(248, 250, 252, 0.88));
+    linear-gradient(
+      90deg,
+      color-mix(in srgb, var(--73-accent) 6%, transparent),
+      color-mix(in srgb, var(--73-warning) 8%, transparent),
+      transparent
+    ),
+    linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--73-surface-strong) 96%, transparent),
+      color-mix(in srgb, var(--73-surface-strong) 88%, transparent)
+    );
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.9),
-    0 8px 18px rgba(15, 23, 42, 0.04);
+    inset 0 1px 0 color-mix(in srgb, var(--73-surface-strong) 90%, transparent),
+    0 8px 18px color-mix(in srgb, var(--73-ink) 4%, transparent);
 }
 
 .portal-card--rank .portal-empty-state--compact::before,
@@ -41,11 +50,11 @@
   width: 42px;
   height: 42px;
   border-radius: 14px;
-  background: linear-gradient(135deg, #eff6ff, #dbeafe);
-  color: #2563eb;
+  background: linear-gradient(135deg, var(--73-accent-soft), var(--73-accent-soft));
+  color: var(--73-accent);
   font-size: 13px;
   font-weight: 900;
-  box-shadow: 0 10px 22px rgba(37, 99, 235, 0.12);
+  box-shadow: 0 10px 22px color-mix(in srgb, var(--73-accent) 12%, transparent);
 }
 
 .portal-card--rank .portal-empty-state--compact::before {
@@ -64,11 +73,15 @@
   position: absolute;
   inset: 0;
   pointer-events: none;
-  background: linear-gradient(120deg, transparent 0 62%, rgba(37, 99, 235, 0.08) 62% 100%);
+  background: linear-gradient(
+    120deg,
+    transparent 0 62%,
+    color-mix(in srgb, var(--73-accent) 8%, transparent) 62% 100%
+  );
 }
 
 .portal-empty-state strong {
-  color: #0f172a;
+  color: var(--73-ink);
   font-size: 15px;
 }
 
@@ -84,11 +97,11 @@
   flex-direction: column;
   height: 100%;
   overflow: hidden;
-  border: 1px solid rgba(191, 219, 254, 0.88);
+  border: 1px solid color-mix(in srgb, var(--73-accent-soft) 88%, transparent);
   border-radius: 18px;
   cursor: pointer;
-  background: rgba(255, 255, 255, 0.98);
-  box-shadow: 0 16px 34px rgba(37, 99, 235, 0.1);
+  background: color-mix(in srgb, var(--73-surface-strong) 98%, transparent);
+  box-shadow: 0 16px 34px color-mix(in srgb, var(--73-accent) 10%, transparent);
   outline: none;
   transition:
     border-color 140ms ease,
@@ -98,9 +111,9 @@
 
 .portal-spotlight-card:hover,
 .portal-spotlight-card:focus-visible {
-  border-color: rgba(147, 197, 253, 0.88);
+  border-color: color-mix(in srgb, var(--73-accent) 88%, transparent);
   transform: translateY(-2px);
-  box-shadow: 0 28px 56px rgba(60, 94, 168, 0.18);
+  box-shadow: 0 28px 56px color-mix(in srgb, var(--73-accent) 18%, transparent);
 }
 
 .portal-spotlight-card__cover {
@@ -127,14 +140,14 @@
   justify-content: center;
   font-size: 52px;
   font-weight: 700;
-  color: rgba(255, 255, 255, 0.22);
+  color: color-mix(in srgb, var(--73-surface-strong) 22%, transparent);
   letter-spacing: 0.02em;
   text-transform: uppercase;
 }
 
 .portal-spotlight-card__cover-img + .portal-spotlight-card__badge {
-  background: rgba(15, 23, 42, 0.42);
-  border-color: rgba(255, 255, 255, 0.26);
+  background: color-mix(in srgb, var(--73-ink) 42%, transparent);
+  border-color: color-mix(in srgb, var(--73-surface-strong) 26%, transparent);
 }
 
 .portal-spotlight-card__cover-img ~ .portal-spotlight-card__screen {
@@ -142,19 +155,24 @@
 }
 
 .portal-spotlight-card--nebula .portal-spotlight-card__cover {
-  background: linear-gradient(135deg, #112b7a, #374fcf 58%, #5b87ff);
+  background: linear-gradient(135deg, var(--73-accent), var(--73-accent) 58%, var(--73-accent));
 }
 
 .portal-spotlight-card--sunset .portal-spotlight-card__cover {
-  background: linear-gradient(135deg, #823016, #c55a23 58%, #fb923c);
+  background: linear-gradient(
+    135deg,
+    var(--73-danger-text),
+    var(--73-warning) 58%,
+    var(--73-warning)
+  );
 }
 
 .portal-spotlight-card--forest .portal-spotlight-card__cover {
-  background: linear-gradient(135deg, #0f5132, #2f855a 58%, #79c45a);
+  background: linear-gradient(135deg, var(--73-success), var(--73-success) 58%, var(--73-danger));
 }
 
 .portal-spotlight-card--frost .portal-spotlight-card__cover {
-  background: linear-gradient(135deg, #0f3a8a, #2563eb 58%, #7dd3fc);
+  background: linear-gradient(135deg, var(--73-accent), var(--73-accent) 58%, var(--73-accent));
 }
 
 .portal-spotlight-card__badge {
@@ -167,9 +185,9 @@
   max-width: calc(100% - 96px);
   padding: 5px 10px;
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.16);
-  border: 1px solid rgba(255, 255, 255, 0.22);
-  color: #f8fbff;
+  background: color-mix(in srgb, var(--73-surface-strong) 16%, transparent);
+  border: 1px solid color-mix(in srgb, var(--73-surface-strong) 22%, transparent);
+  color: var(--73-accent-soft);
   font-size: 11px;
   font-weight: 700;
   letter-spacing: 0;

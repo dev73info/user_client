@@ -199,10 +199,10 @@ async function submit() {
 .delivery-dialog__tip {
   margin: 0;
   padding: 8px 10px;
-  border: 1px solid rgba(251, 191, 36, 0.32);
+  border: 1px solid color-mix(in srgb, var(--73-warning) 32%, transparent);
   border-radius: 10px;
-  background: rgba(254, 243, 199, 0.48);
-  color: #92400e;
+  background: color-mix(in srgb, var(--73-warning-soft) 48%, transparent);
+  color: var(--73-warning-text);
   font-size: 12px;
   line-height: 1.5;
 }
@@ -216,18 +216,17 @@ async function submit() {
   margin-bottom: 0;
 }
 
-
 .delivery-existing {
   display: flex;
   align-items: center;
   gap: 8px;
-  color: #64748b;
+  color: var(--73-ink-muted);
   font-size: 12px;
 }
 
 .delivery-existing__label {
   flex: 0 0 auto;
-  color: #334155;
+  color: var(--73-ink-soft);
   font-weight: 800;
 }
 
@@ -243,7 +242,7 @@ async function submit() {
   flex: 0 0 auto;
   border: 0;
   background: transparent;
-  color: #2563eb;
+  color: var(--73-accent);
   font-size: 12px;
   font-weight: 800;
   cursor: pointer;

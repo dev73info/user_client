@@ -61,13 +61,13 @@ const emit = defineEmits<{ select: [row: RequirementProgressRow] }>()
 <style scoped>
 .overview-requirement-list span,
 .overview-requirement-list time {
-  color: #64748b;
+  color: var(--73-ink-muted);
   font-size: 12px;
   line-height: 1.45;
 }
 
 .overview-requirement-list strong {
-  color: #0f172a;
+  color: var(--73-ink);
   font-weight: 800;
 }
 
@@ -86,9 +86,9 @@ const emit = defineEmits<{ select: [row: RequirementProgressRow] }>()
   align-items: center;
   min-height: 64px;
   padding: 16px 18px;
-  border: 1px solid rgba(191, 219, 254, 0.78);
+  border: 1px solid color-mix(in srgb, var(--73-accent-soft) 78%, transparent);
   border-radius: 14px;
-  background: rgba(255, 255, 255, 0.86);
+  background: color-mix(in srgb, var(--73-surface-strong) 86%, transparent);
 }
 
 .overview-requirement-list .overview-requirement-progress {
@@ -98,9 +98,9 @@ const emit = defineEmits<{ select: [row: RequirementProgressRow] }>()
 
 .overview-requirement-progress :deep(.req-progress) {
   padding: 16px 18px 14px;
-  border-color: rgba(191, 219, 254, 0.76);
+  border-color: color-mix(in srgb, var(--73-accent-soft) 76%, transparent);
   border-radius: 12px;
-  background: rgba(248, 251, 255, 0.78);
+  background: color-mix(in srgb, var(--73-accent-soft) 78%, transparent);
 }
 
 .overview-requirement-list li.clickable {
@@ -109,9 +109,9 @@ const emit = defineEmits<{ select: [row: RequirementProgressRow] }>()
 }
 
 .overview-requirement-list li.clickable:hover {
-  border-color: rgba(125, 155, 225, 0.92);
-  background: rgba(248, 251, 255, 0.98);
-  box-shadow: 0 12px 24px rgba(76, 103, 172, 0.1);
+  border-color: color-mix(in srgb, var(--73-accent) 92%, transparent);
+  background: color-mix(in srgb, var(--73-accent-soft) 98%, transparent);
+  box-shadow: 0 12px 24px color-mix(in srgb, var(--73-accent) 10%, transparent);
 }
 
 .overview-requirement-list div {
@@ -133,25 +133,25 @@ const emit = defineEmits<{ select: [row: RequirementProgressRow] }>()
   min-height: 28px;
   padding: 5px 10px;
   border-radius: 999px;
-  background: rgba(245, 158, 11, 0.14);
-  color: #92400e;
+  background: color-mix(in srgb, var(--73-warning) 14%, transparent);
+  color: var(--73-warning-text);
   font-size: 12px;
   font-weight: 800;
   white-space: nowrap;
 }
 
 .overview-status--completed {
-  background: rgba(34, 197, 94, 0.12);
-  color: #166534;
+  background: color-mix(in srgb, var(--73-success) 12%, transparent);
+  color: var(--73-success);
 }
 .overview-status--rejected {
-  background: rgba(239, 68, 68, 0.12);
-  color: #b42318;
+  background: color-mix(in srgb, var(--73-danger) 12%, transparent);
+  color: var(--73-danger);
 }
 .overview-status--deposit_paid,
 .overview-status--in_development {
-  background: rgba(79, 140, 255, 0.12);
-  color: #1d4ed8;
+  background: color-mix(in srgb, var(--73-accent) 12%, transparent);
+  color: var(--73-accent);
 }
 
 /* R047 断点收敛：原档位 760px → 640px */
@@ -176,11 +176,11 @@ const emit = defineEmits<{ select: [row: RequirementProgressRow] }>()
     width: 3px;
     height: 14px;
     border-radius: 2px;
-    background: #2563eb;
+    background: var(--73-accent);
   }
 
   .overview-focus-panel .overview-link {
-    color: #64748b;
+    color: var(--73-ink-muted);
     font-size: 12px;
     font-weight: 600;
   }
@@ -207,11 +207,11 @@ const emit = defineEmits<{ select: [row: RequirementProgressRow] }>()
 
   .overview-requirement-list li + li {
     padding-top: 14px;
-    border-top: 1px solid rgba(224, 232, 255, 0.96);
+    border-top: 1px solid color-mix(in srgb, var(--73-accent-soft) 96%, transparent);
   }
 
   .overview-requirement-list li.clickable:hover {
-    border-color: rgba(224, 232, 255, 0.96);
+    border-color: color-mix(in srgb, var(--73-accent-soft) 96%, transparent);
     background: transparent;
     box-shadow: none;
   }
@@ -239,12 +239,12 @@ const emit = defineEmits<{ select: [row: RequirementProgressRow] }>()
 
   .overview-requirement-list time {
     grid-area: time;
-    color: #94a3b8;
+    color: var(--73-ink-placeholder);
   }
 
   .overview-requirement-list small {
     grid-area: budget;
-    color: #0f172a;
+    color: var(--73-ink);
     font-size: 16px;
     font-weight: 800;
     font-variant-numeric: tabular-nums;
@@ -259,7 +259,7 @@ const emit = defineEmits<{ select: [row: RequirementProgressRow] }>()
     padding: 12px 6px 10px;
     border: 0;
     border-radius: 12px;
-    background: #f6f9ff;
+    background: var(--73-accent-soft);
   }
 
   /* 组件在 640px 以下会改成竖排五行，总览里保持横排：只留圆点和步骤名，说明文字收起 */

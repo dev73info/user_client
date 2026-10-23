@@ -146,7 +146,7 @@ defineExpose({ closeEmojiPanel })
 .conversation-modal__closed-tip {
   grid-column: 1 / -1;
   margin: 0;
-  color: #64748b;
+  color: var(--73-ink-muted);
   font-size: 13px;
 }
 
@@ -187,29 +187,29 @@ defineExpose({ closeEmojiPanel })
   bottom: calc(100% + 10px);
   left: 0;
   z-index: 4;
-  border-color: rgba(207, 220, 238, 0.96);
-  background: rgba(255, 255, 255, 0.98);
-  box-shadow: 0 18px 38px rgba(71, 102, 148, 0.18);
+  border-color: color-mix(in srgb, var(--73-accent-soft) 96%, transparent);
+  background: color-mix(in srgb, var(--73-surface-strong) 98%, transparent);
+  box-shadow: 0 18px 38px color-mix(in srgb, var(--73-accent) 18%, transparent);
   display: grid;
   grid-template-columns: repeat(8, 32px);
   gap: 6px;
   width: max-content;
   max-width: 100%;
   padding: 8px;
-  border: 1px solid rgba(185, 204, 190, 0.72);
+  border: 1px solid color-mix(in srgb, var(--73-ink-disabled) 72%, transparent);
   border-radius: 14px;
 }
 
 .conversation-modal__composer .conversation-modal__emoji-btn:hover {
-  border-color: rgba(79, 140, 255, 0.34);
-  background: #eef6ff;
+  border-color: color-mix(in srgb, var(--73-accent) 34%, transparent);
+  background: var(--73-accent-soft);
   transform: translateY(-1px);
 }
 
 .conversation-modal__attachment-error {
   margin: 0;
   padding-left: 4px;
-  color: #b42318;
+  color: var(--73-danger);
   font-size: 12px;
   line-height: 1.35;
 }
@@ -223,11 +223,11 @@ defineExpose({ closeEmojiPanel })
   margin-top: 0;
   gap: 10px;
   padding: 8px 12px;
-  border-top: 1px solid rgba(167, 190, 166, 0.36);
+  border-top: 1px solid color-mix(in srgb, var(--73-ink-placeholder) 36%, transparent);
   align-items: end;
-  border-top-color: rgba(216, 228, 244, 0.95);
-  background: rgba(255, 255, 255, 0.98);
-  box-shadow: 0 -10px 24px rgba(71, 102, 148, 0.06);
+  border-top-color: color-mix(in srgb, var(--73-accent-soft) 95%, transparent);
+  background: color-mix(in srgb, var(--73-surface-strong) 98%, transparent);
+  box-shadow: 0 -10px 24px color-mix(in srgb, var(--73-accent) 6%, transparent);
 }
 
 @media (max-width: 640px) {
@@ -249,9 +249,9 @@ defineExpose({ closeEmojiPanel })
   margin: 0 0 8px;
   padding: 8px 10px;
   border-radius: 8px;
-  border: 1px solid #fde68a;
-  background: #fffbeb;
-  color: #92400e;
+  border: 1px solid var(--73-warning);
+  background: var(--73-warning-soft);
+  color: var(--73-warning-text);
   font-size: 12.5px;
   line-height: 1.6;
 }

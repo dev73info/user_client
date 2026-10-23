@@ -5,13 +5,21 @@
   padding: 14px 16px;
   border: 1px solid var(--dev-line);
   border-radius: var(--dev-radius-inner);
-  background: linear-gradient(180deg, rgba(248, 250, 252, 0.96), rgba(241, 245, 249, 0.9));
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.78);
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--73-surface-strong) 96%, transparent),
+    color-mix(in srgb, var(--73-surface-strong) 90%, transparent)
+  );
+  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--73-surface-strong) 78%, transparent);
 }
 
 .dev-page--publish .dev-upload-actions--split.is-ready {
-  border-color: rgba(42, 166, 164, 0.24);
-  background: linear-gradient(180deg, rgba(240, 253, 250, 0.96), rgba(239, 246, 255, 0.9));
+  border-color: color-mix(in srgb, var(--73-success) 24%, transparent);
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--73-success-soft) 96%, transparent),
+    color-mix(in srgb, var(--73-accent-soft) 90%, transparent)
+  );
 }
 
 .dev-page--publish .dev-submit-summary {
@@ -71,8 +79,8 @@
 }
 
 .dev-page--publish .dev-chip--catalog {
-  background: rgba(31, 74, 209, 0.08);
-  border-color: rgba(31, 74, 209, 0.14);
+  background: color-mix(in srgb, var(--73-accent) 8%, transparent);
+  border-color: color-mix(in srgb, var(--73-accent) 14%, transparent);
   color: var(--dev-blue);
 }
 

@@ -27,30 +27,30 @@
 
 .portal-step-card:hover,
 .portal-step-card:focus-visible {
-  background: rgba(248, 250, 252, 0.9);
+  background: color-mix(in srgb, var(--73-surface-strong) 90%, transparent);
   box-shadow: none;
   transform: translateY(-1px);
   outline: none;
 }
 
 .portal-step-card--violet {
-  --workflow-accent: #7c3aed;
-  --workflow-bg: rgba(124, 58, 237, 0.12);
+  --workflow-accent: var(--73-accent);
+  --workflow-bg: color-mix(in srgb, var(--73-accent) 12%, transparent);
 }
 
 .portal-step-card--blue {
-  --workflow-accent: #2563eb;
-  --workflow-bg: rgba(37, 99, 235, 0.12);
+  --workflow-accent: var(--73-accent);
+  --workflow-bg: color-mix(in srgb, var(--73-accent) 12%, transparent);
 }
 
 .portal-step-card--green {
-  --workflow-accent: #10b981;
-  --workflow-bg: rgba(16, 185, 129, 0.12);
+  --workflow-accent: var(--73-success);
+  --workflow-bg: color-mix(in srgb, var(--73-success) 12%, transparent);
 }
 
 .portal-step-card--red {
-  --workflow-accent: #ef4444;
-  --workflow-bg: rgba(239, 68, 68, 0.12);
+  --workflow-accent: var(--73-danger);
+  --workflow-bg: color-mix(in srgb, var(--73-danger) 12%, transparent);
 }
 
 .portal-step-card__icon {
@@ -63,9 +63,9 @@
   background: linear-gradient(
     135deg,
     var(--workflow-accent),
-    color-mix(in srgb, var(--workflow-accent) 72%, #ffffff)
+    color-mix(in srgb, var(--workflow-accent) 72%, var(--73-surface-strong))
   );
-  color: #fff;
+  color: var(--73-surface-strong);
   font-size: 18px;
   font-weight: 800;
   box-shadow: 0 8px 18px color-mix(in srgb, var(--workflow-accent) 20%, transparent);
@@ -79,7 +79,7 @@
 }
 
 .portal-step-card__body strong {
-  color: #111827;
+  color: var(--73-ink);
   font-size: 13px;
   font-weight: 900;
   line-height: 1.25;
@@ -87,7 +87,7 @@
 }
 
 .portal-step-card__body span {
-  color: #94a3b8;
+  color: var(--73-ink-placeholder);
   font-size: 11px;
   font-weight: 600;
   line-height: 1.25;
@@ -108,7 +108,7 @@
   background: transparent;
   box-shadow: none;
   transform: translateY(-50%);
-  color: #94a3b8;
+  color: var(--73-ink-placeholder);
   font-size: 28px;
   line-height: 1;
 }

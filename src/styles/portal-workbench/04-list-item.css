@@ -18,8 +18,8 @@
   padding: 16px 18px;
   border: 1px solid var(--wb-line);
   border-radius: var(--wb-radius-item);
-  background: rgba(255, 255, 255, 0.58);
-  color: var(--profile-text-sub, #64748b);
+  background: color-mix(in srgb, var(--73-surface-strong) 58%, transparent);
+  color: var(--profile-text-sub, var(--73-ink-muted));
 }
 
 .wb-item__main {
@@ -29,14 +29,14 @@
 }
 
 .wb-item__title {
-  color: var(--profile-text-main, #0f172a);
+  color: var(--profile-text-main, var(--73-ink));
   font-size: 16px;
   font-weight: 700;
   line-height: 1.5;
 }
 
 .wb-item__meta {
-  color: var(--profile-text-sub, #64748b);
+  color: var(--profile-text-sub, var(--73-ink-muted));
   font-size: 13px;
   line-height: 1.7;
 }
@@ -48,7 +48,7 @@
   flex-wrap: wrap;
   gap: 10px;
   flex-shrink: 0;
-  color: var(--profile-text-sub, #64748b);
+  color: var(--profile-text-sub, var(--73-ink-muted));
   font-size: 13px;
   text-align: right;
 }
@@ -64,7 +64,7 @@
 
 .wb-item--clickable:hover {
   border-color: var(--wb-accent-line);
-  background: #f8fbff;
+  background: var(--73-accent-soft);
 }
 
 /* 主从列表里「当前选中」的那一行（工单中心、消息中心）：描边换成主色 + 一层浅底。

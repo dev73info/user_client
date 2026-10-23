@@ -68,19 +68,19 @@ const attachmentLabel = computed(() => props.message.attachment_name || '截图�
 .conversation-message p {
   margin: 0;
   padding: 10px 12px;
-  border: 1px solid rgba(226, 232, 240, 0.9);
+  border: 1px solid color-mix(in srgb, var(--73-border) 90%, transparent);
   border-radius: 14px 14px 14px 4px;
-  background: #ffffff;
-  color: #0f172a;
+  background: var(--73-surface-strong);
+  color: var(--73-ink);
   line-height: 1.7;
   white-space: pre-wrap;
   word-break: break-word;
 }
 
 .conversation-message--mine p {
-  border-color: rgba(46, 116, 255, 0.18);
+  border-color: color-mix(in srgb, var(--73-accent) 18%, transparent);
   border-radius: 14px 14px 4px 14px;
-  background: #eaf2ff;
+  background: var(--73-accent-soft);
 }
 
 .conversation-message--mine {
@@ -132,7 +132,7 @@ const attachmentLabel = computed(() => props.message.attachment_name || '截图�
   display: grid;
   place-items: center;
   height: 120px;
-  color: #2d76ec;
+  color: var(--73-accent);
   font-size: 28px;
 }
 
@@ -142,7 +142,7 @@ const attachmentLabel = computed(() => props.message.attachment_name || '截图�
   justify-content: space-between;
   gap: 10px;
   min-width: 0;
-  color: #536b55;
+  color: var(--73-ink-soft);
   font-size: 11px;
   line-height: 1.25;
 }
@@ -155,7 +155,7 @@ const attachmentLabel = computed(() => props.message.attachment_name || '截图�
 
 .conversation-message__attachment-meta small {
   flex: 0 0 auto;
-  color: #78907a;
+  color: var(--73-ink-muted);
   font-size: 10px;
 }
 
@@ -172,10 +172,10 @@ const attachmentLabel = computed(() => props.message.attachment_name || '截图�
 }
 
 .conversation-message--mine .conversation-message__bubble {
-  border-color: rgba(172, 202, 255, 0.84);
+  border-color: color-mix(in srgb, var(--73-accent) 84%, transparent);
   border-radius: 15px 15px 6px 15px;
-  background: #e8f1ff;
-  box-shadow: 0 8px 20px rgba(45, 118, 236, 0.1);
+  background: var(--73-accent-soft);
+  box-shadow: 0 8px 20px color-mix(in srgb, var(--73-accent) 10%, transparent);
 }
 
 .conversation-message {
@@ -203,14 +203,14 @@ const attachmentLabel = computed(() => props.message.attachment_name || '截图�
   min-width: 104px;
   padding: 10px 12px 7px;
   position: relative;
-  color: #0f172a;
+  color: var(--73-ink);
   grid-template-columns: minmax(0, auto) auto;
   width: fit-content;
   max-width: min(72%, 620px);
-  border: 1px solid rgba(218, 229, 244, 0.92);
+  border: 1px solid color-mix(in srgb, var(--73-accent-soft) 92%, transparent);
   border-radius: 15px 15px 15px 6px;
-  background: rgba(255, 255, 255, 0.96);
-  box-shadow: 0 8px 20px rgba(71, 102, 148, 0.08);
+  background: color-mix(in srgb, var(--73-surface-strong) 96%, transparent);
+  box-shadow: 0 8px 20px color-mix(in srgb, var(--73-accent) 8%, transparent);
 }
 
 .conversation-message__bubble p,
@@ -220,7 +220,7 @@ const attachmentLabel = computed(() => props.message.attachment_name || '截图�
   line-height: 1.5;
   grid-column: 1;
   min-width: 0;
-  color: #182335;
+  color: var(--73-ink);
 }
 
 .conversation-message__bubble time {
@@ -232,7 +232,7 @@ const attachmentLabel = computed(() => props.message.attachment_name || '截图�
   text-align: right;
   grid-column: 2;
   white-space: nowrap;
-  color: #7d8da3;
+  color: var(--73-ink-placeholder);
 }
 
 .conversation-message__attachment {
@@ -244,8 +244,8 @@ const attachmentLabel = computed(() => props.message.attachment_name || '截图�
 }
 
 .conversation-message__attachment-link {
-  border: 1px solid rgba(216, 228, 244, 0.88);
-  background: #f8fbff;
+  border: 1px solid color-mix(in srgb, var(--73-accent-soft) 88%, transparent);
+  background: var(--73-accent-soft);
   display: block;
   overflow: hidden;
   border-radius: 8px;
@@ -253,7 +253,7 @@ const attachmentLabel = computed(() => props.message.attachment_name || '截图�
 }
 
 .conversation-message__attachment-link img {
-  background: #f8fbff;
+  background: var(--73-accent-soft);
   display: block;
   width: 100%;
   max-height: 220px;
@@ -284,8 +284,8 @@ const attachmentLabel = computed(() => props.message.attachment_name || '截图�
   align-self: flex-start;
   padding: 1px 7px;
   border-radius: 999px;
-  background: rgba(245, 158, 11, 0.16);
-  color: #92400e;
+  background: color-mix(in srgb, var(--73-warning) 16%, transparent);
+  color: var(--73-warning-text);
   font-size: 10.5px;
   font-weight: 800;
   line-height: 1.5;

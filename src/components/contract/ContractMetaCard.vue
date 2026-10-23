@@ -76,9 +76,9 @@ const emit = defineEmits<{
   align-items: center;
   justify-content: space-between;
   gap: 1rem;
-  background: #f8fafc;
-  border: 1px solid #dbe5f0;
-  border-left: 4px solid #2563eb;
+  background: var(--73-surface-strong);
+  border: 1px solid var(--73-accent-soft);
+  border-left: 4px solid var(--73-accent);
   border-radius: 8px;
   padding: 1rem 1.2rem;
   margin-bottom: 1.5rem;
@@ -86,7 +86,7 @@ const emit = defineEmits<{
 
 .contract-meta.is-workbench {
   border: 0;
-  border-left: 3px solid #247f7d;
+  border-left: 3px solid var(--73-success);
   border-radius: 0;
 }
 
@@ -101,13 +101,13 @@ const emit = defineEmits<{
 
 .contract-meta p {
   margin: 0.45rem 0;
-  color: #243044;
+  color: var(--73-ink);
   font-size: 0.95rem;
   line-height: 1.65;
 }
 
 .contract-meta strong {
-  color: #0f172a;
+  color: var(--73-ink);
   font-weight: 750;
 }
 
@@ -117,23 +117,23 @@ const emit = defineEmits<{
   min-height: 24px;
   padding: 0.12rem 0.6rem;
   border-radius: 999px;
-  border: 1px solid #bfdbfe;
-  background: #eff6ff;
-  color: #1d4ed8;
+  border: 1px solid var(--73-accent-soft);
+  background: var(--73-accent-soft);
+  color: var(--73-accent);
   font-size: 0.84rem;
   font-weight: 750;
 }
 
 .contract-status-chip--signing {
-  border-color: #fed7aa;
-  background: #fff7ed;
-  color: #c2410c;
+  border-color: var(--73-warning);
+  background: var(--73-warning-soft);
+  color: var(--73-danger);
 }
 
 .contract-status-chip--signed {
-  border-color: #bbf7d0;
-  background: #ecfdf5;
-  color: #047857;
+  border-color: var(--73-success);
+  background: var(--73-success-soft);
+  color: var(--73-success);
 }
 
 .hash-text {
@@ -142,8 +142,8 @@ const emit = defineEmits<{
   margin-top: 0.2rem;
   padding: 0.28rem 0.45rem;
   border-radius: 5px;
-  background: #eaf2ff;
-  color: #1e40af;
+  background: var(--73-accent-soft);
+  color: var(--73-accent);
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
   font-size: 0.86rem;
   font-weight: 700;
@@ -152,11 +152,11 @@ const emit = defineEmits<{
 
 /* 已作废合同在渠道侧的提示（CT-2）：平台作废不联动爱签，需要显眼但不吓人。 */
 .void-hint {
-  color: #92400e;
+  color: var(--73-warning-text);
   padding: 0.75rem 0.9rem;
   border-radius: 8px;
-  background: #fffbeb;
-  border: 1px solid #fde68a;
+  background: var(--73-warning-soft);
+  border: 1px solid var(--73-warning);
   margin-bottom: 1rem;
   line-height: 1.6;
 }
@@ -164,21 +164,21 @@ const emit = defineEmits<{
 .btn-primary {
   min-height: 42px;
   padding: 0.75rem 1.8rem;
-  background: #f59e0b;
-  color: #fff;
+  background: var(--73-warning);
+  color: var(--73-surface-strong);
   border: none;
   border-radius: 8px;
   cursor: pointer;
   font-size: 0.98rem;
   font-weight: 800;
-  box-shadow: 0 10px 18px rgba(245, 158, 11, 0.22);
+  box-shadow: 0 10px 18px color-mix(in srgb, var(--73-warning) 22%, transparent);
 }
 
 /* 工作台外壳下的按钮配色（原 `.page-shell--workbench .btn-primary`） */
 .is-workbench .btn-primary {
-  background: #247f7d;
-  border-color: #247f7d;
-  color: #fff;
+  background: var(--73-success);
+  border-color: var(--73-success);
+  color: var(--73-surface-strong);
   box-shadow: none;
 }
 

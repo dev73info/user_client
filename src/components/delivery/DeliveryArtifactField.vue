@@ -133,25 +133,25 @@ function handleArtifactChange(event: Event) {
 }
 
 .delivery-artifact-field__dropzone {
-  border: 1px dashed rgba(148, 163, 184, 0.72);
-  background: rgba(248, 250, 252, 0.78);
+  border: 1px dashed color-mix(in srgb, var(--73-ink-placeholder) 72%, transparent);
+  background: color-mix(in srgb, var(--73-surface-strong) 78%, transparent);
   cursor: pointer;
 }
 
 .delivery-artifact-field__dropzone:hover {
-  border-color: rgba(37, 99, 235, 0.58);
-  background: rgba(239, 246, 255, 0.72);
+  border-color: color-mix(in srgb, var(--73-accent) 58%, transparent);
+  background: color-mix(in srgb, var(--73-accent-soft) 72%, transparent);
 }
 
 .delivery-artifact-field__dropzone:focus-visible {
   outline: none;
-  border-color: rgba(37, 99, 235, 0.7);
-  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+  border-color: color-mix(in srgb, var(--73-accent) 70%, transparent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--73-accent) 12%, transparent);
 }
 
 .delivery-artifact-field__file {
-  border: 1px solid rgba(34, 197, 94, 0.34);
-  background: rgba(240, 253, 244, 0.66);
+  border: 1px solid color-mix(in srgb, var(--73-success) 34%, transparent);
+  background: color-mix(in srgb, var(--73-success-soft) 66%, transparent);
 }
 
 .delivery-artifact-field__icon {
@@ -162,14 +162,14 @@ function handleArtifactChange(event: Event) {
   height: 30px;
   flex: 0 0 auto;
   border-radius: 9px;
-  background: #eff6ff;
-  color: #2563eb;
+  background: var(--73-accent-soft);
+  color: var(--73-accent);
   font-size: 16px;
 }
 
 .delivery-artifact-field__icon--file {
-  background: rgba(220, 252, 231, 0.9);
-  color: #15803d;
+  background: color-mix(in srgb, var(--73-success-soft) 90%, transparent);
+  color: var(--73-success);
 }
 
 .delivery-artifact-field__copy {
@@ -180,7 +180,7 @@ function handleArtifactChange(event: Event) {
 }
 
 .delivery-artifact-field__copy strong {
-  color: #0f172a;
+  color: var(--73-ink);
   font-size: 13px;
   font-weight: 800;
   overflow: hidden;
@@ -189,7 +189,7 @@ function handleArtifactChange(event: Event) {
 }
 
 .delivery-artifact-field__copy small {
-  color: #64748b;
+  color: var(--73-ink-muted);
   font-size: 12px;
   line-height: 1.45;
 }
@@ -204,7 +204,7 @@ function handleArtifactChange(event: Event) {
   border: 0;
   border-radius: 8px;
   background: transparent;
-  color: #94a3b8;
+  color: var(--73-ink-placeholder);
   cursor: pointer;
   font-size: 14px;
   transition:
@@ -213,7 +213,7 @@ function handleArtifactChange(event: Event) {
 }
 
 .delivery-artifact-field__remove:hover {
-  background: rgba(254, 226, 226, 0.8);
-  color: #dc2626;
+  background: color-mix(in srgb, var(--73-danger-soft) 80%, transparent);
+  color: var(--73-danger);
 }
 </style>

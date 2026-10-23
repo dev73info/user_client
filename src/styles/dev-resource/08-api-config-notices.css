@@ -53,7 +53,7 @@
   gap: 8px;
   font-size: 13px;
   font-weight: 700;
-  color: var(--text-primary, #1f2937);
+  color: var(--text-primary, var(--73-ink));
 }
 
 /* 一次性密钥与接入提示词两块面板：与上一块的间距同 .dev-upload-block 的 14px 行距合起来是 18px，
@@ -65,9 +65,9 @@
   gap: 12px;
   margin: 4px 0 0;
   padding: 14px 16px;
-  border: 1px solid var(--73-warning, #d97706);
+  border: 1px solid var(--73-warning, var(--73-warning));
   border-radius: 10px;
-  background: #fff8ea;
+  background: var(--73-warning-soft);
 }
 
 .dev-api-secret__title {
@@ -75,16 +75,16 @@
   margin: 0;
   font-size: 13px;
   font-weight: 700;
-  color: #92400e;
+  color: var(--73-warning-text);
 }
 
 .dev-api-secret__value {
   flex: 1 1 auto;
   min-width: 0;
   padding: 8px 10px;
-  border: 1px dashed #d97706;
+  border: 1px dashed var(--73-warning);
   border-radius: 8px;
-  background: #ffffff;
+  background: var(--73-surface-strong);
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   font-size: 13px;
   word-break: break-all;
@@ -94,9 +94,9 @@
 .dev-api-sample {
   margin: 4px 0 0;
   padding: 14px 16px;
-  border: 1px solid var(--dev-line, #e2e8f0);
+  border: 1px solid var(--dev-line, var(--73-border));
   border-radius: 10px;
-  background: var(--dev-surface-strong, #f8fafc);
+  background: var(--dev-surface-strong, var(--73-surface-strong));
 }
 
 .dev-api-sample__head {
@@ -111,7 +111,7 @@
   margin: 0;
   font-size: 13px;
   font-weight: 700;
-  color: var(--dev-ink, #1f2937);
+  color: var(--dev-ink, var(--73-ink));
 }
 
 .dev-api-sample__code {
@@ -119,8 +119,8 @@
   padding: 12px 14px;
   overflow-x: auto;
   border-radius: 8px;
-  background: #0f172a;
-  color: #e2e8f0;
+  background: var(--73-ink);
+  color: var(--73-border);
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   font-size: 12px;
   line-height: 1.6;
@@ -133,15 +133,15 @@
   margin: 0 0 12px;
   font-size: 13px;
   line-height: 1.7;
-  color: var(--text-secondary, #64748b);
+  color: var(--text-secondary, var(--73-ink-muted));
 }
 
 .dev-secret-dialog__value {
   display: block;
   padding: 12px 14px;
-  border: 1px dashed #d97706;
+  border: 1px dashed var(--73-warning);
   border-radius: 8px;
-  background: #fff8ea;
+  background: var(--73-warning-soft);
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   font-size: 13px;
   word-break: break-all;

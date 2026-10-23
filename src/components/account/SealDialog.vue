@@ -146,9 +146,9 @@ const emit = defineEmits<{
   align-items: center;
   gap: 12px;
   padding: 10px 12px;
-  border: 1px solid #e2e8f0;
+  border: 1px solid var(--73-border);
   border-radius: 12px;
-  background: #f8fafc;
+  background: var(--73-surface-strong);
 }
 
 .seal-item__preview {
@@ -157,15 +157,15 @@ const emit = defineEmits<{
   flex: 0 0 auto;
   object-fit: contain;
   border-radius: 10px;
-  background: #fff;
-  border: 1px solid #e2e8f0;
+  background: var(--73-surface-strong);
+  border: 1px solid var(--73-border);
 }
 
 .seal-item__preview--empty {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  color: #94a3b8;
+  color: var(--73-ink-placeholder);
   font-size: 24px;
 }
 
@@ -178,13 +178,13 @@ const emit = defineEmits<{
 }
 
 .seal-item__name {
-  color: #0f172a;
+  color: var(--73-ink);
   font-size: 13px;
   font-weight: 600;
 }
 
 .seal-item__no {
-  color: #64748b;
+  color: var(--73-ink-muted);
   font-size: 12px;
 }
 
@@ -195,10 +195,10 @@ const emit = defineEmits<{
 .seal-empty {
   margin: 0;
   padding: 14px 12px;
-  border: 1px dashed #cbd5e1;
+  border: 1px dashed var(--73-ink-disabled);
   border-radius: 12px;
-  background: #f8fafc;
-  color: #64748b;
+  background: var(--73-surface-strong);
+  color: var(--73-ink-muted);
   font-size: 12px;
   line-height: 1.6;
 }

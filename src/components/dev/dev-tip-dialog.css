@@ -7,8 +7,8 @@
   margin: 0;
   padding: 10px 12px;
   border-radius: 10px;
-  background: rgba(239, 246, 255, 0.8);
-  color: #334155;
+  background: color-mix(in srgb, var(--73-accent-soft) 80%, transparent);
+  color: var(--73-ink-soft);
   font-size: 13px;
   line-height: 1.6;
 }
@@ -21,10 +21,10 @@
 
 .tip-dialog__channel {
   padding: 8px 12px;
-  border: 1px solid #dbe4f0;
+  border: 1px solid var(--73-accent-soft);
   border-radius: 10px;
-  background: #fff;
-  color: #475569;
+  background: var(--73-surface-strong);
+  color: var(--73-ink-soft);
   font: inherit;
   font-weight: 700;
   cursor: pointer;
@@ -35,9 +35,9 @@
 }
 
 .tip-dialog__channel.is-active {
-  border-color: #2563eb;
-  background: #eff6ff;
-  color: #2563eb;
+  border-color: var(--73-accent);
+  background: var(--73-accent-soft);
+  color: var(--73-accent);
 }
 
 .tip-dialog__tiers {
@@ -49,10 +49,10 @@
 .tip-dialog__tier {
   min-width: 76px;
   padding: 8px 12px;
-  border: 1px solid #dbe4f0;
+  border: 1px solid var(--73-accent-soft);
   border-radius: 10px;
-  background: #fff;
-  color: #0f172a;
+  background: var(--73-surface-strong);
+  color: var(--73-ink);
   font: inherit;
   font-weight: 700;
   cursor: pointer;
@@ -63,25 +63,25 @@
 }
 
 .tip-dialog__tier.is-active {
-  border-color: #2563eb;
-  background: #eff6ff;
-  color: #2563eb;
+  border-color: var(--73-accent);
+  background: var(--73-accent-soft);
+  color: var(--73-accent);
 }
 
 .tip-dialog__custom-toggle {
   justify-self: start;
   padding: 4px 10px;
-  border: 1px dashed #c7d2fe;
+  border: 1px dashed var(--73-accent-soft);
   border-radius: 999px;
   background: transparent;
-  color: #4f46e5;
+  color: var(--73-accent);
   font-size: 12px;
   cursor: pointer;
 }
 
 .tip-dialog__custom-toggle.is-active {
   border-style: solid;
-  background: #eef2ff;
+  background: var(--73-accent-soft);
 }
 
 .tip-dialog__field {
@@ -90,24 +90,24 @@
 }
 
 .tip-dialog__label {
-  color: #334155;
+  color: var(--73-ink-soft);
   font-size: 13px;
   font-weight: 700;
 }
 
 .tip-dialog__hint {
-  color: #94a3b8;
+  color: var(--73-ink-placeholder);
   font-size: 12px;
 }
 
 .tip-dialog__summary {
   margin: 0;
-  color: #475569;
+  color: var(--73-ink-soft);
   font-size: 13px;
 }
 
 .tip-dialog__summary strong {
-  color: #9a3412;
+  color: var(--73-danger-text);
   font-size: 16px;
 }
 
@@ -115,9 +115,9 @@
   margin: 0;
   padding: 10px 12px;
   border-radius: 10px;
-  border: 1px solid rgba(191, 219, 254, 0.85);
-  background: rgba(248, 250, 252, 0.9);
-  color: #64748b;
+  border: 1px solid color-mix(in srgb, var(--73-accent-soft) 85%, transparent);
+  background: color-mix(in srgb, var(--73-surface-strong) 90%, transparent);
+  color: var(--73-ink-muted);
   font-size: 12px;
   line-height: 1.7;
 }
@@ -126,9 +126,9 @@
   margin: 0;
   padding: 8px 12px;
   border-radius: 10px;
-  border: 1px solid rgba(252, 165, 165, 0.85);
-  background: rgba(254, 242, 242, 0.9);
-  color: #b91c1c;
+  border: 1px solid color-mix(in srgb, var(--73-danger) 85%, transparent);
+  background: color-mix(in srgb, var(--73-danger-soft) 90%, transparent);
+  color: var(--73-danger);
   font-size: 13px;
   line-height: 1.6;
   word-break: break-word;
@@ -144,20 +144,20 @@
 
 .tip-dialog__pay-amount {
   margin: 0;
-  color: #9a3412;
+  color: var(--73-danger-text);
   font-size: 26px;
   font-weight: 800;
 }
 
 .tip-dialog__qr {
-  border: 1px solid #e2e8f0;
+  border: 1px solid var(--73-border);
   border-radius: 12px;
-  background: #fff;
+  background: var(--73-surface-strong);
 }
 
 .tip-dialog__pay-tip {
   margin: 0;
-  color: #475569;
+  color: var(--73-ink-soft);
   font-size: 13px;
   line-height: 1.6;
 }
@@ -167,8 +167,8 @@
   align-items: center;
   padding: 8px 16px;
   border-radius: 10px;
-  background: #2563eb;
-  color: #fff;
+  background: var(--73-accent);
+  color: var(--73-surface-strong);
   font-weight: 700;
   text-decoration: none;
 }

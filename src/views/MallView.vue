@@ -208,10 +208,15 @@ onMounted(async () => {
   gap: 16px;
   padding: 16px 20px;
   border-radius: 14px;
-  background: linear-gradient(135deg, #eef4ff 0%, #f7faff 55%, #ffffff 100%);
-  border: 1px solid rgba(224, 232, 255, 0.96);
-  color: #0f172a;
-  box-shadow: 0 12px 26px rgba(76, 103, 172, 0.08);
+  background: linear-gradient(
+    135deg,
+    var(--73-accent-soft) 0%,
+    var(--73-accent-soft) 55%,
+    var(--73-surface-strong) 100%
+  );
+  border: 1px solid color-mix(in srgb, var(--73-accent-soft) 96%, transparent);
+  color: var(--73-ink);
+  box-shadow: 0 12px 26px color-mix(in srgb, var(--73-accent) 8%, transparent);
 }
 .mall-balance h2 {
   margin: 0;
@@ -229,13 +234,13 @@ onMounted(async () => {
 .mall-balance__num span {
   display: block;
   font-size: 12px;
-  color: #64748b;
+  color: var(--73-ink-muted);
   margin-bottom: 4px;
 }
 .mall-balance__num strong {
   font-size: 32px;
   line-height: 1;
-  color: #4f8cff;
+  color: var(--73-accent);
 }
 .mall-products,
 .mall-orders {

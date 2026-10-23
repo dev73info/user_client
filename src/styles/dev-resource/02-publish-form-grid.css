@@ -101,7 +101,7 @@
   padding: 10px;
   border: 1px solid var(--dev-line);
   border-radius: var(--dev-radius-inner);
-  background: rgba(248, 251, 255, 0.72);
+  background: color-mix(in srgb, var(--73-accent-soft) 72%, transparent);
 }
 
 /* 表单内的小正方形触发区 */
@@ -116,9 +116,9 @@
   min-height: 0;
   aspect-ratio: var(--dev-resource-aspect-ratio);
   padding: 0;
-  border: 1px dashed rgba(31, 74, 209, 0.28);
+  border: 1px dashed color-mix(in srgb, var(--73-accent) 28%, transparent);
   border-radius: 12px;
-  background: rgba(248, 251, 255, 0.72);
+  background: color-mix(in srgb, var(--73-accent-soft) 72%, transparent);
   color: var(--dev-muted);
   cursor: pointer;
   transition:
@@ -128,9 +128,9 @@
 }
 
 .dev-page--publish .dev-icon-upload--square:hover {
-  border-color: rgba(31, 74, 209, 0.55);
-  background: rgba(255, 255, 255, 0.96);
-  box-shadow: 0 8px 20px rgba(37, 99, 235, 0.1);
+  border-color: color-mix(in srgb, var(--73-accent) 55%, transparent);
+  background: color-mix(in srgb, var(--73-surface-strong) 96%, transparent);
+  box-shadow: 0 8px 20px color-mix(in srgb, var(--73-accent) 10%, transparent);
 }
 
 .dev-page--publish .dev-icon-upload__square-image {
@@ -161,7 +161,7 @@
   gap: 6px;
   appearance: none;
   border: 1px solid var(--dev-line);
-  background: rgba(255, 255, 255, 0.88);
+  background: color-mix(in srgb, var(--73-surface-strong) 88%, transparent);
   color: var(--dev-ink);
   border-radius: 12px;
   padding: 0 14px;

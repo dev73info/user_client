@@ -32,17 +32,17 @@
 .wb-btn--primary {
   background: var(--wb-accent);
   border-color: var(--wb-accent);
-  color: #ffffff;
+  color: var(--73-surface-strong);
 }
 
 .wb-btn--primary:hover,
 .wb-btn--primary:focus-visible {
-  color: #ffffff;
-  box-shadow: 0 10px 22px rgba(31, 74, 209, 0.22);
+  color: var(--73-surface-strong);
+  box-shadow: 0 10px 22px color-mix(in srgb, var(--73-accent) 22%, transparent);
 }
 
 .wb-btn--ghost {
-  background: var(--profile-card-bg-strong, #ffffff);
+  background: var(--profile-card-bg-strong, var(--73-surface-strong));
   border-color: var(--wb-line);
   color: var(--wb-ink-soft);
 }
@@ -52,21 +52,21 @@
   border-color: var(--wb-accent-line);
   background: var(--wb-accent-soft);
   color: var(--wb-accent);
-  box-shadow: 0 8px 18px rgba(31, 74, 209, 0.1);
+  box-shadow: 0 8px 18px color-mix(in srgb, var(--73-accent) 10%, transparent);
 }
 
 .wb-btn--danger {
-  background: var(--profile-card-bg-strong, #ffffff);
-  border-color: rgba(180, 35, 24, 0.32);
-  color: var(--profile-danger-text, #b42318);
+  background: var(--profile-card-bg-strong, var(--73-surface-strong));
+  border-color: color-mix(in srgb, var(--73-danger) 32%, transparent);
+  color: var(--profile-danger-text, var(--73-danger));
 }
 
 .wb-btn--danger:hover,
 .wb-btn--danger:focus-visible {
-  border-color: rgba(180, 35, 24, 0.5);
-  background: var(--profile-danger-soft, rgba(239, 68, 68, 0.12));
-  color: var(--profile-danger-text, #b42318);
-  box-shadow: 0 8px 18px rgba(180, 35, 24, 0.1);
+  border-color: color-mix(in srgb, var(--73-danger) 50%, transparent);
+  background: var(--profile-danger-soft, color-mix(in srgb, var(--73-danger) 12%, transparent));
+  color: var(--profile-danger-text, var(--73-danger));
+  box-shadow: 0 8px 18px color-mix(in srgb, var(--73-danger) 10%, transparent);
 }
 
 .wb-btn:disabled,
@@ -110,7 +110,7 @@
   gap: 6px;
   min-height: 28px;
   padding: 0 12px;
-  border: 1px solid rgba(31, 74, 209, 0.16);
+  border: 1px solid color-mix(in srgb, var(--73-accent) 16%, transparent);
   border-radius: 999px;
   background: var(--wb-accent-soft);
   color: var(--wb-accent);
@@ -148,12 +148,12 @@
 .wb-chip--button.is-active {
   background: var(--wb-accent);
   border-color: var(--wb-accent);
-  color: #ffffff;
+  color: var(--73-surface-strong);
 }
 
 /* 中性档：终止态与「未选择 / 未关联」这类无强调语义的标签 */
 .wb-chip--muted {
-  background: rgba(148, 163, 184, 0.12);
+  background: color-mix(in srgb, var(--73-ink-placeholder) 12%, transparent);
   border-color: transparent;
-  color: var(--profile-text-sub, #64748b);
+  color: var(--profile-text-sub, var(--73-ink-muted));
 }

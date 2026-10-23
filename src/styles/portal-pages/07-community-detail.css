@@ -1,10 +1,10 @@
 /* 卡片内标签覆盖 .community-post-card__head span 的蓝色，保持靛蓝 */
 .community-post-card__badges .community-repost-badge {
-  color: #4f46e5;
+  color: var(--73-accent);
 }
 
 .community-post-card__badges .community-repost-badge.is-repost {
-  color: #b45309;
+  color: var(--73-warning);
 }
 
 .community-detail__repost {
@@ -17,7 +17,7 @@
 }
 
 .community-detail__repost a {
-  color: #6366f1;
+  color: var(--73-accent);
   text-decoration: none;
   overflow-wrap: anywhere;
 }
@@ -32,31 +32,31 @@
   min-height: 22px;
   align-items: center;
   padding: 0 9px;
-  border: 1px solid rgba(148, 163, 184, 0.28);
+  border: 1px solid color-mix(in srgb, var(--73-ink-placeholder) 28%, transparent);
   border-radius: 999px;
-  background: rgba(241, 245, 249, 0.9);
-  color: #475569;
+  background: color-mix(in srgb, var(--73-surface-strong) 90%, transparent);
+  color: var(--73-ink-soft);
   font-size: 12px;
   font-weight: 800;
   line-height: 1;
 }
 
 .community-status-badge.is-pending_review {
-  border-color: rgba(245, 158, 11, 0.28);
-  background: rgba(255, 251, 235, 0.95);
-  color: #b45309;
+  border-color: color-mix(in srgb, var(--73-warning) 28%, transparent);
+  background: color-mix(in srgb, var(--73-warning-soft) 95%, transparent);
+  color: var(--73-warning);
 }
 
 .community-status-badge.is-published {
-  border-color: rgba(34, 197, 94, 0.24);
-  background: rgba(240, 253, 244, 0.95);
-  color: #15803d;
+  border-color: color-mix(in srgb, var(--73-success) 24%, transparent);
+  background: color-mix(in srgb, var(--73-success-soft) 95%, transparent);
+  color: var(--73-success);
 }
 
 .community-status-badge.is-rejected {
-  border-color: rgba(248, 113, 113, 0.28);
-  background: rgba(254, 242, 242, 0.95);
-  color: #b91c1c;
+  border-color: color-mix(in srgb, var(--73-danger) 28%, transparent);
+  background: color-mix(in srgb, var(--73-danger-soft) 95%, transparent);
+  color: var(--73-danger);
 }
 
 .community-post-card__tags {
@@ -70,8 +70,8 @@
   display: inline-flex;
   padding: 1px 7px;
   border-radius: 999px;
-  background: rgba(219, 234, 254, 0.9);
-  color: #1d4ed8;
+  background: color-mix(in srgb, var(--73-accent-soft) 90%, transparent);
+  color: var(--73-accent);
   font-size: 11px;
   font-weight: 800;
 }
@@ -82,7 +82,7 @@
   align-items: center;
   gap: 4px 8px;
   font-size: 12px;
-  color: #94a3b8;
+  color: var(--73-ink-placeholder);
   line-height: 1.35;
 }
 
@@ -102,13 +102,13 @@
 
 .community-rich-text {
   padding: 6px 0 18px;
-  color: #1e293b;
+  color: var(--73-ink);
   line-height: 1.75;
 }
 
 .community-detail-loading {
   padding: 18px 0 28px;
-  color: #64748b;
+  color: var(--73-ink-muted);
   font-weight: 700;
 }
 
@@ -118,7 +118,7 @@
 .community-rich-text h4,
 .community-rich-text h5 {
   margin: 18px 0 10px;
-  color: #0f172a;
+  color: var(--73-ink);
   line-height: 1.28;
 }
 
@@ -147,11 +147,11 @@
 .community-rich-text ol,
 .community-rich-text blockquote {
   margin: 0 0 12px;
-  color: #334155;
+  color: var(--73-ink-soft);
 }
 
 .community-rich-text a {
-  color: #2563eb;
+  color: var(--73-accent);
 }
 
 .community-rich-text img {
@@ -165,22 +165,22 @@
   overflow: auto;
   padding: 14px;
   border-radius: 12px;
-  background: #0f172a;
-  color: #e2e8f0;
+  background: var(--73-ink);
+  color: var(--73-border);
 }
 
 .community-rich-text blockquote {
   padding-left: 14px;
-  border-left: 3px solid #bfdbfe;
-  color: #475569;
+  border-left: 3px solid var(--73-accent-soft);
+  color: var(--73-ink-soft);
 }
 
 .community-actions {
   justify-content: flex-start;
   padding: 12px;
-  border: 1px solid rgba(219, 234, 254, 0.86);
+  border: 1px solid color-mix(in srgb, var(--73-accent-soft) 86%, transparent);
   border-radius: 14px;
-  background: rgba(248, 250, 252, 0.72);
+  background: color-mix(in srgb, var(--73-surface-strong) 72%, transparent);
 }
 
 .community-like-button strong {
@@ -190,15 +190,15 @@
   place-items: center;
   padding: 0 6px;
   border-radius: 999px;
-  background: rgba(37, 99, 235, 0.1);
-  color: #1d4ed8;
+  background: color-mix(in srgb, var(--73-accent) 10%, transparent);
+  color: var(--73-accent);
   font-size: 12px;
   line-height: 1;
 }
 
 .community-like-button.is-liked strong {
-  background: rgba(255, 255, 255, 0.18);
-  color: #fff;
+  background: color-mix(in srgb, var(--73-surface-strong) 18%, transparent);
+  color: var(--73-surface-strong);
 }
 
 .community-action-stat {
@@ -208,8 +208,8 @@
   min-height: 36px;
   padding: 0 12px;
   border-radius: 999px;
-  background: #fff;
-  color: #475569;
+  background: var(--73-surface-strong);
+  color: var(--73-ink-soft);
   font-size: 13px;
   font-weight: 800;
 }
