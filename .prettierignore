@@ -7,3 +7,7 @@ eslint-suppressions.json
 frontend-baseline.json
 src/api/generated
 deploy
+
+# 应用层令牌台账：一条令牌一行、行尾注了首个使用位置（见文件头说明）。
+# prettier 会把每条渐变值折成多行，台账就没法一条一行地读了，所以整份不参与格式化。
+src/styles/tokens.css
