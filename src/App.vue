@@ -15,12 +15,14 @@ const downloadStore = useDownloadStore()
 const route = useRoute()
 const router = useRouter()
 const currentYear = new Date().getFullYear()
-const showSiteFooter = computed(() => !route.matched.some((record) => record.meta.hideSiteFooter === true))
+const showSiteFooter = computed(
+  () => !route.matched.some((record) => record.meta.hideSiteFooter === true),
+)
 const devAutoLoginCredentials = import.meta.env.DEV
   ? {
-    username: import.meta.env.VITE_DEV_AUTO_LOGIN_USERNAME?.trim() ?? '',
-    password: import.meta.env.VITE_DEV_AUTO_LOGIN_PASSWORD?.trim() ?? '',
-  }
+      username: import.meta.env.VITE_DEV_AUTO_LOGIN_USERNAME?.trim() ?? '',
+      password: import.meta.env.VITE_DEV_AUTO_LOGIN_PASSWORD?.trim() ?? '',
+    }
   : null
 let handlingUnauthorized = false
 
@@ -125,7 +127,10 @@ onBeforeUnmount(() => {
   <div class="app-shell">
     <div class="app-content">
       <TScrollbar class="app-scrollbar app-shell-scrollbar">
-        <div class="app-view-container" :class="{ 'app-view-container--no-footer': !showSiteFooter }">
+        <div
+          class="app-view-container"
+          :class="{ 'app-view-container--no-footer': !showSiteFooter }"
+        >
           <PortalTopNav :class="['app-top-nav', { 'app-top-nav--home': route.name === 'home' }]" />
           <RouterView v-slot="{ Component }">
             <Suspense>
@@ -147,22 +152,34 @@ onBeforeUnmount(() => {
                   <h3>备案与合规</h3>
                   <p>
                     ICP备案号：
-                    <a href="https://beian.miit.gov.cn/" target="_blank"
-                      rel="noopener noreferrer">滇ICP备2026006119号-3</a>
+                    <a href="https://beian.miit.gov.cn/" target="_blank" rel="noopener noreferrer"
+                      >滇ICP备2026006119号-3</a
+                    >
                   </p>
                   <p>
                     公安备案号：
-                    <a class="public-security-beian-link"
-                      href="https://beian.mps.gov.cn/#/query/webSearch?code=53062802000023" target="_blank"
-                      rel="noopener noreferrer">
-                      <img class="public-security-beian-icon" src="/icons/beian.png" alt="公安备案图标" />
+                    <a
+                      class="public-security-beian-link"
+                      href="https://beian.mps.gov.cn/#/query/webSearch?code=53062802000023"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      <img
+                        class="public-security-beian-icon"
+                        src="/icons/beian.png"
+                        alt="公安备案图标"
+                      />
                       <span>滇公网安备53062802000023号</span>
                     </a>
                   </p>
                   <p>
                     增值电信业务经营许可证：
-                    <a href="https://dxzhgl.miit.gov.cn/dxxzsp/xkz/xkzgl/resource/qiyesearch.jsp?num=%25E6%25BB%2587B2-20260273&type=xuke"
-                      target="_blank" rel="noopener noreferrer">滇B2-20260273</a>
+                    <a
+                      href="https://dxzhgl.miit.gov.cn/dxxzsp/xkz/xkzgl/resource/qiyesearch.jsp?num=%25E6%25BB%2587B2-20260273&type=xuke"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      >滇B2-20260273</a
+                    >
                   </p>
                   <p>交易说明：第三方支付担保与分账</p>
                 </div>
@@ -174,7 +191,9 @@ onBeforeUnmount(() => {
                   <p><router-link to="/payment-refund">支付与退款说明</router-link></p>
                 </div>
               </div>
-              <p class="site-footer-copy">© {{ currentYear }} 柒叁信息 73Info. All rights reserved.</p>
+              <p class="site-footer-copy">
+                © {{ currentYear }} 柒叁信息 73Info. All rights reserved.
+              </p>
             </footer>
           </div>
         </div>
@@ -190,16 +209,22 @@ onBeforeUnmount(() => {
 
     <!-- 全局资源下载进度浮层：切换路由不中断下载，浮层持续展示进度 -->
     <Transition name="download-pop">
-      <div v-if="downloadStore.state.active" class="global-download-card" role="status"
-        aria-live="polite">
+      <div
+        v-if="downloadStore.state.active"
+        class="global-download-card"
+        role="status"
+        aria-live="polite"
+      >
         <div class="global-download-card__body">
           <div class="global-download-card__row">
             <span class="global-download-card__file">{{ downloadStore.state.fileName }}</span>
             <span class="global-download-card__pct">{{ downloadStore.state.percent }}%</span>
           </div>
           <div class="global-download-card__track">
-            <div class="global-download-card__bar"
-              :style="{ width: `${downloadStore.state.percent}%` }"></div>
+            <div
+              class="global-download-card__bar"
+              :style="{ width: `${downloadStore.state.percent}%` }"
+            ></div>
           </div>
           <div class="global-download-card__meta">
             <span v-if="downloadStore.loadedBytes > 0">
@@ -258,7 +283,6 @@ onBeforeUnmount(() => {
 }
 
 @media (max-width: 900px) {
-
   .app-top-nav:not(.app-top-nav--home) {
     display: none;
   }
