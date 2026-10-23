@@ -114,17 +114,30 @@ export type StartCompanyIdentifyPayload = Schemas['StartCompanyIdentifyRequest']
 /** 爱签企业核身响应，字段同契约 `StartCompanyIdentifyResponse`。 */
 export type StartCompanyIdentifyResponse = Schemas['StartCompanyIdentifyResponse']
 
-/** 上传监护人同意书成功后的响应（`POST /api/realname/consent-file`）。 */
-export type GuardianConsentUploadResponse = Schemas['GuardianConsentFileResponse']
+/**
+ * 上传监护人同意书成功后的响应（`POST /api/realname/consent-file`）。
+ *
+ * 手写而非契约：新契约里有这个端点，但**没有声明响应体**（响应 schema 为空），
+ * 所以按后端实际返回的字段写，等 utoipa 补上响应 schema 再改回别名。
+ */
+export type GuardianConsentUploadResponse = {
+  guardian_consent_file: string
+}
 
-/** 上传营业执照成功后的响应（`POST /api/realname/business-license-file`）。 */
-export type BusinessLicenseUploadResponse = Schemas['BusinessLicenseFileResponse']
+/** 上传营业执照成功后的响应（`POST /api/realname/business-license-file`）；契约未声明响应体，手写。 */
+export type BusinessLicenseUploadResponse = {
+  business_license_file: string
+}
 
-/** 上传法人身份证人像面成功后的响应（`POST /api/realname/legal-cert-front-file`）。 */
-export type LegalCertFrontUploadResponse = Schemas['LegalCertFrontFileResponse']
+/** 上传法人身份证人像面成功后的响应（`POST /api/realname/legal-cert-front-file`）；契约未声明响应体，手写。 */
+export type LegalCertFrontUploadResponse = {
+  front_file: string
+}
 
-/** 上传法人身份证国徽面成功后的响应（`POST /api/realname/legal-cert-back-file`）。 */
-export type LegalCertBackUploadResponse = Schemas['LegalCertBackFileResponse']
+/** 上传法人身份证国徽面成功后的响应（`POST /api/realname/legal-cert-back-file`）；契约未声明响应体，手写。 */
+export type LegalCertBackUploadResponse = {
+  back_file: string
+}
 
 /**
  * 营业执照 OCR 识别结果：只包含可回填表单的白名单字段。
