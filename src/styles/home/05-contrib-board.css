@@ -61,19 +61,19 @@
 }
 
 .portal-contrib-item--rank-1 .portal-contrib-item__rank {
-  background: linear-gradient(135deg, var(--73-warning), var(--73-warning));
+  background: var(--73-app-grad-warning-05);
   color: var(--73-danger-text);
   box-shadow: 0 6px 14px color-mix(in srgb, var(--73-warning) 28%, transparent);
 }
 
 .portal-contrib-item--rank-2 .portal-contrib-item__rank {
-  background: linear-gradient(135deg, var(--73-border), var(--73-ink-placeholder));
+  background: var(--73-app-grad-accent-soft-10);
   color: var(--73-ink);
   box-shadow: 0 6px 14px color-mix(in srgb, var(--73-ink-muted) 20%, transparent);
 }
 
 .portal-contrib-item--rank-3 .portal-contrib-item__rank {
-  background: linear-gradient(135deg, var(--73-warning), var(--73-warning));
+  background: var(--73-app-grad-warning-04);
   color: var(--73-danger-text);
   box-shadow: 0 6px 14px color-mix(in srgb, var(--73-warning) 22%, transparent);
 }
@@ -90,11 +90,7 @@
   flex: 0 0 auto;
   border-radius: 50%;
   overflow: hidden;
-  background: linear-gradient(
-    135deg,
-    color-mix(in srgb, var(--73-accent) 12%, transparent),
-    color-mix(in srgb, var(--73-accent) 18%, transparent)
-  );
+  background: var(--73-app-grad-soft-46);
   color: var(--73-accent);
   font-weight: 800;
   transition:

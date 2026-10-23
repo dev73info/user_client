@@ -115,11 +115,7 @@ const emit = defineEmits<{
   padding: 12px 14px;
   border: 1px solid color-mix(in srgb, var(--73-accent) 22%, transparent);
   border-radius: 12px;
-  background: linear-gradient(
-    180deg,
-    color-mix(in srgb, var(--73-accent-soft) 96%, transparent),
-    color-mix(in srgb, var(--73-surface-strong) 98%, transparent)
-  );
+  background: var(--73-app-grad-soft-08);
 }
 
 .conversation-card--other {

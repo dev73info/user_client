@@ -104,7 +104,7 @@
 .agreement-page {
   min-height: 100vh;
   padding: 32px 16px;
-  background: linear-gradient(180deg, var(--73-surface-strong) 0%, var(--73-accent-soft) 100%);
+  background: var(--73-app-grad-accent-soft-13);
 }
 
 .agreement-card {

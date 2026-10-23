@@ -60,15 +60,15 @@
 }
 
 .bg-teal {
-  background: linear-gradient(135deg, var(--73-success), var(--73-success));
+  background: var(--73-app-grad-success-03);
 }
 
 .bg-blue {
-  background: linear-gradient(135deg, var(--73-accent), var(--73-accent));
+  background: var(--73-app-grad-accent-16);
 }
 
 .bg-green {
-  background: linear-gradient(135deg, var(--73-success), var(--73-success));
+  background: var(--73-app-grad-success-02);
 }
 
 .res-info {

@@ -64,11 +64,7 @@
   flex: 0 0 auto;
   padding: 12px 20px 14px;
   border-top: 1px solid color-mix(in srgb, var(--73-border) 76%, transparent);
-  background: linear-gradient(
-    180deg,
-    color-mix(in srgb, var(--73-surface-strong) 90%, transparent),
-    var(--73-surface-strong)
-  );
+  background: var(--73-app-grad-soft-12);
 }
 
 .agent-panel__composer textarea {

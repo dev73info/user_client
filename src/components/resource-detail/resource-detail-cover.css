@@ -6,17 +6,7 @@
   overflow: hidden;
   border: 0;
   border-radius: 0;
-  background:
-    radial-gradient(
-      circle at top right,
-      color-mix(in srgb, var(--73-accent) 18%, transparent),
-      transparent 30%
-    ),
-    linear-gradient(
-      160deg,
-      color-mix(in srgb, var(--73-accent-soft) 95%, transparent),
-      color-mix(in srgb, var(--73-accent-soft) 92%, transparent)
-    );
+  background: var(--73-app-grad-soft-19), var(--73-app-grad-soft-18);
 }
 
 /* 封面图与占位块共用尺寸；`display` 只有图是块级——占位块要居中，见下一条（原来是同一条规则里

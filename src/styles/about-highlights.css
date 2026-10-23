@@ -51,7 +51,7 @@
   width: 4px;
   height: 46px;
   border-radius: 999px;
-  background: linear-gradient(180deg, var(--73-accent), var(--73-accent));
+  background: var(--73-app-grad-accent-08);
 }
 
 .about-highlight__text h3 {

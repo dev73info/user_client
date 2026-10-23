@@ -228,7 +228,7 @@ function openWorkbench(): void {
 
 .requirement-hall-detail__bind:hover {
   border-color: color-mix(in srgb, var(--73-accent) 42%, transparent);
-  background: var(--73-accent);
+  background: var(--73-app-accent-strong);
   box-shadow: 0 10px 22px color-mix(in srgb, var(--73-accent) 22%, transparent);
   transform: translateY(-1px);
 }
@@ -245,11 +245,7 @@ function openWorkbench(): void {
   padding: 16px;
   border: 1px solid color-mix(in srgb, var(--73-ink) 8%, transparent);
   border-radius: 18px;
-  background: linear-gradient(
-    180deg,
-    color-mix(in srgb, var(--73-surface-strong) 96%, transparent),
-    color-mix(in srgb, var(--73-surface-strong) 92%, transparent)
-  );
+  background: var(--73-app-grad-soft-17);
 }
 
 .requirement-hall-detail__review-grid {

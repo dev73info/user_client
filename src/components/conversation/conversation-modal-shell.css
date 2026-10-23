@@ -110,12 +110,7 @@
   flex: 0 0 auto;
   margin-top: -20px;
   padding: 20px 14px 8px;
-  background: linear-gradient(
-    180deg,
-    color-mix(in srgb, var(--73-accent-soft) 0%, transparent) 0,
-    color-mix(in srgb, var(--73-accent-soft) 92%, transparent) 20px,
-    var(--73-accent-soft) 100%
-  );
+  background: var(--73-app-grad-accent-soft-03);
   pointer-events: none;
   display: flex;
   align-items: center;
@@ -130,39 +125,20 @@
 /* 消息区顶部同样淡出：用遮罩让最上面 24px 的内容渐隐，不另叠色块，背景怎么变都对得上；
    滚动条隐藏，滚轮、触摸与键盘滚动不受影响 */
 .conversation-modal__messages {
-  -webkit-mask-image: linear-gradient(180deg, transparent 0, var(--73-ink) 24px);
-  mask-image: linear-gradient(180deg, transparent 0, var(--73-ink) 24px);
+  -webkit-mask-image: var(--73-app-grad-dark-01);
+  mask-image: var(--73-app-grad-dark-01);
   scrollbar-width: none;
   flex: 1 1 auto;
   min-height: 0;
   overflow-y: auto;
   overscroll-behavior: contain;
-  background: linear-gradient(
-    135deg,
-    color-mix(in srgb, var(--73-accent-soft) 78%, transparent),
-    color-mix(in srgb, var(--73-accent-soft) 90%, transparent) 44%,
-    color-mix(in srgb, var(--73-success-soft) 78%, transparent)
-  );
+  background: var(--73-app-grad-soft-07);
   display: flex;
   flex-direction: column;
   gap: 0;
   background-color: var(--73-accent-soft);
   background-image:
-    radial-gradient(
-      circle at 18px 18px,
-      color-mix(in srgb, var(--73-accent) 8%, transparent) 0 1px,
-      transparent 2px
-    ),
-    radial-gradient(
-      circle at 88px 52px,
-      color-mix(in srgb, var(--73-success) 7%, transparent) 0 1px,
-      transparent 2px
-    ),
-    linear-gradient(
-      180deg,
-      color-mix(in srgb, var(--73-accent-soft) 96%, transparent),
-      color-mix(in srgb, var(--73-accent-soft) 96%, transparent)
-    );
+    var(--73-app-grad-soft-06), var(--73-app-grad-soft-05), var(--73-app-grad-soft-04);
   background-size:
     96px 76px,
     128px 104px,

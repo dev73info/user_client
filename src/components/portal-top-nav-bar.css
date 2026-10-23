@@ -17,7 +17,7 @@
   --ptn-accent-ink: var(--73-accent);
   --ptn-danger-ink: var(--73-danger);
   --ptn-inverse: var(--73-surface-strong);
-  --ptn-accent-gradient: linear-gradient(135deg, var(--73-accent), var(--73-accent));
+  --ptn-accent-gradient: var(--73-accent-gradient);
   --ptn-line: color-mix(in srgb, var(--73-ink-disabled) 86%, transparent);
   --ptn-line-soft: color-mix(in srgb, var(--73-ink-disabled) 82%, transparent);
   --ptn-line-menu: color-mix(in srgb, var(--73-ink-disabled) 92%, transparent);

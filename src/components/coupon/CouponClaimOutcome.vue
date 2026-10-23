@@ -122,7 +122,7 @@ function openAuth(mode: 'login' | 'register') {
 }
 
 .claim-outcome__primary {
-  background: linear-gradient(135deg, var(--73-accent), var(--73-accent));
+  background: var(--73-app-grad-accent-03);
   color: var(--73-accent);
   font-weight: 700;
 }

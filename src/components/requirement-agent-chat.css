@@ -14,11 +14,7 @@
   flex: 0 0 auto;
   padding: 14px 22px 12px;
   border-bottom: 1px solid color-mix(in srgb, var(--73-border) 76%, transparent);
-  background: linear-gradient(
-    180deg,
-    var(--73-surface-strong) 0%,
-    color-mix(in srgb, var(--73-surface-strong) 96%, transparent) 100%
-  );
+  background: var(--73-app-grad-soft-13);
 }
 
 .agent-panel__title h4 {

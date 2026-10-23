@@ -16,11 +16,7 @@
   padding: 0 11px 0 10px;
   border: 1px solid color-mix(in srgb, var(--73-accent-soft) 72%, transparent);
   border-radius: 999px;
-  background: linear-gradient(
-    180deg,
-    color-mix(in srgb, var(--73-surface-strong) 96%, transparent),
-    color-mix(in srgb, var(--73-accent-soft) 90%, transparent)
-  );
+  background: var(--73-app-grad-soft-69);
   color: var(--73-accent);
   box-shadow:
     0 12px 28px color-mix(in srgb, var(--73-ink) 18%, transparent),
@@ -61,11 +57,7 @@
 .rich-code-copy-button:hover,
 .rich-code-copy-button:focus-visible {
   border-color: color-mix(in srgb, var(--73-accent) 82%, transparent);
-  background: linear-gradient(
-    180deg,
-    color-mix(in srgb, var(--73-accent) 96%, transparent),
-    color-mix(in srgb, var(--73-accent) 94%, transparent)
-  );
+  background: var(--73-app-grad-soft-68);
   color: var(--73-surface-strong);
   outline: none;
   box-shadow:
@@ -80,11 +72,7 @@
 
 .rich-code-copy-button.is-copied {
   border-color: color-mix(in srgb, var(--73-success) 90%, transparent);
-  background: linear-gradient(
-    180deg,
-    color-mix(in srgb, var(--73-success) 96%, transparent),
-    color-mix(in srgb, var(--73-success) 94%, transparent)
-  );
+  background: var(--73-app-grad-soft-67);
   color: var(--73-success-soft);
   box-shadow:
     0 14px 30px color-mix(in srgb, var(--73-success) 24%, transparent),

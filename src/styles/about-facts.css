@@ -10,7 +10,7 @@
   padding: 26px 16px;
   text-align: center;
   border-radius: 16px;
-  background: linear-gradient(180deg, var(--73-accent-soft), var(--73-accent-soft));
+  background: var(--73-app-grad-accent-soft-08);
   border: 1px solid color-mix(in srgb, var(--73-accent-soft) 80%, transparent);
   transition:
     transform 160ms ease,

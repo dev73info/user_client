@@ -41,7 +41,7 @@
 }
 
 .portal-solid-btn:hover {
-  background: linear-gradient(135deg, var(--73-accent), var(--73-accent));
+  background: var(--73-app-grad-accent-04);
   box-shadow: 0 14px 26px color-mix(in srgb, var(--73-accent) 30%, transparent);
   filter: saturate(1.06);
   transform: translateY(-1px);

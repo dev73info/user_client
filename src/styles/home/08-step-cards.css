@@ -60,11 +60,7 @@
   width: 36px;
   height: 36px;
   border-radius: 9px;
-  background: linear-gradient(
-    135deg,
-    var(--workflow-accent),
-    color-mix(in srgb, var(--workflow-accent) 72%, var(--73-surface-strong))
-  );
+  background: var(--73-app-grad-soft-54);
   color: var(--73-surface-strong);
   font-size: 18px;
   font-weight: 800;

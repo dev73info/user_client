@@ -46,20 +46,12 @@ html::-webkit-scrollbar-thumb:hover {
 }
 
 .app-scrollbar .t73-scrollbar__bar--vertical .t73-scrollbar__thumb {
-  background: linear-gradient(
-    180deg,
-    color-mix(in srgb, var(--73-accent) 70%, transparent),
-    color-mix(in srgb, var(--73-success) 80%, transparent)
-  );
+  background: var(--73-app-grad-soft-02);
   border-radius: 999px;
 }
 
 .app-scrollbar .t73-scrollbar__bar--vertical .t73-scrollbar__thumb:hover {
-  background: linear-gradient(
-    180deg,
-    color-mix(in srgb, var(--73-accent) 90%, transparent),
-    var(--73-success)
-  );
+  background: var(--73-app-grad-soft-01);
 }
 
 /* 页脚贴底的弹性底座。

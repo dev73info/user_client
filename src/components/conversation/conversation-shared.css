@@ -40,7 +40,7 @@
 
 .conversation-modal__avatar,
 .conversation-message__avatar {
-  background: linear-gradient(135deg, var(--73-accent), var(--73-success));
+  background: var(--73-app-grad-accent-02);
   box-shadow: 0 8px 18px color-mix(in srgb, var(--73-accent) 18%, transparent);
   display: inline-grid;
   place-items: center;
@@ -55,7 +55,7 @@
   height: 26px;
   font-size: 11px;
   margin-bottom: 1px;
-  background: linear-gradient(135deg, var(--73-warning), var(--73-warning));
+  background: var(--73-app-grad-warning-01);
   box-shadow: 0 4px 10px color-mix(in srgb, var(--73-warning-text) 16%, transparent);
 }
 

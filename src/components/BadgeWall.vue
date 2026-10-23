@@ -238,11 +238,7 @@ onMounted(() => {
 
 .badge-wall__badge.acquired {
   border-color: var(--wb-accent-line);
-  background: linear-gradient(
-    180deg,
-    var(--wb-accent-soft),
-    color-mix(in srgb, var(--73-surface-strong) 96%, transparent)
-  );
+  background: var(--73-app-grad-soft-03);
   color: var(--profile-text-main, var(--73-ink));
   filter: none;
 }

@@ -54,7 +54,7 @@
   overflow: hidden;
   border: 1px solid color-mix(in srgb, var(--73-accent) 95%, transparent);
   border-radius: 50%;
-  background: linear-gradient(135deg, var(--73-accent-soft), var(--73-surface-strong));
+  background: var(--73-app-grad-accent-soft-05);
   color: var(--73-accent);
   cursor: pointer;
   font-size: 28px;

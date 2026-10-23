@@ -34,7 +34,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(135deg, var(--73-accent-soft), var(--73-accent-soft));
+  background: var(--73-app-grad-accent-soft-07);
   color: var(--73-accent);
   font-size: 36px;
   font-weight: 700;

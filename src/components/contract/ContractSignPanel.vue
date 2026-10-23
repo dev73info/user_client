@@ -165,7 +165,7 @@ const notice = defineModel<boolean>('notice', { required: true })
 }
 
 .btn-realname:hover {
-  background: var(--73-accent-soft);
+  background: var(--73-app-accent-soft-hover);
   border-color: var(--73-accent);
   transform: translateY(-1px);
 }

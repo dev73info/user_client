@@ -29,11 +29,7 @@
   padding: 14px 16px 14px 18px;
   border: 1px solid color-mix(in srgb, var(--73-border) 88%, transparent);
   border-radius: 16px;
-  background: linear-gradient(
-    180deg,
-    color-mix(in srgb, var(--73-surface-strong) 86%, transparent),
-    color-mix(in srgb, var(--73-surface-strong) 74%, transparent)
-  );
+  background: var(--73-app-grad-soft-40);
   opacity: 0;
   outline: none;
   animation: portal-notice-item-in 340ms ease both;
@@ -213,12 +209,7 @@
   inset: 0;
   z-index: -1;
   pointer-events: none;
-  background: linear-gradient(
-    135deg,
-    color-mix(in srgb, var(--73-surface-strong) 0%, transparent),
-    color-mix(in srgb, var(--73-surface-strong) 90%, transparent),
-    color-mix(in srgb, var(--73-surface-strong) 0%, transparent)
-  );
+  background: var(--73-app-grad-soft-39);
   opacity: 0;
   transform: translateX(-70%);
   transition:

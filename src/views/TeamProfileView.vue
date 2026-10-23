@@ -136,11 +136,7 @@ function onAvatarError() {
   padding: 28px 32px;
   border: 1px solid color-mix(in srgb, var(--73-border) 96%, transparent);
   border-radius: 16px;
-  background: linear-gradient(
-    135deg,
-    color-mix(in srgb, var(--73-surface-strong) 98%, transparent),
-    color-mix(in srgb, var(--73-surface-strong) 94%, transparent)
-  );
+  background: var(--73-app-grad-soft-71);
   box-shadow: 0 4px 16px color-mix(in srgb, var(--73-ink) 4%, transparent);
 }
 
@@ -163,7 +159,7 @@ function onAvatarError() {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(135deg, var(--73-accent), var(--73-accent));
+  background: var(--73-app-grad-accent-17);
   color: var(--73-surface-strong);
   font-size: 28px;
   font-weight: 700;

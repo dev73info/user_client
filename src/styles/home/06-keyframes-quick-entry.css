@@ -90,38 +90,11 @@
 }
 
 .portal-quick-card--gift {
-  background:
-    radial-gradient(
-      circle at 82% 36%,
-      color-mix(in srgb, var(--73-surface-strong) 90%, transparent) 0 6%,
-      transparent 7%
-    ),
-    radial-gradient(
-      circle at 86% 50%,
-      color-mix(in srgb, var(--73-accent) 11%, transparent) 0 11%,
-      transparent 12%
-    ),
-    linear-gradient(
-      105deg,
-      var(--73-surface-strong) 0%,
-      var(--73-accent-soft) 58%,
-      var(--73-accent-soft) 100%
-    );
+  background: var(--73-app-grad-soft-51), var(--73-app-grad-soft-50), var(--73-app-grad-soft-49);
 }
 
 .portal-quick-card--briefcase {
-  background:
-    radial-gradient(
-      circle at 84% 46%,
-      color-mix(in srgb, var(--73-warning) 8%, transparent) 0 13%,
-      transparent 14%
-    ),
-    linear-gradient(
-      105deg,
-      var(--73-surface-strong) 0%,
-      var(--73-warning-soft) 55%,
-      var(--73-warning-soft) 100%
-    );
+  background: var(--73-app-grad-soft-48), var(--73-app-grad-soft-47);
 }
 
 .portal-quick-card::after {

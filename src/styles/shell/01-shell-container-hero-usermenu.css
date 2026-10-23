@@ -92,7 +92,7 @@
 
 .auth-btn.solid:disabled {
   color: color-mix(in srgb, var(--73-surface-strong) 90%, transparent);
-  background: linear-gradient(135deg, var(--73-accent-soft), var(--73-accent-soft));
+  background: var(--73-app-grad-accent-soft-12);
 }
 
 .user-menu-wrapper {

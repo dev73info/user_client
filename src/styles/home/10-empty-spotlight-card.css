@@ -26,18 +26,7 @@
   overflow: hidden;
   border: 1px solid color-mix(in srgb, var(--73-ink-disabled) 58%, transparent);
   border-radius: 14px;
-  background:
-    linear-gradient(
-      90deg,
-      color-mix(in srgb, var(--73-accent) 6%, transparent),
-      color-mix(in srgb, var(--73-warning) 8%, transparent),
-      transparent
-    ),
-    linear-gradient(
-      180deg,
-      color-mix(in srgb, var(--73-surface-strong) 96%, transparent),
-      color-mix(in srgb, var(--73-surface-strong) 88%, transparent)
-    );
+  background: var(--73-app-grad-soft-57), var(--73-app-grad-soft-56);
   box-shadow:
     inset 0 1px 0 color-mix(in srgb, var(--73-surface-strong) 90%, transparent),
     0 8px 18px color-mix(in srgb, var(--73-ink) 4%, transparent);
@@ -50,7 +39,7 @@
   width: 42px;
   height: 42px;
   border-radius: 14px;
-  background: linear-gradient(135deg, var(--73-accent-soft), var(--73-accent-soft));
+  background: var(--73-app-grad-accent-soft-11);
   color: var(--73-accent);
   font-size: 13px;
   font-weight: 900;
@@ -73,11 +62,7 @@
   position: absolute;
   inset: 0;
   pointer-events: none;
-  background: linear-gradient(
-    120deg,
-    transparent 0 62%,
-    color-mix(in srgb, var(--73-accent) 8%, transparent) 62% 100%
-  );
+  background: var(--73-app-grad-soft-55);
 }
 
 .portal-empty-state strong {
@@ -155,24 +140,19 @@
 }
 
 .portal-spotlight-card--nebula .portal-spotlight-card__cover {
-  background: linear-gradient(135deg, var(--73-accent), var(--73-accent) 58%, var(--73-accent));
+  background: var(--73-app-grad-cover-03);
 }
 
 .portal-spotlight-card--sunset .portal-spotlight-card__cover {
-  background: linear-gradient(
-    135deg,
-    var(--73-danger-text),
-    var(--73-warning) 58%,
-    var(--73-warning)
-  );
+  background: var(--73-app-grad-cover-05);
 }
 
 .portal-spotlight-card--forest .portal-spotlight-card__cover {
-  background: linear-gradient(135deg, var(--73-success), var(--73-success) 58%, var(--73-danger));
+  background: var(--73-app-grad-cover-04);
 }
 
 .portal-spotlight-card--frost .portal-spotlight-card__cover {
-  background: linear-gradient(135deg, var(--73-accent), var(--73-accent) 58%, var(--73-accent));
+  background: var(--73-app-grad-accent-14);
 }
 
 .portal-spotlight-card__badge {

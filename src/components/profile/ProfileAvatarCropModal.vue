@@ -150,7 +150,7 @@ const emit = defineEmits<{
   gap: 16px;
   padding: 18px 20px;
   border-bottom: 1px solid color-mix(in srgb, var(--73-accent-soft) 90%, transparent);
-  background: linear-gradient(180deg, var(--73-surface-strong) 0%, var(--73-accent-soft) 100%);
+  background: var(--73-app-grad-soft-11);
 }
 
 .profile-avatar-crop-header h3 {
@@ -173,7 +173,7 @@ const emit = defineEmits<{
   padding: 16px;
   border: 1px solid color-mix(in srgb, var(--73-accent-soft) 90%, transparent);
   border-radius: 24px;
-  background: linear-gradient(135deg, var(--73-accent-soft) 0%, var(--73-surface-strong) 100%);
+  background: var(--73-app-grad-accent-soft-06);
 }
 
 .profile-avatar-crop-stage {
@@ -183,7 +183,7 @@ const emit = defineEmits<{
   overflow: hidden;
   border: 1px solid color-mix(in srgb, var(--73-accent) 95%, transparent);
   border-radius: 50%;
-  background: linear-gradient(135deg, var(--73-accent-soft), var(--73-surface-strong));
+  background: var(--73-app-grad-accent-soft-05);
   box-shadow: 0 18px 38px color-mix(in srgb, var(--73-accent) 18%, transparent);
   cursor: grab;
   touch-action: none;
@@ -292,7 +292,7 @@ const emit = defineEmits<{
 .modal-wrap--avatar-crop .profile-avatar-crop-action--primary.ghost {
   min-width: 116px;
   border-color: color-mix(in srgb, var(--73-accent) 95%, transparent);
-  background: linear-gradient(135deg, var(--73-accent) 0%, var(--73-accent) 100%);
+  background: var(--73-app-grad-accent-06);
   color: var(--73-surface-strong);
   box-shadow: 0 12px 24px color-mix(in srgb, var(--73-accent) 22%, transparent);
 }
@@ -312,7 +312,7 @@ const emit = defineEmits<{
 
 .modal-wrap--avatar-crop .profile-avatar-crop-action--primary.ghost:hover:not(:disabled) {
   border-color: color-mix(in srgb, var(--73-accent) 98%, transparent);
-  background: linear-gradient(135deg, var(--73-accent) 0%, var(--73-accent) 100%);
+  background: var(--73-app-grad-accent-05);
   box-shadow: 0 16px 30px color-mix(in srgb, var(--73-accent) 28%, transparent);
 }
 

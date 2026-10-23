@@ -7,7 +7,7 @@
   text-align: center;
   border-radius: 20px;
   color: var(--73-surface-strong);
-  background: linear-gradient(135deg, var(--73-accent), var(--73-accent));
+  background: var(--73-app-grad-cover-02);
   box-shadow: 0 20px 52px color-mix(in srgb, var(--73-accent) 30%, transparent);
 }
 
@@ -17,12 +17,7 @@
   left: -40%;
   width: 40%;
   height: 100%;
-  background: linear-gradient(
-    100deg,
-    transparent,
-    color-mix(in srgb, var(--73-surface-strong) 12%, transparent),
-    transparent
-  );
+  background: var(--73-app-grad-soft-22);
   transform: skewX(-18deg);
   animation: about-shine 5.5s ease-in-out infinite;
   pointer-events: none;

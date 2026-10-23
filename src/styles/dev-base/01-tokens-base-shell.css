@@ -30,16 +30,8 @@
   --dev-blue-tint: var(--73-accent-soft);
   --dev-blue-soft: color-mix(in srgb, var(--73-accent) 8%, transparent);
   --dev-amount: var(--73-danger);
-  --dev-scrollbar-thumb: linear-gradient(
-    180deg,
-    color-mix(in srgb, var(--73-accent) 62%, transparent),
-    color-mix(in srgb, var(--73-success) 72%, transparent)
-  );
-  --dev-scrollbar-thumb-hover: linear-gradient(
-    180deg,
-    color-mix(in srgb, var(--73-accent) 82%, transparent),
-    color-mix(in srgb, var(--73-success) 88%, transparent)
-  );
+  --dev-scrollbar-thumb: var(--73-app-grad-soft-27);
+  --dev-scrollbar-thumb-hover: var(--73-app-grad-soft-26);
   /* 尺寸口径：卡片一档、内嵌块一档、控件一档。开发者端只用这三个圆角值 + 胶囊，
      控件高度也统一到 --dev-control-height，避免同样角色的输入框/选择器/按钮各页不同高。
      原来这里没有尺寸令牌，各页各写自己的 px，是「同一种控件长得不一样」的根源。
@@ -64,21 +56,7 @@ body,
 body {
   min-height: 100vh;
   background:
-    radial-gradient(
-      circle at top left,
-      color-mix(in srgb, var(--73-accent) 13%, transparent),
-      transparent 28%
-    ),
-    radial-gradient(
-      circle at 80% 20%,
-      color-mix(in srgb, var(--73-accent) 10%, transparent),
-      transparent 24%
-    ),
-    radial-gradient(
-      circle at bottom right,
-      color-mix(in srgb, var(--73-success) 8%, transparent),
-      transparent 22%
-    ),
+    var(--73-app-grad-soft-25), var(--73-app-grad-soft-24), var(--73-app-grad-soft-23),
     var(--dev-bg);
 }
 

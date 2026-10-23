@@ -102,11 +102,7 @@
   padding: 16px 20px;
   border: 1px solid color-mix(in srgb, var(--73-warning) 28%, transparent);
   border-radius: var(--dev-radius-card);
-  background: linear-gradient(
-    135deg,
-    color-mix(in srgb, var(--73-warning-soft) 98%, transparent),
-    color-mix(in srgb, var(--73-warning-soft) 92%, transparent)
-  );
+  background: var(--73-app-grad-soft-28);
   box-shadow: var(--dev-shadow);
 }
 

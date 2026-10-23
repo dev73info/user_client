@@ -9,7 +9,7 @@
    详情区抽成 `components/community/CommunityPostList.vue` /
    `CommunityPostDetail.vue` 之后搬到这里。为什么放全局层而不是各组件自己的 scoped 块：
 
-   1. `check-frontend` 的裸色值门禁——新组件里出现 `#rrggbb` / `rgba()` 就是新增违规；
+   1. `check-frontend` 的裸色值门禁——新组件里出现 `#rrggbb` / `var(--73-danger)` 就是新增违规；
       而这份样式里的色值一个都不能换成 `--73-*` 令牌（门户蓝 `var(--73-accent)` 与
       `--73-accent` = `var(--73-accent)` 不是同一个值，换过去就是改视觉，要单独走查）。
       搬到全局层是「搬迁不增债」：裸色值总数一分不变，只是从 `.vue` 挪到 `.css`。

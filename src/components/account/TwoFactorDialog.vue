@@ -169,7 +169,7 @@ function onToggle(event: Event): void {
   padding: 14px;
   border: 1px solid color-mix(in srgb, var(--73-accent-soft) 92%, transparent);
   border-radius: 14px;
-  background: linear-gradient(180deg, var(--73-accent-soft) 0%, var(--73-surface-strong) 100%);
+  background: var(--73-app-grad-accent-soft-02);
 }
 
 .account-security-toggle-copy {
@@ -283,7 +283,7 @@ function onToggle(event: Event): void {
   padding: 14px 16px;
   border: 1px solid color-mix(in srgb, var(--73-accent-soft) 92%, transparent);
   border-radius: 14px;
-  background: linear-gradient(180deg, var(--73-accent-soft) 0%, var(--73-surface-strong) 100%);
+  background: var(--73-app-grad-accent-soft-02);
   color: var(--73-ink);
   text-align: left;
   cursor: pointer;
@@ -296,7 +296,7 @@ function onToggle(event: Event): void {
 .account-2fa-method.active {
   border-color: color-mix(in srgb, var(--73-accent) 92%, transparent);
   box-shadow: 0 10px 26px color-mix(in srgb, var(--73-accent) 14%, transparent);
-  background: linear-gradient(180deg, var(--73-accent-soft) 0%, var(--73-surface-strong) 100%);
+  background: var(--73-app-grad-accent-soft-01);
 }
 
 .account-2fa-method:disabled {

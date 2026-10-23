@@ -145,7 +145,7 @@ function displayName(): string {
 }
 
 .realname-consent-template:hover {
-  color: var(--73-warning);
+  color: var(--73-app-warning-text-strong);
   opacity: 1;
 }
 </style>

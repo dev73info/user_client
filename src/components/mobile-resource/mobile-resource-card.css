@@ -50,7 +50,7 @@
   width: 100%;
   height: 100%;
   font-size: 26px;
-  background: linear-gradient(135deg, var(--73-accent-soft), var(--73-accent-soft));
+  background: var(--73-app-grad-accent-soft-04);
 }
 
 .card-body {

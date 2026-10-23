@@ -96,11 +96,7 @@ defineProps<{
 .requirement-hall__overview-card,
 .requirement-hall__recent-card {
   overflow: hidden;
-  background: linear-gradient(
-    180deg,
-    color-mix(in srgb, var(--73-surface-strong) 98%, transparent),
-    color-mix(in srgb, var(--73-surface-strong) 94%, transparent)
-  );
+  background: var(--73-app-grad-soft-09);
 }
 
 .requirement-hall__overview-card .portal-page__aside-head,
@@ -214,11 +210,7 @@ defineProps<{
   padding: 4px 8px;
   border: 1px solid color-mix(in srgb, var(--73-warning) 22%, transparent);
   border-radius: 999px;
-  background: linear-gradient(
-    180deg,
-    color-mix(in srgb, var(--73-warning-soft) 95%, transparent),
-    color-mix(in srgb, var(--73-warning-soft) 55%, transparent)
-  );
+  background: var(--73-app-grad-soft-16);
   box-shadow: inset 0 1px 0 color-mix(in srgb, var(--73-surface-strong) 65%, transparent);
   color: var(--73-warning);
 }
@@ -256,7 +248,7 @@ defineProps<{
 
 .requirement-hall__deal-star.is-half {
   color: transparent;
-  background: linear-gradient(90deg, var(--73-warning) 50%, var(--73-border) 50%);
+  background: var(--73-app-grad-warning-02);
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;

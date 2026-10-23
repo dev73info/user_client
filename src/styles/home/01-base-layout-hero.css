@@ -82,7 +82,7 @@
   min-height: 42px;
   padding: 10px 22px;
   border-radius: 6px;
-  background: linear-gradient(135deg, var(--73-accent), var(--73-accent));
+  background: var(--73-app-grad-accent-09);
   color: var(--73-surface-strong);
   font-weight: 700;
   box-shadow: 0 10px 20px color-mix(in srgb, var(--73-accent) 24%, transparent);
@@ -101,7 +101,7 @@
 }
 
 .portal-publish-action:hover {
-  background: var(--73-accent);
+  background: var(--73-app-accent-strong);
 }
 
 .portal-hero {
@@ -123,13 +123,7 @@
   padding: 34px 22px 30px;
   background:
     url('/icons/hero_r.png') center / cover no-repeat,
-    linear-gradient(
-      100deg,
-      var(--73-surface-strong) 0%,
-      var(--73-accent-soft) 38%,
-      var(--73-accent-soft) 68%,
-      var(--73-accent-soft) 100%
-    );
+    var(--73-app-grad-soft-36);
   background-position:
     center calc(50% + 8px),
     0 0;

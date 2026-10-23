@@ -11,11 +11,7 @@
 
 .portal-rank-item__avatar {
   overflow: hidden;
-  background: linear-gradient(
-    135deg,
-    color-mix(in srgb, var(--73-accent) 12%, transparent),
-    color-mix(in srgb, var(--73-accent) 18%, transparent)
-  );
+  background: var(--73-app-grad-soft-46);
   color: var(--73-accent);
 }
 
@@ -33,14 +29,7 @@
 }
 
 .portal-stat-item__icon {
-  background: var(
-    --stat-bg,
-    linear-gradient(
-      135deg,
-      color-mix(in srgb, var(--73-accent) 16%, transparent),
-      color-mix(in srgb, var(--73-accent) 16%, transparent)
-    )
-  );
+  background: var(--stat-bg, var(--73-app-grad-soft-45));
   color: var(--stat-color, var(--73-accent));
   font-size: 20px;
 }
@@ -56,38 +45,22 @@
 }
 
 .portal-stat-item--tone-0 {
-  --stat-bg: linear-gradient(
-    135deg,
-    color-mix(in srgb, var(--73-accent) 14%, transparent),
-    color-mix(in srgb, var(--73-accent-soft) 52%, transparent)
-  );
+  --stat-bg: var(--73-app-grad-soft-44);
   --stat-color: var(--73-accent);
 }
 
 .portal-stat-item--tone-1 {
-  --stat-bg: linear-gradient(
-    135deg,
-    color-mix(in srgb, var(--73-accent) 14%, transparent),
-    color-mix(in srgb, var(--73-accent-soft) 58%, transparent)
-  );
+  --stat-bg: var(--73-app-grad-soft-43);
   --stat-color: var(--73-accent);
 }
 
 .portal-stat-item--tone-2 {
-  --stat-bg: linear-gradient(
-    135deg,
-    color-mix(in srgb, var(--73-success) 14%, transparent),
-    color-mix(in srgb, var(--73-success-soft) 68%, transparent)
-  );
+  --stat-bg: var(--73-app-grad-soft-42);
   --stat-color: var(--73-success);
 }
 
 .portal-stat-item--tone-3 {
-  --stat-bg: linear-gradient(
-    135deg,
-    color-mix(in srgb, var(--73-warning) 16%, transparent),
-    color-mix(in srgb, var(--73-warning) 52%, transparent)
-  );
+  --stat-bg: var(--73-app-grad-soft-41);
   --stat-color: var(--73-warning);
 }
 
@@ -150,7 +123,7 @@
   display: block;
   height: 100%;
   border-radius: 999px;
-  background: linear-gradient(90deg, var(--73-accent), var(--73-accent));
+  background: var(--73-app-grad-accent-10);
   transition: width 360ms ease;
 }
 

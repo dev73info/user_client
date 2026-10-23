@@ -208,12 +208,7 @@ onMounted(async () => {
   gap: 16px;
   padding: 16px 20px;
   border-radius: 14px;
-  background: linear-gradient(
-    135deg,
-    var(--73-accent-soft) 0%,
-    var(--73-accent-soft) 55%,
-    var(--73-surface-strong) 100%
-  );
+  background: var(--73-app-grad-accent-soft-14);
   border: 1px solid color-mix(in srgb, var(--73-accent-soft) 96%, transparent);
   color: var(--73-ink);
   box-shadow: 0 12px 26px color-mix(in srgb, var(--73-accent) 8%, transparent);

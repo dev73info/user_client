@@ -109,7 +109,7 @@ onBeforeUnmount(() => {
   font-weight: 900;
   line-height: 1;
   letter-spacing: -0.03em;
-  background: linear-gradient(135deg, var(--73-accent), var(--73-accent) 60%, var(--73-accent));
+  background: var(--73-app-grad-cover-06);
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
@@ -190,7 +190,7 @@ onBeforeUnmount(() => {
 
 .not-found-btn--primary {
   color: var(--73-surface-strong);
-  background: linear-gradient(135deg, var(--73-accent), var(--73-accent));
+  background: var(--73-app-grad-accent-04);
   border-color: transparent;
 }
 

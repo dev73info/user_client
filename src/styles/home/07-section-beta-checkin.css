@@ -29,7 +29,7 @@
   height: 18px;
   place-items: center;
   border-radius: 4px;
-  background: linear-gradient(135deg, var(--73-accent), var(--73-accent));
+  background: var(--73-app-grad-accent-12);
   color: var(--73-surface-strong);
   font-size: 10px;
   line-height: 1;
@@ -56,11 +56,7 @@
 }
 
 .portal-section--beta {
-  background: linear-gradient(
-    180deg,
-    color-mix(in srgb, var(--73-surface-strong) 94%, transparent) 0%,
-    color-mix(in srgb, var(--73-accent-soft) 94%, transparent) 100%
-  );
+  background: var(--73-app-grad-soft-53);
 }
 
 .portal-beta-notice {
@@ -109,12 +105,7 @@
   padding: 12px 14px;
   border: 1px dashed color-mix(in srgb, var(--73-accent) 28%, transparent);
   border-radius: 10px;
-  background: linear-gradient(
-    135deg,
-    color-mix(in srgb, var(--73-accent-soft) 70%, transparent) 0%,
-    color-mix(in srgb, var(--73-success-soft) 70%, transparent) 50%,
-    color-mix(in srgb, var(--73-warning-soft) 70%, transparent) 100%
-  );
+  background: var(--73-app-grad-soft-52);
   display: flex;
   flex-direction: column;
   align-items: flex-start;
@@ -143,7 +134,7 @@
   margin-top: 2px;
   padding: 7px 18px;
   border-radius: 8px;
-  background: linear-gradient(135deg, var(--73-accent), var(--73-accent));
+  background: var(--73-app-grad-accent-11);
   color: var(--73-surface-strong);
   font-size: 13px;
   font-weight: 700;
@@ -166,7 +157,7 @@
   padding: 7px 18px;
   border: none;
   border-radius: 8px;
-  background: linear-gradient(135deg, var(--73-success), var(--73-accent));
+  background: var(--73-app-grad-success-01);
   color: var(--73-surface-strong);
   font-size: 13px;
   font-weight: 700;

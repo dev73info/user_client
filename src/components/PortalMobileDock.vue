@@ -230,11 +230,7 @@ function goWorkbench() {
 .portal-mobile-dock__item--primary {
   position: relative;
   overflow: hidden;
-  background: linear-gradient(
-    160deg,
-    color-mix(in srgb, var(--73-accent-soft) 96%, transparent),
-    color-mix(in srgb, var(--73-accent-soft) 90%, transparent)
-  );
+  background: var(--73-app-grad-soft-10);
   box-shadow:
     inset 0 1px 0 color-mix(in srgb, var(--73-surface-strong) 88%, transparent),
     0 8px 16px color-mix(in srgb, var(--73-accent) 14%, transparent);

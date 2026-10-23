@@ -1,3 +1,4 @@
+@import './tokens.css';
 @import './resource-core.css';
 @import './shell.css';
 @import './modal.css';
@@ -46,14 +47,7 @@
 
 /* 用户名渐变展示：由积分商城「权限」类商品兑换开启 */
 .username-gradient {
-  background: linear-gradient(
-    90deg,
-    var(--73-danger) 0%,
-    var(--73-warning) 25%,
-    var(--73-accent) 50%,
-    var(--73-warning) 75%,
-    var(--73-danger) 100%
-  );
+  background: var(--73-app-grad-danger-01);
   background-size: 200% auto;
   -webkit-background-clip: text;
   background-clip: text;

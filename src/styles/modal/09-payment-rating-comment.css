@@ -34,7 +34,7 @@
 
 .payment-option:hover {
   border-color: color-mix(in srgb, var(--73-ink-muted) 58%, transparent);
-  background: var(--73-surface-strong);
+  background: var(--73-app-surface-hover);
 }
 
 .payment-option.active {
@@ -142,18 +142,14 @@
 
 .rating-star.half {
   color: transparent;
-  background: linear-gradient(
-    90deg,
-    var(--73-warning) 50%,
-    color-mix(in srgb, var(--73-surface-strong) 22%, transparent) 50%
-  );
+  background: var(--73-app-grad-warning-07);
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;
 }
 
 .comment-modal .rating-star.half {
-  background: linear-gradient(90deg, var(--73-warning) 50%, var(--73-ink-disabled) 50%);
+  background: var(--73-app-grad-warning-06);
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;
@@ -168,11 +164,7 @@
 /* 半星是用渐变背景绘制出的字符（background-clip: text + 文字填充透明），
    hover 时必须保留渐变背景，否则星形会「消失」 */
 .rating-star.half:hover {
-  background: linear-gradient(
-    90deg,
-    var(--73-warning) 50%,
-    color-mix(in srgb, var(--73-surface-strong) 22%, transparent) 50%
-  );
+  background: var(--73-app-grad-warning-07);
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;
@@ -187,11 +179,11 @@
 }
 
 .comment-modal .rating-star.full:hover {
-  color: var(--73-warning);
+  color: var(--73-app-warning-strong);
 }
 
 .comment-modal .rating-star.half:hover {
-  background: linear-gradient(90deg, var(--73-warning) 50%, var(--73-ink-disabled) 50%);
+  background: var(--73-app-grad-warning-06);
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;

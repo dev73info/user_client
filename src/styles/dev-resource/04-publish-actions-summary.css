@@ -5,21 +5,13 @@
   padding: 14px 16px;
   border: 1px solid var(--dev-line);
   border-radius: var(--dev-radius-inner);
-  background: linear-gradient(
-    180deg,
-    color-mix(in srgb, var(--73-surface-strong) 96%, transparent),
-    color-mix(in srgb, var(--73-surface-strong) 90%, transparent)
-  );
+  background: var(--73-app-grad-soft-34);
   box-shadow: inset 0 1px 0 color-mix(in srgb, var(--73-surface-strong) 78%, transparent);
 }
 
 .dev-page--publish .dev-upload-actions--split.is-ready {
   border-color: color-mix(in srgb, var(--73-success) 24%, transparent);
-  background: linear-gradient(
-    180deg,
-    color-mix(in srgb, var(--73-success-soft) 96%, transparent),
-    color-mix(in srgb, var(--73-accent-soft) 90%, transparent)
-  );
+  background: var(--73-app-grad-soft-33);
 }
 
 .dev-page--publish .dev-submit-summary {

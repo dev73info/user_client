@@ -215,7 +215,7 @@
 }
 
 .auth-agreement-row .checkbox-label .agreement-links a:hover {
-  color: var(--73-accent);
+  color: var(--73-app-accent-strong);
 }
 
 .auth-modal textarea {

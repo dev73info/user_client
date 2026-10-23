@@ -45,7 +45,7 @@
 
 .mobile-empty-btn--primary {
   border-color: transparent;
-  background: linear-gradient(135deg, var(--73-accent), var(--73-accent));
+  background: var(--73-accent-gradient);
   color: var(--73-surface-strong);
 }
 

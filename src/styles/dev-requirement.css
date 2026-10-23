@@ -43,11 +43,7 @@
   margin-bottom: 16px;
   border: 1px solid var(--dev-line);
   border-radius: 20px;
-  background: linear-gradient(
-    180deg,
-    color-mix(in srgb, var(--73-surface-strong) 96%, transparent),
-    color-mix(in srgb, var(--73-surface-strong) 92%, transparent)
-  );
+  background: var(--73-app-grad-soft-17);
 }
 
 .dev-requirement-hall__review-grid {
@@ -90,11 +86,7 @@
   margin-bottom: 14px;
   border-radius: 18px;
   border: 1px solid color-mix(in srgb, var(--73-warning) 26%, transparent);
-  background: linear-gradient(
-    180deg,
-    color-mix(in srgb, var(--73-warning-soft) 96%, transparent),
-    color-mix(in srgb, var(--73-surface-strong) 86%, transparent)
-  );
+  background: var(--73-app-grad-soft-31);
 }
 
 .dev-requirement-hall__confirm-head {
@@ -165,11 +157,7 @@
 
 .dev-requirement-hall__mode-button.is-active {
   border-color: color-mix(in srgb, var(--73-accent) 26%, transparent);
-  background: linear-gradient(
-    135deg,
-    color-mix(in srgb, var(--73-accent) 10%, transparent),
-    color-mix(in srgb, var(--73-success) 10%, transparent)
-  );
+  background: var(--73-app-grad-soft-30);
   color: var(--dev-blue);
   box-shadow: 0 10px 20px color-mix(in srgb, var(--73-accent) 8%, transparent);
 }
@@ -212,11 +200,7 @@
 
 .dev-requirement-hall__catalog-chip.is-active {
   border-color: color-mix(in srgb, var(--73-accent) 28%, transparent);
-  background: linear-gradient(
-    180deg,
-    color-mix(in srgb, var(--73-accent) 10%, transparent),
-    color-mix(in srgb, var(--73-success) 10%, transparent)
-  );
+  background: var(--73-app-grad-soft-29);
   color: var(--dev-blue);
   box-shadow: 0 8px 18px color-mix(in srgb, var(--73-accent) 12%, transparent);
 }

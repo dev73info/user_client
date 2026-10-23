@@ -37,12 +37,7 @@
   inset: 0 0 auto;
   pointer-events: none;
   height: 2px;
-  background: linear-gradient(
-    90deg,
-    color-mix(in srgb, var(--73-accent) 0%, transparent),
-    color-mix(in srgb, var(--73-accent) 42%, transparent),
-    color-mix(in srgb, var(--73-accent) 0%, transparent)
-  );
+  background: var(--73-app-grad-soft-38);
   opacity: 0;
   transform: translateX(-36%);
   transition:
@@ -105,13 +100,13 @@
   place-items: center;
   flex: 0 0 auto;
   border-radius: 10px;
-  background: linear-gradient(135deg, var(--73-accent-soft), var(--73-accent-soft));
+  background: var(--73-app-grad-accent-soft-09);
   color: var(--73-accent);
   box-shadow: 0 8px 18px color-mix(in srgb, var(--73-accent) 14%, transparent);
 }
 
 .portal-card-title-icon--team {
-  background: linear-gradient(135deg, var(--73-warning-soft), var(--73-warning-soft));
+  background: var(--73-app-grad-warning-03);
   color: var(--73-warning);
   box-shadow: 0 8px 18px color-mix(in srgb, var(--73-warning) 14%, transparent);
 }
@@ -154,11 +149,7 @@
   margin: 0 0 12px;
   padding: 8px 12px;
   border-radius: 12px;
-  background: linear-gradient(
-    135deg,
-    color-mix(in srgb, var(--73-accent) 6%, transparent),
-    color-mix(in srgb, var(--73-accent) 6%, transparent)
-  );
+  background: var(--73-app-grad-soft-37);
   color: var(--73-ink-soft);
   font-size: 12px;
   line-height: 1.5;
@@ -179,7 +170,7 @@
 }
 
 .portal-milestone__cta:hover {
-  color: var(--73-accent);
+  color: var(--73-app-accent-strong);
   transform: translateX(1px);
 }
 

@@ -162,5 +162,5 @@
 }
 
 .invoice-modal__draft:hover {
-  background: var(--73-surface-strong);
+  background: var(--73-app-surface-hover-alt);
 }

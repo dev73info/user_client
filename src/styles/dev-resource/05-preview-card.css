@@ -23,7 +23,7 @@
   position: relative;
   aspect-ratio: var(--dev-resource-aspect-ratio);
   overflow: hidden;
-  background: linear-gradient(135deg, var(--73-accent), var(--73-accent) 58%, var(--73-accent));
+  background: var(--73-app-grad-cover-03);
 }
 
 .dev-page--publish .dev-preview-card__cover-img {
@@ -75,11 +75,7 @@
   position: absolute;
   border-radius: 14px;
   border: 1px solid color-mix(in srgb, var(--73-surface-strong) 18%, transparent);
-  background: linear-gradient(
-    180deg,
-    color-mix(in srgb, var(--73-surface-strong) 24%, transparent),
-    color-mix(in srgb, var(--73-surface-strong) 8%, transparent)
-  );
+  background: var(--73-app-grad-soft-35);
   box-shadow: 0 16px 28px color-mix(in srgb, var(--73-accent) 20%, transparent);
 }
 

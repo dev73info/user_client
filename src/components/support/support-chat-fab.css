@@ -39,7 +39,7 @@
 }
 
 .support-fab:hover {
-  background: var(--73-success);
+  background: var(--73-app-success-strong);
 }
 
 .support-fab__icon {

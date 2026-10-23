@@ -122,7 +122,7 @@ const keyword = defineModel<string>('keyword', { required: true })
 }
 
 .requirement-hall__publish-btn:hover {
-  background: var(--73-accent);
+  background: var(--73-app-accent-strong);
   box-shadow: 0 10px 22px color-mix(in srgb, var(--73-accent) 22%, transparent);
   transform: translateY(-1px);
 }

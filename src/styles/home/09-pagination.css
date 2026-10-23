@@ -67,7 +67,7 @@
 }
 
 .portal-pagination__page.is-active {
-  background: linear-gradient(135deg, var(--73-accent), var(--73-accent));
+  background: var(--73-app-grad-accent-13);
   color: var(--73-surface-strong);
   box-shadow: 0 6px 14px color-mix(in srgb, var(--73-accent) 28%, transparent);
 }
@@ -153,7 +153,7 @@
   padding: 0 12px;
   border: 0;
   border-radius: 8px;
-  background: linear-gradient(135deg, var(--73-accent), var(--73-accent));
+  background: var(--73-app-grad-accent-13);
   color: var(--73-surface-strong);
   font: inherit;
   font-size: 13px;

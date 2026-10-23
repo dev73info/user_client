@@ -37,7 +37,7 @@
 }
 
 .profile-page .overview-link:hover {
-  color: var(--73-accent);
+  color: var(--73-app-accent-strong);
 }
 
 /* 区块标题右侧那一组操作（目前只有「最近沟通」的「消息中心」链接） */
