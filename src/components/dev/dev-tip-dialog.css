@@ -1,0 +1,174 @@
+.tip-dialog__body {
+  display: grid;
+  gap: 14px;
+}
+
+.tip-dialog__thanks {
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: rgba(239, 246, 255, 0.8);
+  color: #334155;
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.tip-dialog__channels {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.tip-dialog__channel {
+  padding: 8px 12px;
+  border: 1px solid #dbe4f0;
+  border-radius: 10px;
+  background: #fff;
+  color: #475569;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+  transition:
+    border-color 0.18s ease,
+    background 0.18s ease,
+    color 0.18s ease;
+}
+
+.tip-dialog__channel.is-active {
+  border-color: #2563eb;
+  background: #eff6ff;
+  color: #2563eb;
+}
+
+.tip-dialog__tiers {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.tip-dialog__tier {
+  min-width: 76px;
+  padding: 8px 12px;
+  border: 1px solid #dbe4f0;
+  border-radius: 10px;
+  background: #fff;
+  color: #0f172a;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+  transition:
+    border-color 0.18s ease,
+    background 0.18s ease,
+    color 0.18s ease;
+}
+
+.tip-dialog__tier.is-active {
+  border-color: #2563eb;
+  background: #eff6ff;
+  color: #2563eb;
+}
+
+.tip-dialog__custom-toggle {
+  justify-self: start;
+  padding: 4px 10px;
+  border: 1px dashed #c7d2fe;
+  border-radius: 999px;
+  background: transparent;
+  color: #4f46e5;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.tip-dialog__custom-toggle.is-active {
+  border-style: solid;
+  background: #eef2ff;
+}
+
+.tip-dialog__field {
+  display: grid;
+  gap: 6px;
+}
+
+.tip-dialog__label {
+  color: #334155;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.tip-dialog__hint {
+  color: #94a3b8;
+  font-size: 12px;
+}
+
+.tip-dialog__summary {
+  margin: 0;
+  color: #475569;
+  font-size: 13px;
+}
+
+.tip-dialog__summary strong {
+  color: #9a3412;
+  font-size: 16px;
+}
+
+.tip-dialog__notice {
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid rgba(191, 219, 254, 0.85);
+  background: rgba(248, 250, 252, 0.9);
+  color: #64748b;
+  font-size: 12px;
+  line-height: 1.7;
+}
+
+.tip-dialog__error {
+  margin: 0;
+  padding: 8px 12px;
+  border-radius: 10px;
+  border: 1px solid rgba(252, 165, 165, 0.85);
+  background: rgba(254, 242, 242, 0.9);
+  color: #b91c1c;
+  font-size: 13px;
+  line-height: 1.6;
+  word-break: break-word;
+}
+
+.tip-dialog__pay {
+  display: grid;
+  justify-items: center;
+  gap: 12px;
+  padding: 8px 0;
+  text-align: center;
+}
+
+.tip-dialog__pay-amount {
+  margin: 0;
+  color: #9a3412;
+  font-size: 26px;
+  font-weight: 800;
+}
+
+.tip-dialog__qr {
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  background: #fff;
+}
+
+.tip-dialog__pay-tip {
+  margin: 0;
+  color: #475569;
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.tip-dialog__pay-link {
+  display: inline-flex;
+  align-items: center;
+  padding: 8px 16px;
+  border-radius: 10px;
+  background: #2563eb;
+  color: #fff;
+  font-weight: 700;
+  text-decoration: none;
+}
