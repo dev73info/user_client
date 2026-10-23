@@ -433,7 +433,14 @@ describe('解除合作弹窗的期望（要钱 / 返工 / 只反馈）', () => {
     await wrapper!.find('.after-sales-modal textarea').setValue('首页在手机上错位')
     await amountInput().setValue('12.5')
     await clickButton('提交解除合作申请')
-    expect(mocks.open).toHaveBeenCalledWith('token', baseProps.requirementId, true, false, '首页在手机上错位', 1250)
+    expect(mocks.open).toHaveBeenCalledWith(
+      'token',
+      baseProps.requirementId,
+      true,
+      false,
+      '首页在手机上错位',
+      1250,
+    )
 
     vi.resetAllMocks()
     mocks.list.mockResolvedValue({ items: [], windowOpen: true, windowClosesAt: null })
@@ -442,7 +449,14 @@ describe('解除合作弹窗的期望（要钱 / 返工 / 只反馈）', () => {
     await expectsReworkBox().setValue(true)
     await wrapper!.find('.after-sales-modal textarea').setValue('请把首页重做一遍')
     await clickButton('提交解除合作申请')
-    expect(mocks.open).toHaveBeenCalledWith('token', baseProps.requirementId, false, true, '请把首页重做一遍', 0)
+    expect(mocks.open).toHaveBeenCalledWith(
+      'token',
+      baseProps.requirementId,
+      false,
+      true,
+      '请把首页重做一遍',
+      0,
+    )
   })
 
   it('给了需求预算就把上限写进提示：占位与 max 都带上这个数', async () => {
@@ -460,10 +474,7 @@ describe('解除合作弹窗的期望（要钱 / 返工 / 只反馈）', () => {
     await clickButton('提交解除合作申请')
 
     expect(mocks.open).not.toHaveBeenCalled()
-    expect(mocks.toast).toHaveBeenCalledWith(
-      '主张金额不能超过需求预算 200.00 元',
-      'warning',
-    )
+    expect(mocks.toast).toHaveBeenCalledWith('主张金额不能超过需求预算 200.00 元', 'warning')
   })
 
   it('主张金额在预算之内照常提交', async () => {

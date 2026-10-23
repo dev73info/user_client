@@ -62,7 +62,9 @@ function post(overrides: Partial<CommunityPost> = {}): CommunityPost {
   }
 }
 
-function disclosure(overrides: Partial<ConversationHistoryDisclosure> = {}): ConversationHistoryDisclosure {
+function disclosure(
+  overrides: Partial<ConversationHistoryDisclosure> = {},
+): ConversationHistoryDisclosure {
   return {
     id: 3,
     conversation_id: 'CONV-1',
@@ -157,9 +159,19 @@ describe('system notification aggregation', () => {
 
     // 四类时间格式不一样（公告与警告是后端口径的 `YYYY-MM-DD HH:MM:SS`，公开申请与解除合作案件带时区），
     // 聚合层统一解析后再排序：四月 → 三月 → 二月 → 一月
-    expect(kinds(cards)).toEqual(['after-sales', 'history-disclosure', 'announcement', 'comment-warning'])
+    expect(kinds(cards)).toEqual([
+      'after-sales',
+      'history-disclosure',
+      'announcement',
+      'comment-warning',
+    ])
     // 跨类别唯一的键：四类 id 都从 1 开始，只拼 id 会撞在一起
-    expect(keys(cards)).toEqual(['after-sales-5', 'history-disclosure-3', 'announcement-7', 'comment-warning-1'])
+    expect(keys(cards)).toEqual([
+      'after-sales-5',
+      'history-disclosure-3',
+      'announcement-7',
+      'comment-warning-1',
+    ])
     expect(cards[0]?.kindLabel).toBe('解除合作案件')
     expect(cards[1]?.kindLabel).toBe('公开申请')
     expect(cards[2]?.kindLabel).toBe('平台公告')
@@ -239,10 +251,16 @@ describe('history disclosure voting', () => {
   })
 
   it('已经投过的那一票不再给按钮', () => {
-    expect(canVoteHistoryDisclosure(disclosure({ developer_consent: 'approved' }), 'dev_old')).toBe(false)
-    expect(canVoteHistoryDisclosure(disclosure({ customer_consent: 'rejected' }), 'cust')).toBe(false)
+    expect(canVoteHistoryDisclosure(disclosure({ developer_consent: 'approved' }), 'dev_old')).toBe(
+      false,
+    )
+    expect(canVoteHistoryDisclosure(disclosure({ customer_consent: 'rejected' }), 'cust')).toBe(
+      false,
+    )
     // 另一方仍可投
-    expect(canVoteHistoryDisclosure(disclosure({ developer_consent: 'approved' }), 'cust')).toBe(true)
+    expect(canVoteHistoryDisclosure(disclosure({ developer_consent: 'approved' }), 'cust')).toBe(
+      true,
+    )
   })
 
   it('申请已终结（通过或未通过）后双方都不再可投', () => {
@@ -265,7 +283,13 @@ describe('history disclosure voting', () => {
     expect(bystander?.voteHint).toBe('前任开发者 待表决 · 客户 待表决')
 
     const [settled] = buildNotificationCards({
-      disclosures: [disclosure({ status: 'approved', developer_consent: 'approved', customer_consent: 'approved' })],
+      disclosures: [
+        disclosure({
+          status: 'approved',
+          developer_consent: 'approved',
+          customer_consent: 'approved',
+        }),
+      ],
       username: 'dev_old',
     })
     expect(settled?.voteHint).toContain('已公开')
@@ -321,9 +345,7 @@ describe('resource transfer notifications', () => {
     expect(pendingActionCount([pending!])).toBe(0)
 
     const [accepted] = buildNotificationCards({
-      myTransfers: [
-        transfer({ status: 'accepted', responded_at: '2026-04-11 10:00:00' }),
-      ],
+      myTransfers: [transfer({ status: 'accepted', responded_at: '2026-04-11 10:00:00' })],
       username: 'dev_old',
     })
     expect(accepted?.transferAction).toBeUndefined()
@@ -364,7 +386,11 @@ describe('notification filtering and counts', () => {
     })
     // 还在等我投票的公开申请
     expect(pendingVoteCount(cards)).toBe(1)
-    expect(pendingVoteCount(buildNotificationCards({ disclosures: [disclosure()], username: 'dev_new' }))).toBe(0)
+    expect(
+      pendingVoteCount(
+        buildNotificationCards({ disclosures: [disclosure()], username: 'dev_new' }),
+      ),
+    ).toBe(0)
     // 「待我处理」= 等我投的一票 + 等我同意的过户
     expect(pendingActionCount(cards)).toBe(2)
   })

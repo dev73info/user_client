@@ -6,8 +6,12 @@ import { useAuthStore } from '@/stores/auth'
 import { listMyRequirements } from '@/api/devRequirements'
 import UserWorkbenchView from '@/views/UserWorkbenchView.vue'
 
-vi.mock('@/api/realname', () => ({ getMyRealnameVerification: vi.fn().mockResolvedValue({ status: 'approved' }) }))
-vi.mock('@/api/conversations', () => ({ listRequirementConversations: vi.fn().mockResolvedValue([]) }))
+vi.mock('@/api/realname', () => ({
+  getMyRealnameVerification: vi.fn().mockResolvedValue({ status: 'approved' }),
+}))
+vi.mock('@/api/conversations', () => ({
+  listRequirementConversations: vi.fn().mockResolvedValue([]),
+}))
 vi.mock('@/api/team', () => ({ listUserInvitations: vi.fn().mockResolvedValue([]) }))
 vi.mock('@/api/devRequirements', () => ({ listMyRequirements: vi.fn().mockResolvedValue([]) }))
 vi.mock('ui_73info', async (importOriginal) => {
@@ -25,15 +29,41 @@ vi.mock('ui_73info', async (importOriginal) => {
 // 团队服务已整体移入开发者工作台，这三个页面同样是 devArea 路由，不再属于用户菜单。
 // 消息中心与工单中心两端共用同一套页面，但各自一条路由：开发者端走 dev-messages / dev-tickets，
 // 点进去不会切回用户工作台，页面也据此走开发者体系的外观。系统通知与两者同一办法。
-const USER_ROUTE_NAMES = ['workbench', 'workbench-requirements', 'workbench-account',
-  'workbench-authorized-apps', 'workbench-purchase-transfers',
-  'workbench-signatures', 'workbench-invoices', 'workbench-points', 'workbench-perks',
-  'workbench-coupons', 'workbench-badges', 'workbench-favorites', 'workbench-resource-purchases',
-  'workbench-invite', 'workbench-tickets', 'workbench-messages', 'workbench-notifications']
-const DEV_ROUTE_NAMES = ['dev-home', 'dev-resource-list', 'dev-resource-sold-purchases', 'dev-tip-settings',
-  'dev-requirement-hall', 'dev-my-requirements', 'dev-wallet',
-  'workbench-teams', 'workbench-team-detail', 'workbench-team-resources', 'dev-messages',
-  'dev-tickets', 'dev-invoices', 'dev-notifications']
+const USER_ROUTE_NAMES = [
+  'workbench',
+  'workbench-requirements',
+  'workbench-account',
+  'workbench-authorized-apps',
+  'workbench-purchase-transfers',
+  'workbench-signatures',
+  'workbench-invoices',
+  'workbench-points',
+  'workbench-perks',
+  'workbench-coupons',
+  'workbench-badges',
+  'workbench-favorites',
+  'workbench-resource-purchases',
+  'workbench-invite',
+  'workbench-tickets',
+  'workbench-messages',
+  'workbench-notifications',
+]
+const DEV_ROUTE_NAMES = [
+  'dev-home',
+  'dev-resource-list',
+  'dev-resource-sold-purchases',
+  'dev-tip-settings',
+  'dev-requirement-hall',
+  'dev-my-requirements',
+  'dev-wallet',
+  'workbench-teams',
+  'workbench-team-detail',
+  'workbench-team-resources',
+  'dev-messages',
+  'dev-tickets',
+  'dev-invoices',
+  'dev-notifications',
+]
 
 // 开发者路由的路径不都是 /workbench/developer/<name>：钱包按业务词分了分段路径，「我的发票」也是。
 // 侧边栏链接断言看的是真实 href，所以这里按生产路径（router/dev.ts）登记，其余沿用默认规则。
@@ -48,15 +78,21 @@ const DEV_ROUTE_PATHS: Record<string, string> = {
 const routes: RouteRecordRaw[] = [
   // 侧边栏底部的品牌卡指向门户首页，测试路由里也要有这一条，否则 RouterLink 解析不到目标
   { name: 'home', path: '/', component: { template: '<div />' } },
-  ...USER_ROUTE_NAMES.map((name): RouteRecordRaw => ({
-    name, path: `/workbench/${name}`, component: { template: '<div />' },
-  })),
-  ...DEV_ROUTE_NAMES.map((name): RouteRecordRaw => ({
-    name,
-    path: DEV_ROUTE_PATHS[name] ?? `/workbench/developer/${name}`,
-    component: { template: '<div />' },
-    meta: { devArea: true },
-  })),
+  ...USER_ROUTE_NAMES.map(
+    (name): RouteRecordRaw => ({
+      name,
+      path: `/workbench/${name}`,
+      component: { template: '<div />' },
+    }),
+  ),
+  ...DEV_ROUTE_NAMES.map(
+    (name): RouteRecordRaw => ({
+      name,
+      path: DEV_ROUTE_PATHS[name] ?? `/workbench/developer/${name}`,
+      component: { template: '<div />' },
+      meta: { devArea: true },
+    }),
+  ),
 ]
 
 async function render(name: string) {
@@ -93,7 +129,9 @@ describe('workbench mode switch', () => {
     expect(modeSwitch.attributes('aria-label')).toBe('进入开发者工作台')
     // 左侧标题是文字标题（不是药丸标签），标题内容随模式变
     expect(wrapper.find('.user-workbench__brand > .user-workbench__brand-mark').exists()).toBe(true)
-    expect(wrapper.find('.user-workbench__brand > .user-workbench__brand-title').text()).toBe('我的工作台')
+    expect(wrapper.find('.user-workbench__brand > .user-workbench__brand-title').text()).toBe(
+      '我的工作台',
+    )
     expect(sidebar(wrapper)).toContain('工作台总览')
     // 开发者条目不再挤在用户侧边栏底部
     expect(sidebar(wrapper)).not.toContain('我的资源项目')
@@ -106,37 +144,53 @@ describe('workbench mode switch', () => {
     expect(sidebar(wrapper)).toContain('我的需求')
     expect(sidebar(wrapper)).not.toContain('需求协作')
     expect(
-      wrapper.findAll('.user-workbench__menu .user-workbench__menu-link--root').map((link) => link.text()),
+      wrapper
+        .findAll('.user-workbench__menu .user-workbench__menu-link--root')
+        .map((link) => link.text()),
     ).toEqual(['工作台总览', '我的需求', '系统通知', '工单中心', '退出登录'])
     // 消息中心是一级条目：排在「我的需求」之后、「账户服务」之前，不再嵌在需求分组的子菜单里。
     // 「我的背包」从「账户服务」里提出来，自己一个分组排在它后面。
-    expect(wrapper.findAll('.user-workbench__menu-group-head').map((head) => head.text()))
-      .toEqual(['消息中心', '账户服务', '我的背包'])
-    expect(wrapper.find('.user-workbench__submenu .user-workbench__menu-group-head').exists()).toBe(false)
+    expect(wrapper.findAll('.user-workbench__menu-group-head').map((head) => head.text())).toEqual([
+      '消息中心',
+      '账户服务',
+      '我的背包',
+    ])
+    expect(wrapper.find('.user-workbench__submenu .user-workbench__menu-group-head').exists()).toBe(
+      false,
+    )
 
     // 「我的背包」是独立分组：组内四页都在，账户服务里不再留这一条。
     // 只剩一个页面的分组（「我的需求」）没有分组头，先挑出有分组头的那些。
-    const groups = wrapper.findAll('.user-workbench__menu-group')
+    const groups = wrapper
+      .findAll('.user-workbench__menu-group')
       .filter((group) => group.find('.user-workbench__menu-group-head').exists())
-    const accountGroup = groups.find((group) => group.find('.user-workbench__menu-group-head').text().includes('账户服务'))!
-    const inventoryGroup = groups.find((group) => group.find('.user-workbench__menu-group-head').text().includes('我的背包'))!
+    const accountGroup = groups.find((group) =>
+      group.find('.user-workbench__menu-group-head').text().includes('账户服务'),
+    )!
+    const inventoryGroup = groups.find((group) =>
+      group.find('.user-workbench__menu-group-head').text().includes('我的背包'),
+    )!
     // 「我的邀请」已并入「勋章与邀请」（原「我的徽章墙」那条），不再单列。
-    expect(accountGroup.findAll('.user-workbench__submenu-link').map((link) => link.text()))
-      .toEqual([
-        '账户详情',
-        '已授权应用',
-        '我的合同',
-        '我的发票',
-        '我的收藏',
-        '我的已购',
-        '使用权转移',
-      ])
-    expect(inventoryGroup.findAll('.user-workbench__submenu-link').map((link) => link.text()))
-      .toEqual(['积分中心', '权益中心', '优惠券中心', '勋章与邀请'])
-    expect(inventoryGroup.findAll('.user-workbench__submenu-link')[0]?.attributes('href'))
-      .toBe('/workbench/workbench-points')
-    expect(inventoryGroup.findAll('.user-workbench__submenu-link')[3]?.attributes('href'))
-      .toBe('/workbench/workbench-badges')
+    expect(
+      accountGroup.findAll('.user-workbench__submenu-link').map((link) => link.text()),
+    ).toEqual([
+      '账户详情',
+      '已授权应用',
+      '我的合同',
+      '我的发票',
+      '我的收藏',
+      '我的已购',
+      '使用权转移',
+    ])
+    expect(
+      inventoryGroup.findAll('.user-workbench__submenu-link').map((link) => link.text()),
+    ).toEqual(['积分中心', '权益中心', '优惠券中心', '勋章与邀请'])
+    expect(inventoryGroup.findAll('.user-workbench__submenu-link')[0]?.attributes('href')).toBe(
+      '/workbench/workbench-points',
+    )
+    expect(inventoryGroup.findAll('.user-workbench__submenu-link')[3]?.attributes('href')).toBe(
+      '/workbench/workbench-badges',
+    )
     wrapper.unmount()
   })
 
@@ -152,25 +206,39 @@ describe('workbench mode switch', () => {
     // 条目按动线排：先总览与资源，再接单（交付与到账并进了这一页，菜单不再单列一条）
     const devLinks = wrapper.findAll('.user-workbench__menu > .user-workbench__menu-link--root')
     expect(devLinks[0]?.find('.user-workbench__menu-icon').exists()).toBe(true)
-    expect(devLinks.map((link) => link.text()))
-      .toEqual(['工作台总览', '资源项目', '需求大厅', '我的接单'])
+    expect(devLinks.map((link) => link.text())).toEqual([
+      '工作台总览',
+      '资源项目',
+      '需求大厅',
+      '我的接单',
+    ])
     // 财务中心与团队服务是折叠组（分组头自带组名），消息中心夹在分组之间
-    expect(wrapper.findAll('.user-workbench__menu-group-head').map((head) => head.text()))
-      .toEqual(['财务中心', '团队服务', '消息中心'])
+    expect(wrapper.findAll('.user-workbench__menu-group-head').map((head) => head.text())).toEqual([
+      '财务中心',
+      '团队服务',
+      '消息中心',
+    ])
     // 与钱有关的三条收进财务中心：收益钱包原是一级条目，「我的发票」原挂在用户模式的账户服务下，
     // 「打赏设置」原是一级条目，现在也移进来当子项（子项不渲染图标）。
-    const finance = wrapper.findAll('.user-workbench__menu-group')
+    const finance = wrapper
+      .findAll('.user-workbench__menu-group')
       .find((group) => group.find('.user-workbench__menu-group-head').text().includes('财务中心'))!
-    expect(finance.findAll('.user-workbench__submenu-link').map((link) => link.text()))
-      .toEqual(['收益钱包', '我的发票', '打赏设置'])
-    expect(finance.findAll('.user-workbench__submenu-link')[0]?.attributes('href'))
-      .toBe('/workbench/developer/wallet/overview')
-    expect(finance.findAll('.user-workbench__submenu-link')[1]?.attributes('href'))
-      .toBe('/workbench/developer/invoices')
+    expect(finance.findAll('.user-workbench__submenu-link').map((link) => link.text())).toEqual([
+      '收益钱包',
+      '我的发票',
+      '打赏设置',
+    ])
+    expect(finance.findAll('.user-workbench__submenu-link')[0]?.attributes('href')).toBe(
+      '/workbench/developer/wallet/overview',
+    )
+    expect(finance.findAll('.user-workbench__submenu-link')[1]?.attributes('href')).toBe(
+      '/workbench/developer/invoices',
+    )
     // 打赏设置移入财务中心后不再是一级条目：一级菜单里没有它，子菜单里有它
     expect(devLinks.some((link) => link.text().includes('打赏设置'))).toBe(false)
-    expect(finance.findAll('.user-workbench__submenu-link')[2]?.attributes('href'))
-      .toBe('/workbench/developer/tips')
+    expect(finance.findAll('.user-workbench__submenu-link')[2]?.attributes('href')).toBe(
+      '/workbench/developer/tips',
+    )
     // 财务中心在开发者模式下才出现，用户模式的账户服务里仍保留一条「我的发票」
     expect(text).not.toContain('账户服务')
     // 「财务中心」只出现一次：折叠组的分组头自己写着组名，上方不再顶小标题
@@ -195,7 +263,9 @@ describe('workbench mode switch', () => {
 
   it('「我的接单」角标显示在途接单数，用户工作台不显示', async () => {
     vi.mocked(listMyRequirements).mockResolvedValue([
-      { status: 'in_development' }, { status: 'pending_final' }, { status: 'completed' },
+      { status: 'in_development' },
+      { status: 'pending_final' },
+      { status: 'completed' },
     ] as Awaited<ReturnType<typeof listMyRequirements>>)
 
     const dev = await render('dev-resource-list')
@@ -216,7 +286,8 @@ describe('workbench mode switch', () => {
     expect(wrapper.find('.user-workbench__brand-title').text()).toBe('开发者工作台')
     expect(sidebar(wrapper)).not.toContain('需求协作')
     // 开发者侧边栏第一个分组头是「财务中心」，团队服务排在它后面，按组名取那一个
-    const head = wrapper.findAll('.user-workbench__menu-group-head')
+    const head = wrapper
+      .findAll('.user-workbench__menu-group-head')
       .find((item) => item.text().includes('团队服务'))!
     expect(head.text()).toContain('团队服务')
     // 当前页在该组内，进页时分组自动展开
@@ -227,7 +298,9 @@ describe('workbench mode switch', () => {
 
   it('开发者工作台点消息中心留在开发者工作台，用户工作台仍走用户端路由', async () => {
     const messagesHead = (w: Awaited<ReturnType<typeof render>>['wrapper']) =>
-      w.findAll('.user-workbench__menu-group-head').find((head) => head.text().includes('消息中心'))!
+      w
+        .findAll('.user-workbench__menu-group-head')
+        .find((head) => head.text().includes('消息中心'))!
 
     const dev = await render('dev-resource-list')
     await messagesHead(dev.wrapper).trigger('click')
@@ -246,7 +319,9 @@ describe('workbench mode switch', () => {
 
   it('工单中心在两种工作台各走各的路由：开发者端不切回用户菜单', async () => {
     const ticketsLink = (w: Awaited<ReturnType<typeof render>>['wrapper']) =>
-      w.findAll('.user-workbench__menu-link--root').find((link) => link.text().includes('工单中心'))!
+      w
+        .findAll('.user-workbench__menu-link--root')
+        .find((link) => link.text().includes('工单中心'))!
 
     const dev = await render('dev-resource-list')
     await ticketsLink(dev.wrapper).trigger('click')
@@ -297,7 +372,9 @@ describe('workbench mode switch', () => {
 
   it('系统通知在两种工作台各走各的路由：开发者端不切回用户菜单', async () => {
     const notificationsLink = (w: Awaited<ReturnType<typeof render>>['wrapper']) =>
-      w.findAll('.user-workbench__menu-link--root').find((link) => link.text().includes('系统通知'))!
+      w
+        .findAll('.user-workbench__menu-link--root')
+        .find((link) => link.text().includes('系统通知'))!
 
     const dev = await render('dev-resource-list')
     await notificationsLink(dev.wrapper).trigger('click')

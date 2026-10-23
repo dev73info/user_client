@@ -27,15 +27,21 @@ vi.mock('@/api/devRequirements', () => ({ listMyRequirements: mocks.requirements
 vi.mock('@/api/mcResources', () => ({ listMcResources: mocks.resources }))
 // 充值弹窗会先查开发者协议与信用额度，这里只关心弹窗是否被拉起，两个接口给固定值即可
 vi.mock('@/api/auth', async (importOriginal) => ({
-  ...await importOriginal<typeof import('@/api/auth')>(),
+  ...(await importOriginal<typeof import('@/api/auth')>()),
   getDevAccessStatus: mocks.devAccess,
 }))
 vi.mock('@/api/devCredit', async (importOriginal) => ({
-  ...await importOriginal<typeof import('@/api/devCredit')>(),
+  ...(await importOriginal<typeof import('@/api/devCredit')>()),
   getDevCreditSelf: mocks.credit,
 }))
 
-const ROUTE_NAMES = ['dev-home', 'dev-wallet', 'dev-my-requirements', 'dev-requirement-hall', 'dev-resource-list']
+const ROUTE_NAMES = [
+  'dev-home',
+  'dev-wallet',
+  'dev-my-requirements',
+  'dev-requirement-hall',
+  'dev-resource-list',
+]
 
 const baseWallet = {
   total_income_cny: 1200.5,
@@ -46,15 +52,17 @@ const baseWallet = {
   withdrawable_balance_cny: 800.25,
   pending_withdraw_cny: 100,
   paid_withdraw_cny: 300,
-  recent_income: [{
-    payment_id: 'p1',
-    requirement_id: 'REQ-1',
-    title: '数据清洗插件定制',
-    customer: 'alice',
-    amount_cny: 600,
-    paid_at: '2026-09-10 12:00:00',
-    requirement_status: 'completed',
-  }],
+  recent_income: [
+    {
+      payment_id: 'p1',
+      requirement_id: 'REQ-1',
+      title: '数据清洗插件定制',
+      customer: 'alice',
+      amount_cny: 600,
+      paid_at: '2026-09-10 12:00:00',
+      requirement_status: 'completed',
+    },
+  ],
 }
 
 const depositReady = {
@@ -120,7 +128,11 @@ beforeEach(() => {
 async function render(query: Record<string, string> = {}) {
   const router = createRouter({
     history: createMemoryHistory(),
-    routes: ROUTE_NAMES.map((name) => ({ name, path: `/${name}`, component: { template: '<div />' } })),
+    routes: ROUTE_NAMES.map((name) => ({
+      name,
+      path: `/${name}`,
+      component: { template: '<div />' },
+    })),
   })
   await router.push({ name: 'dev-home', query })
   const wrapper = mount(DevHomeView, { global: { plugins: [router], stubs: { teleport: true } } })
@@ -133,13 +145,10 @@ type Wrapper = Awaited<ReturnType<typeof render>>['wrapper']
 /** 顶部读数条里的四格读数：读数是「标签 + 数字」，取整格的 text 就够断言。
     末格是刷新按钮所在的 __action 槽，不是读数，要排除掉。 */
 const statCards = (wrapper: Wrapper) =>
-  wrapper
-    .findAll('.dev-meta-strip__item:not(.dev-meta-strip__action)')
-    .map((item) => item.text())
+  wrapper.findAll('.dev-meta-strip__item:not(.dev-meta-strip__action)').map((item) => item.text())
 
 /** 合并后的资金卡只剩提现口径的两个读数（待提现 / 已提现）。 */
-const facts = (wrapper: Wrapper) =>
-  wrapper.findAll('.dev-home__fact').map((fact) => fact.text())
+const facts = (wrapper: Wrapper) => wrapper.findAll('.dev-home__fact').map((fact) => fact.text())
 
 /** 数某个口径在文本里出现几次：合并后的资金卡要求同一笔钱只报一次。 */
 const occurrences = (text: string, keyword: string) => text.split(keyword).length - 1
@@ -189,10 +198,7 @@ describe('developer workbench overview', () => {
     expect(withdrawAction.text()).toContain('提现')
 
     // 提现口径只剩两个读数，收入口径的读数已经挪到大数位与曲线上
-    expect(facts(wrapper)).toEqual([
-      '待提现¥100.00',
-      '已提现¥300.00',
-    ])
+    expect(facts(wrapper)).toEqual(['待提现¥100.00', '已提现¥300.00'])
 
     // 「立即充值」仍是就地拉起弹窗的按钮，不做跳转
     expect(wrapper.find('.dev-home__deposit-action').element.tagName).toBe('BUTTON')
@@ -303,7 +309,11 @@ describe('developer workbench overview', () => {
     expect(ok.wrapper.find('.dev-home__deposit-head .dev-chip').text()).toBe('可接单')
     ok.wrapper.unmount()
 
-    mocks.deposit.mockResolvedValue({ ...depositReady, has_paid_deposit: false, can_bind_requirement: false })
+    mocks.deposit.mockResolvedValue({
+      ...depositReady,
+      has_paid_deposit: false,
+      can_bind_requirement: false,
+    })
     const blocked = await render()
     const alert = blocked.wrapper.find('.dev-notice')
     expect(alert.exists()).toBe(true)
@@ -316,7 +326,11 @@ describe('developer workbench overview', () => {
   })
 
   it('充值按钮就地拉起充值弹窗，不再跳转收益钱包', async () => {
-    mocks.deposit.mockResolvedValue({ ...depositReady, has_paid_deposit: false, can_bind_requirement: false })
+    mocks.deposit.mockResolvedValue({
+      ...depositReady,
+      has_paid_deposit: false,
+      can_bind_requirement: false,
+    })
     const { wrapper } = await render()
     const action = wrapper.find('.dev-notice__action .dev-btn')
     expect(action.element.tagName).toBe('BUTTON')

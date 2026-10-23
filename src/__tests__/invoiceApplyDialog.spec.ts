@@ -150,8 +150,8 @@ function emailInput(wrapper: DialogWrapper): string {
 
 /** 专票资料是否展示在弹窗里（四个输入框齐全才算）。 */
 function hasSpecialFields(wrapper: DialogWrapper): boolean {
-  return ['buyer_address', 'buyer_phone', 'buyer_bank_name', 'buyer_bank_account'].every(
-    (name) => wrapper.find(`input[name="${name}"]`).exists(),
+  return ['buyer_address', 'buyer_phone', 'buyer_bank_name', 'buyer_bank_account'].every((name) =>
+    wrapper.find(`input[name="${name}"]`).exists(),
   )
 }
 
@@ -163,7 +163,9 @@ async function selectKind(wrapper: DialogWrapper, kind: 'ordinary' | 'special') 
 
 /** 填满专票需要的四项购买方资料。 */
 async function fillSpecialFields(wrapper: DialogWrapper) {
-  await wrapper.find('input[name="buyer_address"]').setValue('云南省昭通市彝良县海子镇中沟村大坪组14号')
+  await wrapper
+    .find('input[name="buyer_address"]')
+    .setValue('云南省昭通市彝良县海子镇中沟村大坪组14号')
   await wrapper.find('input[name="buyer_phone"]').setValue('0870-8888888')
   await wrapper.find('input[name="buyer_bank_name"]').setValue('中国工商银行彝良县支行')
   await wrapper.find('input[name="buyer_bank_account"]').setValue('1234567890123456789')
@@ -175,7 +177,9 @@ describe('InvoiceApplyDialog', () => {
 
     expect(wrapper.find('.invoice-amount__value').text()).toBe('¥1000.00')
     expect(wrapper.find('.invoice-panel__submit').text()).toBe('提交开票申请')
-    expect(wrapper.text()).toContain('本次申请一次开出两张：平台服务费票 ¥200.00 + 开发者收入票 ¥800.00')
+    expect(wrapper.text()).toContain(
+      '本次申请一次开出两张：平台服务费票 ¥200.00 + 开发者收入票 ¥800.00',
+    )
     expect(wrapper.findAll('.invoice-side-switch__btn')).toHaveLength(0)
 
     wrapper.unmount()
@@ -282,7 +286,9 @@ describe('InvoiceApplyDialog', () => {
     )
     const wrapper = await render('customer')
 
-    expect((wrapper.find('input[type="text"]').element as HTMLInputElement).value).toBe('某某科技有限公司')
+    expect((wrapper.find('input[type="text"]').element as HTMLInputElement).value).toBe(
+      '某某科技有限公司',
+    )
     await wrapper.find('.invoice-panel__submit').trigger('click')
     await flushPromises()
 
@@ -324,7 +330,12 @@ describe('InvoiceApplyDialog', () => {
         invoiceableTotalFen: 70000,
         invoiceableTotalCny: '700.00',
         // 开发者自己是企业（彝良柒叁信息有限责任公司），但发票的买方是需求方樊波。
-        buyer: buyer({ username: 'alice', title: '樊波', taxNumber: '', email: 'client@example.com' }),
+        buyer: buyer({
+          username: 'alice',
+          title: '樊波',
+          taxNumber: '',
+          email: 'client@example.com',
+        }),
       }),
     )
     const wrapper = await render('developer')
@@ -381,7 +392,12 @@ describe('InvoiceApplyDialog', () => {
     mocks.summary.mockResolvedValue(
       summary({
         platformInvoice: invoiceRecord({ status: 'under_review' }),
-        developerInvoice: invoiceRecord({ id: 2, invoiceRole: 'developer', status: 'approved', amountCny: '700.00' }),
+        developerInvoice: invoiceRecord({
+          id: 2,
+          invoiceRole: 'developer',
+          status: 'approved',
+          amountCny: '700.00',
+        }),
         invoiceableTotalFen: 0,
         invoiceableTotalCny: '0.00',
       }),
@@ -481,7 +497,9 @@ describe('InvoiceApplyDialog', () => {
     const wrapper = await render('customer')
 
     expect(wrapper.find('input[name="invoice-kind"][value="special"]').exists()).toBe(false)
-    expect(wrapper.text()).toContain('增值税专用发票只对企业主体开具，个人与个体工商户只能开普通发票。')
+    expect(wrapper.text()).toContain(
+      '增值税专用发票只对企业主体开具，个人与个体工商户只能开普通发票。',
+    )
 
     wrapper.unmount()
   })
@@ -501,7 +519,9 @@ describe('InvoiceApplyDialog', () => {
 
     expect(wrapper.find('input[name="invoice-kind"][value="special"]').exists()).toBe(false)
     // 普票照样按企业 / 个体户的口径要税号。
-    expect(wrapper.find('input[name="tax_number"]').attributes('placeholder')).toBe('企业或个体工商户必填')
+    expect(wrapper.find('input[name="tax_number"]').attributes('placeholder')).toBe(
+      '企业或个体工商户必填',
+    )
 
     await wrapper.find('.invoice-panel__submit').trigger('click')
     await flushPromises()
@@ -594,7 +614,9 @@ describe('InvoiceApplyDialog', () => {
     )
     const wrapper = await render('customer')
 
-    expect(wrapper.text()).toContain('平台服务费发票已提交（增值税专用发票 · 审核中 · 票面 ¥200.00）')
+    expect(wrapper.text()).toContain(
+      '平台服务费发票已提交（增值税专用发票 · 审核中 · 票面 ¥200.00）',
+    )
 
     wrapper.unmount()
   })
@@ -603,7 +625,12 @@ describe('InvoiceApplyDialog', () => {
     mocks.summary.mockResolvedValue(
       summary({
         platformInvoice: invoiceRecord({ status: 'under_review' }),
-        developerInvoice: invoiceRecord({ id: 2, invoiceRole: 'developer', status: 'requested', amountCny: '800.00' }),
+        developerInvoice: invoiceRecord({
+          id: 2,
+          invoiceRole: 'developer',
+          status: 'requested',
+          amountCny: '800.00',
+        }),
         invoiceableTotalFen: 0,
         invoiceableTotalCny: '0.00',
       }),
