@@ -9,12 +9,6 @@
     },
     {
       "rule": "line-budget",
-      "file": "src/__tests__/devHomeView.spec.ts",
-      "detail": "428 行 > 300（模块）",
-      "since": "2026-10-22"
-    },
-    {
-      "rule": "line-budget",
       "file": "src/__tests__/invoiceApplyDialog.spec.ts",
       "detail": "656 行 > 300（模块）",
       "since": "2026-10-22"
