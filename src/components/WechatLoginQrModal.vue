@@ -215,17 +215,31 @@ onBeforeUnmount(() => {
             <h3>登录 73Info</h3>
             <p class="wechat-authorization-modal__subtitle">微信扫码登录</p>
           </div>
-          <button class="wechat-authorization-modal__close" type="button" aria-label="关闭微信扫码登录"
-            @click="close">
+          <button
+            class="wechat-authorization-modal__close"
+            type="button"
+            aria-label="关闭微信扫码登录"
+            @click="close"
+          >
             ×
           </button>
         </header>
 
         <p class="wechat-authorization-modal__intro">
-          <svg class="wechat-authorization-modal__intro-icon" viewBox="0 0 24 24" fill="none"
-            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
-            aria-hidden="true" focusable="false">
-            <path d="M4 8V5.6A1.6 1.6 0 0 1 5.6 4H8M16 4h2.4A1.6 1.6 0 0 1 20 5.6V8M20 16v2.4a1.6 1.6 0 0 1-1.6 1.6H16M8 20H5.6A1.6 1.6 0 0 1 4 18.4V16" />
+          <svg
+            class="wechat-authorization-modal__intro-icon"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            aria-hidden="true"
+            focusable="false"
+          >
+            <path
+              d="M4 8V5.6A1.6 1.6 0 0 1 5.6 4H8M16 4h2.4A1.6 1.6 0 0 1 20 5.6V8M20 16v2.4a1.6 1.6 0 0 1-1.6 1.6H16M8 20H5.6A1.6 1.6 0 0 1 4 18.4V16"
+            />
             <path d="M4 12h16" />
           </svg>
           <span class="wechat-authorization-modal__intro-text">
@@ -302,17 +316,33 @@ onBeforeUnmount(() => {
         </div>
 
         <p class="wechat-authorization-modal__hint">
-          <svg class="wechat-authorization-modal__hint-icon" viewBox="0 0 24 24" fill="none"
-            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
-            aria-hidden="true" focusable="false">
+          <svg
+            class="wechat-authorization-modal__hint-icon"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            aria-hidden="true"
+            focusable="false"
+          >
             <path d="M12 3l7 3v6c0 4.2-2.9 7.6-7 9-4.1-1.4-7-4.8-7-9V6z" />
             <path d="M9.5 12.5l1.8 1.8 3.4-3.6" />
           </svg>
           <span class="wechat-authorization-modal__hint-text">
             请保持本页面打开，手机确认后电脑才会登录。
             <span class="wechat-authorization-modal__hint-warn">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
-                stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2.2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                aria-hidden="true"
+                focusable="false"
+              >
                 <path d="M12 4.5 3.5 19.5h17z" />
                 <path d="M12 10v4M12 17h.01" />
               </svg>
