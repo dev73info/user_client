@@ -5,7 +5,8 @@
       "rule": "raw-color",
       "file": "src/components/home/PortalQuickPanels.vue",
       "detail": "10 处裸色值",
-      "since": "2026-10-22"
+      "since": "2026-10-22",
+      "note": "随 HomeView 拆分搬移（原在 HomeView.vue 的 12 处），净减 2；非新增债"
     },
     {
       "rule": "raw-color",
