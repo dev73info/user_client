@@ -1,0 +1,192 @@
+.share-card-generator {
+  display: inline-flex;
+  align-items: center;
+}
+
+.share-card-generator__start {
+  display: inline-flex;
+  min-height: 36px;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 0 14px;
+  border: 1px solid rgba(37, 99, 235, 0.28);
+  border-radius: 999px;
+  background: #fff;
+  color: #1d4ed8;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 800;
+  white-space: nowrap;
+  cursor: pointer;
+  box-shadow: 0 8px 18px rgba(37, 99, 235, 0.08);
+  transition:
+    background-color 160ms ease,
+    border-color 160ms ease,
+    box-shadow 160ms ease,
+    transform 160ms ease,
+    opacity 160ms ease;
+}
+
+.share-card-generator__start:hover:not(:disabled) {
+  border-color: rgba(37, 99, 235, 0.5);
+  background: rgba(239, 246, 255, 0.96);
+  box-shadow: 0 10px 22px rgba(37, 99, 235, 0.14);
+  transform: translateY(-1px);
+}
+
+.share-card-generator__start:disabled {
+  cursor: not-allowed;
+  opacity: 0.58;
+  transform: none;
+}
+
+.share-card-generator__overlay {
+  position: fixed;
+  z-index: 3000;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  background: rgba(15, 23, 42, 0.44);
+}
+
+.share-card-generator__dialog {
+  position: relative;
+  display: grid;
+  width: min(360px, calc(100vw - 32px));
+  max-height: calc(100dvh - 32px);
+  gap: 10px;
+  overflow: hidden;
+  padding: 14px;
+  border: 1px solid rgba(219, 234, 254, 0.92);
+  border-radius: 8px;
+  background: #fff;
+  box-shadow: 0 24px 70px rgba(15, 23, 42, 0.22);
+}
+
+.share-card-generator__head,
+.share-card-generator__actions,
+.share-card-generator__footer {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.share-card-generator__head {
+  justify-content: space-between;
+}
+
+.share-card-generator__head h2 {
+  margin: 0;
+  color: #0f172a;
+  font-size: 20px;
+}
+
+.share-card-generator__actions button {
+  display: inline-grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border: 0;
+  border-radius: 8px;
+  background: #eff6ff;
+  color: #2563eb;
+  cursor: pointer;
+}
+
+.share-card-generator__footer {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  width: 100%;
+  gap: 8px;
+  margin: 0;
+  padding: 2px 0 0;
+  background: transparent;
+}
+
+.share-card-generator__footer button {
+  display: inline-flex;
+  min-width: 0;
+  height: 34px;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 0 10px;
+  border: 1px solid rgba(191, 219, 254, 0.95);
+  border-radius: 999px;
+  background: #eff6ff;
+  color: #2563eb;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 800;
+  cursor: pointer;
+  transition:
+    background-color 160ms ease,
+    border-color 160ms ease,
+    box-shadow 160ms ease,
+    transform 160ms ease;
+}
+
+.share-card-generator__footer button:hover:not(:disabled) {
+  border-color: rgba(37, 99, 235, 0.36);
+  background: #fff;
+  box-shadow: 0 10px 22px rgba(37, 99, 235, 0.12);
+  transform: translateY(-1px);
+}
+
+.share-card-generator__actions button:disabled,
+.share-card-generator__footer button:disabled {
+  cursor: not-allowed;
+  opacity: 0.48;
+}
+
+.share-card-generator__loading {
+  display: grid;
+  min-height: 120px;
+  place-items: center;
+  border: 1px dashed rgba(191, 219, 254, 0.96);
+  border-radius: 8px;
+  background: rgba(248, 250, 252, 0.72);
+  color: #64748b;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.share-card-generator__canvas {
+  width: min(100%, 292px, 40vh);
+  justify-self: center;
+  border: 1px solid rgba(226, 232, 240, 0.96);
+  border-radius: 8px;
+  background: #fff;
+  box-shadow: 0 12px 26px rgba(15, 23, 42, 0.08);
+}
+
+@media (max-width: 640px) {
+  .share-card-generator__start {
+    width: 100%;
+  }
+
+  .share-card-generator__overlay {
+    padding: 10px;
+  }
+
+  .share-card-generator__dialog {
+    width: calc(100vw - 20px);
+    max-height: calc(100dvh - 20px);
+    gap: 8px;
+    padding: 12px;
+  }
+
+  .share-card-generator__head h2 {
+    font-size: 18px;
+  }
+
+  .share-card-generator__canvas {
+    width: min(100%, 280px, 38vh);
+  }
+
+  .share-card-generator__footer button {
+    padding: 0 8px;
+  }
+}

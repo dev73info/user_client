@@ -3,54 +3,6 @@
   "entries": [
     {
       "rule": "line-budget",
-      "file": "src/App.vue",
-      "detail": "440 行 > 400（模块）",
-      "since": "2026-10-22"
-    },
-    {
-      "rule": "line-budget",
-      "file": "src/components/AuthModal.vue",
-      "detail": "496 行 > 400（模块）",
-      "since": "2026-10-22"
-    },
-    {
-      "rule": "line-budget",
-      "file": "src/components/DevTipDialog.vue",
-      "detail": "635 行 > 400（模块）",
-      "since": "2026-10-22"
-    },
-    {
-      "rule": "line-budget",
-      "file": "src/components/ShareCardGenerator.vue",
-      "detail": "494 行 > 400（模块）",
-      "since": "2026-10-22"
-    },
-    {
-      "rule": "line-budget",
-      "file": "src/components/SupportChatWidget.vue",
-      "detail": "647 行 > 400（模块）",
-      "since": "2026-10-22"
-    },
-    {
-      "rule": "line-budget",
-      "file": "src/router/dev.ts",
-      "detail": "524 行 > 300（模块）",
-      "since": "2026-10-22"
-    },
-    {
-      "rule": "line-budget",
-      "file": "src/router/index.ts",
-      "detail": "617 行 > 300（模块）",
-      "since": "2026-10-22"
-    },
-    {
-      "rule": "line-budget",
-      "file": "src/stores/auth.ts",
-      "detail": "405 行 > 300（模块）",
-      "since": "2026-10-22"
-    },
-    {
-      "rule": "line-budget",
       "file": "src/__tests__/afterSalesWindow.spec.ts",
       "detail": "485 行 > 300（模块）",
       "since": "2026-10-22"
@@ -89,6 +41,48 @@
       "rule": "line-budget",
       "file": "src/__tests__/workbenchMode.spec.ts",
       "detail": "341 行 > 300（模块）",
+      "since": "2026-10-22"
+    },
+    {
+      "rule": "line-budget",
+      "file": "src/App.vue",
+      "detail": "440 行 > 400（模块）",
+      "since": "2026-10-22"
+    },
+    {
+      "rule": "line-budget",
+      "file": "src/components/AuthModal.vue",
+      "detail": "496 行 > 400（模块）",
+      "since": "2026-10-22"
+    },
+    {
+      "rule": "line-budget",
+      "file": "src/components/DevTipDialog.vue",
+      "detail": "635 行 > 400（模块）",
+      "since": "2026-10-22"
+    },
+    {
+      "rule": "line-budget",
+      "file": "src/components/SupportChatWidget.vue",
+      "detail": "647 行 > 400（模块）",
+      "since": "2026-10-22"
+    },
+    {
+      "rule": "line-budget",
+      "file": "src/router/dev.ts",
+      "detail": "524 行 > 300（模块）",
+      "since": "2026-10-22"
+    },
+    {
+      "rule": "line-budget",
+      "file": "src/router/index.ts",
+      "detail": "617 行 > 300（模块）",
+      "since": "2026-10-22"
+    },
+    {
+      "rule": "line-budget",
+      "file": "src/stores/auth.ts",
+      "detail": "405 行 > 300（模块）",
       "since": "2026-10-22"
     },
     {
@@ -159,6 +153,18 @@
     },
     {
       "rule": "raw-color",
+      "file": "src/components/contract-attachment-forms.css",
+      "detail": "31 处裸色值",
+      "since": "2026-10-22"
+    },
+    {
+      "rule": "raw-color",
+      "file": "src/components/contract-attachment-panel.css",
+      "detail": "30 处裸色值",
+      "since": "2026-10-22"
+    },
+    {
+      "rule": "raw-color",
       "file": "src/components/contract/ContractArchiveBanner.vue",
       "detail": "6 处裸色值",
       "since": "2026-10-22"
@@ -189,15 +195,33 @@
     },
     {
       "rule": "raw-color",
-      "file": "src/components/contract-attachment-forms.css",
-      "detail": "31 处裸色值",
-      "since": "2026-10-22"
+      "file": "src/components/conversation/conversation-actions.css",
+      "detail": "26 处裸色值",
+      "since": "2026-10-23"
     },
     {
       "rule": "raw-color",
-      "file": "src/components/contract-attachment-panel.css",
-      "detail": "30 处裸色值",
-      "since": "2026-10-22"
+      "file": "src/components/conversation/conversation-breach-dialog.css",
+      "detail": "7 处裸色值",
+      "since": "2026-10-23"
+    },
+    {
+      "rule": "raw-color",
+      "file": "src/components/conversation/conversation-header-workbench-bar.css",
+      "detail": "1 处裸色值",
+      "since": "2026-10-23"
+    },
+    {
+      "rule": "raw-color",
+      "file": "src/components/conversation/conversation-modal-shell.css",
+      "detail": "20 处裸色值",
+      "since": "2026-10-23"
+    },
+    {
+      "rule": "raw-color",
+      "file": "src/components/conversation/conversation-shared.css",
+      "detail": "14 处裸色值",
+      "since": "2026-10-23"
     },
     {
       "rule": "raw-color",
@@ -231,6 +255,12 @@
     },
     {
       "rule": "raw-color",
+      "file": "src/components/conversation/ConversationHistoryVote.vue",
+      "detail": "9 处裸色值",
+      "since": "2026-10-22"
+    },
+    {
+      "rule": "raw-color",
       "file": "src/components/conversation/ConversationMessageItem.vue",
       "detail": "22 处裸色值",
       "since": "2026-10-23"
@@ -249,45 +279,9 @@
     },
     {
       "rule": "raw-color",
-      "file": "src/components/conversation/ConversationHistoryVote.vue",
-      "detail": "9 处裸色值",
-      "since": "2026-10-22"
-    },
-    {
-      "rule": "raw-color",
       "file": "src/components/conversation/HistoryDisclosureNotice.vue",
       "detail": "11 处裸色值",
       "since": "2026-10-22"
-    },
-    {
-      "rule": "raw-color",
-      "file": "src/components/conversation/conversation-header-workbench-bar.css",
-      "detail": "1 处裸色值",
-      "since": "2026-10-23"
-    },
-    {
-      "rule": "raw-color",
-      "file": "src/components/conversation/conversation-modal-shell.css",
-      "detail": "20 处裸色值",
-      "since": "2026-10-23"
-    },
-    {
-      "rule": "raw-color",
-      "file": "src/components/conversation/conversation-shared.css",
-      "detail": "14 处裸色值",
-      "since": "2026-10-23"
-    },
-    {
-      "rule": "raw-color",
-      "file": "src/components/conversation/conversation-actions.css",
-      "detail": "26 处裸色值",
-      "since": "2026-10-23"
-    },
-    {
-      "rule": "raw-color",
-      "file": "src/components/conversation/conversation-breach-dialog.css",
-      "detail": "7 处裸色值",
-      "since": "2026-10-23"
     },
     {
       "rule": "raw-color",
@@ -297,14 +291,32 @@
     },
     {
       "rule": "raw-color",
+      "file": "src/components/coupon/CouponClaimOutcome.vue",
+      "detail": "8 处裸色值",
+      "since": "2026-10-23"
+    },
+    {
+      "rule": "raw-color",
+      "file": "src/components/delivery/DeliveryArtifactField.vue",
+      "detail": "17 处裸色值",
+      "since": "2026-10-23"
+    },
+    {
+      "rule": "raw-color",
       "file": "src/components/DeliverySubmitDialog.vue",
       "detail": "6 处裸色值",
       "since": "2026-10-22"
     },
     {
       "rule": "raw-color",
-      "file": "src/components/delivery/DeliveryArtifactField.vue",
-      "detail": "17 处裸色值",
+      "file": "src/components/dev/sold-purchases-table.css",
+      "detail": "1 处裸色值",
+      "since": "2026-10-23"
+    },
+    {
+      "rule": "raw-color",
+      "file": "src/components/dev/team-resources-table.css",
+      "detail": "1 处裸色值",
       "since": "2026-10-23"
     },
     {
@@ -317,6 +329,12 @@
       "rule": "raw-color",
       "file": "src/components/home/HomeHeroSection.vue",
       "detail": "9 处裸色值",
+      "since": "2026-10-22"
+    },
+    {
+      "rule": "raw-color",
+      "file": "src/components/home/PortalQuickPanels.vue",
+      "detail": "12 处裸色值",
       "since": "2026-10-22"
     },
     {
@@ -381,14 +399,50 @@
     },
     {
       "rule": "raw-color",
+      "file": "src/components/payment/api-checkout-page.css",
+      "detail": "22 处裸色值",
+      "since": "2026-10-23"
+    },
+    {
+      "rule": "raw-color",
+      "file": "src/components/payment/purchase-transfer-dialog.css",
+      "detail": "3 处裸色值",
+      "since": "2026-10-23"
+    },
+    {
+      "rule": "raw-color",
+      "file": "src/components/payment/sold-purchases-refund-dialog.css",
+      "detail": "1 处裸色值",
+      "since": "2026-10-23"
+    },
+    {
+      "rule": "raw-color",
+      "file": "src/components/payment/sold-purchases-shared.css",
+      "detail": "2 处裸色值",
+      "since": "2026-10-23"
+    },
+    {
+      "rule": "raw-color",
       "file": "src/components/PaymentModeChip.vue",
       "detail": "4 处裸色值",
       "since": "2026-10-22"
     },
     {
       "rule": "raw-color",
-      "file": "src/components/PortalMobileDock.vue",
+      "file": "src/components/points/mall-product-card.css",
       "detail": "10 处裸色值",
+      "since": "2026-10-23"
+    },
+    {
+      "rule": "raw-color",
+      "file": "src/components/points/mall-shared.css",
+      "detail": "1 处裸色值",
+      "since": "2026-10-23"
+    },
+    {
+      "rule": "raw-color",
+      "file": "src/components/portal-top-nav-actions.css",
+      "detail": "7 处裸色值",
       "since": "2026-10-22"
     },
     {
@@ -399,8 +453,8 @@
     },
     {
       "rule": "raw-color",
-      "file": "src/components/portal-top-nav-actions.css",
-      "detail": "7 处裸色值",
+      "file": "src/components/PortalMobileDock.vue",
+      "detail": "10 处裸色值",
       "since": "2026-10-22"
     },
     {
@@ -408,6 +462,24 @@
       "file": "src/components/profile/OverviewStrip.vue",
       "detail": "1 处裸色值",
       "since": "2026-10-22"
+    },
+    {
+      "rule": "raw-color",
+      "file": "src/components/profile/profile-page-responsive.css",
+      "detail": "7 处裸色值",
+      "since": "2026-10-23"
+    },
+    {
+      "rule": "raw-color",
+      "file": "src/components/profile/profile-page.css",
+      "detail": "16 处裸色值",
+      "since": "2026-10-23"
+    },
+    {
+      "rule": "raw-color",
+      "file": "src/components/profile/profile-quick-nav.css",
+      "detail": "5 处裸色值",
+      "since": "2026-10-23"
     },
     {
       "rule": "raw-color",
@@ -435,20 +507,32 @@
     },
     {
       "rule": "raw-color",
-      "file": "src/components/publish-modal-form.css",
-      "detail": "34 处裸色值",
-      "since": "2026-10-22"
-    },
-    {
-      "rule": "raw-color",
       "file": "src/components/publish-modal-confirm.css",
       "detail": "33 处裸色值",
       "since": "2026-10-22"
     },
     {
       "rule": "raw-color",
+      "file": "src/components/publish-modal-form.css",
+      "detail": "34 处裸色值",
+      "since": "2026-10-22"
+    },
+    {
+      "rule": "raw-color",
       "file": "src/components/RealnameHero.vue",
       "detail": "2 处裸色值",
+      "since": "2026-10-22"
+    },
+    {
+      "rule": "raw-color",
+      "file": "src/components/requirement-agent-chat.css",
+      "detail": "23 处裸色值",
+      "since": "2026-10-22"
+    },
+    {
+      "rule": "raw-color",
+      "file": "src/components/requirement-agent-draft.css",
+      "detail": "45 处裸色值",
       "since": "2026-10-22"
     },
     {
@@ -479,18 +563,6 @@
       "rule": "raw-color",
       "file": "src/components/requirement/RequirementHallToolbar.vue",
       "detail": "14 处裸色值",
-      "since": "2026-10-22"
-    },
-    {
-      "rule": "raw-color",
-      "file": "src/components/requirement-agent-chat.css",
-      "detail": "23 处裸色值",
-      "since": "2026-10-22"
-    },
-    {
-      "rule": "raw-color",
-      "file": "src/components/requirement-agent-draft.css",
-      "detail": "45 处裸色值",
       "since": "2026-10-22"
     },
     {
@@ -597,8 +669,14 @@
     },
     {
       "rule": "raw-color",
+      "file": "src/components/share-card-generator.css",
+      "detail": "26 处裸色值",
+      "since": "2026-10-22"
+    },
+    {
+      "rule": "raw-color",
       "file": "src/components/ShareCardGenerator.vue",
-      "detail": "45 处裸色值",
+      "detail": "19 处裸色值",
       "since": "2026-10-22"
     },
     {
@@ -606,6 +684,12 @@
       "file": "src/components/SupportChatWidget.vue",
       "detail": "26 处裸色值",
       "since": "2026-10-22"
+    },
+    {
+      "rule": "raw-color",
+      "file": "src/components/team/team-public-resource-card.css",
+      "detail": "10 处裸色值",
+      "since": "2026-10-23"
     },
     {
       "rule": "raw-color",
@@ -1167,12 +1251,6 @@
     },
     {
       "rule": "raw-color",
-      "file": "src/components/coupon/CouponClaimOutcome.vue",
-      "detail": "8 处裸色值",
-      "since": "2026-10-23"
-    },
-    {
-      "rule": "raw-color",
       "file": "src/views/DeveloperAgreementView.vue",
       "detail": "7 处裸色值",
       "since": "2026-10-22"
@@ -1199,12 +1277,6 @@
       "rule": "raw-color",
       "file": "src/views/DevResourceListView.vue",
       "detail": "1 处裸色值",
-      "since": "2026-10-22"
-    },
-    {
-      "rule": "raw-color",
-      "file": "src/components/home/PortalQuickPanels.vue",
-      "detail": "12 处裸色值",
       "since": "2026-10-22"
     },
     {
@@ -1260,78 +1332,6 @@
       "file": "src/views/UserBadgesView.vue",
       "detail": "3 处裸色值",
       "since": "2026-10-22"
-    },
-    {
-      "rule": "raw-color",
-      "file": "src/components/points/mall-product-card.css",
-      "detail": "10 处裸色值",
-      "since": "2026-10-23"
-    },
-    {
-      "rule": "raw-color",
-      "file": "src/components/points/mall-shared.css",
-      "detail": "1 处裸色值",
-      "since": "2026-10-23"
-    },
-    {
-      "rule": "raw-color",
-      "file": "src/components/team/team-public-resource-card.css",
-      "detail": "10 处裸色值",
-      "since": "2026-10-23"
-    },
-    {
-      "rule": "raw-color",
-      "file": "src/components/payment/api-checkout-page.css",
-      "detail": "22 处裸色值",
-      "since": "2026-10-23"
-    },
-    {
-      "rule": "raw-color",
-      "file": "src/components/payment/purchase-transfer-dialog.css",
-      "detail": "3 处裸色值",
-      "since": "2026-10-23"
-    },
-    {
-      "rule": "raw-color",
-      "file": "src/components/profile/profile-page.css",
-      "detail": "16 处裸色值",
-      "since": "2026-10-23"
-    },
-    {
-      "rule": "raw-color",
-      "file": "src/components/profile/profile-page-responsive.css",
-      "detail": "7 处裸色值",
-      "since": "2026-10-23"
-    },
-    {
-      "rule": "raw-color",
-      "file": "src/components/profile/profile-quick-nav.css",
-      "detail": "5 处裸色值",
-      "since": "2026-10-23"
-    },
-    {
-      "rule": "raw-color",
-      "file": "src/components/dev/team-resources-table.css",
-      "detail": "1 处裸色值",
-      "since": "2026-10-23"
-    },
-    {
-      "rule": "raw-color",
-      "file": "src/components/dev/sold-purchases-table.css",
-      "detail": "1 处裸色值",
-      "since": "2026-10-23"
-    },
-    {
-      "rule": "raw-color",
-      "file": "src/components/payment/sold-purchases-refund-dialog.css",
-      "detail": "1 处裸色值",
-      "since": "2026-10-23"
-    },
-    {
-      "rule": "raw-color",
-      "file": "src/components/payment/sold-purchases-shared.css",
-      "detail": "2 处裸色值",
-      "since": "2026-10-23"
     }
   ]
 }
