@@ -33,8 +33,6 @@ export {
   getAdapayPayment,
 } from './payment'
 
-export { acceptAdapayDelivery, listAdapayAcceptances } from './acceptance'
-
 export {
   getAdapayBreachCase,
   reportAdapayTermination,

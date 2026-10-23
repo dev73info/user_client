@@ -47,3 +47,8 @@ export {
 } from './resource'
 
 export { updateRequirementSubscription } from './subscription'
+export {
+  listRequirementAcceptances,
+  submitRequirementAcceptance,
+  type RequirementAcceptanceResponse,
+} from './acceptance'

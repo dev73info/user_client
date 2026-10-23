@@ -7,12 +7,8 @@
  */
 import { ref, watch } from 'vue'
 
-import {
-  acceptAdapayDelivery,
-  listAdapayAcceptances,
-  type AdapayAcceptanceRecord,
-  type AdapayAcceptanceResult,
-} from '@/api/adapay'
+import type { AdapayAcceptanceRecord, AdapayAcceptanceResult } from '@/api/adapay'
+import { listRequirementAcceptances, submitRequirementAcceptance } from '@/api/requirements'
 import { formatCnDateTime } from '@/shared/requirementDisplay'
 import { TMessage } from 'ui_73info'
 
@@ -56,7 +52,7 @@ async function loadRecords() {
 
   recordsLoading.value = true
   try {
-    records.value = await listAdapayAcceptances(props.token, props.requirementId)
+    records.value = await listRequirementAcceptances(props.token, props.requirementId)
   } catch (error) {
     // 历史留档只是辅助信息，取不到不挡本次验收。
     TMessage.error(error instanceof Error ? error.message : '加载验收记录失败')
@@ -83,10 +79,22 @@ async function submit() {
 
   submitting.value = true
   try {
-    await acceptAdapayDelivery(props.token, props.requirementId, result.value, note.value.trim())
+    const outcome = await submitRequirementAcceptance(
+      props.token,
+      props.requirementId,
+      result.value,
+      note.value.trim(),
+    )
     const rejected = result.value === 'rejected'
+    // 打回成功的响应里带整改截止时间；详情响应里暂时还没有这个字段（后端在补），
+    // 所以只在这一次提示里展示「整改截止」，刷新后不显示倒计时。
+    const dueAt = outcome.remediation_due_at ? formatCnDateTime(outcome.remediation_due_at) : ''
     TMessage.success(
-      rejected ? '已记下验收结论，开发者会收到整改通知' : '验收已通过，请继续支付尾款',
+      rejected
+        ? dueAt
+          ? `已打回，开发者会收到整改通知（整改截止 ${dueAt}）`
+          : '已记下验收结论，开发者会收到整改通知'
+        : '验收已通过，请继续支付尾款',
     )
     emit('submitted', result.value)
     emit('close')
