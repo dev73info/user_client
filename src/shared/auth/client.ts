@@ -1,3 +1,5 @@
+import { md5Hex } from './md5'
+
 export type AuthPayload = {
   token: string
   username?: string
@@ -36,7 +38,6 @@ export type GiteeAuthUrlResp = {
 }
 
 export type AuthPath = '/auth/login' | '/auth/register'
-
 /**
  * 客户端平台标识（协议同意留痕用）。
  *
@@ -98,7 +99,8 @@ export function createAuthApiClient(deps: AuthApiDependencies, options: AuthApiO
           },
           body: JSON.stringify({
             username,
-            password,
+            // 后端 2.0 只接受 md5(明文密码) 的 32 位小写十六进制，明文一律 400（见契约 LoginRequest）
+            password: md5Hex(password),
             ...(requestDevRole ? { request_dev_role: true } : {}),
             ...(email ? { email } : {}),
             ...(emailCode ? { email_code: emailCode } : {}),
@@ -155,10 +157,7 @@ export function createAuthApiClient(deps: AuthApiDependencies, options: AuthApiO
     }
   }
 
-  function sendResetPasswordEmailCode(
-    email: string,
-    turnstileToken?: string,
-  ): Promise<void> {
+  function sendResetPasswordEmailCode(email: string, turnstileToken?: string): Promise<void> {
     return deps.requestVoid(
       '/auth/send-reset-password-email-code',
       {
@@ -190,7 +189,8 @@ export function createAuthApiClient(deps: AuthApiDependencies, options: AuthApiO
         },
         body: JSON.stringify({
           email,
-          password,
+          // 同登录：契约 ResetPasswordRequest 要求 md5(明文密码)
+          password: md5Hex(password),
           email_code: emailCode,
           ...(turnstileToken ? { turnstile_token: turnstileToken } : {}),
         }),
