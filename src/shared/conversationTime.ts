@@ -1,3 +1,5 @@
+import { parseBackendDateTime } from './datetime'
+
 /**
  * 需求会话时间线的日期与署名纯函数。
  *
@@ -6,18 +8,14 @@
  */
 
 /**
- * 把后端时间字符串解析成本地 `Date`。
+ * 把后端时间字符串解析成 `Date`。
  *
- * 后端给的是 `2026-10-21 09:30:00`（无时区）或带 `T` 的 ISO 串。前者先补成 `T` 再交给
- * `Date`，否则 Safari 旧版会当非法值；解析不出来返回 `null`，让调用方各自兜底。
+ * 后端给的是**东八区墙钟串、不带时区偏移**（`2026-10-21 09:30:00`）。直接 `new Date()` 会被
+ * 按浏览器本地时区理解，非 +08:00 的设备整体偏移（UTC+0 差 8 小时，日期分组与倒计时全错），
+ * 所以口径统一收敛到 `shared/datetime.ts` 的 `parseBackendDateTime`。
  */
 export function parseDate(value?: string | null): Date | null {
-  if (!value) {
-    return null
-  }
-  const normalizedValue = value.includes('T') ? value : value.replace(' ', 'T')
-  const date = new Date(normalizedValue)
-  return Number.isNaN(date.getTime()) ? null : date
+  return parseBackendDateTime(value)
 }
 
 /** 本地时区的日期键（`2026-10-21`）：同一自然日归到同一个分组，跨时区不串行。 */
