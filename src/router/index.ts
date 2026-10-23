@@ -19,10 +19,8 @@ function takeSpaFallbackRedirect(): string {
     return ''
   }
 
-  const target = new URLSearchParams(window.location.search)
-    .get(SPA_FALLBACK_REDIRECT_PARAM)
-    ?.trim()
-    ?? ''
+  const target =
+    new URLSearchParams(window.location.search).get(SPA_FALLBACK_REDIRECT_PARAM)?.trim() ?? ''
 
   if (!target || !target.startsWith('/') || target.startsWith('//')) {
     return ''
@@ -84,12 +82,20 @@ const router = createRouter({
       // 旧地址兼容：带上对应分区重定向到「资源项目」，不做成 404 / 白屏。
       path: '/free-resources',
       name: 'free-resources',
-      redirect: (to) => ({ name: 'resources', query: { ...to.query, sale: 'free' }, hash: to.hash }),
+      redirect: (to) => ({
+        name: 'resources',
+        query: { ...to.query, sale: 'free' },
+        hash: to.hash,
+      }),
     },
     {
       path: '/paid-resources',
       name: 'paid-resources',
-      redirect: (to) => ({ name: 'resources', query: { ...to.query, sale: 'paid' }, hash: to.hash }),
+      redirect: (to) => ({
+        name: 'resources',
+        query: { ...to.query, sale: 'paid' },
+        hash: to.hash,
+      }),
     },
     {
       path: '/requirement-hall',
@@ -182,10 +188,16 @@ const router = createRouter({
         const code = String(to.params.code ?? '').trim()
         const shareType = typeof to.query.share_type === 'string' ? to.query.share_type.trim() : ''
         const targetId = typeof to.query.target_id === 'string' ? to.query.target_id.trim() : ''
-        const redirectTo = typeof to.query.redirect_to === 'string' ? to.query.redirect_to.trim() : ''
+        const redirectTo =
+          typeof to.query.redirect_to === 'string' ? to.query.redirect_to.trim() : ''
 
         if (['requirement', 'portfolio', 'resource', 'community_post'].includes(shareType)) {
-          return buildPublicShareRedirectPath(shareType, targetId, redirectTo, normalizePromoCode(code))
+          return buildPublicShareRedirectPath(
+            shareType,
+            targetId,
+            redirectTo,
+            normalizePromoCode(code),
+          )
         }
 
         // 注册分支：不带推广码（推广分成只在下单时归因，与注册落地无关）
@@ -562,8 +574,7 @@ router.beforeEach(async (to, from, next) => {
     })
   }
 
-  const hasCheckoutTicket =
-    typeof to.query.ticket === 'string' && to.query.ticket.trim().length > 0
+  const hasCheckoutTicket = typeof to.query.ticket === 'string' && to.query.ticket.trim().length > 0
 
   const authRequired =
     to.path.startsWith('/workbench') ||
@@ -598,11 +609,19 @@ router.beforeEach(async (to, from, next) => {
     try {
       const verification = await getMyRealnameVerification(auth.token)
       if (verification.status !== 'approved') {
-        return next({ name: 'workbench-realname', query: { redirect_to: to.fullPath }, replace: true })
+        return next({
+          name: 'workbench-realname',
+          query: { redirect_to: to.fullPath },
+          replace: true,
+        })
       }
     } catch (error) {
       if (error instanceof HttpError && error.status === 404) {
-        return next({ name: 'workbench-realname', query: { redirect_to: to.fullPath }, replace: true })
+        return next({
+          name: 'workbench-realname',
+          query: { redirect_to: to.fullPath },
+          replace: true,
+        })
       }
       return next(false)
     }
