@@ -1,0 +1,6200 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "73Info 后端接口契约",
+    "description": "由后端代码标注生成的接口契约，按域增量推进。\n\n未出现的域表示本轮尚未标注，不代表接口不存在。",
+    "license": {
+      "name": "MIT",
+      "identifier": "MIT"
+    },
+    "version": "0.1.0"
+  },
+  "paths": {
+    "/api/api_key/api_keys": {
+      "get": {
+        "tags": [
+          "api_key"
+        ],
+        "summary": "GET /api/api_key/api_keys",
+        "description": "查询接口密钥列表。",
+        "operationId": "listApiKeys",
+        "responses": {
+          "200": {
+            "description": "密钥列表",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ApiKeyRecordResponse"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "未认证",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "没有操作权限",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "服务器内部错误",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "api_key"
+        ],
+        "summary": "POST /api/api_key/api_keys",
+        "description": "新建接口密钥。明文密钥只在这一次的响应里出现。",
+        "operationId": "createApiKey",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateApiKeyRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "创建成功，明文密钥只在这里出现一次",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreatedApiKeyResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "参数不合法",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "未认证",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "没有操作权限",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "服务器内部错误",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/api_key/api_keys/{id}": {
+      "delete": {
+        "tags": [
+          "api_key"
+        ],
+        "summary": "DELETE /api/api_key/api_keys/{id}",
+        "description": "删除接口密钥。成功时响应体是纯文本 `deleted`。",
+        "operationId": "deleteApiKey",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "接口密钥主键",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "已删除（响应体为纯文本）",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "未认证",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "没有操作权限",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "接口密钥不存在",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "服务器内部错误",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "api_key"
+        ],
+        "summary": "PATCH /api/api_key/api_keys/{id}",
+        "description": "更新接口密钥的名称与备注。",
+        "operationId": "updateApiKey",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "接口密钥主键",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateApiKeyRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "已更新",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiKeyRecordResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "参数不合法",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "未认证",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "没有操作权限",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "接口密钥不存在",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "服务器内部错误",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/api_key/api_keys/{id}/revoke": {
+      "post": {
+        "tags": [
+          "api_key"
+        ],
+        "summary": "POST /api/api_key/api_keys/{id}/revoke",
+        "description": "吊销接口密钥。成功时响应体是纯文本 `revoked`。",
+        "operationId": "revokeApiKey",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "接口密钥主键",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "已吊销（响应体为纯文本）",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "未认证",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "没有操作权限",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "接口密钥不存在",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "服务器内部错误",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/account": {
+      "delete": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "DELETE /api/auth/account",
+        "description": "注销当前账号。成功时无响应体（204）。",
+        "operationId": "closeAccount",
+        "responses": {
+          "204": {
+            "description": "账号已注销（无响应体）"
+          },
+          "400": {
+            "description": "不能注销超管账号",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "未认证",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "没有操作权限",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "服务器内部错误",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/gitee/bind/url": {
+      "get": {
+        "tags": [
+          "oauth"
+        ],
+        "summary": "GET /api/auth/gitee/bind/url",
+        "operationId": "getGiteeBindUrl",
+        "parameters": [
+          {
+            "name": "redirect_to",
+            "in": "query",
+            "description": "成功后跳回的地址；必须与落地页同源，否则回落到落地页。",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          {
+            "name": "request_dev_role",
+            "in": "query",
+            "description": "是否同时申请开发者角色。",
+            "required": false,
+            "schema": {
+              "type": [
+                "boolean",
+                "null"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "绑定授权地址",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthorizeUrlResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "渠道配置不完整或跳转地址不合规",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "该渠道未启用",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "请求过于频繁",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/gitee/callback": {
+      "get": {
+        "tags": [
+          "oauth"
+        ],
+        "summary": "GET /api/auth/gitee/callback 与旧前缀 /auth/gitee/callback",
+        "operationId": "giteeCallback",
+        "parameters": [
+          {
+            "name": "code",
+            "in": "query",
+            "description": "授权码。",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          {
+            "name": "state",
+            "in": "query",
+            "description": "防 CSRF 的签名 state。",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          {
+            "name": "error",
+            "in": "query",
+            "description": "第三方返回的错误码。",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          {
+            "name": "error_description",
+            "in": "query",
+            "description": "第三方返回的错误描述。",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "302": {
+            "description": "跳转到前端落地页（无响应体）"
+          },
+          "429": {
+            "description": "请求过于频繁",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/gitee/url": {
+      "get": {
+        "tags": [
+          "oauth"
+        ],
+        "summary": "GET /api/auth/gitee/url",
+        "operationId": "getGiteeAuthorizeUrl",
+        "parameters": [
+          {
+            "name": "redirect_to",
+            "in": "query",
+            "description": "成功后跳回的地址；必须与落地页同源，否则回落到落地页。",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          {
+            "name": "request_dev_role",
+            "in": "query",
+            "description": "是否同时申请开发者角色。",
+            "required": false,
+            "schema": {
+              "type": [
+                "boolean",
+                "null"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "第三方授权地址",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthorizeUrlResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "渠道配置不完整或跳转地址不合规",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "该渠道未启用",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "请求过于频繁",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "第三方服务不可用",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/github/bind/url": {
+      "get": {
+        "tags": [
+          "oauth"
+        ],
+        "summary": "GET /api/auth/github/bind/url",
+        "operationId": "getGithubBindUrl",
+        "parameters": [
+          {
+            "name": "redirect_to",
+            "in": "query",
+            "description": "成功后跳回的地址；必须与落地页同源，否则回落到落地页。",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          {
+            "name": "request_dev_role",
+            "in": "query",
+            "description": "是否同时申请开发者角色。",
+            "required": false,
+            "schema": {
+              "type": [
+                "boolean",
+                "null"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "绑定授权地址",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthorizeUrlResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "渠道配置不完整或跳转地址不合规",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "该渠道未启用",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "请求过于频繁",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/github/callback": {
+      "get": {
+        "tags": [
+          "oauth"
+        ],
+        "summary": "GET /api/auth/github/callback 与旧前缀 /auth/github/callback",
+        "operationId": "githubCallback",
+        "parameters": [
+          {
+            "name": "code",
+            "in": "query",
+            "description": "授权码。",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          {
+            "name": "state",
+            "in": "query",
+            "description": "防 CSRF 的签名 state。",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          {
+            "name": "error",
+            "in": "query",
+            "description": "第三方返回的错误码。",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          {
+            "name": "error_description",
+            "in": "query",
+            "description": "第三方返回的错误描述。",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "302": {
+            "description": "跳转到前端落地页（无响应体）"
+          },
+          "429": {
+            "description": "请求过于频繁",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/github/start": {
+      "get": {
+        "tags": [
+          "oauth"
+        ],
+        "summary": "GET /api/auth/github/start：直接 302 到 GitHub。",
+        "operationId": "startGithubLogin",
+        "responses": {
+          "302": {
+            "description": "跳转到第三方授权页（无响应体）"
+          },
+          "400": {
+            "description": "渠道配置不完整或跳转地址不合规",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "该渠道未启用",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "请求过于频繁",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/github/url": {
+      "get": {
+        "tags": [
+          "oauth"
+        ],
+        "summary": "GET /api/auth/github/url",
+        "operationId": "getGithubAuthorizeUrl",
+        "parameters": [
+          {
+            "name": "redirect_to",
+            "in": "query",
+            "description": "成功后跳回的地址；必须与落地页同源，否则回落到落地页。",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          {
+            "name": "request_dev_role",
+            "in": "query",
+            "description": "是否同时申请开发者角色。",
+            "required": false,
+            "schema": {
+              "type": [
+                "boolean",
+                "null"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "第三方授权地址",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthorizeUrlResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "渠道配置不完整或跳转地址不合规",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "该渠道未启用",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "请求过于频繁",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "第三方服务不可用",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/login": {
+      "post": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "POST /api/auth/login",
+        "description": "登录。需要两步验证时返回 202 与 `TwoFactorRequiredResponse`。",
+        "operationId": "login",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LoginRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "登录成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthResponse"
+                }
+              }
+            }
+          },
+          "202": {
+            "description": "需要两步验证",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TwoFactorRequiredResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "参数不合法",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "用户名或密码错误",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "账号被禁用或人机校验未通过",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "请求过于频繁",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "服务器内部错误",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/oauth-status": {
+      "get": {
+        "tags": [
+          "oauth"
+        ],
+        "summary": "GET /api/auth/oauth-status",
+        "operationId": "getOAuthStatus",
+        "responses": {
+          "200": {
+            "description": "各渠道可用性",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OAuthStatusResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/permissions": {
+      "get": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "GET /api/auth/permissions",
+        "operationId": "listPermissions",
+        "responses": {
+          "200": {
+            "description": "权限点列表",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/PermissionResponse"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "未认证",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "没有操作权限",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "服务器内部错误",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/providers": {
+      "get": {
+        "tags": [
+          "oauth"
+        ],
+        "summary": "GET /api/auth/providers：当前用户已绑定的第三方渠道。",
+        "operationId": "listBoundOAuthProviders",
+        "responses": {
+          "200": {
+            "description": "已绑定的第三方渠道",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BoundProvidersResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "未认证",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "用户不存在",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "服务器内部错误",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/refresh": {
+      "post": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "POST /api/auth/refresh",
+        "description": "刷新访问令牌，需要登录态。",
+        "operationId": "refreshToken",
+        "responses": {
+          "200": {
+            "description": "刷新成功，返回新的登录态",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "未认证",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "账号被禁用或已注销",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "服务器内部错误",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/register": {
+      "post": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "POST /api/auth/register",
+        "description": "注册新账号，成功后直接返回登录态。",
+        "operationId": "register",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RegisterRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "注册成功，返回登录态",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "参数不合法",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "人机校验未通过",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "用户名或邮箱已被占用",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "请求过于频繁",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "服务器内部错误",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/reset-password": {
+      "post": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "POST /api/auth/reset-password",
+        "description": "重置密码。成功后直接返回新的登录态。",
+        "operationId": "resetPassword",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResetPasswordRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "重置成功，返回新的登录态",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "参数不合法或验证码有误",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "人机校验未通过",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "请求过于频繁或验证码尝试次数超限",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "服务器内部错误",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/roles": {
+      "get": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "GET /api/auth/roles",
+        "operationId": "listRoles",
+        "responses": {
+          "200": {
+            "description": "角色列表",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/RoleSummaryResponse"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "未认证",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "没有操作权限",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "服务器内部错误",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "PUT /api/auth/roles",
+        "operationId": "upsertRole",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpsertRoleRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "角色详情",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RoleDetailResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "参数不合法",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "未认证",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "没有操作权限",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "角色不存在",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "服务器内部错误",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/roles/{role_code}": {
+      "get": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "GET /api/auth/roles/{role_code}",
+        "operationId": "getRoleDetail",
+        "parameters": [
+          {
+            "name": "role_code",
+            "in": "path",
+            "description": "角色码",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "角色详情",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RoleDetailResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "未认证",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "没有操作权限",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "角色不存在",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "服务器内部错误",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "DELETE /api/auth/roles/{role_code}",
+        "operationId": "deleteRole",
+        "parameters": [
+          {
+            "name": "role_code",
+            "in": "path",
+            "description": "角色码",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "已删除（无响应体）"
+          },
+          "401": {
+            "description": "未认证",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "没有操作权限",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "角色不存在",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "服务器内部错误",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/send-register-email-code": {
+      "post": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "POST /api/auth/send-register-email-code",
+        "description": "发送注册验证码。成功时响应体为空（200，无 content）。",
+        "operationId": "sendRegisterEmailCode",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SendRegisterEmailCodeRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "验证码已发送（无响应体）"
+          },
+          "400": {
+            "description": "参数不合法或邮件发送失败",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "人机校验未通过",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "邮箱已被注册",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "请求过于频繁",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "服务器内部错误",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/send-reset-password-email-code": {
+      "post": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "POST /api/auth/send-reset-password-email-code",
+        "description": "发送重置密码验证码。成功时响应体为空（200，无 content）。",
+        "operationId": "sendResetPasswordEmailCode",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SendResetPasswordEmailCodeRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "验证码已发送（无响应体）"
+          },
+          "400": {
+            "description": "参数不合法或邮件发送失败",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "人机校验未通过",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "邮箱未注册",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "请求过于频繁",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "服务器内部错误",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/users": {
+      "get": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "GET /api/auth/users",
+        "operationId": "listUsers",
+        "parameters": [
+          {
+            "name": "keyword",
+            "in": "query",
+            "description": "模糊关键字。",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "用户列表",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/AdminUserResponse"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "未认证",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "没有操作权限",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "服务器内部错误",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "PUT /api/auth/users",
+        "operationId": "updateUser",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateUserRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "已更新（无响应体）"
+          },
+          "400": {
+            "description": "参数不合法",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "未认证",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "没有操作权限",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "用户不存在",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "用户名或邮箱已被占用",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "服务器内部错误",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "POST /api/auth/users",
+        "operationId": "createUser",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateUserRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "已创建（无响应体）"
+          },
+          "400": {
+            "description": "参数不合法",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "未认证",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "没有操作权限",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "用户名或邮箱已被占用",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "服务器内部错误",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "DELETE /api/auth/users",
+        "operationId": "deleteUser",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DeleteUserRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "已删除",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeleteUserResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "参数不合法",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "未认证",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "没有操作权限",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "用户不存在",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "服务器内部错误",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/users/privileges": {
+      "get": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "GET /api/auth/users/privileges",
+        "description": "查询当前登录用户的权限。",
+        "operationId": "getUserPrivileges",
+        "responses": {
+          "200": {
+            "description": "当前用户的权限",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PrivilegesResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "未认证",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "没有操作权限",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "用户不存在",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "服务器内部错误",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/users/role": {
+      "post": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "POST /api/auth/users/role",
+        "operationId": "updateUserRole",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateUserRoleRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "修改后的角色",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserRoleResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "参数不合法",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "未认证",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "没有操作权限",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "用户不存在",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "服务器内部错误",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/users/username": {
+      "post": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "POST /api/auth/users/username",
+        "operationId": "updateUserUsername",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateUserNameRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "已修改（无响应体）"
+          },
+          "400": {
+            "description": "参数不合法",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "未认证",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "没有操作权限",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "用户不存在",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "用户名已被占用",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "服务器内部错误",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/{provider}/bind": {
+      "delete": {
+        "tags": [
+          "oauth"
+        ],
+        "summary": "DELETE /api/auth/{provider}/bind",
+        "operationId": "unbindOAuthProvider",
+        "parameters": [
+          {
+            "name": "provider",
+            "in": "path",
+            "description": "第三方渠道标识，如 `github`",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "已解绑（无响应体）"
+          },
+          "400": {
+            "description": "参数不合法",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "未认证",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "未绑定该渠道",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "服务器内部错误",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/realname/": {
+      "post": {
+        "tags": [
+          "realname"
+        ],
+        "summary": "`POST /api/realname/`：提交实名认证申请。",
+        "operationId": "submitRealname",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SubmitRealnameRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "已提交实名认证申请",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RealnameResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "参数不合法",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "未认证",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "没有操作权限",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "实名状态冲突",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "服务器内部错误",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/realname/applications": {
+      "get": {
+        "tags": [
+          "realname"
+        ],
+        "summary": "`GET /api/realname/applications`：申请列表（脱敏）。",
+        "operationId": "listRealnameApplications",
+        "parameters": [
+          {
+            "name": "status",
+            "in": "query",
+            "description": "状态筛选。",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          {
+            "name": "auth_type",
+            "in": "query",
+            "description": "认证类型筛选。",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "条数上限。",
+            "required": false,
+            "schema": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "申请列表（脱敏）",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/RealnameResponse"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "未认证",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "没有操作权限",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "服务器内部错误",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/realname/applications/{username}": {
+      "get": {
+        "tags": [
+          "realname"
+        ],
+        "summary": "`GET /api/realname/applications/{username}`：申请详情（完整资料）。",
+        "operationId": "getRealnameApplication",
+        "parameters": [
+          {
+            "name": "username",
+            "in": "path",
+            "description": "账号",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "申请详情（完整资料）",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RealnameResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "未认证",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "没有操作权限",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "实名记录不存在",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "服务器内部错误",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "realname"
+        ],
+        "summary": "`PUT /api/realname/applications/{username}`：修改实名资料。",
+        "operationId": "updateRealnameApplication",
+        "parameters": [
+          {
+            "name": "username",
+            "in": "path",
+            "description": "账号",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SubmitRealnameRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "修改后的实名记录",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RealnameResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "参数不合法",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "未认证",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "没有操作权限",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "实名记录不存在",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "服务器内部错误",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "realname"
+        ],
+        "summary": "`DELETE /api/realname/applications/{username}`：删除实名记录。",
+        "operationId": "deleteRealnameApplication",
+        "parameters": [
+          {
+            "name": "username",
+            "in": "path",
+            "description": "账号",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "已删除",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeleteRealnameResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "未认证",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "没有操作权限",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "实名记录不存在",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "服务器内部错误",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/realname/applications/{username}/document": {
+      "get": {
+        "tags": [
+          "realname"
+        ],
+        "summary": "`GET /api/realname/applications/{username}/document`：下载指定用户的实名材料。",
+        "operationId": "downloadRealnameApplicationDocument",
+        "parameters": [
+          {
+            "name": "username",
+            "in": "path",
+            "description": "账号",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "kind",
+            "in": "query",
+            "description": "`guardian_consent` / `business_license`。",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "材料文件流（真实 Content-Type 由文件本身决定）",
+            "content": {
+              "application/octet-stream": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "未认证",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "没有操作权限",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "材料不存在",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "服务器内部错误",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/realname/applications/{username}/review": {
+      "post": {
+        "tags": [
+          "realname"
+        ],
+        "summary": "`POST /api/realname/applications/{username}/review`：审核。",
+        "operationId": "reviewRealnameApplication",
+        "parameters": [
+          {
+            "name": "username",
+            "in": "path",
+            "description": "账号",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReviewRealnameRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "审核后的实名记录",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RealnameResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "参数不合法",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "未认证",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "没有操作权限",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "实名记录不存在",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "服务器内部错误",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/realname/asign/company/resume": {
+      "post": {
+        "tags": [
+          "realname"
+        ],
+        "summary": "`POST /api/realname/asign/company/resume`：续发企业扫码认证。",
+        "operationId": "resumeCompanyRealnameIdentify",
+        "responses": {
+          "200": {
+            "description": "已续发企业扫码认证",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StartCompanyIdentifyResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "未认证",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "没有操作权限",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "服务器内部错误",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/realname/asign/company/start": {
+      "post": {
+        "tags": [
+          "realname"
+        ],
+        "summary": "`POST /api/realname/asign/company/start`：发起企业扫码认证。",
+        "operationId": "startCompanyRealnameIdentify",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StartCompanyIdentifyRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "已发起企业扫码认证",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StartCompanyIdentifyResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "参数不合法",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "未认证",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "没有操作权限",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "服务器内部错误",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/realname/asign/notify": {
+      "get": {
+        "tags": [
+          "realname"
+        ],
+        "summary": "`GET /api/realname/asign/notify`：爱签实名认证回调（公开）。",
+        "operationId": "asignRealnameNotify",
+        "parameters": [
+          {
+            "name": "result",
+            "in": "query",
+            "description": "渠道回传的结果标记，`1` 表示核身通过",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "param",
+            "in": "query",
+            "description": "渠道回传的加密参数，含证件号等匹配信息",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "已接收（纯文本 `ok`，浏览器回调时返回 HTML）",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "回调参数不合法或签名校验失败",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "核身服务不可用",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/realname/asign/result": {
+      "post": {
+        "tags": [
+          "realname"
+        ],
+        "summary": "`POST /api/realname/asign/result`：查询扫码认证结果。",
+        "description": "请求体保持 `{}` 的既有契约：流水号由服务端自己取，前端不接触。",
+        "operationId": "completeRealnameIdentify",
+        "responses": {
+          "200": {
+            "description": "扫码认证结果",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RealnameResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "认证未完成或结果不匹配",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "未认证",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "没有操作权限",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "没有待处理的实名记录",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "服务器内部错误",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/realname/asign/resume": {
+      "post": {
+        "tags": [
+          "realname"
+        ],
+        "summary": "`POST /api/realname/asign/resume`：续发个人扫码认证。",
+        "operationId": "resumeRealnameIdentify",
+        "responses": {
+          "200": {
+            "description": "已续发扫码认证",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StartIdentifyResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "未认证",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "没有操作权限",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "服务器内部错误",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/realname/asign/start": {
+      "post": {
+        "tags": [
+          "realname"
+        ],
+        "summary": "`POST /api/realname/asign/start`：发起个人扫码认证。",
+        "operationId": "startRealnameIdentify",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StartIdentifyRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "已发起扫码认证",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StartIdentifyResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "参数不合法",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "未认证",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "没有操作权限",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "服务器内部错误",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/realname/business-license-file": {
+      "post": {
+        "tags": [
+          "realname"
+        ],
+        "summary": "`POST /api/realname/business-license-file`：上传营业执照。",
+        "operationId": "uploadRealnameBusinessLicense",
+        "requestBody": {
+          "description": "multipart 表单，文件字段名固定为 `file`",
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/UploadFileForm"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "已上传",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BusinessLicenseFileResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "文件格式或大小不合法",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "未认证",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "没有操作权限",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "服务器内部错误",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/realname/business-license-ocr": {
+      "post": {
+        "tags": [
+          "realname"
+        ],
+        "summary": "`POST /api/realname/business-license-ocr`：营业执照识别。",
+        "operationId": "ocrRealnameBusinessLicense",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BusinessLicenseOcrRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "识别结果",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BusinessLicenseOcrResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "缺少文件路径或参数不合法",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "未认证",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "没有操作权限",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "服务器内部错误",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "渠道未给出识别结果",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/realname/consent-file": {
+      "post": {
+        "tags": [
+          "realname"
+        ],
+        "summary": "`POST /api/realname/consent-file`：上传监护人同意书。",
+        "operationId": "uploadRealnameConsentFile",
+        "requestBody": {
+          "description": "multipart 表单，文件字段名固定为 `file`",
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/UploadFileForm"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "已上传",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GuardianConsentFileResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "文件格式或大小不合法",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "未认证",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "没有操作权限",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "服务器内部错误",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/realname/document": {
+      "get": {
+        "tags": [
+          "realname"
+        ],
+        "summary": "`GET /api/realname/document`：下载本人上传的实名材料。",
+        "operationId": "downloadMyRealnameDocument",
+        "parameters": [
+          {
+            "name": "kind",
+            "in": "query",
+            "description": "`guardian_consent` / `business_license`。",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "材料文件流（真实 Content-Type 由文件本身决定）",
+            "content": {
+              "application/octet-stream": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "未认证",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "没有操作权限",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "材料不存在",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "服务器内部错误",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/realname/legal-cert-back-file": {
+      "post": {
+        "tags": [
+          "realname"
+        ],
+        "summary": "`POST /api/realname/legal-cert-back-file`：上传法人身份证国徽面并落库。",
+        "operationId": "uploadRealnameLegalCertBack",
+        "requestBody": {
+          "description": "multipart 表单，文件字段名固定为 `file`",
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/UploadFileForm"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "已上传并落库",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LegalCertBackFileResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "文件格式或大小不合法",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "未认证",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "没有操作权限",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "服务器内部错误",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/realname/legal-cert-front-file": {
+      "post": {
+        "tags": [
+          "realname"
+        ],
+        "summary": "`POST /api/realname/legal-cert-front-file`：上传法人身份证人像面并落库。",
+        "operationId": "uploadRealnameLegalCertFront",
+        "requestBody": {
+          "description": "multipart 表单，文件字段名固定为 `file`",
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/UploadFileForm"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "已上传并落库",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LegalCertFrontFileResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "文件格式或大小不合法",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "未认证",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "没有操作权限",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "服务器内部错误",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/realname/legal-cert-ocr": {
+      "post": {
+        "tags": [
+          "realname"
+        ],
+        "summary": "`POST /api/realname/legal-cert-ocr`：法人身份证识别。",
+        "operationId": "ocrRealnameLegalCert",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LegalCertOcrRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "识别结果",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LegalCertOcrResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "参数不合法",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "未认证",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "没有操作权限",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "服务器内部错误",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "渠道未给出识别结果",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/realname/me": {
+      "get": {
+        "tags": [
+          "realname"
+        ],
+        "summary": "`GET /api/realname/me`：本人实名记录。",
+        "operationId": "getMyRealname",
+        "responses": {
+          "200": {
+            "description": "本人实名记录",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RealnameResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "未认证",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "没有操作权限",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "实名记录不存在",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "服务器内部错误",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/realname/withdraw": {
+      "post": {
+        "tags": [
+          "realname"
+        ],
+        "summary": "`POST /api/realname/withdraw`：撤回实名认证。",
+        "operationId": "withdrawRealname",
+        "responses": {
+          "200": {
+            "description": "已撤回",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WithdrawResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "当前状态不允许撤回",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "未认证",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "没有操作权限",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "实名记录不存在",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "服务器内部错误",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/user/oauth/{provider}/system": {
+      "get": {
+        "tags": [
+          "config"
+        ],
+        "summary": "`GET /api/user/oauth/{provider}/system`",
+        "operationId": "getOAuthChannelConfig",
+        "parameters": [
+          {
+            "name": "provider",
+            "in": "path",
+            "description": "第三方渠道标识，如 `github` / `gitee`",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "渠道配置（密钥已掩码）",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OAuthChannelView"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "未认证",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "没有操作权限",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "未知的第三方登录渠道",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "服务器内部错误",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "config"
+        ],
+        "summary": "`PUT /api/user/oauth/{provider}/system`",
+        "operationId": "putOAuthChannelConfig",
+        "parameters": [
+          {
+            "name": "provider",
+            "in": "path",
+            "description": "第三方渠道标识，如 `github` / `gitee`",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OAuthChannelView"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "保存后的渠道配置",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SavedOAuthConfig"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "参数不合法或配置校验没过",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "未认证",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "没有操作权限",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "未知的第三方登录渠道",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "服务器内部错误",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/user/realname/system": {
+      "get": {
+        "tags": [
+          "config"
+        ],
+        "summary": "`GET /api/user/realname/system`",
+        "operationId": "getRealnameConfig",
+        "responses": {
+          "200": {
+            "description": "实名策略配置",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RealnameConfig"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "未认证",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "没有操作权限",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "服务器内部错误",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "config"
+        ],
+        "summary": "`PUT /api/user/realname/system`",
+        "operationId": "putRealnameConfig",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RealnameConfig"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "保存后的实名策略配置",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SavedRealnameConfig"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "参数不合法或配置写入失败",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "未认证",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "没有操作权限",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "服务器内部错误",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/gitee/callback": {
+      "get": {
+        "tags": [
+          "oauth"
+        ],
+        "summary": "GET /auth/gitee/callback：旧前缀的 Gitee 回调。",
+        "description": "与 `github_legacy_callback` 同理：线上已登记的应用指向这个旧路径。",
+        "operationId": "giteeLegacyCallback",
+        "parameters": [
+          {
+            "name": "code",
+            "in": "query",
+            "description": "授权码。",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          {
+            "name": "state",
+            "in": "query",
+            "description": "防 CSRF 的签名 state。",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          {
+            "name": "error",
+            "in": "query",
+            "description": "第三方返回的错误码。",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          {
+            "name": "error_description",
+            "in": "query",
+            "description": "第三方返回的错误描述。",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "302": {
+            "description": "跳转到前端落地页（无响应体）"
+          },
+          "429": {
+            "description": "请求过于频繁",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/github/callback": {
+      "get": {
+        "tags": [
+          "oauth"
+        ],
+        "summary": "GET /auth/github/callback：旧前缀的 GitHub 回调。",
+        "description": "线上已登记的 GitHub 应用指向这个旧路径，不能改成 `/api` 前缀。\n行为与 `/api/auth/github/callback` 完全一致，只是多一个入口，\n好让契约文档把两条路径都登记上。",
+        "operationId": "githubLegacyCallback",
+        "parameters": [
+          {
+            "name": "code",
+            "in": "query",
+            "description": "授权码。",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          {
+            "name": "state",
+            "in": "query",
+            "description": "防 CSRF 的签名 state。",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          {
+            "name": "error",
+            "in": "query",
+            "description": "第三方返回的错误码。",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          {
+            "name": "error_description",
+            "in": "query",
+            "description": "第三方返回的错误描述。",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "302": {
+            "description": "跳转到前端落地页（无响应体）"
+          },
+          "429": {
+            "description": "请求过于频繁",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "AdminUserResponse": {
+        "type": "object",
+        "description": "用户条目响应。",
+        "required": [
+          "username",
+          "role",
+          "roles",
+          "bound_providers"
+        ],
+        "properties": {
+          "bound_providers": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "已绑定的第三方平台（本阶段为空）。"
+          },
+          "email": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "邮箱。"
+          },
+          "role": {
+            "type": "string",
+            "description": "主角色。"
+          },
+          "roles": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "全部角色。"
+          },
+          "username": {
+            "type": "string",
+            "description": "用户名。"
+          }
+        }
+      },
+      "ApiErrorBody": {
+        "type": "object",
+        "description": "错误响应体。序列化结果就是前端约定的形状。\n\n同时标了 `ToSchema`：前端要从 OpenAPI 契约里生成错误处理分支，\n拿到的类型必须与实际响应体一致，所以这个结构进 `components.schemas`。",
+        "required": [
+          "code",
+          "message"
+        ],
+        "properties": {
+          "code": {
+            "type": "string",
+            "description": "业务错误码。前端按它分支，不要匹配文案。",
+            "example": "CONTRACT_NOT_FOUND"
+          },
+          "field": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "出错的字段名。参数 / 表单类错误才带。",
+            "example": "contract_id"
+          },
+          "message": {
+            "type": "string",
+            "description": "面向用户的中文文案。",
+            "example": "合同不存在或已被删除"
+          }
+        }
+      },
+      "ApiKeyRecordResponse": {
+        "type": "object",
+        "description": "密钥记录响应，字段与老接口一致。",
+        "required": [
+          "id",
+          "name",
+          "key_prefix",
+          "is_active",
+          "created_by",
+          "created_at",
+          "updated_at"
+        ],
+        "properties": {
+          "created_at": {
+            "type": "string",
+            "description": "创建时间。"
+          },
+          "created_by": {
+            "type": "string",
+            "description": "创建人。"
+          },
+          "expires_at": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "过期时间。"
+          },
+          "id": {
+            "type": "integer",
+            "format": "int64",
+            "description": "主键。"
+          },
+          "is_active": {
+            "type": "boolean",
+            "description": "是否可用。"
+          },
+          "key_prefix": {
+            "type": "string",
+            "description": "展示前缀。"
+          },
+          "last_used_at": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "最近使用时间。"
+          },
+          "name": {
+            "type": "string",
+            "description": "名称。"
+          },
+          "note": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "备注。"
+          },
+          "updated_at": {
+            "type": "string",
+            "description": "更新时间。"
+          }
+        }
+      },
+      "AuthResponse": {
+        "type": "object",
+        "required": [
+          "token",
+          "username",
+          "role",
+          "roles"
+        ],
+        "properties": {
+          "role": {
+            "type": "string",
+            "description": "主角色。"
+          },
+          "roles": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "全部角色。"
+          },
+          "token": {
+            "type": "string",
+            "description": "访问令牌。"
+          },
+          "username": {
+            "type": "string",
+            "description": "用户名。"
+          }
+        }
+      },
+      "AuthorizeUrlQuery": {
+        "type": "object",
+        "description": "登录授权地址的查询参数。",
+        "properties": {
+          "redirect_to": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "成功后跳回的地址；必须与落地页同源，否则回落到落地页。"
+          },
+          "request_dev_role": {
+            "type": [
+              "boolean",
+              "null"
+            ],
+            "description": "是否同时申请开发者角色。"
+          }
+        }
+      },
+      "AuthorizeUrlResponse": {
+        "type": "object",
+        "description": "授权地址响应，字段名与老接口一致。",
+        "required": [
+          "url"
+        ],
+        "properties": {
+          "url": {
+            "type": "string",
+            "description": "第三方授权地址。"
+          }
+        }
+      },
+      "BoundProvidersResponse": {
+        "type": "object",
+        "description": "已绑定渠道响应。",
+        "required": [
+          "providers"
+        ],
+        "properties": {
+          "providers": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "已绑定的渠道标识，如 `[\"github\"]`。"
+          }
+        }
+      },
+      "BusinessLicenseFileResponse": {
+        "type": "object",
+        "description": "上传营业执照成功后的响应。",
+        "required": [
+          "business_license_file"
+        ],
+        "properties": {
+          "business_license_file": {
+            "type": "string",
+            "description": "落盘后的文件地址。"
+          }
+        }
+      },
+      "BusinessLicenseOcrRequest": {
+        "type": "object",
+        "description": "营业执照 OCR 请求体。",
+        "required": [
+          "business_license_file"
+        ],
+        "properties": {
+          "business_license_file": {
+            "type": "string",
+            "description": "上传接口返回的地址。"
+          }
+        }
+      },
+      "BusinessLicenseOcrResponse": {
+        "type": "object",
+        "description": "营业执照 OCR 响应。",
+        "properties": {
+          "business_license_expires_on": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "营业执照有效期截止。"
+          },
+          "business_scope": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "经营范围。"
+          },
+          "company_address": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "注册地址。"
+          },
+          "company_name": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "企业名称。"
+          },
+          "legal_person": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "法定代表人。"
+          },
+          "unified_social_credit_code": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "统一社会信用代码。"
+          }
+        }
+      },
+      "CallbackQuery": {
+        "type": "object",
+        "description": "回调查询参数。字段名与第三方实际回传的一致。",
+        "properties": {
+          "code": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "授权码。"
+          },
+          "error": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "第三方返回的错误码。"
+          },
+          "error_description": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "第三方返回的错误描述。"
+          },
+          "state": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "防 CSRF 的签名 state。"
+          }
+        }
+      },
+      "CreateApiKeyRequest": {
+        "type": "object",
+        "description": "创建密钥请求体。",
+        "required": [
+          "name"
+        ],
+        "properties": {
+          "expires_at": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "过期时间，`YYYY-MM-DD` 或 `YYYY-MM-DD HH:MM:SS`。"
+          },
+          "name": {
+            "type": "string",
+            "description": "名称。"
+          },
+          "note": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "备注。"
+          }
+        }
+      },
+      "CreateUserRequest": {
+        "type": "object",
+        "description": "创建用户请求体。",
+        "required": [
+          "username",
+          "password",
+          "email"
+        ],
+        "properties": {
+          "email": {
+            "type": "string",
+            "description": "邮箱。"
+          },
+          "password": {
+            "type": "string",
+            "description": "密码。"
+          },
+          "role": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "单角色（兼容字段）。"
+          },
+          "roles": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "多角色。"
+          },
+          "username": {
+            "type": "string",
+            "description": "用户名。"
+          }
+        }
+      },
+      "CreatedApiKeyResponse": {
+        "type": "object",
+        "description": "新建密钥响应：明文只在这里出现一次。",
+        "required": [
+          "id",
+          "name",
+          "key_prefix",
+          "full_key",
+          "created_by",
+          "created_at"
+        ],
+        "properties": {
+          "created_at": {
+            "type": "string",
+            "description": "创建时间。"
+          },
+          "created_by": {
+            "type": "string",
+            "description": "创建人。"
+          },
+          "expires_at": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "过期时间。"
+          },
+          "full_key": {
+            "type": "string",
+            "description": "明文密钥。"
+          },
+          "id": {
+            "type": "integer",
+            "format": "int64",
+            "description": "主键。"
+          },
+          "key_prefix": {
+            "type": "string",
+            "description": "展示前缀。"
+          },
+          "name": {
+            "type": "string",
+            "description": "名称。"
+          },
+          "note": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "备注。"
+          }
+        }
+      },
+      "DeleteRealnameResponse": {
+        "type": "object",
+        "description": "删除结果。",
+        "required": [
+          "username",
+          "deleted"
+        ],
+        "properties": {
+          "deleted": {
+            "type": "boolean",
+            "description": "是否删除。"
+          },
+          "username": {
+            "type": "string",
+            "description": "账号。"
+          }
+        }
+      },
+      "DeleteUserRequest": {
+        "type": "object",
+        "description": "删除用户请求体。",
+        "required": [
+          "username"
+        ],
+        "properties": {
+          "username": {
+            "type": "string",
+            "description": "用户名。"
+          }
+        }
+      },
+      "DeleteUserResponse": {
+        "type": "object",
+        "description": "删除用户响应。",
+        "required": [
+          "username"
+        ],
+        "properties": {
+          "username": {
+            "type": "string",
+            "description": "用户名。"
+          }
+        }
+      },
+      "GuardianConsentFileResponse": {
+        "type": "object",
+        "description": "上传监护人同意书成功后的响应。",
+        "required": [
+          "guardian_consent_file"
+        ],
+        "properties": {
+          "guardian_consent_file": {
+            "type": "string",
+            "description": "落盘后的文件地址。"
+          }
+        }
+      },
+      "LegalCertBackFileResponse": {
+        "type": "object",
+        "description": "上传法人身份证国徽面成功后的响应。",
+        "required": [
+          "back_file"
+        ],
+        "properties": {
+          "back_file": {
+            "type": "string",
+            "description": "落盘后的文件地址。"
+          }
+        }
+      },
+      "LegalCertFrontFileResponse": {
+        "type": "object",
+        "description": "上传法人身份证人像面成功后的响应。",
+        "required": [
+          "front_file"
+        ],
+        "properties": {
+          "front_file": {
+            "type": "string",
+            "description": "落盘后的文件地址。"
+          }
+        }
+      },
+      "LegalCertOcrRequest": {
+        "type": "object",
+        "description": "身份证 OCR 请求体。",
+        "properties": {
+          "side": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "`front`（缺省）/ `back`。"
+          }
+        }
+      },
+      "LegalCertOcrResponse": {
+        "type": "object",
+        "description": "身份证 OCR 响应。",
+        "properties": {
+          "cert_begin_on": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "有效期起始。"
+          },
+          "cert_expires_on": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "有效期截止。"
+          }
+        }
+      },
+      "ListUsersQuery": {
+        "type": "object",
+        "description": "用户列表查询参数。",
+        "properties": {
+          "keyword": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "模糊关键字。"
+          }
+        }
+      },
+      "LoginRequest": {
+        "type": "object",
+        "description": "登录请求体。字段与老接口保持一致。\n\n两步验证与人机校验字段当前只做兼容接收，对应能力在后续阶段接入。",
+        "required": [
+          "username",
+          "password"
+        ],
+        "properties": {
+          "password": {
+            "type": "string",
+            "description": "明文密码。"
+          },
+          "request_dev_role": {
+            "type": [
+              "boolean",
+              "null"
+            ],
+            "description": "是否同时申请开发者角色。"
+          },
+          "turnstile_token": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "人机校验令牌。"
+          },
+          "two_factor_code": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "两步验证码。"
+          },
+          "username": {
+            "type": "string",
+            "description": "登录名。"
+          }
+        }
+      },
+      "OAuthChannelView": {
+        "type": "object",
+        "description": "单个渠道配置的对外形状。",
+        "required": [
+          "enabled",
+          "client_id",
+          "client_secret",
+          "callback_url",
+          "success_redirect_url"
+        ],
+        "properties": {
+          "callback_url": {
+            "type": "string",
+            "description": "回调地址。"
+          },
+          "client_id": {
+            "type": "string",
+            "description": "Client ID。"
+          },
+          "client_secret": {
+            "type": "string",
+            "description": "Client Secret（回显为 `***`）。"
+          },
+          "enabled": {
+            "type": "boolean",
+            "description": "是否启用。"
+          },
+          "success_redirect_url": {
+            "type": "string",
+            "description": "登录成功落地页。"
+          }
+        }
+      },
+      "OAuthStatusResponse": {
+        "type": "object",
+        "description": "各渠道可用性响应。\n\n微信与 QQ 在 2.0 尚未接管，但字段必须保留：前端按这四个键决定渲染哪些登录按钮。",
+        "required": [
+          "github",
+          "wechat",
+          "qq",
+          "gitee"
+        ],
+        "properties": {
+          "gitee": {
+            "type": "boolean",
+            "description": "Gitee 是否可用。"
+          },
+          "github": {
+            "type": "boolean",
+            "description": "GitHub 是否可用。"
+          },
+          "qq": {
+            "type": "boolean",
+            "description": "QQ 是否可用（暂未接管，固定 false）。"
+          },
+          "wechat": {
+            "type": "boolean",
+            "description": "微信是否可用（暂未接管，固定 false）。"
+          }
+        }
+      },
+      "PermissionResponse": {
+        "type": "object",
+        "description": "权限点响应。",
+        "required": [
+          "code",
+          "name"
+        ],
+        "properties": {
+          "code": {
+            "type": "string",
+            "description": "权限码。"
+          },
+          "description": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "描述。"
+          },
+          "name": {
+            "type": "string",
+            "description": "名称。"
+          }
+        }
+      },
+      "PrivilegesResponse": {
+        "type": "object",
+        "description": "当前用户权限响应。",
+        "required": [
+          "username",
+          "role",
+          "roles",
+          "permissions",
+          "is_super_admin"
+        ],
+        "properties": {
+          "is_super_admin": {
+            "type": "boolean",
+            "description": "是否拥有超管 scope。"
+          },
+          "permissions": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "权限码列表。"
+          },
+          "role": {
+            "type": "string",
+            "description": "主角色。"
+          },
+          "roles": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "全部角色。"
+          },
+          "username": {
+            "type": "string",
+            "description": "用户名。"
+          }
+        }
+      },
+      "RealnameConfig": {
+        "type": "object",
+        "description": "实名认证策略。",
+        "properties": {
+          "enforce_unique_identity": {
+            "type": "boolean",
+            "description": "是否强制「一个证件号只能实名一个账号」。\n\n本地联调经常用同一个测试人员走多个流程账号，关闭这道闸只应在本地发生：\n生产关掉等于允许冒用他人身份实名。",
+            "default": true
+          },
+          "pending_expire_hours": {
+            "type": "integer",
+            "format": "int64",
+            "description": "爱签实名认证链接的有效窗口（小时）。\n\n与「pending 超时判负」共用同一个值：窗口内刷新页面复用同一张码，\n超过则重新发起，避免库里的认证记录判定超时但二维码仍显示可用。",
+            "default": 24
+          }
+        },
+        "additionalProperties": false
+      },
+      "RealnameResponse": {
+        "type": "object",
+        "description": "实名认证响应（字段名与 1.x 完全一致）。",
+        "required": [
+          "username",
+          "auth_type",
+          "status",
+          "created_at",
+          "updated_at",
+          "changing_subject"
+        ],
+        "properties": {
+          "auth_type": {
+            "type": "string",
+            "description": "认证类型。"
+          },
+          "birthday": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "出生日期。"
+          },
+          "business_license_expires_on": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "企业进件资料。"
+          },
+          "business_license_file": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "营业执照文件。"
+          },
+          "business_license_no": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "营业执照编号。"
+          },
+          "business_scope": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "企业进件资料。"
+          },
+          "changing_subject": {
+            "type": "boolean",
+            "description": "是否处于主体变更。"
+          },
+          "company_address": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "企业进件资料。"
+          },
+          "company_area_code": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "企业进件资料。"
+          },
+          "company_name": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "企业名称。"
+          },
+          "company_prov_code": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "企业进件资料。"
+          },
+          "created_at": {
+            "type": "string",
+            "description": "创建时间。"
+          },
+          "guardian_consent": {
+            "type": [
+              "boolean",
+              "null"
+            ],
+            "description": "监护人同意。"
+          },
+          "guardian_consent_file": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "监护人同意书。"
+          },
+          "id_card_no": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "证件号。"
+          },
+          "id_card_no_masked": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "脱敏证件号。"
+          },
+          "legal_cert_begin_on": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "企业进件资料。"
+          },
+          "legal_cert_expires_on": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "企业进件资料。"
+          },
+          "mobile": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "本人手机号（仅本人可见）。"
+          },
+          "mobile_masked": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "脱敏手机号。"
+          },
+          "operator_id_card_no_masked": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "脱敏经办人证件号。"
+          },
+          "operator_name": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "经办人姓名。"
+          },
+          "real_name": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "姓名。"
+          },
+          "real_name_masked": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "脱敏姓名。"
+          },
+          "review_note": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "审核备注。"
+          },
+          "reviewed_at": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "审核时间。"
+          },
+          "reviewed_by": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "审核人。"
+          },
+          "reviewed_by_avatar_url": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "审核人头像。"
+          },
+          "status": {
+            "type": "string",
+            "description": "状态。"
+          },
+          "unified_social_credit_code": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "统一社会信用代码。"
+          },
+          "updated_at": {
+            "type": "string",
+            "description": "更新时间。"
+          },
+          "username": {
+            "type": "string",
+            "description": "账号。"
+          }
+        }
+      },
+      "RegisterRequest": {
+        "type": "object",
+        "description": "注册请求体。字段与老接口保持一致。\n\n邮箱验证码、邀请码、人机校验等字段当前只做兼容接收，\n对应能力（邮件、邀请、Turnstile）在后续阶段接入。",
+        "required": [
+          "username",
+          "password"
+        ],
+        "properties": {
+          "email": {
+            "type": "string",
+            "description": "主邮箱。"
+          },
+          "email_code": {
+            "type": "string",
+            "description": "邮箱验证码。当前阶段尚未接入邮件服务，字段保留但不校验。"
+          },
+          "invite_code": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "邀请码。"
+          },
+          "password": {
+            "type": "string",
+            "description": "明文密码。"
+          },
+          "request_dev_role": {
+            "type": [
+              "boolean",
+              "null"
+            ],
+            "description": "是否同时申请开发者角色。"
+          },
+          "share_target_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "分享目标。"
+          },
+          "share_type": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "分享类型。"
+          },
+          "turnstile_token": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "人机校验令牌。"
+          },
+          "username": {
+            "type": "string",
+            "description": "登录名。"
+          }
+        }
+      },
+      "ResetPasswordRequest": {
+        "type": "object",
+        "description": "重置密码请求体。",
+        "required": [
+          "email",
+          "password",
+          "email_code"
+        ],
+        "properties": {
+          "email": {
+            "type": "string",
+            "description": "邮箱。"
+          },
+          "email_code": {
+            "type": "string",
+            "description": "邮箱验证码。"
+          },
+          "password": {
+            "type": "string",
+            "description": "新密码。"
+          },
+          "turnstile_token": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "人机校验令牌。"
+          }
+        }
+      },
+      "ReviewRealnameRequest": {
+        "type": "object",
+        "description": "审核请求体。",
+        "required": [
+          "approved"
+        ],
+        "properties": {
+          "approved": {
+            "type": "boolean",
+            "description": "是否通过。"
+          },
+          "review_note": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "审核备注。"
+          }
+        }
+      },
+      "RoleDetailResponse": {
+        "type": "object",
+        "description": "角色详情响应。",
+        "required": [
+          "code",
+          "name",
+          "is_system",
+          "user_count",
+          "permissions"
+        ],
+        "properties": {
+          "code": {
+            "type": "string",
+            "description": "角色码。"
+          },
+          "description": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "描述。"
+          },
+          "is_system": {
+            "type": "boolean",
+            "description": "是否内置。"
+          },
+          "name": {
+            "type": "string",
+            "description": "名称。"
+          },
+          "permissions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PermissionResponse"
+            },
+            "description": "权限列表。"
+          },
+          "user_count": {
+            "type": "integer",
+            "format": "int64",
+            "description": "用户数。"
+          }
+        }
+      },
+      "RoleSummaryResponse": {
+        "type": "object",
+        "description": "角色摘要响应。",
+        "required": [
+          "code",
+          "name",
+          "is_system",
+          "user_count"
+        ],
+        "properties": {
+          "code": {
+            "type": "string",
+            "description": "角色码。"
+          },
+          "description": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "描述。"
+          },
+          "is_system": {
+            "type": "boolean",
+            "description": "是否内置。"
+          },
+          "name": {
+            "type": "string",
+            "description": "名称。"
+          },
+          "user_count": {
+            "type": "integer",
+            "format": "int64",
+            "description": "用户数。"
+          }
+        }
+      },
+      "SavedOAuthConfig": {
+        "type": "object",
+        "description": "保存后的第三方登录渠道配置。",
+        "required": [
+          "config",
+          "restart_required"
+        ],
+        "properties": {
+          "config": {
+            "$ref": "#/components/schemas/OAuthChannelView",
+            "description": "保存后的配置（密钥已掩码）。"
+          },
+          "restart_required": {
+            "type": "boolean",
+            "description": "是否要重启才生效。"
+          }
+        }
+      },
+      "SavedRealnameConfig": {
+        "type": "object",
+        "description": "保存后的实名策略配置。",
+        "required": [
+          "config",
+          "restart_required"
+        ],
+        "properties": {
+          "config": {
+            "$ref": "#/components/schemas/RealnameConfig",
+            "description": "保存后的配置。"
+          },
+          "restart_required": {
+            "type": "boolean",
+            "description": "是否要重启才生效。"
+          }
+        }
+      },
+      "SendRegisterEmailCodeRequest": {
+        "type": "object",
+        "description": "发送注册验证码请求体。",
+        "required": [
+          "email"
+        ],
+        "properties": {
+          "email": {
+            "type": "string",
+            "description": "邮箱。"
+          },
+          "turnstile_token": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "人机校验令牌。"
+          }
+        }
+      },
+      "SendResetPasswordEmailCodeRequest": {
+        "type": "object",
+        "description": "发送重置密码验证码请求体。",
+        "required": [
+          "email"
+        ],
+        "properties": {
+          "email": {
+            "type": "string",
+            "description": "邮箱。"
+          },
+          "turnstile_token": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "人机校验令牌。"
+          }
+        }
+      },
+      "StartCompanyIdentifyRequest": {
+        "type": "object",
+        "description": "发起企业扫码认证的请求体。",
+        "required": [
+          "company_name",
+          "unified_social_credit_code",
+          "operator_name",
+          "operator_id_card_no",
+          "mobile",
+          "business_license_file"
+        ],
+        "properties": {
+          "business_license_expires_on": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "营业执照有效期截止。"
+          },
+          "business_license_file": {
+            "type": "string",
+            "description": "营业执照文件地址。"
+          },
+          "business_scope": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "经营范围。"
+          },
+          "company_address": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "企业注册地址。"
+          },
+          "company_area_code": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "企业所在地区编码。"
+          },
+          "company_name": {
+            "type": "string",
+            "description": "企业名称。"
+          },
+          "company_prov_code": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "企业所在省份编码。"
+          },
+          "legal_cert_begin_on": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "法人证件有效期起始。"
+          },
+          "legal_cert_expires_on": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "法人证件有效期截止。"
+          },
+          "mobile": {
+            "type": "string",
+            "description": "手机号。"
+          },
+          "operator_id_card_no": {
+            "type": "string",
+            "description": "经办人证件号。"
+          },
+          "operator_name": {
+            "type": "string",
+            "description": "经办人姓名。"
+          },
+          "unified_social_credit_code": {
+            "type": "string",
+            "description": "统一社会信用代码。"
+          }
+        }
+      },
+      "StartCompanyIdentifyResponse": {
+        "type": "object",
+        "description": "发起企业扫码认证的响应。",
+        "required": [
+          "auth_url"
+        ],
+        "properties": {
+          "auth_url": {
+            "type": "string",
+            "description": "H5 认证链接。"
+          },
+          "biz_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "业务编号。"
+          }
+        }
+      },
+      "StartIdentifyRequest": {
+        "type": "object",
+        "description": "发起个人扫码认证的请求体。",
+        "required": [
+          "real_name",
+          "id_card_no"
+        ],
+        "properties": {
+          "guardian_consent": {
+            "type": [
+              "boolean",
+              "null"
+            ],
+            "description": "监护人同意。"
+          },
+          "guardian_consent_file": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "监护人同意书地址。"
+          },
+          "id_card_no": {
+            "type": "string",
+            "description": "证件号。"
+          },
+          "mobile": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "手机号。"
+          },
+          "real_name": {
+            "type": "string",
+            "description": "姓名。"
+          }
+        }
+      },
+      "StartIdentifyResponse": {
+        "type": "object",
+        "description": "发起扫码认证的响应。",
+        "required": [
+          "auth_url"
+        ],
+        "properties": {
+          "auth_url": {
+            "type": "string",
+            "description": "H5 认证链接。"
+          },
+          "biz_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "业务编号。"
+          },
+          "manual_review": {
+            "type": "boolean",
+            "description": "是否转人工审核。"
+          }
+        }
+      },
+      "SubmitRealnameRequest": {
+        "type": "object",
+        "description": "提交 / 管理员编辑实名认证的请求体。",
+        "required": [
+          "auth_type"
+        ],
+        "properties": {
+          "auth_type": {
+            "type": "string",
+            "description": "认证类型。"
+          },
+          "business_license_expires_on": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "营业执照有效期截止（YYYYMMDD）。"
+          },
+          "business_license_file": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "营业执照文件地址。"
+          },
+          "business_license_no": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "营业执照编号。"
+          },
+          "business_scope": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "经营范围。"
+          },
+          "company_address": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "企业注册地址。"
+          },
+          "company_area_code": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "企业所在地区编码（渠道四位码）。"
+          },
+          "company_name": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "企业名称。"
+          },
+          "company_prov_code": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "企业所在省份编码（渠道四位码）。"
+          },
+          "guardian_consent": {
+            "type": [
+              "boolean",
+              "null"
+            ],
+            "description": "监护人同意。"
+          },
+          "guardian_consent_file": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "监护人同意书地址。"
+          },
+          "id_card_no": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "证件号。"
+          },
+          "legal_cert_begin_on": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "法人证件有效期起始（YYYYMMDD）。"
+          },
+          "legal_cert_expires_on": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "法人证件有效期截止（YYYYMMDD）。"
+          },
+          "mobile": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "手机号。"
+          },
+          "operator_id_card_no": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "经办人证件号。"
+          },
+          "operator_name": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "经办人姓名。"
+          },
+          "real_name": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "姓名。"
+          },
+          "unified_social_credit_code": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "统一社会信用代码。"
+          }
+        }
+      },
+      "TwoFactorRequiredResponse": {
+        "type": "object",
+        "description": "登录 / 注册响应，结构与老接口 `AuthResponse` 一致。\n需要两步验证时的响应体，结构与老接口一致。",
+        "required": [
+          "requires_two_factor",
+          "username",
+          "delivery"
+        ],
+        "properties": {
+          "delivery": {
+            "type": "string",
+            "description": "验证码投递方式。"
+          },
+          "requires_two_factor": {
+            "type": "boolean",
+            "description": "固定为 true。"
+          },
+          "username": {
+            "type": "string",
+            "description": "用户名。"
+          }
+        }
+      },
+      "UpdateApiKeyRequest": {
+        "type": "object",
+        "description": "更新密钥请求体。",
+        "properties": {
+          "name": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "名称。"
+          },
+          "note": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "备注。"
+          }
+        }
+      },
+      "UpdateUserNameRequest": {
+        "type": "object",
+        "description": "修改用户名请求体。",
+        "required": [
+          "username",
+          "new_username"
+        ],
+        "properties": {
+          "new_username": {
+            "type": "string",
+            "description": "新用户名。"
+          },
+          "username": {
+            "type": "string",
+            "description": "用户名。"
+          }
+        }
+      },
+      "UpdateUserRequest": {
+        "type": "object",
+        "description": "更新用户请求体。",
+        "required": [
+          "username"
+        ],
+        "properties": {
+          "email": {
+            "type": "string",
+            "description": "邮箱。"
+          },
+          "new_username": {
+            "type": "string",
+            "description": "新用户名。"
+          },
+          "password": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "可选新密码。"
+          },
+          "role": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "单角色（兼容字段）。"
+          },
+          "roles": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "多角色。"
+          },
+          "username": {
+            "type": "string",
+            "description": "用户名。"
+          }
+        }
+      },
+      "UpdateUserRoleRequest": {
+        "type": "object",
+        "description": "修改角色请求体。",
+        "required": [
+          "username"
+        ],
+        "properties": {
+          "role": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "单角色（兼容字段）。"
+          },
+          "roles": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "多角色。"
+          },
+          "username": {
+            "type": "string",
+            "description": "用户名。"
+          }
+        }
+      },
+      "UploadFileForm": {
+        "type": "object",
+        "description": "multipart 上传表单：文件字段名固定为 `file`。",
+        "required": [
+          "file"
+        ],
+        "properties": {
+          "file": {
+            "type": "string",
+            "format": "binary",
+            "description": "文件内容。"
+          }
+        }
+      },
+      "UpsertRoleRequest": {
+        "type": "object",
+        "description": "维护角色请求体。",
+        "required": [
+          "code",
+          "name"
+        ],
+        "properties": {
+          "code": {
+            "type": "string",
+            "description": "角色码。"
+          },
+          "description": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "描述。"
+          },
+          "name": {
+            "type": "string",
+            "description": "名称。"
+          },
+          "permission_codes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "权限码列表。"
+          }
+        }
+      },
+      "UserRoleResponse": {
+        "type": "object",
+        "description": "角色变更响应。",
+        "required": [
+          "username",
+          "role",
+          "roles"
+        ],
+        "properties": {
+          "role": {
+            "type": "string",
+            "description": "主角色。"
+          },
+          "roles": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "全部角色。"
+          },
+          "username": {
+            "type": "string",
+            "description": "用户名。"
+          }
+        }
+      },
+      "WithdrawResponse": {
+        "type": "object",
+        "description": "撤回结果。",
+        "required": [
+          "withdrawn",
+          "restored"
+        ],
+        "properties": {
+          "restored": {
+            "type": "boolean",
+            "description": "是否取消了主体变更并还原原主体。"
+          },
+          "withdrawn": {
+            "type": "boolean",
+            "description": "是否撤回。"
+          }
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,159 @@
+/* === 原生按钮 / 链接按钮 ===
+   卡头、空态、页面里放的是 RouterLink 或原生 <button>，不是 TButton，
+   拿不到上面那两个变体的规格（那两个变体的类挂在 TButton 上）。
+   这两个变体与它们同高同圆角同配色，保证「同一个动作，无论在工具栏还是卡片头，长得一样」。
+   对应开发者侧的 .dev-btn / .dev-btn--primary / .dev-btn--ghost。
+   原来每页各自写一段「让链接看起来像按钮」的样式（每段都带自己的一套颜色与圆角），
+   是「同一个『返回』按钮每页粗细不一」的来源。 */
+.wb-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: var(--wb-control-height);
+  height: var(--wb-control-height);
+  padding: 0 16px;
+  border: 1px solid transparent;
+  border-radius: var(--wb-radius-control);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1;
+  white-space: nowrap;
+  text-decoration: none;
+  cursor: pointer;
+  transition:
+    box-shadow 160ms ease,
+    background-color 160ms ease,
+    border-color 160ms ease,
+    color 160ms ease;
+}
+
+.wb-btn--primary {
+  background: var(--wb-accent);
+  border-color: var(--wb-accent);
+  color: var(--73-surface-strong);
+}
+
+.wb-btn--primary:hover,
+.wb-btn--primary:focus-visible {
+  color: var(--73-surface-strong);
+  box-shadow: 0 10px 22px color-mix(in srgb, var(--73-accent) 22%, transparent);
+}
+
+.wb-btn--ghost {
+  background: var(--profile-card-bg-strong, var(--73-surface-strong));
+  border-color: var(--wb-line);
+  color: var(--wb-ink-soft);
+}
+
+.wb-btn--ghost:hover,
+.wb-btn--ghost:focus-visible {
+  border-color: var(--wb-accent-line);
+  background: var(--wb-accent-soft);
+  color: var(--wb-accent);
+  box-shadow: 0 8px 18px color-mix(in srgb, var(--73-accent) 10%, transparent);
+}
+
+.wb-btn--danger {
+  background: var(--profile-card-bg-strong, var(--73-surface-strong));
+  border-color: color-mix(in srgb, var(--73-danger) 32%, transparent);
+  color: var(--profile-danger-text, var(--73-danger));
+}
+
+.wb-btn--danger:hover,
+.wb-btn--danger:focus-visible {
+  border-color: color-mix(in srgb, var(--73-danger) 50%, transparent);
+  background: var(--profile-danger-soft, color-mix(in srgb, var(--73-danger) 12%, transparent));
+  color: var(--profile-danger-text, var(--73-danger));
+  box-shadow: 0 8px 18px color-mix(in srgb, var(--73-danger) 10%, transparent);
+}
+
+.wb-btn:disabled,
+.wb-btn[aria-disabled='true'] {
+  opacity: 0.56;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+/* === 用户名首字头像 ===
+   邀请记录、排行榜、会话列表都用「用户名首字」的圆点做占位。
+   原来每页自己画一个：一个是 --wb-accent 的浅底深字，一个是 38bdf8→86efac 的渐变，
+   同一页里两种头像。这里收成一个规格。 */
+.wb-avatar {
+  display: inline-grid;
+  place-items: center;
+  flex: 0 0 auto;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--wb-accent-soft);
+  color: var(--wb-accent);
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+/* === 胶囊筛选 ===
+   状态切换（全部 / 待我签署 / 已完成）用胶囊组，不用下拉：
+   选项少、要能一眼看出当前选中项，且选中项要报出条数。 */
+.wb-chip-group {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.wb-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 28px;
+  padding: 0 12px;
+  border: 1px solid color-mix(in srgb, var(--73-accent) 16%, transparent);
+  border-radius: 999px;
+  background: var(--wb-accent-soft);
+  color: var(--wb-accent);
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.wb-chip__count {
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  opacity: 0.8;
+}
+
+.wb-chip--button {
+  font: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition:
+    background 160ms ease,
+    color 160ms ease,
+    border-color 160ms ease;
+}
+
+.wb-chip--button:hover {
+  border-color: var(--wb-accent-line);
+}
+
+.wb-chip--button:focus-visible {
+  outline: 2px solid var(--wb-accent);
+  outline-offset: 2px;
+}
+
+.wb-chip--button.is-active {
+  background: var(--wb-accent);
+  border-color: var(--wb-accent);
+  color: var(--73-surface-strong);
+}
+
+/* 中性档：终止态与「未选择 / 未关联」这类无强调语义的标签 */
+.wb-chip--muted {
+  background: color-mix(in srgb, var(--73-ink-placeholder) 12%, transparent);
+  border-color: transparent;
+  color: var(--profile-text-sub, var(--73-ink-muted));
+}

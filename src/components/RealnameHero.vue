@@ -195,10 +195,7 @@ onMounted(async () => {
   border: 1px solid var(--73-border);
   /* 两团装饰性光晕没有对应的语义令牌（不是表面色也不是状态色），按原样保留；
      最底层那张半透明白卡走 --73-surface。 */
-  background:
-    radial-gradient(circle at top left, rgba(84, 124, 255, 0.16), transparent 30%),
-    radial-gradient(circle at bottom right, rgba(100, 213, 255, 0.12), transparent 26%),
-    var(--73-surface);
+  background: var(--73-app-grad-soft-15), var(--73-app-grad-soft-14), var(--73-surface);
   backdrop-filter: blur(var(--73-glass-blur));
   box-shadow: var(--73-shadow-card);
   align-items: center;

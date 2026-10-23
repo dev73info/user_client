@@ -1,0 +1,146 @@
+/* ============================================================================
+   本仓应用层令牌（ui_73info 之外那部分）
+   ============================================================================
+
+   ui_73info 的 tokens.css 是全站色值的唯一来源；这里只登记**它没有对应令牌**的本仓取值，
+   是「组件层不写裸色值」这条约束的兜底：组件与页面一律 var(--73-*)，要新色值先在这里加。
+
+   ## --73-app-grad-*：存量渐变，逐条等值保留
+
+   这些都是改造前就在用的渐变，值原样搬过来，**没有做语义合并**：
+   同一个蓝渐变族里仍有十几种写法，收敛属于设计决策，需要产品确认后单独排期。
+   每条尾部注了首个使用位置，改之前先按位置回查。
+   ============================================================================ */
+
+:root {
+  /* --- 交互态（hover / active）用的加深/提亮档：令牌里的基色只有一个值，
+     直接复用会让悬停没有反馈，所以按改造前的原值在这里登记一档 --- */
+  --73-app-warning-text-strong: #b45309;
+  --73-app-accent-soft-hover: #dbeafe;
+  --73-app-surface-hover-alt: #f2f4f7;
+  --73-app-surface-hover: #f8fafc;
+  --73-app-accent-strong: #1d4ed8;
+  --73-app-success-strong: #1f8f76;
+  --73-app-warning-strong: #d97706;
+  --73-app-accent-bright: #2563eb;
+  --73-app-grad-accent-soft-01: linear-gradient(180deg, #eef4ff 0%, #ffffff 100%); /* src/components/account/TwoFactorDialog.vue */
+  --73-app-grad-accent-soft-02: linear-gradient(180deg, #f8fbff 0%, #ffffff 100%); /* src/components/account/TwoFactorDialog.vue */
+  --73-app-grad-accent-01: linear-gradient(90deg, #3b82f6, #60a5fa); /* src/components/app/app-download-card.css */
+  --73-app-grad-soft-01: linear-gradient(180deg, rgba(125, 211, 252, 0.9), rgba(149, 213, 178, 1)); /* src/components/app/app-shell-global.css */
+  --73-app-grad-soft-02: linear-gradient(180deg, rgba(56, 189, 248, 0.7), rgba(149, 213, 178, 0.8)); /* src/components/app/app-shell-global.css */
+  --73-app-grad-soft-03: linear-gradient(180deg, var(--wb-accent-soft), rgba(255, 255, 255, 0.96)); /* src/components/BadgeWall.vue */
+  --73-app-grad-soft-04: linear-gradient(180deg, rgba(248, 251, 255, 0.96), rgba(237, 245, 252, 0.96)); /* src/components/conversation/conversation-modal-shell.css */
+  --73-app-grad-soft-05: radial-gradient(circle at 88px 52px, rgba(94, 200, 168, 0.07) 0 1px, transparent 2px); /* src/components/conversation/conversation-modal-shell.css */
+  --73-app-grad-soft-06: radial-gradient(circle at 18px 18px, rgba(79, 140, 255, 0.08) 0 1px, transparent 2px); /* src/components/conversation/conversation-modal-shell.css */
+  --73-app-grad-soft-07: linear-gradient( 135deg, rgba(225, 241, 255, 0.78), rgba(248, 252, 255, 0.9) 44%, rgba(235, 250, 244, 0.78) ); /* src/components/conversation/conversation-modal-shell.css */
+  --73-app-grad-dark-01: linear-gradient(180deg, transparent 0, #000 24px); /* src/components/conversation/conversation-modal-shell.css */
+  --73-app-grad-accent-soft-03: linear-gradient( 180deg, rgba(237, 245, 252, 0) 0, rgba(237, 245, 252, 0.92) 20px, #edf5fc 100% ); /* src/components/conversation/conversation-modal-shell.css */
+  --73-app-grad-warning-01: linear-gradient(135deg, #f1a33c, #f9c25c); /* src/components/conversation/conversation-shared.css */
+  --73-app-grad-accent-02: linear-gradient(135deg, #4f8cff, #5ec8a8); /* src/components/conversation/conversation-shared.css */
+  --73-app-grad-soft-08: linear-gradient(180deg, rgba(239, 246, 255, 0.96), rgba(255, 255, 255, 0.98)); /* src/components/conversation/ConversationCardItem.vue */
+  --73-app-grad-accent-03: linear-gradient(135deg, #8bd0ff, #4ba7ff); /* src/components/coupon/CouponClaimOutcome.vue */
+  --73-app-grad-accent-soft-04: linear-gradient(135deg, #eef2ff, #dbeafe); /* src/components/mobile-resource/mobile-resource-card.css */
+  --73-app-grad-soft-09: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(248, 250, 252, 0.94)); /* src/components/mobile-resource/mobile-resource-header.css */
+  --73-app-grad-accent-04: linear-gradient(135deg, #1d4ed8, #3b82f6); /* src/components/portal-top-nav-actions.css */
+  --73-app-grad-soft-10: linear-gradient(160deg, rgba(223, 236, 255, 0.96), rgba(207, 226, 255, 0.9)); /* src/components/PortalMobileDock.vue */
+  --73-app-grad-accent-soft-05: linear-gradient(135deg, #eef5ff, #ffffff); /* src/components/profile/profile-page.css */
+  --73-app-grad-accent-05: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%); /* src/components/profile/ProfileAvatarCropModal.vue */
+  --73-app-grad-accent-06: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); /* src/components/profile/ProfileAvatarCropModal.vue */
+  --73-app-grad-accent-soft-06: linear-gradient(135deg, #f8fbff 0%, #ffffff 100%); /* src/components/profile/ProfileAvatarCropModal.vue */
+  --73-app-grad-soft-11: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%); /* src/components/profile/ProfileAvatarCropModal.vue */
+  --73-app-grad-soft-12: linear-gradient(180deg, rgba(255, 255, 255, 0.9), #ffffff); /* src/components/publish-modal-confirm.css */
+  --73-app-grad-soft-13: linear-gradient(180deg, #ffffff 0%, rgba(248, 250, 252, 0.96) 100%); /* src/components/publish-modal-form.css */
+  --73-app-grad-soft-14: radial-gradient(circle at bottom right, rgba(100, 213, 255, 0.12), transparent 26%); /* src/components/RealnameHero.vue */
+  --73-app-grad-soft-15: radial-gradient(circle at top left, rgba(84, 124, 255, 0.16), transparent 30%); /* src/components/RealnameHero.vue */
+  --73-app-grad-warning-02: linear-gradient(90deg, #f59e0b 50%, #e7e5e4 50%); /* src/components/requirement/RequirementHallAside.vue */
+  --73-app-grad-soft-16: linear-gradient(180deg, rgba(255, 251, 235, 0.95), rgba(254, 243, 199, 0.55)); /* src/components/requirement/RequirementHallAside.vue */
+  --73-app-grad-soft-17: linear-gradient(180deg, rgba(248, 250, 252, 0.96), rgba(241, 245, 249, 0.92)); /* src/components/requirement/RequirementHallDetailDialog.vue */
+  --73-app-grad-soft-18: linear-gradient(160deg, rgba(219, 234, 254, 0.95), rgba(239, 246, 255, 0.92)); /* src/components/resource-detail/resource-detail-cover.css */
+  --73-app-grad-soft-19: radial-gradient(circle at top right, rgba(84, 124, 255, 0.18), transparent 30%); /* src/components/resource-detail/resource-detail-cover.css */
+  --73-app-grad-accent-07: linear-gradient(90deg, #2563eb, #4f8cff); /* src/components/resource-detail/resource-detail-cta.css */
+  --73-app-grad-accent-soft-07: linear-gradient(135deg, #f5f3ff, #ede9fe); /* src/components/team/team-public-resource-card.css */
+  --73-app-grad-accent-soft-08: linear-gradient(180deg, #f8fbff, #eef4ff); /* src/styles/about-facts.css */
+  --73-app-grad-soft-20: radial-gradient(500px 300px at 0% 115%, rgba(251, 191, 36, 0.14), transparent 55%); /* src/styles/about-hero.css */
+  --73-app-grad-soft-21: radial-gradient(600px 260px at 88% -10%, rgba(56, 189, 248, 0.3), transparent 60%); /* src/styles/about-hero.css */
+  --73-app-grad-cover-01: linear-gradient(135deg, #0b1f3a, #123a63 55%, #155e75); /* src/styles/about-hero.css */
+  --73-app-grad-accent-08: linear-gradient(180deg, #2563eb, #60a5fa); /* src/styles/about-highlights.css */
+  --73-app-grad-soft-22: linear-gradient(100deg, transparent, rgba(255, 255, 255, 0.12), transparent); /* src/styles/about-join.css */
+  --73-app-grad-cover-02: linear-gradient(135deg, #0b1f3a, #155e75); /* src/styles/about-join.css */
+  --73-app-grad-soft-23: radial-gradient(circle at bottom right, rgba(42, 166, 164, 0.08), transparent 22%); /* src/styles/dev-base/01-tokens-base-shell.css */
+  --73-app-grad-soft-24: radial-gradient(circle at 80% 20%, rgba(99, 132, 255, 0.1), transparent 24%); /* src/styles/dev-base/01-tokens-base-shell.css */
+  --73-app-grad-soft-25: radial-gradient(circle at top left, rgba(31, 74, 209, 0.13), transparent 28%); /* src/styles/dev-base/01-tokens-base-shell.css */
+  --73-app-grad-soft-26: linear-gradient( 180deg, rgba(31, 74, 209, 0.82), rgba(42, 166, 164, 0.88) ); /* src/styles/dev-base/01-tokens-base-shell.css */
+  --73-app-grad-soft-27: linear-gradient(180deg, rgba(31, 74, 209, 0.62), rgba(42, 166, 164, 0.72)); /* src/styles/dev-base/01-tokens-base-shell.css */
+  --73-app-grad-soft-28: linear-gradient(135deg, rgba(255, 252, 246, 0.98), rgba(255, 245, 230, 0.92)); /* src/styles/dev-base/03-meta-strip-notice.css */
+  --73-app-grad-soft-29: linear-gradient(180deg, rgba(31, 74, 209, 0.1), rgba(42, 166, 164, 0.1)); /* src/styles/dev-requirement.css */
+  --73-app-grad-soft-30: linear-gradient(135deg, rgba(31, 74, 209, 0.1), rgba(42, 166, 164, 0.1)); /* src/styles/dev-requirement.css */
+  --73-app-grad-soft-31: linear-gradient(180deg, rgba(255, 251, 235, 0.96), rgba(248, 242, 234, 0.86)); /* src/styles/dev-requirement.css */
+  --73-app-grad-soft-32: linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(247, 250, 255, 0.82)); /* src/styles/dev-resource/03-icon-upload-catalog.css */
+  --73-app-grad-soft-33: linear-gradient(180deg, rgba(240, 253, 250, 0.96), rgba(239, 246, 255, 0.9)); /* src/styles/dev-resource/04-publish-actions-summary.css */
+  --73-app-grad-soft-34: linear-gradient(180deg, rgba(248, 250, 252, 0.96), rgba(241, 245, 249, 0.9)); /* src/styles/dev-resource/04-publish-actions-summary.css */
+  --73-app-grad-soft-35: linear-gradient(180deg, rgba(255, 255, 255, 0.24), rgba(255, 255, 255, 0.08)); /* src/styles/dev-resource/05-preview-card.css */
+  --73-app-grad-cover-03: linear-gradient(135deg, #112b7a, #374fcf 58%, #5b87ff); /* src/styles/dev-resource/05-preview-card.css */
+  --73-app-grad-soft-36: linear-gradient(100deg, #ffffff 0%, #fbfdff 38%, #f3f6fe 68%, #ecf7fc 100%); /* src/styles/home/01-base-layout-hero.css */
+  --73-app-grad-accent-09: linear-gradient(135deg, #1d72ff, #5138f5); /* src/styles/home/01-base-layout-hero.css */
+  --73-app-grad-soft-37: linear-gradient(135deg, rgba(37, 99, 235, 0.06), rgba(56, 189, 248, 0.06)); /* src/styles/home/02-card-shell.css */
+  --73-app-grad-warning-03: linear-gradient(135deg, #fef3c7, #fff7ed); /* src/styles/home/02-card-shell.css */
+  --73-app-grad-accent-soft-09: linear-gradient(135deg, #dbeafe, #eff6ff); /* src/styles/home/02-card-shell.css */
+  --73-app-grad-soft-38: linear-gradient( 90deg, rgba(37, 99, 235, 0), rgba(37, 99, 235, 0.42), rgba(37, 99, 235, 0) ); /* src/styles/home/02-card-shell.css */
+  --73-app-grad-soft-39: linear-gradient( 135deg, rgba(255, 255, 255, 0), rgba(255, 255, 255, 0.9), rgba(255, 255, 255, 0) ); /* src/styles/home/03-sidebar-notice.css */
+  --73-app-grad-soft-40: linear-gradient(180deg, rgba(255, 255, 255, 0.86), rgba(248, 250, 252, 0.74)); /* src/styles/home/03-sidebar-notice.css */
+  --73-app-grad-accent-10: linear-gradient(90deg, #60a5fa, #2563eb); /* src/styles/home/04-stats-rank.css */
+  --73-app-grad-soft-41: linear-gradient(135deg, rgba(245, 158, 11, 0.16), rgba(254, 240, 138, 0.52)); /* src/styles/home/04-stats-rank.css */
+  --73-app-grad-soft-42: linear-gradient(135deg, rgba(16, 185, 129, 0.14), rgba(209, 250, 229, 0.68)); /* src/styles/home/04-stats-rank.css */
+  --73-app-grad-soft-43: linear-gradient(135deg, rgba(59, 130, 246, 0.14), rgba(219, 234, 254, 0.58)); /* src/styles/home/04-stats-rank.css */
+  --73-app-grad-soft-44: linear-gradient(135deg, rgba(96, 165, 250, 0.14), rgba(191, 219, 254, 0.52)); /* src/styles/home/04-stats-rank.css */
+  --73-app-grad-soft-45: linear-gradient(135deg, rgba(37, 99, 235, 0.16), rgba(56, 189, 248, 0.16)); /* src/styles/home/04-stats-rank.css */
+  --73-app-grad-soft-46: linear-gradient(135deg, rgba(37, 99, 235, 0.12), rgba(125, 211, 252, 0.18)); /* src/styles/home/04-stats-rank.css */
+  --73-app-grad-warning-04: linear-gradient(135deg, #fdba74, #ea580c); /* src/styles/home/05-contrib-board.css */
+  --73-app-grad-accent-soft-10: linear-gradient(135deg, #e2e8f0, #94a3b8); /* src/styles/home/05-contrib-board.css */
+  --73-app-grad-warning-05: linear-gradient(135deg, #fbbf24, #f59e0b); /* src/styles/home/05-contrib-board.css */
+  --73-app-grad-soft-47: linear-gradient(105deg, #ffffff 0%, #fff9f2 55%, #fff4e8 100%); /* src/styles/home/06-keyframes-quick-entry.css */
+  --73-app-grad-soft-48: radial-gradient(circle at 84% 46%, rgba(251, 146, 60, 0.08) 0 13%, transparent 14%); /* src/styles/home/06-keyframes-quick-entry.css */
+  --73-app-grad-soft-49: linear-gradient(105deg, #ffffff 0%, #f5f8ff 58%, #eef4ff 100%); /* src/styles/home/06-keyframes-quick-entry.css */
+  --73-app-grad-soft-50: radial-gradient(circle at 86% 50%, rgba(96, 165, 250, 0.11) 0 11%, transparent 12%); /* src/styles/home/06-keyframes-quick-entry.css */
+  --73-app-grad-soft-51: radial-gradient(circle at 82% 36%, rgba(255, 255, 255, 0.9) 0 6%, transparent 7%); /* src/styles/home/06-keyframes-quick-entry.css */
+  --73-app-grad-success-01: linear-gradient(135deg, #10b981, #06b6d4); /* src/styles/home/07-section-beta-checkin.css */
+  --73-app-grad-accent-11: linear-gradient(135deg, #2563eb, #7c3aed); /* src/styles/home/07-section-beta-checkin.css */
+  --73-app-grad-soft-52: linear-gradient( 135deg, rgba(239, 246, 255, 0.7) 0%, rgba(240, 253, 244, 0.7) 50%, rgba(255, 247, 237, 0.7) 100% ); /* src/styles/home/07-section-beta-checkin.css */
+  --73-app-grad-soft-53: linear-gradient(180deg, rgba(255, 255, 255, 0.94) 0%, rgba(248, 251, 255, 0.94) 100%); /* src/styles/home/07-section-beta-checkin.css */
+  --73-app-grad-accent-12: linear-gradient(135deg, #2563eb, #60a5fa); /* src/styles/home/07-section-beta-checkin.css */
+  --73-app-grad-soft-54: linear-gradient( 135deg, var(--workflow-accent), color-mix(in srgb, var(--workflow-accent) 72%, #ffffff) ); /* src/styles/home/08-step-cards.css */
+  --73-app-grad-accent-13: linear-gradient(135deg, #2563eb, #38bdf8); /* src/styles/home/09-pagination.css */
+  --73-app-grad-accent-14: linear-gradient(135deg, #0f3a8a, #2563eb 58%, #7dd3fc); /* src/styles/home/10-empty-spotlight-card.css */
+  --73-app-grad-cover-04: linear-gradient(135deg, #0f5132, #2f855a 58%, #79c45a); /* src/styles/home/10-empty-spotlight-card.css */
+  --73-app-grad-cover-05: linear-gradient(135deg, #823016, #c55a23 58%, #fb923c); /* src/styles/home/10-empty-spotlight-card.css */
+  --73-app-grad-soft-55: linear-gradient(120deg, transparent 0 62%, rgba(37, 99, 235, 0.08) 62% 100%); /* src/styles/home/10-empty-spotlight-card.css */
+  --73-app-grad-accent-soft-11: linear-gradient(135deg, #eff6ff, #dbeafe); /* src/styles/home/10-empty-spotlight-card.css */
+  --73-app-grad-soft-56: linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(248, 250, 252, 0.88)); /* src/styles/home/10-empty-spotlight-card.css */
+  --73-app-grad-soft-57: linear-gradient(90deg, rgba(37, 99, 235, 0.06), rgba(245, 158, 11, 0.08), transparent); /* src/styles/home/10-empty-spotlight-card.css */
+  --73-app-grad-soft-58: linear-gradient(135deg, rgba(251, 191, 36, 0.34), rgba(245, 158, 11, 0.22)); /* src/styles/home/11-spotlight-mark-like.css */
+  --73-app-grad-soft-59: linear-gradient(100deg, #ffffff 0%, #ecf7fc 100%); /* src/styles/home/15-mobile-sidebar-flow-banner.css */
+  --73-app-grad-soft-60: linear-gradient( 90deg, rgba(255, 255, 255, 0.94) 0%, rgba(255, 255, 255, 0.82) 42%, rgba(255, 255, 255, 0) 72% ); /* src/styles/home/15-mobile-sidebar-flow-banner.css */
+  --73-app-grad-warning-06: linear-gradient(90deg, #f59e0b 50%, #cbd5e1 50%); /* src/styles/modal/09-payment-rating-comment.css */
+  --73-app-grad-warning-07: linear-gradient(90deg, #ffd166 50%, rgba(255, 255, 255, 0.22) 50%); /* src/styles/modal/09-payment-rating-comment.css */
+  --73-app-grad-accent-15: linear-gradient(180deg, #7ba4ff, #285cff); /* src/styles/portal-pages/01-portal-page-hero.css */
+  --73-app-grad-soft-61: linear-gradient(180deg, rgba(239, 246, 255, 0.96), rgba(226, 236, 255, 0.9)); /* src/styles/portal-pages/01-portal-page-hero.css */
+  --73-app-grad-soft-62: radial-gradient(circle at bottom right, rgba(100, 213, 255, 0.16), transparent 24%); /* src/styles/portal-pages/01-portal-page-hero.css */
+  --73-app-grad-soft-63: radial-gradient(circle at top left, rgba(84, 124, 255, 0.22), transparent 28%); /* src/styles/portal-pages/01-portal-page-hero.css */
+  --73-app-grad-soft-64: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.72), transparent); /* src/styles/portal-pages/02-portal-page-content.css */
+  --73-app-grad-success-02: linear-gradient(135deg, #22c55e, #16a34a); /* src/styles/resource-catalog/04-cards-empty-mobile.css */
+  --73-app-grad-accent-16: linear-gradient(135deg, #3b82f6, #2563eb); /* src/styles/resource-catalog/04-cards-empty-mobile.css */
+  --73-app-grad-success-03: linear-gradient(135deg, #14b8a6, #0d9488); /* src/styles/resource-catalog/04-cards-empty-mobile.css */
+  --73-app-grad-soft-65: radial-gradient(circle at 88% 72%, rgba(42, 166, 164, 0.08), transparent 35%); /* src/styles/resource-core.css */
+  --73-app-grad-soft-66: radial-gradient(circle at 12% 15%, rgba(31, 74, 209, 0.08), transparent 30%); /* src/styles/resource-core.css */
+  --73-app-grad-soft-67: linear-gradient(180deg, rgba(22, 163, 74, 0.96), rgba(21, 128, 61, 0.94)); /* src/styles/rich-code-copy.css */
+  --73-app-grad-soft-68: linear-gradient(180deg, rgba(37, 99, 235, 0.96), rgba(29, 78, 216, 0.94)); /* src/styles/rich-code-copy.css */
+  --73-app-grad-soft-69: linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(239, 246, 255, 0.9)); /* src/styles/rich-code-copy.css */
+  --73-app-grad-soft-70: linear-gradient(135deg, rgba(255, 255, 255, 0.045), transparent 42%); /* src/styles/rich-text-code.css */
+  --73-app-grad-accent-soft-12: linear-gradient(135deg, #bfd3ff, #d7e5ff); /* src/styles/shell/01-shell-container-hero-usermenu.css */
+  --73-app-grad-danger-01: linear-gradient(90deg, #ff7e5f 0%, #feb47b 25%, #6d5dfc 50%, #feb47b 75%, #ff7e5f 100%); /* src/styles/user.css */
+  --73-app-grad-accent-soft-13: linear-gradient(180deg, #f4f7fb 0%, #f7fbff 100%); /* src/views/DeveloperAgreementView.vue */
+  --73-app-grad-accent-soft-14: linear-gradient(135deg, #eef4ff 0%, #f7faff 55%, #ffffff 100%); /* src/views/MallView.vue */
+  --73-app-grad-cover-06: linear-gradient(135deg, #0b1f3a, #2563eb 60%, #60a5fa); /* src/views/NotFoundView.vue */
+  --73-app-grad-accent-17: linear-gradient(135deg, #7c3aed, #6366f1); /* src/views/TeamProfileView.vue */
+  --73-app-grad-soft-71: linear-gradient(135deg, rgba(255, 255, 255, 0.98), rgba(248, 250, 252, 0.94)); /* src/views/TeamProfileView.vue */
+}

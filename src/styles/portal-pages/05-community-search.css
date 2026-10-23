@@ -1,0 +1,108 @@
+/* 搜索行收成一个整体控件：外框由 search-bar 承担，输入区去掉自身描边，
+   搜索按钮退成框内的浅色小控件，不再比输入框抢眼 */
+.community-search-bar {
+  display: flex;
+  min-height: 38px;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 12px;
+  padding: 0 4px 0 10px;
+  border: 1px solid color-mix(in srgb, var(--73-accent-soft) 96%, transparent);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--73-surface-strong) 92%, transparent);
+  transition:
+    background-color 160ms ease,
+    border-color 160ms ease,
+    box-shadow 160ms ease;
+}
+
+.community-search-bar:focus-within {
+  border-color: color-mix(in srgb, var(--73-accent) 44%, transparent);
+  background: var(--73-surface-strong);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--73-accent) 8%, transparent);
+}
+
+.community-search-field {
+  display: flex;
+  min-width: 0;
+  min-height: 36px;
+  flex: 1 1 auto;
+  align-items: center;
+  gap: 8px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--73-ink-muted);
+}
+
+.community-search-field input {
+  min-width: 0;
+  flex: 1;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: var(--73-ink);
+  font: inherit;
+  font-size: 13px;
+}
+
+.community-search-field input::placeholder {
+  color: var(--73-ink-placeholder);
+}
+
+.community-search-clear,
+.community-search-submit,
+.community-page-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid transparent;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 800;
+  line-height: 1;
+  white-space: nowrap;
+  cursor: pointer;
+  transition:
+    background-color 160ms ease,
+    border-color 160ms ease,
+    box-shadow 160ms ease,
+    color 160ms ease,
+    opacity 160ms ease,
+    transform 160ms ease;
+}
+
+.community-search-clear {
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--73-accent-soft) 74%, transparent);
+  color: var(--73-accent);
+}
+
+.community-search-clear:hover {
+  background: color-mix(in srgb, var(--73-accent-soft) 96%, transparent);
+}
+
+.community-search-submit {
+  flex: 0 0 auto;
+  gap: 5px;
+  min-height: 30px;
+  padding: 0 12px;
+  border-color: transparent;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--73-accent-soft) 72%, transparent);
+  color: var(--73-accent);
+}
+
+.community-search-submit:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--73-accent-soft) 96%, transparent);
+}
+
+.community-search-submit:disabled,
+.community-page-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.58;
+  transform: none;
+}

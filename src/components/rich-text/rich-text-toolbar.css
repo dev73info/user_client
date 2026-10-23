@@ -1,0 +1,233 @@
+/* 编辑器工具栏的样式：从 `RichTextEditor.vue` 的 `<style scoped>` 里整块搬来，
+   与工具栏模板一起归 `RichTextEditorToolbar.vue` 所有（含 `:deep` 的图标尺寸）。
+   吸顶悬浮相关的 `.rich-text-editor__toolbar-shell` 仍留在编辑器自己的样式文件里，
+   因为它要包住工具栏、由外层量高与占位。 */
+.rich-text-editor__toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  padding: 10px;
+  border: 1px solid color-mix(in srgb, var(--73-ink-disabled) 82%, transparent);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--73-surface-strong) 90%, transparent);
+  box-shadow: 0 12px 28px color-mix(in srgb, var(--73-ink) 10%, transparent);
+  backdrop-filter: blur(14px);
+}
+
+.rich-text-editor__toolbar.is-floating {
+  position: fixed;
+  z-index: 45;
+  max-width: calc(100vw - 24px);
+  margin: 0;
+}
+
+.rich-text-editor__dropdown-trigger,
+.rich-text-editor__tool {
+  min-height: 34px;
+  padding: 4px 9px;
+  border: 1px solid color-mix(in srgb, var(--73-ink-disabled) 86%, transparent);
+  border-radius: 8px;
+  background: var(--73-surface-strong);
+  color: var(--73-ink-soft);
+  cursor: pointer;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.rich-text-editor__dropdown {
+  position: relative;
+  flex: 0 0 auto;
+}
+
+.rich-text-editor__dropdown-trigger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-width: 88px;
+}
+
+.rich-text-editor__dropdown-trigger--code-language {
+  min-width: 108px;
+}
+
+.rich-text-editor__font-size {
+  display: inline-flex;
+  align-items: center;
+  flex: 0 0 auto;
+  width: auto;
+  min-height: 34px;
+  margin-bottom: 0;
+  border: 1px solid color-mix(in srgb, var(--73-ink-disabled) 86%, transparent);
+  border-radius: 8px;
+  background: var(--73-surface-strong);
+  color: var(--73-ink-muted);
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.rich-text-editor__font-size:focus-within,
+.rich-text-editor__dropdown-trigger:focus-visible,
+.rich-text-editor__tool:focus-visible {
+  border-color: var(--73-accent);
+  outline: none;
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--73-accent) 12%, transparent);
+}
+
+.rich-text-editor__dropdown-trigger.is-open {
+  border-color: color-mix(in srgb, var(--73-accent) 70%, transparent);
+  background: var(--73-accent-soft);
+  color: var(--73-accent);
+}
+
+.rich-text-editor__dropdown-caret {
+  font-size: 13px;
+  transition: transform 160ms ease;
+}
+
+.rich-text-editor__dropdown-trigger.is-open .rich-text-editor__dropdown-caret {
+  transform: rotate(180deg);
+}
+
+.rich-text-editor__dropdown-menu {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  z-index: 70;
+  display: grid;
+  min-width: 132px;
+  gap: 3px;
+  padding: 6px;
+  border: 1px solid color-mix(in srgb, var(--73-accent-soft) 90%, transparent);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--73-surface-strong) 98%, transparent);
+  box-shadow: 0 16px 32px color-mix(in srgb, var(--73-ink) 14%, transparent);
+  backdrop-filter: blur(14px);
+}
+
+.rich-text-editor__dropdown-menu--code-language {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  min-width: 232px;
+}
+
+.rich-text-editor__dropdown-option {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  min-height: 34px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 9px;
+  background: transparent;
+  color: var(--73-ink-soft);
+  cursor: pointer;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 800;
+  text-align: left;
+  white-space: nowrap;
+  transition:
+    background-color 160ms ease,
+    color 160ms ease;
+}
+
+.rich-text-editor__dropdown-option:hover,
+.rich-text-editor__dropdown-option:focus-visible {
+  outline: none;
+  background: color-mix(in srgb, var(--73-accent-soft) 78%, transparent);
+  color: var(--73-accent);
+}
+
+.rich-text-editor__dropdown-option.is-active {
+  background: var(--73-accent);
+  color: var(--73-surface-strong);
+}
+
+.rich-text-editor__font-size-input {
+  flex: 0 0 64px;
+  width: 64px;
+  min-height: 32px;
+  padding: 0 4px 0 9px;
+  border: 0;
+  background: transparent;
+  color: var(--73-ink-soft);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 800;
+  outline: none;
+}
+
+.rich-text-editor__font-size-input::placeholder {
+  color: var(--73-ink-placeholder);
+}
+
+.rich-text-editor__font-size span {
+  padding-right: 8px;
+}
+
+.rich-text-editor__tool {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  box-shadow: 0 2px 8px color-mix(in srgb, var(--73-ink) 4%, transparent);
+  transition:
+    border-color 160ms ease,
+    background-color 160ms ease,
+    color 160ms ease,
+    box-shadow 160ms ease,
+    transform 160ms ease,
+    opacity 160ms ease;
+}
+
+.rich-text-editor__tool:hover:not(:disabled) {
+  border-color: color-mix(in srgb, var(--73-accent) 52%, transparent);
+  background: var(--73-surface-strong);
+  color: var(--73-accent);
+  box-shadow: 0 7px 16px color-mix(in srgb, var(--73-accent) 10%, transparent);
+  transform: translateY(-1px);
+}
+
+.rich-text-editor__tool:disabled {
+  cursor: not-allowed;
+  opacity: 0.38;
+  box-shadow: none;
+}
+
+.rich-text-editor__tool :deep(.t73-icon) {
+  font-size: 15px;
+}
+
+.rich-text-editor__tool.is-active {
+  border-color: var(--73-accent);
+  background: color-mix(in srgb, var(--73-accent-soft) 92%, transparent);
+  color: var(--73-accent);
+}
+
+.rich-text-editor__tool--italic {
+  font-style: italic;
+}
+
+.rich-text-editor__tool--underline {
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.rich-text-editor__tool--code {
+  font-size: 12px;
+}
+
+.rich-text-editor__tool--clear,
+.rich-text-editor__tool:has(.rich-text-editor__tool-text) {
+  width: auto;
+}
+
+.rich-text-editor__tool:not(:has(.rich-text-editor__tool-text)) {
+  width: 34px;
+  padding: 0;
+}

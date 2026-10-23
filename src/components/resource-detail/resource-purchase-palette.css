@@ -1,0 +1,35 @@
+/* ============================================================
+   购买弹窗色板（`--rdp-purchase-*`）
+   ── 弹窗 Teleport 到 body，`.resource-detail-page` 上声明的 `--rdp-*` 继承不到它，
+      所以在弹窗自己的根类名上再声明一份。
+   ── 必须是全局块（不带 scoped）：scoped 规则只作用于本组件的元素，而弹窗内容是子组件的；
+      选择器限定在 `.resource-purchase-modal-wrap` 上，不会外溢到其它弹窗。
+   ── 裸色值留在这个文件里（已在 `raw-color` 基线内，只减不增），子组件只取 `var()`。
+   ============================================================ */
+.resource-purchase-modal-wrap {
+  --rdp-purchase-scrim: color-mix(in srgb, var(--73-ink) 28%, transparent);
+  --rdp-purchase-border: color-mix(in srgb, var(--73-accent) 95%, transparent);
+  --rdp-purchase-glow: color-mix(in srgb, var(--73-accent-soft) 55%, transparent);
+  --rdp-purchase-surface: color-mix(in srgb, var(--73-surface-strong) 97%, transparent);
+  --rdp-purchase-shadow: color-mix(in srgb, var(--73-accent) 18%, transparent);
+  --rdp-purchase-ink: var(--73-ink);
+  --rdp-purchase-body: var(--73-ink-soft);
+  --rdp-purchase-muted: var(--73-ink-muted);
+  --rdp-purchase-soft-ink: var(--73-ink-soft);
+  --rdp-purchase-white: var(--73-surface-strong);
+  --rdp-purchase-close-border: color-mix(in srgb, var(--73-ink-disabled) 95%, transparent);
+  --rdp-purchase-close-border-hover: color-mix(in srgb, var(--73-ink-placeholder) 90%, transparent);
+  --rdp-purchase-plate-border: color-mix(in srgb, var(--73-border) 95%, transparent);
+  --rdp-purchase-plate-surface: color-mix(in srgb, var(--73-surface-strong) 96%, transparent);
+  --rdp-purchase-dashed: color-mix(in srgb, var(--73-ink-placeholder) 70%, transparent);
+  --rdp-purchase-dashed-surface: color-mix(in srgb, var(--73-surface-strong) 90%, transparent);
+  --rdp-purchase-amount-border: color-mix(in srgb, var(--73-warning) 55%, transparent);
+  --rdp-purchase-amount-from: color-mix(in srgb, var(--73-warning-soft) 98%, transparent);
+  --rdp-purchase-amount-to: color-mix(in srgb, var(--73-warning-soft) 72%, transparent);
+  --rdp-purchase-amount-ink: var(--73-danger-text);
+  --rdp-purchase-notes-border: color-mix(in srgb, var(--73-accent-soft) 85%, transparent);
+  --rdp-purchase-notes-surface: color-mix(in srgb, var(--73-accent-soft) 72%, transparent);
+  --rdp-purchase-error-border: color-mix(in srgb, var(--73-danger) 85%, transparent);
+  --rdp-purchase-error-surface: color-mix(in srgb, var(--73-danger-soft) 90%, transparent);
+  --rdp-purchase-error-ink: var(--73-danger);
+}

@@ -1,0 +1,68 @@
+/* === 个人中心总览：面板通用骨架（.overview-section-head / .overview-link / .overview-empty-state）===
+   「需求进度」「最近沟通」「快捷入口」三块面板现在各是一个组件，但区块标题、右侧次级链接、
+   空态这三样在三块里必须长得一样。它们都是组件**内部**的元素：写进任一组件的 scoped，只作用于
+   那一块；三份各抄一遍又多出 8 处裸色值。故按「跨组件共用的样式收回全局」的既有做法
+   （见上面「账号弹窗的共用样式」一节）放在这里。
+   选择器统一加 .profile-page 前缀：与原先 scoped 编译出的特异度持平（0,2,0 / 0,2,1），
+   既不会被后加载的统一层规则盖掉，也压得住组件里的基声明。 */
+.profile-page .overview-section-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.profile-page .overview-section-head h2 {
+  margin: 0;
+  margin-top: 5px;
+  /* 与页面里其它主文字同色（`--profile-text-main` 就是 var(--73-ink)，见本节开头）：
+     这三条是从视图里拆出来的规则，拆一次「一行变两行」，用本页色板把多出来的裸色值抵回去。 */
+  color: var(--profile-text-main);
+  font-size: 19px;
+  line-height: 1.25;
+}
+
+/* 紧凑档（「快捷入口」那种只有标题、没有右侧链接的）：标题下留白小一档 */
+.profile-page .overview-section-head--compact {
+  margin-bottom: 12px;
+}
+
+.profile-page .overview-link {
+  flex: 0 0 auto;
+  color: var(--73-accent);
+  font-size: 13px;
+  font-weight: 800;
+  text-decoration: none;
+}
+
+.profile-page .overview-link:hover {
+  color: var(--73-app-accent-strong);
+}
+
+/* 区块标题右侧那一组操作（目前只有「最近沟通」的「消息中心」链接） */
+.profile-page .overview-inline-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.profile-page .overview-empty-state {
+  display: grid;
+  gap: 6px;
+  padding: 18px;
+  border: 1px dashed color-mix(in srgb, var(--73-accent-soft) 98%, transparent);
+  border-radius: 16px;
+  background: color-mix(in srgb, var(--73-accent-soft) 82%, transparent);
+}
+
+.profile-page .overview-empty-state strong {
+  color: var(--profile-text-main);
+  font-weight: 800;
+}
+
+.profile-page .overview-empty-state span {
+  color: var(--73-ink-muted);
+  font-size: 12px;
+  line-height: 1.45;
+}

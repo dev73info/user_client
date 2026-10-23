@@ -1,0 +1,191 @@
+/* 资源卡的次要信息：作者 / 开发者胶囊（含溢出往返滚动）、简介、标签、原创转载 chip、点赞与查看详情。
+   随模板节点从 `ResourceCatalog.vue` 搬来；原来与空态同写一条 `line-height` 的规则拆成两份（声明相同）。 */
+
+/* 售价与「原创 / 转载」一律降为小号中性 chip（重设计口径：卡片内标签不与标题抢重量） */
+.portal-resource-browser__price-badge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 20px;
+  padding: 1px 8px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--73-ink-soft);
+  background: color-mix(in srgb, var(--73-surface-strong) 96%, transparent);
+}
+
+.portal-resource-browser__price-badge.is-paid {
+  color: var(--73-ink-soft);
+  background: color-mix(in srgb, var(--73-border) 96%, transparent);
+}
+
+.portal-resource-browser__author-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border-radius: 999px;
+  padding: 6px 12px;
+  background: color-mix(in srgb, var(--73-accent-soft) 92%, transparent);
+  color: var(--73-accent);
+  font-size: 12px;
+  font-weight: 700;
+  line-height: normal;
+  max-width: 100%;
+}
+
+.portal-resource-browser__author-pill-label {
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+.portal-resource-browser__author-pill-viewport {
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.portal-resource-browser__author-pill-track {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* 名字放不下时左右往返滚动，--marquee-shift 由脚本按溢出宽度写入 */
+.portal-resource-browser__author-pill-viewport.is-overflowing
+  .portal-resource-browser__author-pill-track {
+  animation: portal-author-marquee var(--marquee-duration, 6s) ease-in-out infinite alternate;
+}
+
+.portal-resource-browser__author-pill-viewport.is-overflowing:hover
+  .portal-resource-browser__author-pill-track {
+  animation-play-state: paused;
+}
+
+@keyframes portal-author-marquee {
+  0%,
+  15% {
+    transform: translateX(0);
+  }
+  85%,
+  100% {
+    transform: translateX(var(--marquee-shift, 0px));
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .portal-resource-browser__author-pill-viewport.is-overflowing
+    .portal-resource-browser__author-pill-track {
+    animation: none;
+  }
+}
+
+.portal-resource-browser__author-line {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.portal-resource-browser__desc,
+.portal-resource-browser__updated,
+.portal-resource-browser__meta {
+  line-height: 1.7;
+}
+
+.portal-resource-browser__author-pill,
+.portal-resource-browser__updated {
+  margin: 4px 0 0;
+  font-size: 12px;
+}
+
+.portal-resource-browser__desc {
+  margin: 0;
+  color: var(--73-ink-soft);
+}
+
+.portal-resource-browser__tags {
+  display: flex;
+  align-items: flex-end;
+  flex-wrap: wrap;
+  gap: 10px;
+  min-width: 0;
+  align-self: stretch;
+  width: 100%;
+  max-width: 100%;
+}
+
+.portal-resource-browser__tags::after {
+  content: '';
+  flex: 0 0 170px;
+  height: 43px;
+  visibility: hidden;
+}
+
+/* 与首页精选卡 portal-spotlight-card__meta-row、资源详情页标签同款胶囊 */
+.portal-resource-browser__tags > span {
+  display: inline-flex;
+  align-items: center;
+  min-width: 0;
+  max-width: 100%;
+  min-height: 22px;
+  padding: 2px 9px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--73-surface-strong) 96%, transparent);
+  color: var(--73-ink-soft);
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.2;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.portal-resource-browser__meta {
+  display: inline-flex;
+  align-items: center;
+  min-height: 20px;
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--73-surface-strong) 96%, transparent);
+  color: var(--73-ink-soft);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.portal-resource-browser__meta.is-repost {
+  background: color-mix(in srgb, var(--73-surface-strong) 96%, transparent);
+  color: var(--73-ink-soft);
+}
+
+.portal-resource-browser__action {
+  padding: 10px 16px;
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--73-accent-soft) 90%, transparent);
+  color: var(--73-accent);
+  font-weight: 700;
+}
+
+.portal-resource-browser__like {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-width: 66px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--73-surface-strong) 96%, transparent);
+  color: var(--73-ink-muted);
+  font-weight: 800;
+}
+
+.portal-resource-browser__like--active {
+  background: color-mix(in srgb, var(--73-danger-soft) 94%, transparent);
+  color: var(--73-danger);
+}
+
+.portal-resource-browser__like:disabled {
+  cursor: wait;
+  opacity: 0.7;
+}

@@ -1,293 +1,52 @@
 <script setup lang="ts">
-import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
+/**
+ * 在线客服浮窗：贴边侧签（可拖拽换边 / 上下调整，点击展开收起）+ 聊天面板。
+ *
+ * 拆分（R047）：会话与 WebSocket 在 `support/useSupportChatSession.ts`，侧签吸附与拖拽在
+ * `support/useSupportChatDrag.ts`，面板模板与样式在 `support/SupportChatPanel.vue`（样式
+ * `support-chat-panel.css`），本组件只剩外壳、侧签与挂载 / 卸载时的接线；
+ * 侧签与外壳样式在同目录 `support-chat-fab.css`。
+ */
+import { computed, onBeforeUnmount, onMounted } from 'vue'
 
-import { useAuthStore } from '@/stores/auth'
-import {
-  createSupportConversation,
-  getSupportConversationDetail,
-  listMySupportConversations,
-  listPublicSupportChannels,
-  sendSupportMessage,
-  supportConversationWsUrl,
-  type SupportConversationDetail,
-  type SupportMessage,
-} from '@/api/support'
+import SupportChatPanel from '@/components/support/SupportChatPanel.vue'
+import { useSupportChatDrag } from '@/components/support/useSupportChatDrag'
+import { useSupportChatSession } from '@/components/support/useSupportChatSession'
 
-const auth = useAuthStore()
+const {
+  channelEnabled,
+  opened,
+  loading,
+  messages,
+  setChatBodyRef,
+  input,
+  error,
+  connected,
+  toggleOpen,
+  send,
+  connectWs,
+  resolveChannelEnabled,
+  dispose,
+} = useSupportChatSession()
 
-// 客服端可在「系统设置 → 渠道配置」停用网页渠道，此时整个浮窗不展示
-const channelEnabled = ref(true)
-
-const opened = ref(false)
-const openLabel = computed(() => (opened.value ? '收起' : '在线客服'))
-
-const widgetRef = ref<HTMLElement | null>(null)
-const side = ref<'left' | 'right'>('right')
-const top = ref(0)
-const dragging = ref(false)
-const dragLeft = ref<number | null>(null)
-const dragTop = ref<number | null>(null)
-let startX = 0
-let startY = 0
-let startTop = 0
-let startContainerLeft = 0
-let moveHandler: ((e: PointerEvent) => void) | null = null
-let upHandler: ((e: PointerEvent) => void) | null = null
-
-// 侧边签宽度（近似，用于吸附计算）
-const TAB = 48
-const MOBILE_BREAKPOINT_PX = 900
-const DESKTOP_FAB_HEIGHT = 140
-const MOBILE_FAB_HEIGHT = 48
-
-function clamp(value: number, min: number, max: number): number {
-  return Math.min(Math.max(value, min), max)
-}
-
-function currentContainerLeft(): number {
-  return side.value === 'right' ? window.innerWidth - TAB : 0
-}
-
-function currentFabHeight(): number {
-  return window.matchMedia(`(max-width: ${MOBILE_BREAKPOINT_PX}px)`).matches
-    ? MOBILE_FAB_HEIGHT
-    : DESKTOP_FAB_HEIGHT
-}
-
-function clampFabTop(value: number): number {
-  return clamp(value, 8, Math.max(8, window.innerHeight - currentFabHeight()))
-}
-
-function handleViewportResize() {
-  top.value = clampFabTop(top.value)
-}
-
-const widgetStyle = computed(() => {
-  if (dragging.value && dragLeft.value !== null && dragTop.value !== null) {
-    return { top: `${dragTop.value}px`, left: `${dragLeft.value}px` }
-  }
-  const style: Record<string, string> = { top: `${top.value}px` }
-  if (side.value === 'right') style.right = '0px'
-  else style.left = '0px'
-  return style
+const {
+  side,
+  dragging,
+  widgetStyle,
+  onDragStart,
+  handleViewportResize,
+  detachDragListeners,
+  centerVertically,
+} = useSupportChatDrag(() => {
+  void toggleOpen()
 })
 
-function attachDragListeners() {
-  moveHandler = (e: PointerEvent) => onDragMove(e)
-  upHandler = (e: PointerEvent) => onDragEnd(e)
-  window.addEventListener('pointermove', moveHandler)
-  window.addEventListener('pointerup', upHandler)
-  window.addEventListener('pointercancel', upHandler)
-}
-
-function detachDragListeners() {
-  if (moveHandler) window.removeEventListener('pointermove', moveHandler)
-  if (upHandler) {
-    window.removeEventListener('pointerup', upHandler)
-    window.removeEventListener('pointercancel', upHandler)
-  }
-  moveHandler = null
-  upHandler = null
-}
-
-function onDragStart(e: PointerEvent) {
-  if (e.pointerType === 'mouse' && e.button !== 0) return
-  startX = e.clientX
-  startY = e.clientY
-  startTop = top.value
-  startContainerLeft = currentContainerLeft()
-  dragging.value = true
-  dragLeft.value = startContainerLeft
-  dragTop.value = startTop
-  attachDragListeners()
-}
-
-function onDragMove(e: PointerEvent) {
-  if (!dragging.value) return
-  dragLeft.value = clamp(
-    startContainerLeft + (e.clientX - startX),
-    0,
-    window.innerWidth - TAB,
-  )
-  dragTop.value = clampFabTop(startTop + (e.clientY - startY))
-}
-
-function onDragEnd(e: PointerEvent) {
-  if (!dragging.value) return
-  detachDragListeners()
-
-  const distance = Math.hypot(e.clientX - startX, e.clientY - startY)
-  const left = dragLeft.value ?? startContainerLeft
-  const topNow = dragTop.value ?? startTop
-
-  dragging.value = false
-  dragLeft.value = null
-  dragTop.value = null
-
-  // 位移很小视为点击：展开/收起
-  if (distance < 6) {
-    toggleOpen()
-    return
-  }
-
-  // 水平按靠近哪一侧贴边吸附；垂直方向自由，仅限制在可视范围内
-  const centerX = left + TAB / 2
-  side.value = centerX < window.innerWidth / 2 ? 'left' : 'right'
-  top.value = clampFabTop(topNow)
-}
-
-const loading = ref(false)
-const activeConversationId = ref<number | null>(null)
-const messages = ref<Array<SupportMessage & { time: string }>>([])
-const chatBodyRef = ref<HTMLElement | null>(null)
-const input = ref('')
-const error = ref('')
-const connected = ref(false)
-
-let ws: WebSocket | null = null
-let reconnectTimer: number | null = null
-// 重连退避：后端不可用时每次翻倍，连上后重置，避免按固定 3s 一直重连
-const WS_RECONNECT_BASE_MS = 3000
-const WS_RECONNECT_MAX_MS = 15_000
-let wsReconnectDelayMs = WS_RECONNECT_BASE_MS
-
-function formatTime(value: string): string {
-  const date = new Date(value)
-  return date.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })
-}
-
-function setMessages(items: SupportMessage[]) {
-  messages.value = items.map((m) => ({ ...m, time: formatTime(m.created_at) }))
-  void scrollToBottom()
-}
-
-async function scrollToBottom() {
-  await nextTick()
-  if (chatBodyRef.value) chatBodyRef.value.scrollTop = chatBodyRef.value.scrollHeight
-}
-
-async function ensureConversation() {
-  loading.value = true
-  error.value = ''
-  try {
-    const list = await listMySupportConversations(auth.token)
-    const current = list.find((c) => c.status === 'open') ?? list[0]
-    if (current) {
-      activeConversationId.value = current.id
-      const detail = await getSupportConversationDetail(auth.token, current.id)
-      setMessages(detail.messages)
-    } else {
-      activeConversationId.value = null
-      messages.value = []
-    }
-  } catch (err) {
-    error.value = err instanceof Error ? err.message : '加载会话失败'
-  } finally {
-    loading.value = false
-  }
-}
-
-async function toggleOpen() {
-  opened.value = !opened.value
-  if (opened.value && activeConversationId.value === null && !loading.value) {
-    await ensureConversation()
-  }
-}
-
-async function send() {
-  const text = input.value.trim()
-  if (!text || loading.value) return
-  error.value = ''
-  try {
-    if (activeConversationId.value === null) {
-      const conv = await createSupportConversation(auth.token, text)
-      activeConversationId.value = conv.id
-      const detail = await getSupportConversationDetail(auth.token, conv.id)
-      setMessages(detail.messages)
-    } else {
-      const sent = await sendSupportMessage(auth.token, activeConversationId.value, text)
-      // WebSocket 可能已把这条消息推来，按 id 去重避免重复
-      if (!messages.value.some((m) => m.id === sent.id)) {
-        messages.value.push({ ...sent, time: formatTime(sent.created_at) })
-      }
-      await scrollToBottom()
-    }
-    input.value = ''
-  } catch (err) {
-    error.value = err instanceof Error ? err.message : '发送消息失败'
-  }
-}
-
-async function syncActiveConversation() {
-  if (!auth.token || activeConversationId.value === null) return
-  try {
-    const detail = await getSupportConversationDetail(auth.token, activeConversationId.value)
-    if (activeConversationId.value === detail.conversation.id) {
-      setMessages(detail.messages)
-    }
-  } catch {
-    // 忽略，下次重连会再同步
-  }
-}
-
-function connectWs() {
-  if (!auth.token) return
-  ws = new WebSocket(supportConversationWsUrl(auth.token))
-  ws.onopen = () => {
-    connected.value = true
-    wsReconnectDelayMs = WS_RECONNECT_BASE_MS
-    // 连接建立后确保已加载当前会话，客户端才能实时收到客服的新消息
-    if (activeConversationId.value === null) {
-      void ensureConversation()
-    } else {
-      void syncActiveConversation()
-    }
-  }
-  ws.onmessage = (ev) => {
-    try {
-      const detail = JSON.parse(ev.data) as SupportConversationDetail
-      // 若客户尚未加载任何会话，先接管后端推来的会话，避免推送被丢弃
-      if (activeConversationId.value === null) {
-        activeConversationId.value = detail.conversation.id
-      }
-      if (activeConversationId.value === detail.conversation.id) {
-        setMessages(detail.messages)
-        // 用户正在查看该会话：有新消息时实时标记已读，客服端才能显示“已读”
-        if (opened.value) {
-          const lastUserRead = detail.conversation.user_last_read_message_id ?? 0
-          const maxId = (detail.messages ?? []).reduce((mx, m) => Math.max(mx, m.id), 0)
-          if (maxId > lastUserRead) {
-            void getSupportConversationDetail(auth.token, detail.conversation.id).catch(() => {})
-          }
-        }
-      }
-    } catch {
-      // ignore malformed payload
-    }
-  }
-  ws.onclose = () => {
-    connected.value = false
-    ws = null
-    if (reconnectTimer) window.clearTimeout(reconnectTimer)
-    reconnectTimer = window.setTimeout(connectWs, wsReconnectDelayMs)
-    wsReconnectDelayMs = Math.min(wsReconnectDelayMs * 2, WS_RECONNECT_MAX_MS)
-  }
-  ws.onerror = () => {
-    ws?.close()
-  }
-}
+const openLabel = computed(() => (opened.value ? '收起' : '在线客服'))
 
 onMounted(async () => {
-  // 渠道被客服端停用时，整个浮窗不渲染也不建连
-  try {
-    const channels = await listPublicSupportChannels()
-    const widgetChannel = channels.find((c) => c.channel_key === 'web_widget')
-    channelEnabled.value = widgetChannel ? widgetChannel.enabled : true
-  } catch {
-    // 渠道接口异常时保持展示，避免误伤线上入口
-  }
-  if (!channelEnabled.value) return
-  top.value = clampFabTop((window.innerHeight - currentFabHeight()) / 2)
+  const enabled = await resolveChannelEnabled()
+  if (!enabled) return
+  centerVertically()
   window.addEventListener('resize', handleViewportResize)
   connectWs()
 })
@@ -295,67 +54,27 @@ onMounted(async () => {
 onBeforeUnmount(() => {
   window.removeEventListener('resize', handleViewportResize)
   detachDragListeners()
-  if (reconnectTimer) window.clearTimeout(reconnectTimer)
-  ws?.close()
-  ws = null
+  dispose()
 })
 </script>
 
 <template>
-  <div v-if="channelEnabled" ref="widgetRef" class="support-widget" :style="widgetStyle">
+  <div v-if="channelEnabled" class="support-widget" :style="widgetStyle">
     <!-- 聊天面板 -->
     <Transition name="support-pop">
-      <div
+      <SupportChatPanel
         v-if="opened"
-        class="support-panel"
-        :class="side === 'left' ? 'support-panel--left' : 'support-panel--right'"
-        role="dialog"
-        aria-label="在线客服"
-      >
-        <header class="support-panel__head">
-          <div>
-            <h3 class="support-panel__title">在线客服</h3>
-            <span class="support-panel__status">
-              {{ connected ? '已连接，客服将及时回复' : '连接中…' }}
-            </span>
-          </div>
-          <button type="button" class="support-panel__close" aria-label="关闭客服窗口" @click="toggleOpen">
-            ×
-          </button>
-        </header>
-
-        <div ref="chatBodyRef" class="support-panel__body">
-          <div v-if="loading" class="support-hint">加载中…</div>
-          <div v-else-if="messages.length === 0" class="support-hint">
-            您好，请输入您的问题，我们会尽快回复您。
-          </div>
-
-          <div
-            v-for="msg in messages"
-            :key="msg.id"
-            class="support-msg"
-            :class="`support-msg--${msg.sender_role === 'user' ? 'user' : 'agent'}`"
-          >
-            <div class="support-msg__bubble">{{ msg.content }}</div>
-            <span class="support-msg__time">{{ msg.time }}</span>
-          </div>
-        </div>
-
-        <p v-if="error" class="support-error">{{ error }}</p>
-
-        <footer class="support-panel__foot">
-          <textarea
-            v-model="input"
-            class="support-input"
-            rows="2"
-            placeholder="请输入消息，Enter 发送"
-            @keydown.enter.prevent="send"
-          />
-          <button type="button" class="support-send" :disabled="!input.trim() || loading" @click="send">
-            发送
-          </button>
-        </footer>
-      </div>
+        :side="side"
+        :connected="connected"
+        :loading="loading"
+        :messages="messages"
+        :input="input"
+        :error="error"
+        :set-body-ref="setChatBodyRef"
+        @close="toggleOpen"
+        @update:input="input = $event"
+        @send="send"
+      />
     </Transition>
 
     <!-- 侧边签：贴左/右边缘，可拖拽换边+上下调整，点击展开/收起 -->
@@ -400,247 +119,4 @@ onBeforeUnmount(() => {
   </div>
 </template>
 
-<style scoped>
-.support-widget {
-  position: fixed;
-  z-index: 9999;
-}
-
-.support-fab {
-  position: absolute;
-  top: 0;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  width: 48px;
-  height: 140px;
-  padding: 10px 0;
-  border: none;
-  background: #2ba88f;
-  color: #fff;
-  font-size: 13px;
-  cursor: pointer;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.18);
-  touch-action: none;
-  user-select: none;
-}
-
-.support-fab--right {
-  right: 0;
-  border-radius: 10px 0 0 10px;
-}
-
-.support-fab--left {
-  left: 0;
-  border-radius: 0 10px 10px 0;
-}
-
-.support-fab.is-dragging {
-  cursor: grabbing;
-}
-
-.support-fab:hover {
-  background: #1f8f76;
-}
-
-.support-fab__icon {
-  display: inline-flex;
-  width: 22px;
-  height: 22px;
-}
-
-.support-fab__text {
-  writing-mode: vertical-rl;
-  letter-spacing: 2px;
-  font-size: 13px;
-}
-
-@media (max-width: 900px) {
-  .support-fab {
-    width: 48px;
-    height: 48px;
-    gap: 0;
-    padding: 0;
-  }
-
-  .support-fab__icon {
-    width: 20px;
-    height: 20px;
-  }
-
-  .support-fab__text {
-    display: none;
-  }
-}
-
-.support-panel {
-  position: absolute;
-  top: 50%;
-  transform: translateY(-50%);
-  width: 360px;
-  max-width: calc(100vw - 56px);
-  height: 480px;
-  max-height: calc(100vh - 32px);
-  display: flex;
-  flex-direction: column;
-  background: #fff;
-  border: 1px solid #ebeef5;
-  border-radius: 12px;
-  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.16);
-  overflow: hidden;
-}
-
-.support-panel--right {
-  right: 48px;
-}
-
-.support-panel--left {
-  left: 48px;
-}
-
-.support-panel__head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 14px 16px;
-  background: #2ba88f;
-  color: #fff;
-}
-
-.support-panel__title {
-  margin: 0;
-  font-size: 15px;
-}
-
-.support-panel__status {
-  font-size: 12px;
-  opacity: 0.9;
-}
-
-.support-panel__close {
-  border: none;
-  background: transparent;
-  color: #fff;
-  font-size: 22px;
-  line-height: 1;
-  cursor: pointer;
-}
-
-.support-panel__body {
-  flex: 1;
-  padding: 14px;
-  overflow-y: auto;
-  background: #f7f9fb;
-}
-
-.support-hint {
-  text-align: center;
-  color: #909399;
-  font-size: 13px;
-  margin-top: 24px;
-}
-
-.support-msg {
-  display: flex;
-  flex-direction: column;
-  margin-bottom: 12px;
-  max-width: 80%;
-}
-
-.support-msg--user {
-  align-items: flex-end;
-  margin-left: auto;
-}
-
-.support-msg--agent {
-  align-items: flex-start;
-}
-
-.support-msg__bubble {
-  padding: 8px 12px;
-  border-radius: 8px;
-  font-size: 14px;
-  line-height: 1.5;
-  word-break: break-word;
-}
-
-.support-msg--user .support-msg__bubble {
-  background: #2ba88f;
-  color: #fff;
-}
-
-.support-msg--agent .support-msg__bubble {
-  background: #fff;
-  border: 1px solid #ebeef5;
-  color: #303133;
-}
-
-.support-msg__time {
-  margin-top: 4px;
-  font-size: 11px;
-  color: #c0c4cc;
-}
-
-.support-error {
-  margin: 0;
-  padding: 6px 16px;
-  font-size: 12px;
-  color: #f56c6c;
-  background: #fef0f0;
-}
-
-.support-panel__foot {
-  display: flex;
-  gap: 8px;
-  padding: 12px;
-  align-items: flex-end;
-  border-top: 1px solid #f0f2f5;
-  /* 覆盖全局 footer 样式，避免出现灰色大块和错误间距 */
-  margin-top: 0;
-  background: #fff;
-  text-align: left;
-}
-
-.support-input {
-  flex: 1;
-  border: 1px solid #dcdfe6;
-  border-radius: 6px;
-  padding: 8px 10px;
-  font-size: 14px;
-  resize: none;
-  outline: none;
-}
-
-.support-input:focus {
-  border-color: #2ba88f;
-}
-
-.support-send {
-  height: 36px;
-  padding: 0 16px;
-  border: none;
-  border-radius: 6px;
-  background: #2ba88f;
-  color: #fff;
-  font-size: 14px;
-  cursor: pointer;
-}
-
-.support-send:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
-.support-pop-enter-active,
-.support-pop-leave-active {
-  transition: all 0.2s ease;
-}
-
-.support-pop-enter-from,
-.support-pop-leave-to {
-  opacity: 0;
-  transform: translateY(12px);
-}
-</style>
+<style scoped src="./support/support-chat-fab.css"></style>

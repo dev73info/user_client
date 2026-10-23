@@ -1,0 +1,234 @@
+/* --- 支付方式选择 --- */
+.payment-options {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 8px;
+  padding: 6px;
+  border: 1px solid color-mix(in srgb, var(--73-ink-placeholder) 42%, transparent);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--73-surface-strong) 92%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--73-ink) 4%, transparent);
+}
+
+.payment-option {
+  border: 1px solid color-mix(in srgb, var(--73-ink-disabled) 90%, transparent);
+  border-radius: 8px;
+  background: var(--73-surface-strong);
+  color: var(--73-ink-soft);
+  padding: 10px 6px;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  cursor: pointer;
+  transition:
+    background-color 180ms ease,
+    border-color 180ms ease,
+    transform 180ms ease,
+    color 180ms ease,
+    box-shadow 180ms ease;
+}
+
+.payment-option:hover {
+  border-color: color-mix(in srgb, var(--73-ink-muted) 58%, transparent);
+  background: var(--73-app-surface-hover);
+}
+
+.payment-option.active {
+  background: var(--73-surface-strong);
+  border-color: var(--73-ink-placeholder);
+  color: var(--73-ink);
+  box-shadow: 0 5px 12px color-mix(in srgb, var(--73-ink-soft) 10%, transparent);
+}
+
+.payment-option.active.payment-option--alipay {
+  background: var(--73-accent-soft);
+  border-color: var(--73-accent);
+  color: var(--73-accent);
+  box-shadow: 0 5px 12px color-mix(in srgb, var(--73-accent) 14%, transparent);
+}
+
+.payment-option.active.payment-option--wechat {
+  background: var(--73-surface-strong);
+  border-color: var(--73-success);
+  color: var(--73-success);
+  box-shadow: 0 5px 12px color-mix(in srgb, var(--73-success) 14%, transparent);
+}
+
+.payment-option.active.payment-option--union {
+  background: var(--73-accent-soft);
+  border-color: var(--73-accent);
+  color: var(--73-accent);
+  box-shadow: 0 5px 12px color-mix(in srgb, var(--73-accent) 14%, transparent);
+}
+
+.payment-option-icon {
+  width: 18px;
+  height: 18px;
+  border-radius: 4px;
+  object-fit: cover;
+  display: block;
+}
+
+.payment-option-icon--union {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--73-accent);
+  color: var(--73-surface-strong);
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.payment-row {
+  margin-bottom: 12px;
+}
+
+/* --- 评分与评论 --- */
+.rating-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin-top: 8px;
+}
+
+.comment-modal .rating-row {
+  gap: 4px;
+  margin-top: 0;
+}
+
+.rating-star {
+  appearance: none;
+  width: 36px;
+  height: 36px;
+  border: 1px solid color-mix(in srgb, var(--73-surface-strong) 14%, transparent);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--73-surface-strong) 4%, transparent);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: color-mix(in srgb, var(--73-surface-strong) 22%, transparent);
+  font-size: 20px;
+  transition:
+    background-color 180ms ease,
+    border-color 180ms ease,
+    transform 180ms ease;
+}
+
+.comment-modal .rating-star {
+  width: 28px;
+  height: 28px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: var(--73-ink-disabled);
+  font-size: 24px;
+  line-height: 1;
+  box-shadow: none;
+}
+
+.rating-star.full {
+  color: var(--73-warning);
+}
+
+.comment-modal .rating-star.full {
+  color: var(--73-warning);
+}
+
+.rating-star.half {
+  color: transparent;
+  background: var(--73-app-grad-warning-07);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.comment-modal .rating-star.half {
+  background: var(--73-app-grad-warning-06);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.rating-star:hover {
+  background: color-mix(in srgb, var(--73-success) 12%, transparent);
+  border-color: color-mix(in srgb, var(--73-success) 60%, transparent);
+  transform: translateY(-1px);
+}
+
+/* 半星是用渐变背景绘制出的字符（background-clip: text + 文字填充透明），
+   hover 时必须保留渐变背景，否则星形会「消失」 */
+.rating-star.half:hover {
+  background: var(--73-app-grad-warning-07);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.comment-modal .rating-star:hover {
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  transform: none;
+  color: var(--73-warning);
+}
+
+.comment-modal .rating-star.full:hover {
+  color: var(--73-app-warning-strong);
+}
+
+.comment-modal .rating-star.half:hover {
+  background: var(--73-app-grad-warning-06);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.rating-value {
+  color: var(--text-sub);
+  font-size: 13px;
+}
+
+.comment-input {
+  width: 100%;
+  min-height: 120px;
+  margin-top: 8px;
+  border: 1px solid color-mix(in srgb, var(--73-surface-strong) 18%, transparent);
+  border-radius: 12px;
+  padding: 12px 14px;
+  background: color-mix(in srgb, var(--73-surface-strong) 4%, transparent);
+  color: var(--text-main);
+  resize: vertical;
+  outline: none;
+}
+
+.comment-modal .comment-input {
+  min-height: 96px;
+  margin-top: 0;
+  border-color: color-mix(in srgb, var(--73-ink-disabled) 95%, transparent);
+  background: var(--73-surface-strong);
+  color: var(--73-ink);
+  font-size: 14px;
+  line-height: 1.6;
+  box-shadow: none;
+  resize: vertical;
+}
+
+.comment-modal .comment-input::placeholder {
+  color: var(--73-ink-placeholder);
+}
+
+.comment-input:focus {
+  border-color: color-mix(in srgb, var(--73-success) 72%, transparent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--73-success) 16%, transparent);
+}
+
+.comment-modal .comment-input:focus {
+  border-color: color-mix(in srgb, var(--73-accent) 68%, transparent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--73-accent) 12%, transparent);
+}

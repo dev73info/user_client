@@ -24,7 +24,7 @@ defineProps<{
 
 <style scoped>
 .requirement-hall-detail__rich {
-  color: #334155;
+  color: var(--73-ink-soft);
   font-weight: 500;
   line-height: 1.75;
   overflow-wrap: anywhere;
@@ -36,7 +36,7 @@ defineProps<{
 
 .requirement-hall-detail__rich :deep(strong),
 .requirement-hall-detail__rich :deep(b) {
-  color: #1e293b;
+  color: var(--73-ink);
   font-weight: 700;
 }
 
@@ -53,7 +53,7 @@ defineProps<{
 }
 
 .requirement-hall-detail__rich :deep(a) {
-  color: #2563eb;
+  color: var(--73-accent);
   font-weight: 600;
 }
 
@@ -61,8 +61,8 @@ defineProps<{
   overflow-x: auto;
   padding: 14px 16px;
   border-radius: 14px;
-  background: #0f172a;
-  color: #e2e8f0;
+  background: var(--73-ink);
+  color: var(--73-border);
 }
 
 .requirement-hall-detail__rich :deep(.rich-editor-media) {
@@ -78,10 +78,10 @@ defineProps<{
   max-width: 100%;
   margin: 8px 0;
   padding: 8px 12px;
-  border: 1px solid rgba(191, 219, 254, 0.96);
+  border: 1px solid color-mix(in srgb, var(--73-accent-soft) 96%, transparent);
   border-radius: 10px;
-  background: rgba(239, 246, 255, 0.9);
-  color: #1d4ed8;
+  background: color-mix(in srgb, var(--73-accent-soft) 90%, transparent);
+  color: var(--73-accent);
   font-weight: 800;
   text-decoration: none;
 }

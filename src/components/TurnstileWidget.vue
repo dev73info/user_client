@@ -128,7 +128,7 @@ defineExpose({ reset })
   align-items: center;
   gap: 0.5rem;
   margin: 0;
-  color: #d64545;
+  color: var(--73-danger);
   font-size: 0.85rem;
 }
 

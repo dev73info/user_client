@@ -238,6 +238,6 @@ onMounted(async () => {
 .realname-form__head h3 {
   margin: 0;
   font-size: 18px;
-  color: #0f172a;
+  color: var(--73-ink);
 }
 </style>

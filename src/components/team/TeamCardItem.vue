@@ -65,7 +65,7 @@ const emit = defineEmits<{
 </template>
 
 <style scoped>
-/* 本页原先自带一套视觉（渐变主按钮、22px 圆角、手写弹窗与 #e5e7eb 描边），
+/* 本页原先自带一套视觉（渐变主按钮、22px 圆角、手写弹窗与 var(--73-border) 描边），
    与开发者工作台其余菜单页不是一个体系。现在改为统一层：顶部信息条 .dev-meta-strip、
    卡片头 .dev-card-head、列表项 .dev-stack-item、按钮 .dev-btn*、弹窗 TDialog。
    这里只保留本页特有的排版。 */

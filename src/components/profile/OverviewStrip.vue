@@ -76,6 +76,6 @@ const emit = defineEmits<{ refresh: [] }>()
 }
 
 .overview-strip a.wb-strip__item:hover .wb-strip__value {
-  color: #1d4ed8;
+  color: var(--73-accent);
 }
 </style>

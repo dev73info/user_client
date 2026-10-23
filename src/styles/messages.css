@@ -17,7 +17,7 @@
    这一页两侧共用同一个提示条，因此颜色取的是**两侧都定义**的令牌：
    --dev-* 与 --wb-* 挂在 :root 上，而 --profile-* 只挂在 .profile-page 内，
    开发者工作台那一支的根元素是 .dev-page，读不到 --profile-*，
-   原来靠 var(--profile-warning-soft, rgba(...)) 兜底——兜底值本身就是裸 rgba，
+   原来靠 var(--profile-warning-soft, var(--73-danger)) 兜底——兜底值本身就是裸 rgba，
    等于同一块提示条在两侧落成两支金色。统一改挂 --dev-gold，两侧同一支色。 */
 .messages-disclosure-panel {
   display: grid;
@@ -108,14 +108,14 @@
   }
 
   .messages-page > .wb-strip .wb-strip__label {
-    color: #94a3b8;
+    color: var(--73-ink-placeholder);
     font-size: 11px;
     font-weight: 500;
     white-space: nowrap;
   }
 
   .messages-page > .wb-strip .wb-strip__value {
-    color: #0f172a;
+    color: var(--73-ink);
     font-size: 15px;
     font-weight: 700;
   }
@@ -152,8 +152,8 @@
   min-width: 20px;
   padding: 0 6px;
   border-radius: 999px;
-  background: #e5484d;
-  color: #ffffff;
+  background: var(--73-danger);
+  color: var(--73-surface-strong);
   font-size: 11px;
   font-style: normal;
   font-weight: 700;

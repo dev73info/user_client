@@ -1,0 +1,134 @@
+@media (max-width: 900px) {
+  .dev-upload-layout,
+  .dev-upload-grid--two {
+    grid-template-columns: 1fr;
+  }
+
+  /* 窄屏回落：标签组不再按内容宽并排，改为每组占满一行（控件满宽、触摸目标够大） */
+  .dev-page--publish .dev-tag-group-row {
+    width: 100%;
+  }
+
+  /* 统一顶部信息条：窄屏改两列网格，标签与数值不再被挤到一行里断开 */
+  .dev-meta-strip {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: center;
+    gap: 12px 16px;
+  }
+
+  .dev-meta-strip__divider {
+    display: none;
+  }
+
+  .dev-meta-strip__item.dev-meta-strip__action {
+    margin-left: 0;
+  }
+
+  /* 统一工具栏：搜索独占一行（order: -1），筛选与操作换到下一行 */
+  .dev-toolbar {
+    align-items: stretch;
+  }
+
+  .dev-toolbar__search,
+  .dev-toolbar--stacked .dev-toolbar__search {
+    flex: 1 1 100%;
+    max-width: none;
+    order: -1;
+  }
+
+  .dev-toolbar__field {
+    flex: 1 1 132px;
+  }
+
+  .dev-toolbar__actions {
+    margin-left: 0;
+    flex-wrap: wrap;
+  }
+
+  /* 统一卡片头：标题与右侧操作同一行；摆不下时操作整组折到下一行、靠右，不撑出容器 */
+  .dev-card-head {
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px 12px;
+  }
+
+  .dev-card-head__title-block {
+    flex: 1 1 auto;
+  }
+
+  .dev-card-head__actions {
+    flex: 0 1 auto;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    max-width: 100%;
+    margin-left: auto;
+  }
+
+  .dev-upload-actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .dev-page--publish .dev-icon-upload:not(.dev-icon-upload--square) {
+    grid-template-columns: 1fr;
+    align-items: stretch;
+  }
+
+  /* 创建资源 / 编辑资源主页的表单：窄屏回落成单列，每个字段满宽
+     （宽档不再并排，成对的「售价（元）/ 售价（积分）」也摊开成一列）。
+     行距跟着宽屏的 gap 走（表单项自带的下边距在宽屏那边已归零，
+     这里只留 gap，10px 会显得挤）。 */
+  .dev-page--publish .dev-upload-form .dev-upload-grid--form {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 18px;
+  }
+
+  .dev-page--publish .dev-upload-form .dev-price-group {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 18px;
+  }
+
+  .dev-page--publish .dev-upload-block--split > .dev-card-head {
+    flex-direction: row;
+    align-items: center;
+  }
+
+  .dev-page--publish .dev-upload-actions--split {
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    min-height: 0;
+    margin-top: 10px;
+    padding: 10px 12px;
+  }
+
+  .dev-page--publish .dev-submit-summary {
+    flex: 1 1 120px;
+  }
+
+  .dev-page--publish .dev-upload-actions__buttons {
+    flex: 1 1 300px;
+    min-width: 0;
+    justify-content: flex-end;
+    gap: 8px;
+  }
+
+  .dev-page--publish .dev-icon-upload__preview {
+    width: 56px;
+    height: 56px;
+  }
+
+  .dev-surface-card--sticky {
+    position: static;
+  }
+
+  .dev-tag-group-panel {
+    max-height: none;
+    overflow: visible;
+    padding-right: 0;
+  }
+}

@@ -28,8 +28,8 @@ const isContractSigned = computed(
     isSelfManaged.value ||
     Boolean(
       props.contractStatus?.has_contract &&
-        props.contractStatus.party_a_signed &&
-        props.contractStatus.party_b_signed,
+      props.contractStatus.party_a_signed &&
+      props.contractStatus.party_b_signed,
     ),
 )
 
@@ -181,17 +181,27 @@ function isStepCurrent(step: Step): boolean {
   <!-- 进度条只画步骤：需求和需求编号由外层需求卡片自己展示，这里再重复一遍纯属占地方。 -->
   <div class="req-progress">
     <ol class="req-progress__steps">
-      <li v-for="(step, index) in steps" :key="step.key" class="req-progress__step"
+      <li
+        v-for="(step, index) in steps"
+        :key="step.key"
+        class="req-progress__step"
         :class="{
           'is-done': isStepDone(step),
           'is-current': isStepCurrent(step),
-        }">
-        <span class="req-progress__dot" aria-hidden="true">{{ isStepDone(step) ? '✓' : index + 1 }}</span>
+        }"
+      >
+        <span class="req-progress__dot" aria-hidden="true">{{
+          isStepDone(step) ? '✓' : index + 1
+        }}</span>
         <div class="req-progress__copy">
           <span class="req-progress__step-title">{{ step.title }}</span>
           <span class="req-progress__step-desc">{{ step.desc }}</span>
         </div>
-        <span v-if="index < steps.length - 1" class="req-progress__connector" aria-hidden="true"></span>
+        <span
+          v-if="index < steps.length - 1"
+          class="req-progress__connector"
+          aria-hidden="true"
+        ></span>
       </li>
     </ol>
   </div>
@@ -200,9 +210,9 @@ function isStepCurrent(step: Step): boolean {
 <style scoped>
 .req-progress {
   padding: 14px 16px;
-  border: 1px solid rgba(148, 163, 184, 0.24);
+  border: 1px solid color-mix(in srgb, var(--73-ink-placeholder) 24%, transparent);
   border-radius: 14px;
-  background: rgba(255, 255, 255, 0.72);
+  background: color-mix(in srgb, var(--73-surface-strong) 72%, transparent);
 }
 
 .req-progress__steps {
@@ -242,14 +252,14 @@ function isStepCurrent(step: Step): boolean {
 
 .req-progress__step.is-done .req-progress__dot {
   background: var(--dev-cyan);
-  color: #fff;
+  color: var(--73-surface-strong);
 }
 
 .req-progress__step.is-current .req-progress__dot {
-  background: #fff;
+  background: var(--73-surface-strong);
   color: var(--dev-cyan);
   border-color: var(--dev-cyan);
-  box-shadow: 0 0 0 4px rgba(42, 166, 164, 0.14);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--73-success) 14%, transparent);
 }
 
 .req-progress__copy {

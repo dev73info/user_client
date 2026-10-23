@@ -172,42 +172,42 @@ const {
 .portal-search-page,
 .portal-search-detail-wrap {
   /* 文字与描边 */
-  --sr-ink: #0f172a;
-  --sr-ink-soft: #334155;
-  --sr-ink-muted: #475569;
-  --sr-text-muted: #64748b;
-  --sr-brand: #2563eb;
-  --sr-brand-strong: #1d4ed8;
-  --sr-on-brand: #fff;
-  --sr-surface: #fff;
-  --sr-brand-line: rgba(37, 99, 235, 0.34);
-  --sr-brand-line-strong: rgba(29, 78, 216, 0.42);
-  --sr-detail-line: rgba(203, 213, 225, 0.82);
-  --sr-close-line: rgba(203, 213, 225, 0.86);
-  --sr-divider: rgba(226, 232, 240, 0.84);
-  --sr-divider-soft: rgba(226, 232, 240, 0.76);
+  --sr-ink: var(--73-ink);
+  --sr-ink-soft: var(--73-ink-soft);
+  --sr-ink-muted: var(--73-ink-soft);
+  --sr-text-muted: var(--73-ink-muted);
+  --sr-brand: var(--73-accent);
+  --sr-brand-strong: var(--73-accent);
+  --sr-on-brand: var(--73-surface-strong);
+  --sr-surface: var(--73-surface-strong);
+  --sr-brand-line: color-mix(in srgb, var(--73-accent) 34%, transparent);
+  --sr-brand-line-strong: color-mix(in srgb, var(--73-accent) 42%, transparent);
+  --sr-detail-line: color-mix(in srgb, var(--73-ink-disabled) 82%, transparent);
+  --sr-close-line: color-mix(in srgb, var(--73-ink-disabled) 86%, transparent);
+  --sr-divider: color-mix(in srgb, var(--73-border) 84%, transparent);
+  --sr-divider-soft: color-mix(in srgb, var(--73-border) 76%, transparent);
   /* 卡片：封面渐变、标签胶囊、悬停与「查看需求」入口 */
-  --sr-cover-from: #dbeafe;
-  --sr-cover-to: #eff6ff;
-  --sr-chip-bg: rgba(248, 250, 252, 0.96);
-  --sr-chip-line: rgba(226, 232, 240, 0.92);
-  --sr-card-hover-line: rgba(96, 165, 250, 0.84);
-  --sr-card-hover-shadow: rgba(37, 99, 235, 0.12);
-  --sr-action-bg: rgba(219, 234, 254, 0.86);
-  --sr-action-line: rgba(147, 197, 253, 0.72);
-  --sr-action-hover-shadow: rgba(37, 99, 235, 0.18);
+  --sr-cover-from: var(--73-accent-soft);
+  --sr-cover-to: var(--73-accent-soft);
+  --sr-chip-bg: color-mix(in srgb, var(--73-surface-strong) 96%, transparent);
+  --sr-chip-line: color-mix(in srgb, var(--73-border) 92%, transparent);
+  --sr-card-hover-line: color-mix(in srgb, var(--73-accent) 84%, transparent);
+  --sr-card-hover-shadow: color-mix(in srgb, var(--73-accent) 12%, transparent);
+  --sr-action-bg: color-mix(in srgb, var(--73-accent-soft) 86%, transparent);
+  --sr-action-line: color-mix(in srgb, var(--73-accent) 72%, transparent);
+  --sr-action-hover-shadow: color-mix(in srgb, var(--73-accent) 18%, transparent);
   /* 弹窗：底、抬头、评审面板与接取按钮 */
-  --sr-head-bg: rgba(255, 255, 255, 0.96);
-  --sr-panel-line: rgba(17, 24, 39, 0.08);
-  --sr-panel-from: rgba(248, 250, 252, 0.96);
-  --sr-panel-to: rgba(241, 245, 249, 0.92);
-  --sr-value-bg: rgba(255, 255, 255, 0.9);
-  --sr-value-line: rgba(148, 163, 184, 0.12);
-  --sr-actions-bg: rgba(248, 250, 252, 0.62);
-  --sr-detail-shadow: rgba(15, 23, 42, 0.22);
-  --sr-bind-shadow: rgba(37, 99, 235, 0.16);
-  --sr-bind-hover-shadow: rgba(37, 99, 235, 0.22);
-  --sr-scrim: rgba(15, 23, 42, 0.28);
+  --sr-head-bg: color-mix(in srgb, var(--73-surface-strong) 96%, transparent);
+  --sr-panel-line: color-mix(in srgb, var(--73-ink) 8%, transparent);
+  --sr-panel-from: color-mix(in srgb, var(--73-surface-strong) 96%, transparent);
+  --sr-panel-to: color-mix(in srgb, var(--73-surface-strong) 92%, transparent);
+  --sr-value-bg: color-mix(in srgb, var(--73-surface-strong) 90%, transparent);
+  --sr-value-line: color-mix(in srgb, var(--73-ink-placeholder) 12%, transparent);
+  --sr-actions-bg: color-mix(in srgb, var(--73-surface-strong) 62%, transparent);
+  --sr-detail-shadow: color-mix(in srgb, var(--73-ink) 22%, transparent);
+  --sr-bind-shadow: color-mix(in srgb, var(--73-accent) 16%, transparent);
+  --sr-bind-hover-shadow: color-mix(in srgb, var(--73-accent) 22%, transparent);
+  --sr-scrim: color-mix(in srgb, var(--73-ink) 28%, transparent);
 }
 
 /* 遮罩留在视图：弹窗被 `Teleport` 到 body，遮罩是它唯一的定位上下文。 */

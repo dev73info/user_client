@@ -1,0 +1,214 @@
+/* 预览摘要卡片：与主页「免费资源」spotlight 卡片保持一致的样式 */
+.dev-page--publish .dev-preview-card {
+  overflow: hidden;
+  gap: 0;
+  padding: 0;
+  border: 1px solid color-mix(in srgb, var(--73-accent-soft) 88%, transparent);
+  border-radius: 18px;
+  background: color-mix(in srgb, var(--73-surface-strong) 98%, transparent);
+  box-shadow: 0 16px 34px color-mix(in srgb, var(--73-accent) 10%, transparent);
+  transition:
+    border-color 140ms ease,
+    transform 140ms ease,
+    box-shadow 140ms ease;
+}
+
+.dev-page--publish .dev-preview-card:hover {
+  border-color: color-mix(in srgb, var(--73-accent) 88%, transparent);
+  transform: translateY(-2px);
+  box-shadow: 0 28px 56px color-mix(in srgb, var(--73-accent) 18%, transparent);
+}
+
+.dev-page--publish .dev-preview-card__cover {
+  position: relative;
+  aspect-ratio: var(--dev-resource-aspect-ratio);
+  overflow: hidden;
+  background: var(--73-app-grad-cover-03);
+}
+
+.dev-page--publish .dev-preview-card__cover-img {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.dev-page--publish .dev-preview-card__cover-text {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 52px;
+  font-weight: 700;
+  color: color-mix(in srgb, var(--73-surface-strong) 22%, transparent);
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.dev-page--publish .dev-preview-card__cover-img ~ .dev-preview-card__screen {
+  display: none;
+}
+
+.dev-page--publish .dev-preview-card__badge {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  padding: 5px 10px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--73-surface-strong) 16%, transparent);
+  border: 1px solid color-mix(in srgb, var(--73-surface-strong) 22%, transparent);
+  color: var(--73-surface-strong);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0;
+  backdrop-filter: blur(8px);
+}
+
+.dev-page--publish .dev-preview-card__screen {
+  position: absolute;
+  border-radius: 14px;
+  border: 1px solid color-mix(in srgb, var(--73-surface-strong) 18%, transparent);
+  background: var(--73-app-grad-soft-35);
+  box-shadow: 0 16px 28px color-mix(in srgb, var(--73-accent) 20%, transparent);
+}
+
+.dev-page--publish .dev-preview-card__screen::before {
+  content: '';
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  right: 10px;
+  height: 10px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--73-surface-strong) 18%, transparent);
+}
+
+.dev-page--publish .dev-preview-card__screen--primary {
+  top: 28px;
+  left: 26px;
+  width: 112px;
+  height: 66px;
+  transform: rotate(-5deg);
+}
+
+.dev-page--publish .dev-preview-card__screen--secondary {
+  top: 18px;
+  right: 24px;
+  width: 104px;
+  height: 58px;
+  transform: rotate(4deg);
+}
+
+.dev-page--publish .dev-preview-card__screen--tertiary {
+  right: 58px;
+  bottom: 10px;
+  width: 128px;
+  height: 38px;
+  border-radius: 12px;
+}
+
+.dev-page--publish .dev-preview-card__body {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-height: 176px;
+  padding: 16px 16px 18px;
+}
+
+.dev-page--publish .dev-preview-card__body h3 {
+  display: -webkit-box;
+  margin: 0;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  color: var(--dev-ink);
+  font-size: 18px;
+  font-weight: 800;
+  line-height: 1.35;
+}
+
+.dev-page--publish .dev-preview-card__body p {
+  display: -webkit-box;
+  margin: 0;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  color: var(--dev-muted);
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.dev-page--publish .dev-preview-card__meta-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: auto;
+}
+
+.dev-page--publish .dev-preview-card__meta-row strong {
+  display: inline-flex;
+  align-items: center;
+  min-width: 0;
+  max-width: 62%;
+  min-height: 30px;
+  padding: 5px 11px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--73-surface-strong) 96%, transparent);
+  color: var(--dev-ink-soft);
+  font-size: 13px;
+  font-weight: 800;
+  line-height: 1.2;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dev-page--publish .dev-preview-card__status {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  min-height: 30px;
+  padding: 5px 12px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--73-accent) 8%, transparent);
+  color: var(--dev-blue);
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.dev-page--publish .dev-preview-card__footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 10px;
+  margin-top: auto;
+  padding-top: 10px;
+  border-top: 1px solid var(--dev-line);
+}
+
+.dev-page--publish .dev-preview-card__footer span {
+  color: var(--dev-muted);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.dev-page--publish .dev-preview-card__footer .dev-preview-card__time {
+  margin-left: auto;
+}
+
+.dev-page--publish .dev-preview-card__body .dev-resource-card__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}

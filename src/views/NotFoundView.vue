@@ -62,16 +62,20 @@ onBeforeUnmount(() => {
         <button type="button" class="not-found-btn not-found-btn--primary" @click="goHome">
           回到首页
         </button>
-        <button type="button" class="not-found-btn" @click="goRequirementHall">
-          去需求大厅
-        </button>
-        <button v-if="canGoBack" type="button" class="not-found-btn not-found-btn--ghost" @click="goBack">
+        <button type="button" class="not-found-btn" @click="goRequirementHall">去需求大厅</button>
+        <button
+          v-if="canGoBack"
+          type="button"
+          class="not-found-btn not-found-btn--ghost"
+          @click="goBack"
+        >
           返回上一页
         </button>
       </div>
 
       <p class="not-found-hint">
-        如果是从站内链接点进来的，欢迎到<router-link to="/tickets">工单中心</router-link>说一声，我们好把它修掉。
+        如果是从站内链接点进来的，欢迎到<router-link to="/tickets">工单中心</router-link
+        >说一声，我们好把它修掉。
       </p>
     </section>
   </main>
@@ -94,9 +98,9 @@ onBeforeUnmount(() => {
   padding: 44px 40px 40px;
   text-align: center;
   border-radius: 20px;
-  background: rgba(255, 255, 255, 0.96);
-  border: 1px solid rgba(219, 229, 247, 0.9);
-  box-shadow: 0 18px 44px rgba(148, 163, 184, 0.14);
+  background: color-mix(in srgb, var(--73-surface-strong) 96%, transparent);
+  border: 1px solid color-mix(in srgb, var(--73-accent-soft) 90%, transparent);
+  box-shadow: 0 18px 44px color-mix(in srgb, var(--73-ink-placeholder) 14%, transparent);
 }
 
 .not-found-code {
@@ -105,7 +109,7 @@ onBeforeUnmount(() => {
   font-weight: 900;
   line-height: 1;
   letter-spacing: -0.03em;
-  background: linear-gradient(135deg, #0b1f3a, #2563eb 60%, #60a5fa);
+  background: var(--73-app-grad-cover-06);
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
@@ -116,7 +120,7 @@ onBeforeUnmount(() => {
   font-size: 24px;
   font-weight: 800;
   letter-spacing: -0.01em;
-  color: #0f172a;
+  color: var(--73-ink);
 }
 
 .not-found-desc {
@@ -124,7 +128,7 @@ onBeforeUnmount(() => {
   max-width: 460px;
   font-size: 14.5px;
   line-height: 1.9;
-  color: #64748b;
+  color: var(--73-ink-muted);
 }
 
 .not-found-path {
@@ -136,15 +140,15 @@ onBeforeUnmount(() => {
   max-width: 520px;
   padding: 12px 16px;
   border-radius: 12px;
-  background: #f8fbff;
-  border: 1px solid rgba(191, 219, 254, 0.7);
+  background: var(--73-accent-soft);
+  border: 1px solid color-mix(in srgb, var(--73-accent-soft) 70%, transparent);
 }
 
 .not-found-path__label {
   font-size: 12px;
   font-weight: 700;
   letter-spacing: 0.04em;
-  color: #94a3b8;
+  color: var(--73-ink-placeholder);
 }
 
 .not-found-path__value {
@@ -152,7 +156,7 @@ onBeforeUnmount(() => {
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   font-size: 13px;
   line-height: 1.6;
-  color: #1e3a5f;
+  color: var(--73-accent);
   overflow-wrap: anywhere;
 }
 
@@ -170,38 +174,41 @@ onBeforeUnmount(() => {
   font-size: 14.5px;
   font-weight: 700;
   cursor: pointer;
-  color: #1e3a5f;
-  background: #eef4ff;
-  border: 1px solid rgba(191, 219, 254, 0.9);
-  transition: transform 160ms ease, box-shadow 160ms ease, background-color 160ms ease;
+  color: var(--73-accent);
+  background: var(--73-accent-soft);
+  border: 1px solid color-mix(in srgb, var(--73-accent-soft) 90%, transparent);
+  transition:
+    transform 160ms ease,
+    box-shadow 160ms ease,
+    background-color 160ms ease;
 }
 
 .not-found-btn:hover {
   transform: translateY(-2px);
-  box-shadow: 0 12px 28px rgba(37, 99, 235, 0.14);
+  box-shadow: 0 12px 28px color-mix(in srgb, var(--73-accent) 14%, transparent);
 }
 
 .not-found-btn--primary {
-  color: #fff;
-  background: linear-gradient(135deg, #1d4ed8, #3b82f6);
+  color: var(--73-surface-strong);
+  background: var(--73-app-grad-accent-04);
   border-color: transparent;
 }
 
 .not-found-btn--ghost {
-  color: #64748b;
+  color: var(--73-ink-muted);
   background: transparent;
-  border-color: rgba(203, 213, 225, 0.9);
+  border-color: color-mix(in srgb, var(--73-ink-disabled) 90%, transparent);
 }
 
 .not-found-hint {
   margin: 26px 0 0;
   font-size: 13px;
   line-height: 1.8;
-  color: #94a3b8;
+  color: var(--73-ink-placeholder);
 }
 
 .not-found-hint a {
-  color: #2563eb;
+  color: var(--73-accent);
   font-weight: 600;
   text-decoration: none;
 }

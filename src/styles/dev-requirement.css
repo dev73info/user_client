@@ -43,7 +43,7 @@
   margin-bottom: 16px;
   border: 1px solid var(--dev-line);
   border-radius: 20px;
-  background: linear-gradient(180deg, rgba(248, 250, 252, 0.96), rgba(241, 245, 249, 0.92));
+  background: var(--73-app-grad-soft-17);
 }
 
 .dev-requirement-hall__review-grid {
@@ -68,11 +68,11 @@
 .dev-requirement-hall__review-value {
   padding: 12px 14px;
   border-radius: 14px;
-  background: rgba(255, 255, 255, 0.88);
+  background: color-mix(in srgb, var(--73-surface-strong) 88%, transparent);
   color: var(--dev-ink);
   font-weight: 600;
   line-height: 1.7;
-  box-shadow: inset 0 0 0 1px rgba(148, 163, 184, 0.12);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--73-ink-placeholder) 12%, transparent);
 }
 
 .dev-requirement-hall__review-value--multiline {
@@ -85,8 +85,8 @@
   padding: 16px;
   margin-bottom: 14px;
   border-radius: 18px;
-  border: 1px solid rgba(185, 129, 43, 0.26);
-  background: linear-gradient(180deg, rgba(255, 251, 235, 0.96), rgba(248, 242, 234, 0.86));
+  border: 1px solid color-mix(in srgb, var(--73-warning) 26%, transparent);
+  background: var(--73-app-grad-soft-31);
 }
 
 .dev-requirement-hall__confirm-head {
@@ -135,7 +135,7 @@
 .dev-requirement-hall__mode-button {
   appearance: none;
   border: 1px solid var(--dev-line);
-  background: rgba(255, 255, 255, 0.82);
+  background: color-mix(in srgb, var(--73-surface-strong) 82%, transparent);
   color: var(--dev-ink);
   border-radius: 16px;
   padding: 12px 14px;
@@ -152,14 +152,14 @@
 
 .dev-requirement-hall__mode-button:hover {
   transform: translateY(-1px);
-  border-color: rgba(31, 74, 209, 0.18);
+  border-color: color-mix(in srgb, var(--73-accent) 18%, transparent);
 }
 
 .dev-requirement-hall__mode-button.is-active {
-  border-color: rgba(31, 74, 209, 0.26);
-  background: linear-gradient(135deg, rgba(31, 74, 209, 0.1), rgba(42, 166, 164, 0.1));
+  border-color: color-mix(in srgb, var(--73-accent) 26%, transparent);
+  background: var(--73-app-grad-soft-30);
   color: var(--dev-blue);
-  box-shadow: 0 10px 20px rgba(31, 74, 209, 0.08);
+  box-shadow: 0 10px 20px color-mix(in srgb, var(--73-accent) 8%, transparent);
 }
 
 .dev-requirement-hall__init-panel {
@@ -187,8 +187,8 @@
 
 .dev-requirement-hall__catalog-chip {
   appearance: none;
-  border: 1px solid rgba(31, 74, 209, 0.12);
-  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid color-mix(in srgb, var(--73-accent) 12%, transparent);
+  background: color-mix(in srgb, var(--73-surface-strong) 90%, transparent);
   color: var(--dev-ink-soft);
   border-radius: 999px;
   padding: 8px 14px;
@@ -199,10 +199,10 @@
 }
 
 .dev-requirement-hall__catalog-chip.is-active {
-  border-color: rgba(31, 74, 209, 0.28);
-  background: linear-gradient(180deg, rgba(31, 74, 209, 0.1), rgba(42, 166, 164, 0.1));
+  border-color: color-mix(in srgb, var(--73-accent) 28%, transparent);
+  background: var(--73-app-grad-soft-29);
   color: var(--dev-blue);
-  box-shadow: 0 8px 18px rgba(31, 74, 209, 0.12);
+  box-shadow: 0 8px 18px color-mix(in srgb, var(--73-accent) 12%, transparent);
 }
 
 .dev-requirement-hall__catalog-chip--secondary {
@@ -223,7 +223,7 @@
   padding: 12px;
   border-radius: 12px;
   border: 1px solid var(--dev-line);
-  background: rgba(255, 255, 255, 0.6);
+  background: color-mix(in srgb, var(--73-surface-strong) 60%, transparent);
   overflow: visible;
 }
 
@@ -260,7 +260,7 @@
   min-width: 34px;
   padding: 3px 7px;
   border-radius: 999px;
-  background: rgba(148, 163, 184, 0.16);
+  background: color-mix(in srgb, var(--73-ink-placeholder) 16%, transparent);
   font-size: 11px;
   font-weight: 700;
   color: var(--dev-muted);
@@ -278,4 +278,3 @@
     grid-template-columns: 1fr;
   }
 }
-

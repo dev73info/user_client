@@ -1,0 +1,194 @@
+/* 表单排布：**每项宽度由自己的内容决定**（flex 基准宽度就是实测的内容宽），
+   行内依次排满、放不下才换行（flex-wrap）。不再等分四档——等分时每格一样宽，于是
+   「80px 的图标按钮占着 228px 的格子」「售价输入框被拉成 473px」
+   「类型 / 版权只渲染出一个字段时右半边整块空着」，字段之间的留白比字段本身还宽。
+
+   行尾余量只交给**内容本身就是流动的**那两档（长文本框、推广分成拖动条）：它们宽一点更好用，
+   也不会像等分档那样把旁边的短控件一起拉宽。开关、标签这类内容固定的字段不伸缩。
+
+   行距列距都取 gap 这一个来源：表单项自带 18px 下边距（ui_73info 的 .t73-form-item），
+   与 gap 叠起来会让行距变成列距的两倍（列 18px、行 36px）——一行里的字段看着挤，
+   上下两行又隔得远，疏密不一致。
+
+   每一档的基准宽度都是实测出来的（13px 字体下的正文宽 + 控件内边距与描边约 25px）：
+   - 图标文件：控件是 80px 的图标按钮，格子就取 80px；
+   - 资源标题：占位文案「例如：Better Combat Reloaded」实测 187.1px → 控件 212.4px，取 320px 起；
+   - 归属 / 类型 / 售价（元）/ 售价（积分）/ 原作者：下拉与短输入框，最长的一条占位文案
+     「0 表示不走积分购」101.1px → 控件 126.4px，取 160px 留一点余量即可。
+     不把这三格拉到铺满整行：控件本身内容很短，拉宽后行内大片空白更显松散，
+     行尾留白反而让「类型 + 两档售价」这一排更紧凑；
+   - 所属团队 / 来源站点：最长占位文案「例如：苦力怕论坛、CurseForge」185.2px → 控件 210.4px，取 210px；
+   - 版权：勾选文案「我确认拥有该资源版权，或已获得合法授权可售卖」286px + 勾选框 16px + 间距 8px
+     = 310px，取 310px 正好一行放下，不折行；
+   - 购买限制：一个开关加文案约 130px，取 200px 且不伸缩——补满整行会变成左边一个开关、
+     右边一大片空白；
+   - 原始出处链接 / 转载说明：占位文案 188.7px / 182px → 控件 214.4px / 207.4px，取 320px 起；
+   - 接口资源的「允许的来源地址」：多行清单，走长文本框档（可伸缩），起高给 5 行——
+     通栏会让它变成一条 900px 宽、2 行高的浅条（TInput 的 autosize 默认只给 2 行）；
+     同行的「购买限制」按内容取宽，正好把这一行排满，不留半行空白；
+   - 推广分成：拖动条取 280px 起。
+
+   ≤900px 走 dev-responsive.css 的单列回落，那里控件照旧满宽。 */
+.dev-page--publish .dev-upload-grid--form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 18px;
+}
+
+/* 行距只由 gap 给：表单项自带的下边距会和 gap 叠成两倍行距 */
+.dev-page--publish .dev-upload-grid--form .t73-form-item {
+  margin-bottom: 0;
+}
+
+/* 图标格：贴着 80px 的图标按钮，不预留空档 */
+.dev-page--publish .dev-upload-form .dev-form-item--icon {
+  flex: 0 0 80px;
+}
+
+/* 下拉与短输入框：内容只需约 126px，取 160px 保持紧凑，行尾余量留白 */
+.dev-page--publish .dev-upload-form .dev-form-item--short {
+  flex: 0 1 160px;
+}
+
+.dev-page--publish .dev-upload-form .dev-form-item--mid {
+  flex: 0 1 210px;
+}
+
+/* 版权声明：310px 正好一行放下 */
+.dev-page--publish .dev-upload-form .dev-form-item--copyright {
+  flex: 0 1 310px;
+}
+
+/* 长文本框：可伸缩，行尾余量落在输入框里。
+   单行输入框（回调地址、回调密钥）与多行清单（允许的来源地址）共用这一档，
+   多行的那一个另外在模板上给 5 行起高（TInput 的 autosize 默认只给 2 行）。 */
+.dev-page--publish .dev-upload-form .dev-form-item--wide {
+  flex: 1 1 320px;
+}
+
+/* 推广分成：拖动条要够长，也让它跟着补满行尾 */
+.dev-page--publish .dev-upload-form .dev-form-item--promo {
+  flex: 1 1 280px;
+}
+
+/* 开关组（购买限制）：按内容取宽，不伸缩 */
+.dev-page--publish .dev-upload-form .dev-form-item--switch {
+  flex: 0 1 200px;
+}
+
+/* 售价（元）+ 售价（积分）：两项互斥、成对出现，绑成一个整体，换行时不会被拆到两行去；
+   接口资源只走现金价（R028），组里只有「售价（元）」一项，整组随之收窄到一格。
+   组内两项也要写 min-width: 0：输入框有内在最小宽度（约 200px），不写这一条
+   160px 的基准宽度在窄屏压不下去，售价格子会比同档的「归属 / 类型」宽出一截。 */
+.dev-page--publish .dev-upload-form .dev-price-group {
+  display: flex;
+  gap: 18px;
+  align-items: flex-start;
+}
+
+.dev-page--publish .dev-upload-form .dev-price-group > * {
+  flex: 0 1 160px;
+  min-width: 0;
+}
+
+/* 图标上传块走内嵌块那一档圆角（原来是 14px，不在 24/12/10 这三个令牌里） */
+.dev-page--publish .dev-icon-upload {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: var(--dev-control-height);
+  padding: 10px;
+  border: 1px solid var(--dev-line);
+  border-radius: var(--dev-radius-inner);
+  background: color-mix(in srgb, var(--73-accent-soft) 72%, transparent);
+}
+
+/* 表单内的小正方形触发区 */
+.dev-page--publish .dev-icon-upload--square {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  width: min(100%, 80px);
+  height: auto;
+  min-height: 0;
+  aspect-ratio: var(--dev-resource-aspect-ratio);
+  padding: 0;
+  border: 1px dashed color-mix(in srgb, var(--73-accent) 28%, transparent);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--73-accent-soft) 72%, transparent);
+  color: var(--dev-muted);
+  cursor: pointer;
+  transition:
+    border-color 0.18s ease,
+    background 0.18s ease,
+    box-shadow 0.18s ease;
+}
+
+.dev-page--publish .dev-icon-upload--square:hover {
+  border-color: color-mix(in srgb, var(--73-accent) 55%, transparent);
+  background: color-mix(in srgb, var(--73-surface-strong) 96%, transparent);
+  box-shadow: 0 8px 20px color-mix(in srgb, var(--73-accent) 10%, transparent);
+}
+
+.dev-page--publish .dev-icon-upload__square-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 11px;
+}
+
+.dev-page--publish .dev-icon-upload__square-plus {
+  font-size: 16px;
+}
+
+.dev-page--publish .dev-icon-upload__square-text {
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 1;
+}
+
+.dev-icon-upload__native {
+  display: none;
+}
+
+.dev-page--publish .dev-icon-upload__trigger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  appearance: none;
+  border: 1px solid var(--dev-line);
+  background: color-mix(in srgb, var(--73-surface-strong) 88%, transparent);
+  color: var(--dev-ink);
+  border-radius: 12px;
+  padding: 0 14px;
+  height: 40px;
+  white-space: nowrap;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.dev-page--publish .dev-icon-upload__meta {
+  min-width: 0;
+}
+
+.dev-page--publish .dev-icon-upload__name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--dev-ink);
+}
+
+.dev-page--publish .dev-icon-upload__hint {
+  margin-top: 2px;
+  font-size: 11px;
+  line-height: 1.4;
+  color: var(--dev-muted);
+}

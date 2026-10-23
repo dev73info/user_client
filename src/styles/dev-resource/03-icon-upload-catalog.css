@@ -1,0 +1,198 @@
+@media (max-width: 900px) {
+  .dev-page--publish .dev-upload-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .dev-page--publish .dev-upload-side {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 900px) {
+  .dev-page--publish .dev-upload-layout > .dev-upload-combined-card {
+    order: 2;
+  }
+
+  .dev-page--publish .dev-upload-layout > .dev-upload-side {
+    order: 1;
+  }
+
+  .dev-page--publish .dev-upload-side > .dev-surface-card {
+    display: none;
+  }
+}
+
+.dev-page--publish .dev-icon-upload__preview {
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  overflow: hidden;
+  border: 1px solid var(--dev-line);
+  background: color-mix(in srgb, var(--73-surface-strong) 82%, transparent);
+}
+
+.dev-page--publish .dev-icon-upload__image {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.dev-page--publish .dev-tag-panel-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.dev-page--publish .dev-catalog-section {
+  display: grid;
+  gap: 14px;
+  padding: 14px;
+  border-radius: 18px;
+  border: 1px solid var(--dev-line);
+  background: color-mix(in srgb, var(--73-surface-strong) 90%, transparent);
+}
+
+/* 根节点 / 二级节点各一个下拉：宽度与列数交给 .dev-upload-grid--two，
+   下拉本体（高度、圆角、描边、字号）走库的 `--73-*`，这里只排标签与状态回显。 */
+.dev-page--publish .dev-catalog-select {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+}
+
+.dev-page--publish .dev-catalog-select__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.dev-page--publish .dev-catalog-select__label {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--dev-blue);
+}
+
+.dev-page--publish .dev-catalog-select__meta {
+  font-size: 12px;
+  color: var(--dev-muted);
+}
+
+.dev-page--publish .dev-team-select-native {
+  display: grid;
+  gap: 8px;
+  width: 100%;
+}
+
+.dev-page--publish .dev-team-select-native__control {
+  width: 100%;
+}
+
+.dev-team-select-empty {
+  padding: 24px 16px;
+  text-align: center;
+  color: var(--dev-muted);
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.dev-tag-group-panel {
+  min-height: 0;
+  max-height: 332px;
+  overflow-x: hidden;
+  overflow-y: auto;
+  /* 给卡片描边/投影留一点外沿，避免贴边被滚动容器裁切 */
+  padding: 4px 6px 8px 2px;
+}
+
+/* 与需求详情绑定侧栏一致：标题在上、多选满宽，已选芯片全部换行（不用 +N） */
+.dev-page--publish .dev-tag-group-row {
+  display: grid;
+  grid-template-columns: 1fr;
+  align-content: start;
+  align-items: stretch;
+  row-gap: 8px;
+  /* 缩到内容宽：标题与计数贴在一起，下拉框按内容宽；不占满整行 */
+  width: max-content;
+  max-width: 100%;
+  padding: 12px;
+  border: 1px solid color-mix(in srgb, var(--73-accent) 10%, transparent);
+  border-radius: 12px;
+  background: var(--73-app-grad-soft-32);
+  box-shadow: 0 6px 14px color-mix(in srgb, var(--73-accent) 4%, transparent);
+  /* 不可 overflow:hidden：会裁掉 TSelect 底边描边与圆角 */
+  overflow: visible;
+}
+
+.dev-page--publish .dev-tag-group-row:last-child {
+  padding-bottom: 10px;
+  border-bottom: 1px solid color-mix(in srgb, var(--73-accent) 10%, transparent);
+}
+
+.dev-page--publish .dev-tag-group-row__head {
+  grid-column: 1;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+  min-width: 0;
+}
+
+.dev-page--publish .dev-tag-group-row__title {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--dev-ink);
+}
+
+.dev-page--publish .dev-tag-group-row__path {
+  margin: 2px 0 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 10px;
+  line-height: 1.35;
+  color: var(--dev-muted);
+}
+
+.dev-page--publish .dev-tag-group-row__count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 34px;
+  padding: 3px 7px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--73-ink-placeholder) 12%, transparent);
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--dev-muted);
+}
+
+.dev-page--publish .dev-tag-group-row__field {
+  grid-column: 1;
+  margin-bottom: 0;
+  min-width: 0;
+  width: 100%;
+}
+
+.dev-tag-group-panel::-webkit-scrollbar {
+  width: 6px;
+}
+
+.dev-tag-group-panel::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--73-ink-muted) 32%, transparent);
+}
+
+.dev-page--publish .dev-preview-card {
+  gap: 14px;
+  padding: 16px;
+  border-radius: 18px;
+  border: 1px solid color-mix(in srgb, var(--73-accent) 10%, transparent);
+  background: color-mix(in srgb, var(--73-surface-strong) 92%, transparent);
+  box-shadow: 0 12px 24px color-mix(in srgb, var(--73-accent) 6%, transparent);
+}

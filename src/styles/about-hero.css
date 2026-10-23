@@ -4,18 +4,16 @@
   overflow: hidden;
   border-radius: 24px;
   padding: 64px 56px;
-  color: #f8fafc;
-  background: linear-gradient(135deg, #0b1f3a, #123a63 55%, #155e75);
-  box-shadow: 0 26px 64px rgba(15, 37, 71, 0.32);
+  color: var(--73-surface-strong);
+  background: var(--73-app-grad-cover-01);
+  box-shadow: 0 26px 64px color-mix(in srgb, var(--73-accent) 32%, transparent);
   animation: about-hero-in 0.8s ease both;
 }
 
 .about-hero__glow {
   position: absolute;
   inset: 0;
-  background:
-    radial-gradient(600px 260px at 88% -10%, rgba(56, 189, 248, 0.3), transparent 60%),
-    radial-gradient(500px 300px at 0% 115%, rgba(251, 191, 36, 0.14), transparent 55%);
+  background: var(--73-app-grad-soft-21), var(--73-app-grad-soft-20);
   animation: about-glow-drift 9s ease-in-out infinite alternate;
   pointer-events: none;
 }
@@ -32,7 +30,7 @@
   line-height: 1.15;
   font-weight: 900;
   letter-spacing: -0.01em;
-  color: #fff;
+  color: var(--73-surface-strong);
 }
 
 .about-hero__actions {
@@ -56,23 +54,23 @@
 }
 
 .about-hero__btn--primary {
-  color: #0b1f3a;
-  background: #fbbf24;
+  color: var(--73-ink);
+  background: var(--73-warning);
 }
 
 .about-hero__btn--primary:hover {
   transform: translateY(-2px);
-  box-shadow: 0 14px 34px rgba(251, 191, 36, 0.4);
+  box-shadow: 0 14px 34px color-mix(in srgb, var(--73-warning) 40%, transparent);
 }
 
 .about-hero__btn--ghost {
-  color: #e2e8f0;
-  background: rgba(255, 255, 255, 0.08);
-  border-color: rgba(255, 255, 255, 0.22);
+  color: var(--73-border);
+  background: color-mix(in srgb, var(--73-surface-strong) 8%, transparent);
+  border-color: color-mix(in srgb, var(--73-surface-strong) 22%, transparent);
 }
 
 .about-hero__btn--ghost:hover {
-  background: rgba(255, 255, 255, 0.16);
+  background: color-mix(in srgb, var(--73-surface-strong) 16%, transparent);
   transform: translateY(-2px);
 }
 
@@ -80,7 +78,7 @@
   margin: 24px 0 0;
   font-size: 13px;
   font-weight: 600;
-  color: rgba(203, 213, 225, 0.85);
+  color: color-mix(in srgb, var(--73-ink-disabled) 85%, transparent);
 }
 
 @media (max-width: 640px) {

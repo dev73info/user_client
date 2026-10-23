@@ -1,0 +1,144 @@
+:root {
+  color-scheme: light;
+  font-family:
+    'IBM Plex Sans', 'PingFang SC', 'Noto Sans SC', 'PingFang SC', 'Hiragino Sans GB',
+    'Microsoft YaHei', sans-serif;
+  color: var(--73-ink);
+  background: var(--73-surface-strong);
+  /* 开发者体系色板：冷白底。
+     底 / 卡片 / 描边 / 阴影全部去掉暖调（原来是米白卡 + 暖灰阴影），换成纯白卡 +
+     偏蓝灰描边 + 带蓝调的阴影，与工作台外壳（顶栏、侧边栏用的那套冷色）对齐。
+     三个强调色保持原样：进行中=蓝、已完成=青、金额与提示=金。它们同时被 dev-*.css 与
+     各开发者页面里上百处硬编码 rgba 引用，换色相会让那些地方对不上；语义也仍是这三支。 */
+  --dev-bg: var(--73-surface-strong);
+  --dev-surface: color-mix(in srgb, var(--73-surface-strong) 96%, transparent);
+  --dev-surface-strong: var(--73-surface-strong);
+  --dev-ink: var(--73-ink);
+  --dev-muted: var(--73-ink-muted);
+  /* 弱化正文色：次要按钮文字、表格里的次级信息用。比 --dev-muted 深一档，
+     比 --dev-ink 浅一档；原来在 .dev-toolbar__ghost 等处直接写 var(--73-ink-soft)。 */
+  --dev-ink-soft: var(--73-ink-soft);
+  --dev-line: color-mix(in srgb, var(--73-ink-disabled) 66%, transparent);
+  --dev-blue: var(--73-accent);
+  --dev-cyan: var(--73-success);
+  --dev-gold: var(--73-warning);
+  --dev-shadow: 0 20px 44px color-mix(in srgb, var(--73-ink-soft) 10%, transparent);
+  /* 窄屏卡片流的四档配色：浅投影、按下底色、主色的 8% 底、预算读数的红。
+     原先这几处是需求大厅视图 <style> 里的裸色值（拆视图时收进令牌层，取值一字未改）；
+     其中投影与 dev-responsive.css 的移动端卡片是同一档。 */
+  --dev-shadow-card-soft: 0 1px 3px color-mix(in srgb, var(--73-ink) 6%, transparent);
+  --dev-blue-tint: var(--73-accent-soft);
+  --dev-blue-soft: color-mix(in srgb, var(--73-accent) 8%, transparent);
+  --dev-amount: var(--73-danger);
+  --dev-scrollbar-thumb: var(--73-app-grad-soft-27);
+  --dev-scrollbar-thumb-hover: var(--73-app-grad-soft-26);
+  /* 尺寸口径：卡片一档、内嵌块一档、控件一档。开发者端只用这三个圆角值 + 胶囊，
+     控件高度也统一到 --dev-control-height，避免同样角色的输入框/选择器/按钮各页不同高。
+     原来这里没有尺寸令牌，各页各写自己的 px，是「同一种控件长得不一样」的根源。
+     --dev-radius-inner 用于卡片里的列表项、回执块这类内嵌容器（文档里的 12px 档）。 */
+  --dev-radius-card: 24px;
+  --dev-radius-inner: 12px;
+  --dev-radius-control: 10px;
+  --dev-control-height: 36px;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#app {
+  margin: 0;
+  min-height: 100%;
+}
+
+body {
+  min-height: 100vh;
+  background:
+    var(--73-app-grad-soft-25), var(--73-app-grad-soft-24), var(--73-app-grad-soft-23),
+    var(--dev-bg);
+}
+
+a {
+  color: inherit;
+}
+
+/* 开发者体系的作用域根：`.user-workbench--dev` 是工作台外壳在开发者模式下的根类
+   （见 UserWorkbenchView.vue），页面里的元素都在它下面；弹窗会被 teleport 到 body，
+   落在这个根之外，所以开发者页的弹窗自己挂 .dev-dialog（见各页 TDialog 的 class）。 */
+.user-workbench--dev,
+.dev-dialog {
+  /* 补上被 resource-core.css 的 `body { color: var(--text-main) }`（var(--73-ink)）盖掉的墨色：
+     那张表是「免费资源」门户页的遗留样式，全局加载后连开发者页面的正文底色一起改了，
+     于是「令牌写 --dev-ink 的元素是 var(--73-ink)、继承来的文字是 var(--73-ink)」两种墨色并存。
+     这里在开发体系的作用域上显式声明一次，弹窗 teleport 到 body 之外同样要带上。 */
+  color: var(--dev-ink);
+}
+
+.dev-page {
+  display: grid;
+  /* 读数条 → 内容卡、卡与卡之间：略收紧，避免菜单页顶部空一大截 */
+  gap: 16px;
+  width: min(1120px, 100%);
+  margin: 0 auto;
+}
+
+.dev-section-title {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--dev-ink);
+}
+
+.dev-section-desc {
+  margin: 6px 0 0;
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--dev-muted);
+}
+
+.dev-surface-card {
+  border: 1px solid var(--dev-line);
+  border-radius: var(--dev-radius-card);
+  background: var(--dev-surface);
+  box-shadow: var(--dev-shadow);
+}
+
+/* 面板形态的卡片：直接落在 <section> 上的 .dev-surface-card 自己不带内边距，各页于是各写一个
+   padding（总览页 20px、其余 24px），同一形态的卡片内边距不一致，这里统一收成一档。
+   挂这个类的还有 `<TCard class="dev-surface-card">`：TCard 按 `padded`（默认开）本来也给 24px，
+   与本条落在同一个元素的同一个属性上、值相同，不叠加；窄屏那两档收窄见 dev-responsive.css。
+
+   选择器里的 `:not(.el-card)` 是 Element 时代的残留（那时靠它排除 el-card，因为内边距在
+   `.el-card__body` 上）。现在没有任何元素带 `el-card`，这条等价于 `.dev-surface-card`；
+   但别顺手把 `:not()` 删成 `.dev-surface-card`：dev-responsive.css 的两档收窄写的是同一个
+   选择器，删掉特异性会从 (0,2,0) 掉到 (0,1,0)，与 TCard 自己的 `.t73-card--padded` 同档，
+   窄屏谁生效就交给样式表顺序了。 */
+.dev-surface-card:not(.el-card) {
+  padding: 24px;
+}
+
+/* === 开发者页统一卡片头 ===
+   所有列表/表单卡片的标题行都走这一套：左边标题与说明，右边操作按钮。
+   这段布局原来叫 .dev-upload-section__head（名字属于上传模块），列表页也拿去用，
+   于是同一个东西两个名字、各页自己写间距。现在统一为 .dev-card-head，
+   窄屏换行规则见 dev-responsive.css。 */
+.dev-card-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+  margin-bottom: 18px;
+}
+
+.dev-card-head__title-block {
+  min-width: 0;
+}
+
+.dev-card-head__actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 0 0 auto;
+}

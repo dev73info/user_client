@@ -1,0 +1,187 @@
+.conversation-modal-wrap {
+  position: fixed;
+  inset: 0;
+  z-index: 130;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 18px;
+  background: color-mix(in srgb, var(--73-ink) 42%, transparent);
+}
+
+.conversation-modal-wrap--inline {
+  position: static;
+  inset: auto;
+  z-index: auto;
+  display: block;
+  padding: 0;
+  background: transparent;
+}
+
+@media (max-width: 640px) {
+  .conversation-modal-wrap {
+    padding: 10px;
+  }
+
+  .conversation-modal-wrap--inline {
+    padding: 0;
+  }
+
+  .conversation-modal {
+    max-height: calc(100dvh - 20px);
+    border-radius: 14px;
+  }
+}
+
+.conversation-modal-wrap--inline .conversation-modal__messages {
+  padding: 18px 18px 20px;
+  min-height: 0;
+}
+
+.conversation-modal__messages::-webkit-scrollbar-button {
+  display: none;
+  width: 0;
+  height: 0;
+}
+
+.conversation-modal__messages::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.conversation-modal__messages::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--73-accent) 50%, transparent);
+}
+
+@media (max-width: 640px) {
+  .conversation-modal-wrap--inline .conversation-modal {
+    height: calc(100dvh - 118px);
+    min-height: min(440px, calc(100dvh - 118px));
+    max-height: calc(100dvh - 118px);
+  }
+}
+
+@media (max-width: 640px) {
+  .conversation-modal__tools {
+    gap: 5px;
+  }
+}
+
+.conversation-modal {
+  border-color: color-mix(in srgb, var(--73-accent-soft) 98%, transparent);
+  background: var(--73-accent-soft);
+  max-height: min(760px, calc(100dvh - 36px));
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border-radius: 18px;
+  border: 1px solid color-mix(in srgb, var(--73-border) 95%, transparent);
+  box-shadow: 0 24px 70px color-mix(in srgb, var(--73-ink) 22%, transparent);
+  width: min(760px, 100%);
+}
+
+.conversation-modal-wrap--inline .conversation-modal {
+  box-shadow: 0 16px 38px color-mix(in srgb, var(--73-accent) 10%, transparent);
+  width: 100%;
+  border-radius: 16px;
+  height: min(860px, calc(100dvh - 109px));
+  min-height: min(440px, calc(100dvh - 109px));
+  max-height: calc(100dvh - 109px);
+}
+
+.conversation-modal__tools {
+  padding-left: 4px;
+}
+
+/* R047 断点收敛：原 820px → 640px（用户决定统一到 640） */
+@media (max-width: 640px) {
+  .conversation-modal__messages,
+  .conversation-modal-wrap--inline .conversation-modal__messages {
+    padding: 12px 10px 14px;
+  }
+}
+
+/* 业务入口条：上移 20px 叠在消息区底部，底色自上而下由透明渐变到消息区底色，
+   聊天记录在按钮后面淡出而不是被一刀切断；透明的那一截不拦点击，消息区底部
+   多留同样的高度，最后一条卡片仍能完整滚出来 */
+.conversation-modal__tools {
+  position: relative;
+  z-index: 1;
+  flex: 0 0 auto;
+  margin-top: -20px;
+  padding: 20px 14px 8px;
+  background: var(--73-app-grad-accent-soft-03);
+  pointer-events: none;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+
+.conversation-modal__tools > * {
+  pointer-events: auto;
+}
+
+/* 消息区顶部同样淡出：用遮罩让最上面 24px 的内容渐隐，不另叠色块，背景怎么变都对得上；
+   滚动条隐藏，滚轮、触摸与键盘滚动不受影响 */
+.conversation-modal__messages {
+  -webkit-mask-image: var(--73-app-grad-dark-01);
+  mask-image: var(--73-app-grad-dark-01);
+  scrollbar-width: none;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  background: var(--73-app-grad-soft-07);
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  background-color: var(--73-accent-soft);
+  background-image:
+    var(--73-app-grad-soft-06), var(--73-app-grad-soft-05), var(--73-app-grad-soft-04);
+  background-size:
+    96px 76px,
+    128px 104px,
+    auto;
+  padding: 16px 18px 18px;
+  scrollbar-color: color-mix(in srgb, var(--73-accent) 42%, transparent) transparent;
+}
+
+.conversation-modal__messages::-webkit-scrollbar {
+  display: none;
+  width: 0;
+  height: 0;
+}
+
+.conversation-modal__messages:has(+ .conversation-modal__tools) {
+  padding-bottom: 40px;
+}
+
+.conversation-modal__messages:has(~ .conversation-modal__tools) {
+  padding-bottom: 40px;
+}
+
+.conversation-modal__tools:empty {
+  display: none;
+}
+
+/* 会话通栏的断点与「会话头搬进顶栏」一致（WORKBENCH_BAR_MEDIA，≤900px）：会话头一进顶栏，
+   会话就得贴着顶栏铺满，否则 641–900px 之间会剩一张带圆角、上下留缝的卡片，顶部渐隐也会显得发虚 */
+@media (max-width: 900px) {
+  /* 会话通栏：抵掉工作台主区左右各 8px 的内边距，左右不留边、不要圆角与侧边框 */
+  .conversation-modal-wrap--inline .conversation-modal {
+    width: calc(100% + 16px);
+    max-width: none;
+    /* 会话头已搬进顶栏，会话直接贴在顶栏下：上外边距 -20px 抵掉顶栏下外边距 8px 与内容区上内边距 12px；
+       高度只扣顶栏 53px，会话打开时底部快捷导航已隐藏，不再预留 */
+    height: calc(100dvh - 54px);
+    min-height: min(440px, calc(100dvh - 54px));
+    max-height: calc(100dvh - 54px);
+    margin: -20px -8px 0;
+    border-top: 0;
+    border-right: 0;
+    border-left: 0;
+    border-radius: 0;
+    box-shadow: none;
+  }
+}

@@ -135,24 +135,24 @@ function selectIdentity(target: (typeof MOCK_IDENTITIES)[number]) {
   gap: 6px;
   align-items: center;
   padding: 6px 10px;
-  border: 1px solid rgba(17, 24, 39, 0.14);
+  border: 1px solid color-mix(in srgb, var(--73-ink) 14%, transparent);
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.94);
-  box-shadow: 0 6px 18px rgba(15, 23, 42, 0.16);
-  color: #0f172a;
+  background: color-mix(in srgb, var(--73-surface-strong) 94%, transparent);
+  box-shadow: 0 6px 18px color-mix(in srgb, var(--73-ink) 16%, transparent);
+  color: var(--73-ink);
   font: inherit;
   cursor: pointer;
 }
 
 .mock-switch__tip {
-  color: #475569;
+  color: var(--73-ink-soft);
 }
 
 .mock-switch__dot {
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  background: #16a34a;
+  background: var(--73-success);
 }
 
 .mock-switch__fab-text {
@@ -163,15 +163,15 @@ function selectIdentity(target: (typeof MOCK_IDENTITIES)[number]) {
 .mock-switch__fab-identity {
   padding: 1px 6px;
   border-radius: 999px;
-  background: #0f172a;
-  color: #fff;
+  background: var(--73-ink);
+  color: var(--73-surface-strong);
 }
 
 .mock-switch__badge {
   padding: 1px 6px;
   border-radius: 999px;
-  background: #dc2626;
-  color: #fff;
+  background: var(--73-danger);
+  color: var(--73-surface-strong);
   font-weight: 700;
 }
 
@@ -179,11 +179,11 @@ function selectIdentity(target: (typeof MOCK_IDENTITIES)[number]) {
   width: 280px;
   margin-top: 8px;
   padding: 12px;
-  border: 1px solid rgba(17, 24, 39, 0.12);
+  border: 1px solid color-mix(in srgb, var(--73-ink) 12%, transparent);
   border-radius: 12px;
-  background: #fff;
-  box-shadow: 0 18px 40px rgba(15, 23, 42, 0.2);
-  color: #0f172a;
+  background: var(--73-surface-strong);
+  box-shadow: 0 18px 40px color-mix(in srgb, var(--73-ink) 20%, transparent);
+  color: var(--73-ink);
 }
 
 .mock-switch__head {
@@ -196,7 +196,7 @@ function selectIdentity(target: (typeof MOCK_IDENTITIES)[number]) {
 .mock-switch__close {
   border: 0;
   background: transparent;
-  color: #64748b;
+  color: var(--73-ink-muted);
   font-size: 16px;
   line-height: 1;
   cursor: pointer;
@@ -204,7 +204,7 @@ function selectIdentity(target: (typeof MOCK_IDENTITIES)[number]) {
 
 .mock-switch__hint {
   margin: 6px 0 0;
-  color: #64748b;
+  color: var(--73-ink-muted);
 }
 
 .mock-switch__identities {
@@ -217,9 +217,9 @@ function selectIdentity(target: (typeof MOCK_IDENTITIES)[number]) {
   display: grid;
   gap: 2px;
   padding: 8px 10px;
-  border: 1px solid rgba(17, 24, 39, 0.12);
+  border: 1px solid color-mix(in srgb, var(--73-ink) 12%, transparent);
   border-radius: 10px;
-  background: #f8fafc;
+  background: var(--73-surface-strong);
   color: inherit;
   font: inherit;
   text-align: left;
@@ -227,18 +227,18 @@ function selectIdentity(target: (typeof MOCK_IDENTITIES)[number]) {
 }
 
 .mock-switch__identity--active {
-  border-color: #0f172a;
-  background: #eef2ff;
+  border-color: var(--73-ink);
+  background: var(--73-accent-soft);
 }
 
 .mock-switch__identity small {
-  color: #64748b;
+  color: var(--73-ink-muted);
 }
 
 .mock-switch__section {
   margin-top: 10px;
   padding-top: 10px;
-  border-top: 1px solid rgba(17, 24, 39, 0.08);
+  border-top: 1px solid color-mix(in srgb, var(--73-ink) 8%, transparent);
 }
 
 .mock-switch__row {
@@ -255,7 +255,7 @@ function selectIdentity(target: (typeof MOCK_IDENTITIES)[number]) {
 }
 
 .mock-switch__row:disabled {
-  color: #94a3b8;
+  color: var(--73-ink-placeholder);
   cursor: default;
 }
 
@@ -271,7 +271,7 @@ function selectIdentity(target: (typeof MOCK_IDENTITIES)[number]) {
   padding: 6px 8px;
   overflow: auto;
   border-radius: 8px;
-  background: #f1f5f9;
+  background: var(--73-surface-strong);
 }
 
 .mock-switch__list code {
@@ -289,14 +289,14 @@ function selectIdentity(target: (typeof MOCK_IDENTITIES)[number]) {
   padding: 0;
   border: 0;
   background: transparent;
-  color: #2563eb;
+  color: var(--73-accent);
   font: inherit;
   text-decoration: underline;
   cursor: pointer;
 }
 
 .mock-switch__link--danger {
-  color: #dc2626;
+  color: var(--73-danger);
 }
 
 @media (max-width: 640px) {

@@ -254,7 +254,7 @@ function rowSummary(ticket: TicketItem) {
 }
 
 /* 选中行取统一层的主色（--dev-blue 与门户侧 --wb-accent 同值），
-   原来是页面自己的一套亮蓝（rgba(96,165,250,…)）。 */
+   原来是页面自己的一套亮蓝（color-mix(in srgb, var(--73-accent) NaN%, transparent)）。 */
 .ticket-list-item.active {
   border-color: var(--wb-accent-line);
   background: var(--wb-accent-soft);

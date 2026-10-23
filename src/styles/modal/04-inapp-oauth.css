@@ -1,0 +1,279 @@
+/* 微信 / QQ 内：标题行右侧切换一键 / 账号，两套面板互斥 */
+.auth-modal-head__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.auth-modal-head__row h3 {
+  margin: 0;
+  min-width: 0;
+}
+
+.auth-inapp-panel-switch {
+  flex: 0 0 auto;
+  min-height: 32px;
+  padding: 0 12px;
+  border: 1px solid color-mix(in srgb, var(--73-accent-soft) 95%, transparent);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--73-accent-soft) 96%, transparent);
+  color: var(--73-accent);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+  transition:
+    background-color 160ms ease,
+    border-color 160ms ease,
+    transform 160ms ease;
+}
+
+.auth-inapp-panel-switch:hover {
+  background: color-mix(in srgb, var(--73-accent-soft) 98%, transparent);
+  border-color: color-mix(in srgb, var(--73-accent) 95%, transparent);
+  transform: translateY(-1px);
+}
+
+.auth-inapp-panel-switch:focus-visible {
+  outline: 2px solid var(--73-accent);
+  outline-offset: 2px;
+}
+
+.auth-inapp-login {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  flex: 0 0 auto;
+  margin: 0;
+}
+
+.auth-modal--inapp-oauth .auth-modal-head h3 {
+  font-size: 20px;
+}
+
+.auth-modal--inapp-oauth-panel .auth-modal-actions--single .auth-btn {
+  flex: 1 1 auto;
+}
+
+/* 端内协议：去掉灰底卡片，勾选 + 一行短链，少占纵向空间 */
+.auth-agreement-row--compact {
+  margin: 0;
+}
+
+.auth-agreement-row--compact .checkbox-label {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: start;
+  gap: 8px;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: var(--73-ink-muted);
+  font-size: 12px;
+  line-height: 1.4;
+  flex-wrap: nowrap;
+}
+
+.auth-agreement-row--compact .checkbox-label .checkbox-input {
+  width: 16px;
+  height: 16px;
+  min-width: 16px;
+  min-height: 16px;
+  flex: 0 0 16px;
+  margin-top: 1px;
+  border-radius: 4px;
+}
+
+.auth-agreement-row--compact .checkbox-label .checkbox-input::after {
+  width: 8px;
+  height: 8px;
+}
+
+.auth-agreement-row--compact .auth-agreement-row__text {
+  min-width: 0;
+  color: var(--73-ink-muted);
+  font-weight: 500;
+}
+
+.auth-agreement-row--compact .auth-agreement-row__text a {
+  color: var(--73-accent);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.auth-agreement-row--compact .auth-agreement-row__text a:hover {
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.auth-modal--inapp-oauth.auth-modal {
+  padding: 16px;
+  gap: 0;
+}
+
+.auth-modal--inapp-oauth .auth-modal-head__row {
+  margin-bottom: 12px;
+}
+
+.auth-modal--inapp-oauth .auth-modal-body {
+  padding-top: 0;
+}
+
+.auth-modal--inapp-oauth .auth-modal-body label {
+  gap: 4px;
+  margin-bottom: 8px;
+  font-size: 12px;
+}
+
+.auth-modal--inapp-oauth .auth-modal-body input:not([type='checkbox']) {
+  padding: 9px 11px;
+}
+
+.auth-modal--inapp-oauth .auth-turnstile-row {
+  margin: 2px 0 8px;
+}
+
+.auth-modal--inapp-oauth .auth-agreement-row--compact {
+  margin-top: 2px;
+  margin-bottom: 0;
+}
+
+.auth-modal--inapp-oauth .auth-modal-actions {
+  margin-top: 12px;
+  gap: 8px;
+}
+
+.auth-inapp-login__btn {
+  width: 100%;
+  min-height: 46px;
+  border: 0;
+  border-radius: 12px;
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  cursor: pointer;
+  transition:
+    transform 180ms ease,
+    box-shadow 180ms ease,
+    background-color 180ms ease,
+    border-color 180ms ease,
+    opacity 180ms ease;
+}
+
+.auth-inapp-login__btn--wechat {
+  border: 1px solid var(--73-success);
+  color: var(--73-surface-strong);
+  background: var(--73-success);
+}
+
+.auth-inapp-login__btn--wechat:hover:not(:disabled) {
+  border-color: var(--73-success);
+  background: var(--73-success);
+  box-shadow: 0 8px 18px color-mix(in srgb, var(--73-success) 24%, transparent);
+  transform: translateY(-1px);
+}
+
+.auth-inapp-login__btn--wechat:disabled {
+  cursor: not-allowed;
+  border-color: var(--73-success);
+  background: var(--73-success);
+  color: color-mix(in srgb, var(--73-surface-strong) 92%, transparent);
+}
+
+.auth-inapp-login .auth-qq-login {
+  border: 1px solid var(--73-accent);
+  color: var(--73-surface-strong);
+  background: var(--73-accent);
+}
+
+.auth-inapp-login .auth-qq-login:hover:not(:disabled) {
+  border-color: var(--73-accent);
+  background: var(--73-accent);
+  box-shadow: 0 8px 18px color-mix(in srgb, var(--73-accent) 24%, transparent);
+  transform: translateY(-1px);
+}
+
+.auth-inapp-login .auth-qq-login:disabled {
+  cursor: not-allowed;
+  border-color: var(--73-accent);
+  color: color-mix(in srgb, var(--73-surface-strong) 90%, transparent);
+  background: var(--73-accent);
+}
+
+.auth-login-divider {
+  display: flex;
+  align-items: center;
+  flex: 0 0 100%;
+  width: 100%;
+  gap: 16px;
+  color: var(--73-ink-placeholder);
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 20px;
+  white-space: nowrap;
+}
+
+.auth-login-divider::before,
+.auth-login-divider::after {
+  content: '';
+  height: 1px;
+  flex: 1;
+  background: color-mix(in srgb, var(--73-border) 90%, transparent);
+}
+
+.auth-login-methods .auth-btn {
+  flex: 1 1 140px;
+}
+
+.auth-login-method {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 40px;
+}
+
+.auth-login-method__icon {
+  width: 18px;
+  height: 18px;
+  flex: 0 0 18px;
+}
+
+.auth-qq-login .auth-login-method__icon {
+  object-fit: contain;
+}
+
+.auth-login-methods .auth-qq-login {
+  border: 1px solid var(--73-accent);
+  color: var(--73-surface-strong);
+  background: var(--73-accent);
+  cursor: pointer;
+  transition:
+    transform 180ms ease,
+    box-shadow 180ms ease,
+    background-color 180ms ease,
+    border-color 180ms ease;
+}
+
+.auth-login-methods .auth-qq-login:hover:not(:disabled) {
+  border-color: var(--73-accent);
+  background: var(--73-accent);
+  box-shadow: 0 8px 18px color-mix(in srgb, var(--73-accent) 24%, transparent);
+  transform: translateY(-1px);
+}
+
+.auth-login-methods .auth-qq-login:disabled {
+  cursor: not-allowed;
+  border-color: var(--73-accent);
+  color: color-mix(in srgb, var(--73-surface-strong) 90%, transparent);
+  background: var(--73-accent);
+}
+
+.auth-qq-login:focus-visible {
+  outline: 2px solid var(--73-accent);
+  outline-offset: 4px;
+}

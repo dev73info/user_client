@@ -186,9 +186,9 @@ const {
   align-items: center;
   justify-content: center;
   gap: 6px;
-  color: #247f7d;
-  border-color: #cce3e2;
-  background: #fff;
+  color: var(--73-success);
+  border-color: var(--73-ink-disabled);
+  background: var(--73-surface-strong);
   white-space: normal;
 }
 
@@ -197,15 +197,15 @@ const {
   padding: 2.5rem 1rem 3rem;
   max-width: 920px;
   margin: 0 auto;
-  color: #172033;
+  color: var(--73-ink);
 }
 
 .panel {
-  background: #fff;
+  background: var(--73-surface-strong);
   border-radius: 8px;
   padding: 2rem 2.2rem;
-  border: 1px solid #e5e7eb;
-  box-shadow: 0 18px 42px rgba(15, 23, 42, 0.12);
+  border: 1px solid var(--73-border);
+  box-shadow: 0 18px 42px color-mix(in srgb, var(--73-ink) 12%, transparent);
 }
 
 .panel-head {
@@ -215,7 +215,7 @@ const {
   gap: 16px;
   margin-bottom: 1.5rem;
   padding-bottom: 1rem;
-  border-bottom: 1px solid #e8edf4;
+  border-bottom: 1px solid var(--73-accent-soft);
 }
 
 .panel-head__title {
@@ -233,20 +233,20 @@ const {
 
 .panel-head h2 {
   margin: 0;
-  color: #f59e0b;
+  color: var(--73-warning);
   font-size: 1.65rem;
   font-weight: 800;
   letter-spacing: 0;
 }
 
 .panel-head .lead {
-  color: #4b5563;
+  color: var(--73-ink-soft);
   margin-top: 0.4rem;
   font-size: 0.96rem;
 }
 
 .status-msg {
-  color: #475569;
+  color: var(--73-ink-soft);
   padding: 1rem 0;
 }
 
@@ -254,8 +254,8 @@ const {
   min-height: 42px;
   padding: 0.7rem 1.35rem;
   background: transparent;
-  color: #334155;
-  border: 1px solid #cbd5e1;
+  color: var(--73-ink-soft);
+  border: 1px solid var(--73-ink-disabled);
   border-radius: 8px;
   cursor: pointer;
   font-size: 0.95rem;
@@ -263,21 +263,21 @@ const {
 }
 
 .msg-success {
-  color: #047857;
+  color: var(--73-success);
   padding: 0.75rem 0.9rem;
   border-radius: 8px;
-  background: #ecfdf5;
-  border: 1px solid #bbf7d0;
+  background: var(--73-success-soft);
+  border: 1px solid var(--73-success);
   margin-bottom: 1rem;
   font-weight: 700;
 }
 
 .msg-error {
-  color: #b91c1c;
+  color: var(--73-danger);
   padding: 0.75rem 0.9rem;
   border-radius: 8px;
-  background: #fef2f2;
-  border: 1px solid #fecaca;
+  background: var(--73-danger-soft);
+  border: 1px solid var(--73-danger-soft);
   margin-bottom: 1rem;
   font-weight: 700;
 }

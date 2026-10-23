@@ -61,17 +61,28 @@ const emit = defineEmits<{
       </div>
       <div class="header-actions">
         <template v-if="!isAuthed">
-          <button class="auth-btn solid" type="button" @click="emit('open-auth', 'login')">登录 / 注册</button>
+          <button class="auth-btn solid" type="button" @click="emit('open-auth', 'login')">
+            登录 / 注册
+          </button>
         </template>
         <template v-else>
           <div class="user-menu-wrapper">
-            <button class="auth-btn user-pill" type="button" @click.stop="emit('toggle-user-menu')" title="用户菜单">
+            <button
+              class="auth-btn user-pill"
+              type="button"
+              @click.stop="emit('toggle-user-menu')"
+              title="用户菜单"
+            >
               {{ username || '已登录用户' }}
             </button>
             <div class="user-menu" :class="{ open: menuOpen }" aria-label="用户菜单">
-              <button class="user-menu-item" type="button" @click="emit('go-profile')">统一工作台</button>
+              <button class="user-menu-item" type="button" @click="emit('go-profile')">
+                统一工作台
+              </button>
               <div class="menu-divider"></div>
-              <button class="user-menu-item danger" type="button" @click="emit('logout')">退出登录</button>
+              <button class="user-menu-item danger" type="button" @click="emit('logout')">
+                退出登录
+              </button>
             </div>
           </div>
         </template>
@@ -80,14 +91,28 @@ const emit = defineEmits<{
     <div class="hero-row" v-if="navLinks.length">
       <nav class="nav-links">
         <template v-for="link in navLinks" :key="link.label">
-          <RouterLink v-if="link.to" :to="link.to" class="brand-link"
-            :class="[{ active: link.active }, link.align === 'right' ? 'brand-link--push-right' : '']">
+          <RouterLink
+            v-if="link.to"
+            :to="link.to"
+            class="brand-link"
+            :class="[
+              { active: link.active },
+              link.align === 'right' ? 'brand-link--push-right' : '',
+            ]"
+          >
             {{ link.label }}
           </RouterLink>
-          <a v-else :href="link.href || '#'" class="brand-link"
-            :class="[{ active: link.active }, link.align === 'right' ? 'brand-link--push-right' : '']"
+          <a
+            v-else
+            :href="link.href || '#'"
+            class="brand-link"
+            :class="[
+              { active: link.active },
+              link.align === 'right' ? 'brand-link--push-right' : '',
+            ]"
             :target="shouldOpenInNewTab(link.href) ? '_blank' : undefined"
-            :rel="shouldOpenInNewTab(link.href) ? 'noopener noreferrer' : undefined">
+            :rel="shouldOpenInNewTab(link.href) ? 'noopener noreferrer' : undefined"
+          >
             {{ link.label }}
           </a>
         </template>
@@ -112,14 +137,14 @@ const emit = defineEmits<{
   height: 8px;
   border-radius: 50%;
   background: var(--success);
-  box-shadow: 0 0 12px rgba(149, 213, 178, 0.85);
+  box-shadow: 0 0 12px color-mix(in srgb, var(--73-success) 85%, transparent);
 }
 
 .brand-text {
   font-size: 14px;
   font-weight: 700;
   letter-spacing: 0.05em;
-  color: rgba(243, 252, 255, 0.9);
+  color: color-mix(in srgb, var(--73-accent-soft) 90%, transparent);
 }
 
 .hero-row {
@@ -144,13 +169,13 @@ const emit = defineEmits<{
   font-size: 15px;
   line-height: 1.5;
   font-weight: 700;
-  color: #f8fafc;
+  color: var(--73-surface-strong);
   text-decoration: none;
-  border: 1px solid rgba(56, 189, 248, 0.75);
+  border: 1px solid color-mix(in srgb, var(--73-accent) 75%, transparent);
   padding: 8px 14px;
   border-radius: 999px;
-  background: rgba(14, 165, 233, 0.16);
-  box-shadow: 0 10px 30px rgba(14, 165, 233, 0.18);
+  background: color-mix(in srgb, var(--73-accent) 16%, transparent);
+  box-shadow: 0 10px 30px color-mix(in srgb, var(--73-accent) 18%, transparent);
   white-space: nowrap;
   transition:
     background 120ms ease,
@@ -161,10 +186,10 @@ const emit = defineEmits<{
 
 .brand-link:hover,
 .brand-link.active {
-  background: rgba(14, 165, 233, 0.28);
-  color: #ffffff;
+  background: color-mix(in srgb, var(--73-accent) 28%, transparent);
+  color: var(--73-surface-strong);
   transform: translateY(-1px);
-  box-shadow: 0 12px 36px rgba(14, 165, 233, 0.22);
+  box-shadow: 0 12px 36px color-mix(in srgb, var(--73-accent) 22%, transparent);
 }
 
 .brand-link--push-right {

@@ -207,7 +207,7 @@ const replyContent = defineModel<string>('replyContent', { required: true })
 }
 
 /* 消息气泡：这一页独有的主从详情布局，保留「自己靠右、客服靠左」的做法，
-   但配色换成统一层令牌——原来是一支亮蓝（rgba(96,165,250,…)）的渐变与阴影，
+   但配色换成统一层令牌——原来是一支亮蓝（color-mix(in srgb, var(--73-accent) NaN%, transparent)）的渐变与阴影，
    与菜单页的主色（--dev-blue / --wb-accent）不是同一个蓝。 */
 .ticket-message {
   padding: 16px;

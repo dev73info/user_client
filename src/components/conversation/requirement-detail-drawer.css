@@ -12,7 +12,7 @@
 .conversation-drawer__backdrop {
   position: absolute;
   inset: 0;
-  background: rgba(15, 23, 42, 0.28);
+  background: color-mix(in srgb, var(--73-ink) 28%, transparent);
 }
 
 .conversation-drawer {
@@ -23,9 +23,9 @@
   display: flex;
   flex-direction: column;
   width: min(380px, 100%);
-  border-left: 1px solid rgba(213, 226, 244, 0.98);
-  background: #ffffff;
-  box-shadow: -12px 0 28px rgba(30, 58, 107, 0.12);
+  border-left: 1px solid color-mix(in srgb, var(--73-accent-soft) 98%, transparent);
+  background: var(--73-surface-strong);
+  box-shadow: -12px 0 28px color-mix(in srgb, var(--73-accent) 12%, transparent);
 }
 
 /* 划出：遮罩淡入 + 面板从右侧推入。过渡类落在 layer 上，面板靠后代选择器跟着动。 */
@@ -56,12 +56,12 @@
   justify-content: space-between;
   gap: 10px;
   padding: 14px 14px 12px 18px;
-  border-bottom: 1px solid rgba(216, 228, 244, 0.95);
+  border-bottom: 1px solid color-mix(in srgb, var(--73-accent-soft) 95%, transparent);
 }
 
 .conversation-drawer__head h4 {
   margin: 0;
-  color: #0f172a;
+  color: var(--73-ink);
   font-size: 15px;
 }
 
@@ -82,13 +82,13 @@
   height: 36px;
   border-radius: 999px;
   background: transparent;
-  color: #475569;
+  color: var(--73-ink-soft);
   font-size: 18px;
 }
 
 .conversation-drawer__close:hover:not(:disabled) {
-  background: #eef6ff;
-  color: #1d4ed8;
+  background: var(--73-accent-soft);
+  color: var(--73-accent);
 }
 
 .conversation-drawer__close:disabled {
@@ -109,14 +109,14 @@
 
 .conversation-drawer__title {
   margin: 0;
-  color: #0f172a;
+  color: var(--73-ink);
   font-size: 14px;
   line-height: 1.4;
 }
 
 .conversation-drawer__hint {
   margin: 0;
-  color: #64748b;
+  color: var(--73-ink-muted);
   font-size: 13px;
 }
 
@@ -127,7 +127,7 @@
   margin: 0;
   padding: 10px 12px;
   border-radius: 12px;
-  background: #f8fafc;
+  background: var(--73-surface-strong);
 }
 
 .conversation-drawer__meta div {
@@ -137,7 +137,7 @@
 }
 
 .conversation-drawer__meta dt {
-  color: #94a3b8;
+  color: var(--73-ink-placeholder);
   font-size: 11px;
   line-height: 1.4;
 }
@@ -145,7 +145,7 @@
 .conversation-drawer__meta dd {
   margin: 0;
   overflow: hidden;
-  color: #0f172a;
+  color: var(--73-ink);
   font-size: 13px;
   font-weight: 500;
   line-height: 1.4;
@@ -157,17 +157,17 @@
   display: grid;
   gap: 4px;
   padding-top: 10px;
-  border-top: 1px solid rgba(226, 232, 240, 0.9);
+  border-top: 1px solid color-mix(in srgb, var(--73-border) 90%, transparent);
 }
 
 .conversation-drawer__block h6 {
   margin: 0;
-  color: #475569;
+  color: var(--73-ink-soft);
   font-size: 12px;
 }
 
 .conversation-drawer__rich {
-  color: #334155;
+  color: var(--73-ink-soft);
   font-size: 13px;
   line-height: 1.7;
   overflow-wrap: anywhere;
@@ -183,7 +183,7 @@
 
 .conversation-drawer__rich :deep(strong),
 .conversation-drawer__rich :deep(b) {
-  color: #1e293b;
+  color: var(--73-ink);
   font-weight: 700;
 }
 
@@ -200,7 +200,7 @@
 }
 
 .conversation-drawer__rich :deep(a) {
-  color: #2563eb;
+  color: var(--73-accent);
   font-weight: 600;
 }
 
@@ -208,8 +208,8 @@
   overflow-x: auto;
   padding: 12px 14px;
   border-radius: 12px;
-  background: #0f172a;
-  color: #e2e8f0;
+  background: var(--73-ink);
+  color: var(--73-border);
 }
 
 .conversation-drawer__rich :deep(.rich-editor-media) {
@@ -225,10 +225,10 @@
   max-width: 100%;
   margin: 8px 0;
   padding: 8px 12px;
-  border: 1px solid rgba(191, 219, 254, 0.96);
+  border: 1px solid color-mix(in srgb, var(--73-accent-soft) 96%, transparent);
   border-radius: 10px;
-  background: rgba(239, 246, 255, 0.9);
-  color: #1d4ed8;
+  background: color-mix(in srgb, var(--73-accent-soft) 90%, transparent);
+  color: var(--73-accent);
   font-weight: 800;
   text-decoration: none;
 }

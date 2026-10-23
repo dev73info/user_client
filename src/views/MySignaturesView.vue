@@ -5,15 +5,8 @@ import { useRouter } from 'vue-router'
 import { listMyContracts, type MyContractSummary } from '@/api/contracts'
 import { LIST_PAGE_SIZES, useClientPagination } from '@/composables/useClientPagination'
 import { useAuthStore } from '@/stores/auth'
-import { CONTRACT_STATUS, contractEffectiveUntilLabel, contractStatusLabel } from '@/shared/contracts'
-import {
-  ATTACHMENT_REVIEW_STATUS,
-  CONTRACT_CONTENT_SOURCE,
-  attachmentReviewStatusLabel,
-  contractContentSourceLabel,
-} from '@/shared/contracts'
-import { getSignatureState, signatureStateLabels, type SignatureState } from '@/utils/contractSignatures'
-
+import MySignatureRow from '@/components/contract/MySignatureRow.vue'
+import { getSignatureState, type SignatureState } from '@/utils/contractSignatures'
 
 import {
   TButton,
@@ -63,14 +56,25 @@ function stripValue(count: number) {
 const filteredContracts = computed(() => {
   const search = keyword.value.trim().toLocaleLowerCase()
   return contracts.value.filter((item) => {
-    const matchesState = selectedState.value === 'all' || getSignatureState(item, auth.username) === selectedState.value
-    const matchesSearch = !search || [item.title, item.contract_no, item.requirement_id,
-      item.party_a_name, item.party_b_name].some((value) => value?.toLocaleLowerCase().includes(search))
+    const matchesState =
+      selectedState.value === 'all' ||
+      getSignatureState(item, auth.username) === selectedState.value
+    const matchesSearch =
+      !search ||
+      [
+        item.title,
+        item.contract_no,
+        item.requirement_id,
+        item.party_a_name,
+        item.party_b_name,
+      ].some((value) => value?.toLocaleLowerCase().includes(search))
     return matchesState && matchesSearch
   })
 })
 
-const hasActiveFilters = computed(() => keyword.value.trim() !== '' || selectedState.value !== 'all')
+const hasActiveFilters = computed(
+  () => keyword.value.trim() !== '' || selectedState.value !== 'all',
+)
 
 /* 一次取回全部合同、筛选在前端做，所以这里用客户端分页（与其余菜单页同一套页码与每页条数口径）。 */
 const {
@@ -83,7 +87,13 @@ const {
 
 /* 筛选条件一变就回到第 1 页，否则从第 3 页开始筛会直接看到一张空列表。 */
 watch([keyword, selectedState], resetPage)
-watch(() => auth.token, () => { void loadContracts() }, { immediate: true })
+watch(
+  () => auth.token,
+  () => {
+    void loadContracts()
+  },
+  { immediate: true },
+)
 
 function resetFilters() {
   keyword.value = ''
@@ -110,59 +120,8 @@ async function loadContracts() {
   }
 }
 
-function roleLabel(item: MyContractSummary) {
-  return item.party_a_username === auth.username ? '甲方' : '乙方'
-}
-
-function stateOf(item: MyContractSummary) {
-  return getSignatureState(item, auth.username)
-}
-
-/* 列表徽标：签名态认不出「过期 / 拒签 / 撤销」这几种新增状态（都会落到 unavailable），
-   这时直接显示合同状态，免得一律写成「暂不可签署」。 */
-function badgeLabel(item: MyContractSummary) {
-  const state = stateOf(item)
-  if (state === 'unavailable' && item.status !== CONTRACT_STATUS.awaiting) {
-    return contractStatusLabel(item.status)
-  }
-  return signatureStateLabels[state]
-}
-
-/* 状态标签走统一层（.wb-badge）：浅底 + 深字，终止态用中性档。 */
-function badgeClass(item: MyContractSummary) {
-  const state = stateOf(item)
-  if (state === 'pending') return 'wb-badge--warning'
-  if (state === 'waiting') return 'wb-badge--accent'
-  if (state === 'signed') return 'wb-badge--success'
-  return ''
-}
-
 function detailLocation(item: MyContractSummary) {
   return { name: 'workbench-signature-detail', params: { contractId: item.id } }
-}
-
-/**
- * R012：合同来源文案，列表里用来区分「平台生成 / 上传附件 / 页面拟定」三种来源。
- *
- * 非平台来源时一并带上附件审核态（待审核 / 已放行 / 已驳回）——只放「上传附件」字样，
- * 看的人不知道这份附件现在卡在哪一步。字段由后端 `CONTRACT_FIELDS_SUMMARY` 透出，
- * 后端未上线时 `content_source` 缺省即「平台生成」。
- */
-function sourceChip(item: MyContractSummary): string {
-  const source = item.content_source ?? CONTRACT_CONTENT_SOURCE.platform
-  const label = contractContentSourceLabel(source)
-  if (source === CONTRACT_CONTENT_SOURCE.platform) {
-    return label
-  }
-  return `${label} · ${attachmentReviewStatusLabel(item.attachment_review_status ?? ATTACHMENT_REVIEW_STATUS.none)}`
-}
-
-/**
- * R014：合同有效期截止（担保需求在双方签署完成时写入 = 后签方签署时间 + 开发周期）。
- * 未签署完成时给「待双方签署完成后计算」这类中文说明，不显示空值；非担保合同按平台规则说明。
- */
-function effectiveUntilLabel(item: MyContractSummary): string {
-  return contractEffectiveUntilLabel(item.status, item.effective_until)
 }
 
 function openDetail(item: MyContractSummary) {
@@ -210,19 +169,29 @@ function openDetail(item: MyContractSummary) {
       </div>
 
       <div class="wb-toolbar">
-        <TSelect
-          v-model="selectedState"
-          class="wb-toolbar__field"
-          aria-label="签署状态"
-        >
-          <TOption v-for="state in states" :key="state.value" :value="state.value" :label="state.label" />
+        <TSelect v-model="selectedState" class="wb-toolbar__field" aria-label="签署状态">
+          <TOption
+            v-for="state in states"
+            :key="state.value"
+            :value="state.value"
+            :label="state.label"
+          />
         </TSelect>
-        <TInput v-model="keyword" class="wb-toolbar__search" clearable placeholder="搜索合同名称、编号或签约方"
-          aria-label="搜索合同">
-          <template #prefix><TIcon><Search /></TIcon></template>
+        <TInput
+          v-model="keyword"
+          class="wb-toolbar__search"
+          clearable
+          placeholder="搜索合同名称、编号或签约方"
+          aria-label="搜索合同"
+        >
+          <template #prefix
+            ><TIcon><Search /></TIcon
+          ></template>
         </TInput>
         <div v-if="hasActiveFilters" class="wb-toolbar__actions">
-          <span class="wb-toolbar__hint">筛选出 {{ filteredTotal }} / {{ contracts.length }} 份</span>
+          <span class="wb-toolbar__hint"
+            >筛选出 {{ filteredTotal }} / {{ contracts.length }} 份</span
+          >
         </div>
       </div>
 
@@ -236,7 +205,9 @@ function openDetail(item: MyContractSummary) {
         </div>
       </div>
       <div v-else-if="!filteredContracts.length" class="wb-empty" role="status">
-        <span class="wb-empty__title">{{ contracts.length ? '没有符合条件的签署记录' : '暂无签署记录' }}</span>
+        <span class="wb-empty__title">{{
+          contracts.length ? '没有符合条件的签署记录' : '暂无签署记录'
+        }}</span>
         <template v-if="contracts.length">
           <div class="wb-empty__actions">
             <TButton variant="outline" @click="resetFilters">
@@ -249,66 +220,33 @@ function openDetail(item: MyContractSummary) {
       <template v-else>
         <!-- 行式与需求协作同一口径：上半信息行（标题/编号 + 右侧状态与时间），下半操作条。 -->
         <ul class="wb-list signature-list" aria-label="我的合同列表">
-          <li
+          <MySignatureRow
             v-for="item in pagedContracts"
             :key="item.id"
-            class="requirement-row wb-item wb-item--clickable"
-            :aria-label="`打开合同「${item.title}」`"
-            tabindex="0"
-            @click="openDetail(item)"
-            @keydown.enter.prevent="openDetail(item)"
-            @keydown.space.prevent="openDetail(item)"
-          >
-            <div class="requirement-card-body">
-              <div class="requirement-main wb-item__main">
-                <div class="requirement-title wb-item__title">
-                  <strong>{{ item.title }}</strong>
-                  <span>{{ item.contract_no || '暂无合同编号' }}</span>
-                </div>
-                <div class="requirement-details">
-                  <span class="wb-item__meta">甲方 · {{ item.party_a_name || item.party_a_username || '未指定' }}</span>
-                  <span class="wb-item__meta">乙方 · {{ item.party_b_name || item.party_b_username || '未指定' }}</span>
-                  <span class="wb-item__meta">我的身份：{{ roleLabel(item) }}</span>
-                  <!-- R012：区分平台生成 / 上传附件 / 页面拟定三种来源（非平台来源带附件审核态）。 -->
-                  <span class="wb-item__meta wb-item__meta--source">来源：{{ sourceChip(item) }}</span>
-                  <!-- R014：担保需求合同展示有效期截止（＝后签方签署时间 + 开发周期）；未签署完成给中文说明。
-                       只对需求合同渲染：平台协议（用户服务协议 / 开发者入驻协议）没有有效期，渲染会给出错误的「待计算」文案。 -->
-                  <span v-if="item.requirement_id" class="wb-item__meta wb-item__meta--effective"
-                    data-testid="contract-effective-until">
-                    有效期截止：{{ effectiveUntilLabel(item) }}
-                  </span>
-                </div>
-              </div>
-              <aside class="requirement-summary wb-item__side" aria-label="合同摘要">
-                <span class="wb-badge" :class="badgeClass(item)">{{ badgeLabel(item) }}</span>
-                <time>
-                  <small>创建时间</small>
-                  <span>{{ item.created_at }}</span>
-                </time>
-              </aside>
-            </div>
-            <div class="requirement-actions">
-              <div class="requirement-actions__list" @click.stop @keydown.stop>
-                <button
-                  class="ghost small"
-                  :class="stateOf(item) === 'pending' ? 'action-primary' : 'action-emphasis'"
-                  type="button"
-                  @click="openDetail(item)"
-                >
-                  {{ stateOf(item) === 'pending' ? '去签署' : '查看详情' }}
-                </button>
-              </div>
-            </div>
-          </li>
+            :item="item"
+            :username="auth.username"
+            @open="openDetail(item)"
+          />
         </ul>
         <div class="wb-pager">
           <div class="wb-pager__count">
             <TSelect v-model="pageSize" class="wb-pager__size" aria-label="每页合同数">
-              <TOption v-for="size in LIST_PAGE_SIZES" :key="size" :label="`${size} 条/页`" :value="size" />
+              <TOption
+                v-for="size in LIST_PAGE_SIZES"
+                :key="size"
+                :label="`${size} 条/页`"
+                :value="size"
+              />
             </TSelect>
           </div>
-          <TPagination v-model:current-page="page" :page-size="pageSize" :total="filteredTotal"
-            :pager-count="5" background aria-label="签署记录分页" />
+          <TPagination
+            v-model:current-page="page"
+            :page-size="pageSize"
+            :total="filteredTotal"
+            :pager-count="5"
+            background
+            aria-label="签署记录分页"
+          />
         </div>
       </template>
     </section>

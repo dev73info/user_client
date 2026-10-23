@@ -25,7 +25,7 @@ defineProps<{
 <style scoped>
 .signature-history {
   margin: 24px 0;
-  border-top: 1px solid #e5e9ef;
+  border-top: 1px solid var(--73-border);
   padding-top: 24px;
 }
 
@@ -45,16 +45,16 @@ defineProps<{
   grid-template-columns: 160px minmax(0, 1fr);
   gap: 16px;
   padding: 12px 0;
-  border-bottom: 1px solid #eef1f4;
+  border-bottom: 1px solid var(--73-surface-strong);
   font-size: 13px;
 }
 
 .signature-history time {
-  color: #667085;
+  color: var(--73-ink-muted);
 }
 
 .empty-log {
-  color: #475569;
+  color: var(--73-ink-soft);
 }
 
 @media (max-width: 640px) {

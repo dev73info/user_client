@@ -1,0 +1,290 @@
+/* 顶栏全站统一为「浮动圆角卡片」：顶部内缩 10px、左右收在内容列宽度内（min(1280px, 100% - 24px)）并居中，
+   白底半透明 + 细描边 + 投影 + 背景模糊。这是所有页面形态的基线样式，首页不再单独写一份。
+   滚动时顶栏是一层带底色的浮层，正文从卡片底下穿过去，不会与顶栏文字视觉打架。
+   移动端（≤900px）由 styles/unified-top-card.css 的 !important 规则压成白色通栏，不走这套卡片。 */
+.portal-header {
+  /* 顶栏自用色板：拆出去的三个子组件（导航 / 搜索 / 用户菜单）从这里继承 —— CSS 自定义
+     属性顺着 DOM 往下传，子组件的 scoped 样式直接 var() 取值，裸色值就只在本文件出现一次。
+     取值与原直接写在各选择器里的字面量**完全一致**，没有换成 --73-* 令牌：那套令牌跟这里
+     用的色值不是同一个数（例如 --73-accent 是 var(--73-accent)，本页用的是 var(--73-accent)），换过去就是改视觉。 */
+  --ptn-ink-strong: var(--73-ink);
+  --ptn-ink-body: var(--73-ink-soft);
+  --ptn-ink-soft: var(--73-ink-soft);
+  --ptn-ink-muted: var(--73-ink-muted);
+  --ptn-ink-placeholder: var(--73-ink-placeholder);
+  --ptn-accent-brand: var(--73-accent);
+  --ptn-accent-bright: var(--73-accent);
+  --ptn-accent-ink: var(--73-accent);
+  --ptn-danger-ink: var(--73-danger);
+  --ptn-inverse: var(--73-surface-strong);
+  --ptn-accent-gradient: var(--73-accent-gradient);
+  --ptn-line: color-mix(in srgb, var(--73-ink-disabled) 86%, transparent);
+  --ptn-line-soft: color-mix(in srgb, var(--73-ink-disabled) 82%, transparent);
+  --ptn-line-menu: color-mix(in srgb, var(--73-ink-disabled) 92%, transparent);
+  --ptn-line-accent: color-mix(in srgb, var(--73-accent-soft) 92%, transparent);
+  --ptn-line-accent-soft: color-mix(in srgb, var(--73-accent-soft) 90%, transparent);
+  --ptn-line-hover: color-mix(in srgb, var(--73-accent) 96%, transparent);
+  --ptn-line-hover-soft: color-mix(in srgb, var(--73-accent) 60%, transparent);
+  --ptn-accent-wash: color-mix(in srgb, var(--73-accent-soft) 96%, transparent);
+  --ptn-accent-wash-faint: color-mix(in srgb, var(--73-accent-soft) 95%, transparent);
+  --ptn-accent-tint-soft: color-mix(in srgb, var(--73-accent-soft) 86%, transparent);
+  --ptn-accent-tint-strong: color-mix(in srgb, var(--73-accent-soft) 98%, transparent);
+  --ptn-surface: color-mix(in srgb, var(--73-surface-strong) 98%, transparent);
+  --ptn-surface-soft: color-mix(in srgb, var(--73-surface-strong) 94%, transparent);
+  --ptn-surface-sunken: color-mix(in srgb, var(--73-surface-strong) 94%, transparent);
+  --ptn-surface-highlight: color-mix(in srgb, var(--73-surface-strong) 82%, transparent);
+  --ptn-surface-muted: color-mix(in srgb, var(--73-surface-strong) 96%, transparent);
+  --ptn-surface-muted-strong: color-mix(in srgb, var(--73-surface-strong) 98%, transparent);
+  --ptn-neutral-wash: color-mix(in srgb, var(--73-border) 66%, transparent);
+  --ptn-accent-glow-18: color-mix(in srgb, var(--73-accent) 18%, transparent);
+  --ptn-focus-halo: color-mix(in srgb, var(--73-accent) 16%, transparent);
+  --ptn-shadow-soft: color-mix(in srgb, var(--73-ink) 8%, transparent);
+  --ptn-shadow-strong: color-mix(in srgb, var(--73-ink) 12%, transparent);
+  --portal-nav-motion: cubic-bezier(0.22, 1, 0.36, 1);
+  position: sticky;
+  top: 10px;
+  z-index: 40;
+  display: grid;
+  grid-template-columns: auto minmax(max-content, 1fr) auto;
+  align-items: center;
+  gap: 20px;
+  width: min(1280px, calc(100% - 24px));
+  margin: 10px auto 14px;
+  padding: 12px 16px;
+  border: 1px solid color-mix(in srgb, var(--73-accent-soft) 96%, transparent);
+  border-radius: 18px;
+  background: var(--ptn-surface-soft);
+  box-shadow: 0 12px 30px color-mix(in srgb, var(--73-accent) 8%, transparent);
+  backdrop-filter: blur(12px);
+}
+
+.portal-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  color: inherit;
+  text-decoration: none;
+}
+
+.portal-brand__mark {
+  display: block;
+  width: 38px;
+  height: 38px;
+  border-radius: 12px;
+  object-fit: cover;
+}
+
+.portal-brand__copy {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.portal-brand__copy strong {
+  display: block;
+  font-size: 16px;
+  line-height: 1.1;
+  color: var(--ptn-ink-strong);
+}
+
+.portal-header__tools {
+  display: inline-flex;
+  align-items: center;
+  justify-self: end;
+  gap: 8px;
+  min-width: 0;
+}
+
+.portal-header__tools > * {
+  flex-shrink: 0;
+}
+
+.portal-search-menu {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  min-height: 42px;
+  padding: 0 14px;
+  border-radius: 14px;
+  border: 1px solid var(--ptn-line-accent);
+  background: color-mix(in srgb, var(--73-accent-soft) 94%, transparent);
+  color: var(--ptn-accent-ink);
+  font-size: 14px;
+  font-weight: 800;
+  line-height: 1;
+  text-decoration: none;
+  box-shadow: 0 8px 18px color-mix(in srgb, var(--73-accent) 8%, transparent);
+  transition:
+    background-color 160ms ease,
+    border-color 160ms ease,
+    box-shadow 160ms ease,
+    color 160ms ease,
+    transform 160ms ease;
+}
+
+.portal-search-menu:hover,
+.portal-search-menu:focus-visible {
+  border-color: color-mix(in srgb, var(--73-accent) 34%, transparent);
+  background: color-mix(in srgb, var(--73-accent-soft) 96%, transparent);
+  color: var(--ptn-accent-ink);
+  box-shadow: 0 10px 22px color-mix(in srgb, var(--73-accent) 12%, transparent);
+  transform: translateY(-1px);
+}
+
+.portal-subscription {
+  position: relative;
+  display: inline-grid;
+  place-items: center;
+}
+
+.portal-icon-btn,
+.portal-text-btn,
+.portal-solid-btn {
+  border: 0;
+  font: inherit;
+  cursor: pointer;
+}
+
+.portal-icon-btn {
+  display: inline-grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  color: var(--ptn-ink-body);
+  background: var(--ptn-surface-soft);
+  border: 1px solid color-mix(in srgb, var(--73-border) 96%, transparent);
+  transition: 160ms ease;
+}
+
+.portal-icon-btn--subscription {
+  /* 订阅铃铛比顶栏其它圆形按钮小一号，避免在用户胶囊旁边抢视觉重心 */
+  width: 32px;
+  height: 32px;
+  font-size: 16px;
+}
+
+.portal-icon-btn--subscription:hover:not(:disabled) {
+  color: var(--ptn-accent-ink);
+  border-color: color-mix(in srgb, var(--73-accent) 28%, transparent);
+  background: var(--ptn-accent-wash);
+}
+
+.portal-icon-btn--subscription.is-active,
+.portal-icon-btn--subscription.is-active:hover:not(:disabled) {
+  color: var(--ptn-inverse);
+  border-color: color-mix(in srgb, var(--73-accent) 50%, transparent);
+  background: var(--ptn-accent-gradient);
+  box-shadow: 0 10px 22px color-mix(in srgb, var(--73-accent) 26%, transparent);
+}
+
+.portal-icon-btn--subscription.is-loading {
+  cursor: progress;
+}
+
+.portal-icon-btn:disabled {
+  cursor: not-allowed;
+}
+
+.portal-subscription-menu {
+  position: absolute;
+  top: calc(100% + 10px);
+  right: 0;
+  z-index: 70;
+  display: grid;
+  gap: 6px;
+  width: 260px;
+  padding: 10px;
+  border-radius: 18px;
+  border: 1px solid var(--ptn-line-menu);
+  background: color-mix(in srgb, var(--73-surface-strong) 96%, transparent);
+  box-shadow: 0 18px 40px color-mix(in srgb, var(--73-ink) 14%, transparent);
+  backdrop-filter: blur(12px);
+}
+
+.portal-subscription-menu__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 4px 6px 6px;
+  color: var(--ptn-ink-strong);
+}
+
+.portal-subscription-menu__head strong {
+  font-size: 13px;
+  line-height: 1.2;
+}
+
+.portal-subscription-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  padding: 10px 10px 10px 12px;
+  border: 1px solid color-mix(in srgb, var(--73-border) 94%, transparent);
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--73-surface-strong) 86%, transparent);
+  color: var(--ptn-ink-strong);
+  cursor: pointer;
+  text-align: left;
+  font: inherit;
+  transition: 140ms ease;
+}
+
+.portal-subscription-item:hover:not(:disabled) {
+  border-color: color-mix(in srgb, var(--73-accent) 22%, transparent);
+  background: color-mix(in srgb, var(--73-accent-soft) 94%, transparent);
+}
+
+.portal-subscription-item.active {
+  border-color: color-mix(in srgb, var(--73-accent) 30%, transparent);
+  background: var(--ptn-accent-wash);
+}
+
+.portal-subscription-item:disabled {
+  cursor: progress;
+  opacity: 0.72;
+}
+
+.portal-subscription-item__copy {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.portal-subscription-item__copy strong {
+  font-size: 13px;
+  line-height: 1.2;
+  color: var(--ptn-ink-strong);
+}
+
+.portal-subscription-item__copy small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 11px;
+  line-height: 1.25;
+  color: var(--ptn-ink-muted);
+}
+
+.portal-subscription-item__state {
+  display: inline-grid;
+  place-items: center;
+  flex: 0 0 auto;
+  min-width: 34px;
+  height: 24px;
+  padding: 0 8px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--73-ink-placeholder) 16%, transparent);
+  color: var(--ptn-ink-muted);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.portal-subscription-item.active .portal-subscription-item__state {
+  background: var(--ptn-accent-gradient);
+  color: var(--ptn-inverse);
+  box-shadow: 0 8px 18px color-mix(in srgb, var(--73-accent) 22%, transparent);
+}

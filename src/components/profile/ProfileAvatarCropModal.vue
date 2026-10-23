@@ -122,14 +122,14 @@ const emit = defineEmits<{
 <style scoped>
 /* 这 200 行是 Teleport 出去的弹窗自己的样式：全局 modal.css 只给骨架，漏一段弹窗就裸。 */
 .modal-wrap--avatar-crop {
-  --profile-card-bg: rgba(255, 255, 255, 0.94);
-  --profile-card-bg-strong: #ffffff;
-  --profile-card-border: rgba(224, 232, 255, 0.96);
-  --profile-card-shadow: 0 14px 34px rgba(76, 103, 172, 0.08);
-  --profile-text-main: #0f172a;
-  --profile-text-sub: #64748b;
-  --profile-accent: #4f8cff;
-  background: rgba(15, 23, 42, 0.26);
+  --profile-card-bg: color-mix(in srgb, var(--73-surface-strong) 94%, transparent);
+  --profile-card-bg-strong: var(--73-surface-strong);
+  --profile-card-border: color-mix(in srgb, var(--73-accent-soft) 96%, transparent);
+  --profile-card-shadow: 0 14px 34px color-mix(in srgb, var(--73-accent) 8%, transparent);
+  --profile-text-main: var(--73-ink);
+  --profile-text-sub: var(--73-ink-muted);
+  --profile-accent: var(--73-accent);
+  background: color-mix(in srgb, var(--73-ink) 26%, transparent);
   backdrop-filter: blur(4px);
   z-index: 120;
 }
@@ -138,9 +138,9 @@ const emit = defineEmits<{
   width: min(720px, calc(100vw - 36px));
   padding: 0;
   overflow: hidden;
-  border-color: rgba(209, 220, 243, 0.95);
-  background: #ffffff;
-  box-shadow: 0 26px 70px rgba(30, 58, 138, 0.18);
+  border-color: color-mix(in srgb, var(--73-accent-soft) 95%, transparent);
+  background: var(--73-surface-strong);
+  box-shadow: 0 26px 70px color-mix(in srgb, var(--73-accent) 18%, transparent);
 }
 
 .profile-avatar-crop-header {
@@ -149,8 +149,8 @@ const emit = defineEmits<{
   justify-content: space-between;
   gap: 16px;
   padding: 18px 20px;
-  border-bottom: 1px solid rgba(224, 232, 255, 0.9);
-  background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
+  border-bottom: 1px solid color-mix(in srgb, var(--73-accent-soft) 90%, transparent);
+  background: var(--73-app-grad-soft-11);
 }
 
 .profile-avatar-crop-header h3 {
@@ -171,9 +171,9 @@ const emit = defineEmits<{
   display: grid;
   place-items: center;
   padding: 16px;
-  border: 1px solid rgba(224, 232, 255, 0.9);
+  border: 1px solid color-mix(in srgb, var(--73-accent-soft) 90%, transparent);
   border-radius: 24px;
-  background: linear-gradient(135deg, #f8fbff 0%, #ffffff 100%);
+  background: var(--73-app-grad-accent-soft-06);
 }
 
 .profile-avatar-crop-stage {
@@ -181,10 +181,10 @@ const emit = defineEmits<{
   width: min(320px, 100%);
   aspect-ratio: 1;
   overflow: hidden;
-  border: 1px solid rgba(183, 201, 238, 0.95);
+  border: 1px solid color-mix(in srgb, var(--73-accent) 95%, transparent);
   border-radius: 50%;
-  background: linear-gradient(135deg, #eef5ff, #ffffff);
-  box-shadow: 0 18px 38px rgba(76, 103, 172, 0.18);
+  background: var(--73-app-grad-accent-soft-05);
+  box-shadow: 0 18px 38px color-mix(in srgb, var(--73-accent) 18%, transparent);
   cursor: grab;
   touch-action: none;
   user-select: none;
@@ -208,11 +208,11 @@ const emit = defineEmits<{
 .profile-avatar-crop-ring {
   position: absolute;
   inset: 0;
-  border: 2px solid rgba(255, 255, 255, 0.9);
+  border: 2px solid color-mix(in srgb, var(--73-surface-strong) 90%, transparent);
   border-radius: inherit;
   box-shadow:
-    inset 0 0 0 999px rgba(15, 23, 42, 0.02),
-    inset 0 0 24px rgba(15, 23, 42, 0.14);
+    inset 0 0 0 999px color-mix(in srgb, var(--73-ink) 2%, transparent),
+    inset 0 0 24px color-mix(in srgb, var(--73-ink) 14%, transparent);
   pointer-events: none;
 }
 
@@ -230,13 +230,13 @@ const emit = defineEmits<{
   min-height: 36px;
   width: fit-content;
   padding: 8px 12px;
-  border: 1px solid rgba(209, 220, 243, 0.95);
+  border: 1px solid color-mix(in srgb, var(--73-accent-soft) 95%, transparent);
   border-radius: 999px;
-  background: #f8fbff;
+  background: var(--73-accent-soft);
   color: var(--profile-text-sub);
   font-size: 14px;
   font-weight: 800;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.95);
+  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--73-surface-strong) 95%, transparent);
 }
 
 .profile-avatar-crop-actions {
@@ -247,16 +247,16 @@ const emit = defineEmits<{
 
 .modal-wrap--avatar-crop button.ghost,
 .modal-wrap--avatar-crop button.ghost.small {
-  border-color: rgba(209, 220, 243, 0.95);
-  background: #ffffff;
+  border-color: color-mix(in srgb, var(--73-accent-soft) 95%, transparent);
+  background: var(--73-surface-strong);
   color: var(--profile-text-main);
-  box-shadow: 0 8px 20px rgba(76, 103, 172, 0.06);
+  box-shadow: 0 8px 20px color-mix(in srgb, var(--73-accent) 6%, transparent);
 }
 
 .modal-wrap--avatar-crop button.ghost:hover:not(:disabled) {
-  background: #f8fbff;
-  border-color: rgba(125, 155, 225, 0.92);
-  box-shadow: 0 12px 24px rgba(76, 103, 172, 0.1);
+  background: var(--73-accent-soft);
+  border-color: color-mix(in srgb, var(--73-accent) 92%, transparent);
+  box-shadow: 0 12px 24px color-mix(in srgb, var(--73-accent) 10%, transparent);
 }
 
 .profile-avatar-crop-action {
@@ -276,44 +276,44 @@ const emit = defineEmits<{
 }
 
 .modal-wrap--avatar-crop .profile-avatar-crop-action--utility.ghost {
-  border-color: rgba(147, 197, 253, 0.9);
-  background: #eff6ff;
-  color: #1d4ed8;
-  box-shadow: 0 8px 18px rgba(37, 99, 235, 0.08);
+  border-color: color-mix(in srgb, var(--73-accent) 90%, transparent);
+  background: var(--73-accent-soft);
+  color: var(--73-accent);
+  box-shadow: 0 8px 18px color-mix(in srgb, var(--73-accent) 8%, transparent);
 }
 
 .modal-wrap--avatar-crop .profile-avatar-crop-action--cancel.ghost {
-  border-color: rgba(203, 213, 225, 0.95);
-  background: #ffffff;
-  color: #64748b;
+  border-color: color-mix(in srgb, var(--73-ink-disabled) 95%, transparent);
+  background: var(--73-surface-strong);
+  color: var(--73-ink-muted);
   box-shadow: none;
 }
 
 .modal-wrap--avatar-crop .profile-avatar-crop-action--primary.ghost {
   min-width: 116px;
-  border-color: rgba(37, 99, 235, 0.95);
-  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
-  color: #ffffff;
-  box-shadow: 0 12px 24px rgba(37, 99, 235, 0.22);
+  border-color: color-mix(in srgb, var(--73-accent) 95%, transparent);
+  background: var(--73-app-grad-accent-06);
+  color: var(--73-surface-strong);
+  box-shadow: 0 12px 24px color-mix(in srgb, var(--73-accent) 22%, transparent);
 }
 
 .modal-wrap--avatar-crop .profile-avatar-crop-action--utility.ghost:hover:not(:disabled) {
-  border-color: rgba(96, 165, 250, 0.95);
-  background: #dbeafe;
-  box-shadow: 0 12px 24px rgba(37, 99, 235, 0.12);
+  border-color: color-mix(in srgb, var(--73-accent) 95%, transparent);
+  background: var(--73-accent-soft);
+  box-shadow: 0 12px 24px color-mix(in srgb, var(--73-accent) 12%, transparent);
 }
 
 .modal-wrap--avatar-crop .profile-avatar-crop-action--cancel.ghost:hover:not(:disabled) {
-  border-color: rgba(148, 163, 184, 0.95);
-  background: #f8fafc;
-  color: #334155;
-  box-shadow: 0 10px 20px rgba(100, 116, 139, 0.1);
+  border-color: color-mix(in srgb, var(--73-ink-placeholder) 95%, transparent);
+  background: var(--73-surface-strong);
+  color: var(--73-ink-soft);
+  box-shadow: 0 10px 20px color-mix(in srgb, var(--73-ink-muted) 10%, transparent);
 }
 
 .modal-wrap--avatar-crop .profile-avatar-crop-action--primary.ghost:hover:not(:disabled) {
-  border-color: rgba(29, 78, 216, 0.98);
-  background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
-  box-shadow: 0 16px 30px rgba(37, 99, 235, 0.28);
+  border-color: color-mix(in srgb, var(--73-accent) 98%, transparent);
+  background: var(--73-app-grad-accent-05);
+  box-shadow: 0 16px 30px color-mix(in srgb, var(--73-accent) 28%, transparent);
 }
 
 @media (max-width: 640px) {

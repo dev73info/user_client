@@ -21,8 +21,8 @@
     "check:frontend": "node scripts/check-frontend.mjs .",
     "gate": "run-s type-check lint:check test:ci check:frontend contract:check build",
     "format": "prettier --write --experimental-cli src/",
-    "format:check": "prettier --check \"src/**/*.{ts,vue}\"",
-    "format:changed": "git diff --name-only --diff-filter=ACMR origin/dev...HEAD -- \"src/**/*.ts\" \"src/**/*.vue\" | xargs prettier --check",
+    "format:check": "prettier --check \"src/**/*.{ts,vue,css}\"",
+    "format:changed": "git diff --name-only --diff-filter=ACMR origin/develop...HEAD -- \"src/*.ts\" \"src/**/*.ts\" \"src/**/*.vue\" \"src/*.css\" \"src/**/*.css\" \"scripts/*.mjs\" \"scripts/**/*.mjs\" | xargs prettier --check",
     "contract:check": "node scripts/contract-check.mjs",
     "contract:write": "node scripts/contract-check.mjs --write",
     "gate:quick": "run-s type-check lint:check test:ci check:frontend contract:check"

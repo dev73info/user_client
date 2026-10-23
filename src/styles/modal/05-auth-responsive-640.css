@@ -1,0 +1,84 @@
+@media (max-width: 640px) {
+  .auth-modal-wrap,
+  .modal-wrap {
+    padding: 12px;
+  }
+
+  .auth-modal-wrap {
+    align-items: center;
+  }
+
+  .auth-modal,
+  .pay-modal {
+    border-radius: 18px;
+    padding: 14px;
+  }
+
+  .comment-modal {
+    width: min(480px, 100%);
+    padding: 14px;
+  }
+
+  .comment-modal__actions {
+    justify-content: stretch;
+  }
+
+  .comment-modal__actions .ghost {
+    flex: 1 1 auto;
+  }
+
+  .auth-modal {
+    max-height: calc(100vh - 24px);
+  }
+
+  /* 窄屏仍保持三列横排；竖排会占掉半屏且与「登录」文案重复 */
+  .auth-mode-switch {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 6px;
+    padding: 5px;
+  }
+
+  .auth-mode-btn {
+    min-height: 32px;
+    font-size: 12px;
+  }
+
+  .auth-modal-actions {
+    justify-content: stretch;
+  }
+
+  .auth-modal-actions .auth-btn {
+    flex: 1 1 auto;
+  }
+
+  .auth-login-methods .auth-btn {
+    flex-basis: 100%;
+  }
+
+  .auth-login-methods .auth-qq-login {
+    margin-inline: auto;
+  }
+
+  /* 窄屏（约 375px）：控件 300px 与链接放不进一行时自动换行，链接仍靠右；
+     控件不被压扁，宽度由 max-width: 100% 收口 */
+  .auth-turnstile-row {
+    gap: 8px;
+  }
+}
+
+.auth-modal input[type='number']::-webkit-outer-spin-button,
+.auth-modal input[type='number']::-webkit-inner-spin-button {
+  margin: 0;
+  -webkit-appearance: none;
+}
+
+.auth-modal input[type='number'] {
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+
+.auth-modal textarea:focus,
+.profile-update-row input:focus {
+  border-color: color-mix(in srgb, var(--73-accent) 72%, transparent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--73-accent) 12%, transparent);
+}

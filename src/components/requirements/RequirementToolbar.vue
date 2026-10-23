@@ -127,14 +127,14 @@ const selectedState = defineModel<RequirementFilterKey>('selectedState', { requi
     padding: 0 16px;
     border: 0 !important;
     border-radius: 999px;
-    background: #eaf1ff !important;
+    background: var(--73-accent-soft) !important;
     box-shadow: none !important;
-    color: #1d4ed8 !important;
+    color: var(--73-accent) !important;
     font-size: 13px;
     font-weight: 700;
   }
   .my-requirements-publish--toolbar:active {
-    background: #dbe7ff !important;
+    background: var(--73-accent-soft) !important;
   }
 }
 </style>

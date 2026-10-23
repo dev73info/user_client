@@ -1,0 +1,220 @@
+/* 封面右上：精选 / 高赞（与左上平台角标并存，沿用毛玻璃语气） */
+.portal-spotlight-card__mark {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 24px;
+  padding: 4px 10px 4px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  line-height: 1;
+  backdrop-filter: blur(10px);
+  box-shadow: 0 6px 14px color-mix(in srgb, var(--73-ink) 16%, transparent);
+}
+
+.portal-spotlight-card__mark-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--73-surface-strong) 28%, transparent);
+}
+
+.portal-spotlight-card__mark--featured {
+  background: var(--73-app-grad-soft-58);
+  border: 1px solid color-mix(in srgb, var(--73-warning) 55%, transparent);
+  color: var(--73-warning-soft);
+  text-shadow: 0 1px 2px color-mix(in srgb, var(--73-warning-text) 35%, transparent);
+}
+
+.portal-spotlight-card__mark--featured .portal-spotlight-card__mark-dot {
+  background: var(--73-warning);
+}
+
+.portal-spotlight-card__screen {
+  position: absolute;
+  border-radius: 14px;
+  border: 1px solid color-mix(in srgb, var(--73-surface-strong) 18%, transparent);
+  background: var(--73-app-grad-soft-35);
+  box-shadow: 0 16px 28px color-mix(in srgb, var(--73-accent) 20%, transparent);
+}
+
+.portal-spotlight-card__screen::before {
+  content: '';
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  right: 10px;
+  height: 10px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--73-surface-strong) 18%, transparent);
+}
+
+.portal-spotlight-card__screen--primary {
+  top: 28px;
+  left: 26px;
+  width: 112px;
+  height: 66px;
+  transform: rotate(-5deg);
+}
+
+.portal-spotlight-card__screen--secondary {
+  top: 18px;
+  right: 24px;
+  width: 104px;
+  height: 58px;
+  transform: rotate(4deg);
+}
+
+.portal-spotlight-card__screen--tertiary {
+  right: 58px;
+  bottom: 10px;
+  width: 128px;
+  height: 38px;
+  border-radius: 12px;
+}
+
+.portal-spotlight-card__body {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 10px;
+  min-height: 176px;
+  padding: 16px 16px 18px;
+}
+
+.portal-spotlight-card__body h3 {
+  display: -webkit-box;
+  margin: 0;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  color: var(--73-ink);
+  font-size: 18px;
+  font-weight: 800;
+  line-height: 1.35;
+}
+
+.portal-spotlight-card__body p {
+  display: -webkit-box;
+  margin: 0;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  color: var(--73-ink-muted);
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.portal-spotlight-card__meta-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin-top: auto;
+}
+
+/* 版本标签和统计行一起贴底，两处都 auto 会把剩余空间对半分，标签悬在中间 */
+.portal-spotlight-card__meta-row + .portal-spotlight-card__footer {
+  margin-top: 0;
+}
+
+.portal-spotlight-card__meta-row strong {
+  display: inline-flex;
+  align-items: center;
+  min-width: 0;
+  max-width: 100%;
+  min-height: 22px;
+  padding: 2px 9px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--73-surface-strong) 96%, transparent);
+  color: var(--73-ink-soft);
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.2;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.portal-spotlight-card__footer-bottom {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.portal-spotlight-card__footer-leading {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.portal-spotlight-card__likes {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin: 0;
+  padding: 2px 4px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--73-ink-placeholder);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+  transition:
+    color 0.15s ease,
+    background-color 0.15s ease,
+    transform 0.15s ease;
+}
+
+.portal-spotlight-card__likes svg {
+  flex-shrink: 0;
+  color: var(--73-danger);
+  transition: transform 0.15s ease;
+}
+
+.portal-spotlight-card__likes:hover:not(:disabled) {
+  color: var(--73-ink-muted);
+  background: color-mix(in srgb, var(--73-danger) 8%, transparent);
+}
+
+.portal-spotlight-card__likes:hover:not(:disabled) svg {
+  transform: scale(1.08);
+}
+
+.portal-spotlight-card__likes.is-liked {
+  color: var(--73-danger);
+}
+
+.portal-spotlight-card__likes.is-liked svg {
+  color: var(--73-danger);
+}
+
+.portal-spotlight-card__likes:disabled,
+.portal-spotlight-card__likes.is-busy {
+  cursor: wait;
+  opacity: 0.7;
+}
+
+.portal-spotlight-card__likes:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--73-accent) 45%, transparent);
+  outline-offset: 2px;
+}

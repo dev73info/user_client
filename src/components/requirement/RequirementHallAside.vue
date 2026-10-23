@@ -96,14 +96,14 @@ defineProps<{
 .requirement-hall__overview-card,
 .requirement-hall__recent-card {
   overflow: hidden;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(248, 250, 252, 0.94));
+  background: var(--73-app-grad-soft-09);
 }
 
 .requirement-hall__overview-card .portal-page__aside-head,
 .requirement-hall__recent-card .portal-page__aside-head {
   padding-bottom: 12px;
   margin-bottom: 12px;
-  border-bottom: 1px solid rgba(226, 232, 240, 0.82);
+  border-bottom: 1px solid color-mix(in srgb, var(--73-border) 82%, transparent);
 }
 
 .requirement-hall__overview-card .portal-page__aside-head h3,
@@ -123,8 +123,8 @@ defineProps<{
   min-height: 0;
   padding: 12px;
   border-radius: 14px;
-  border-color: rgba(219, 234, 254, 0.9);
-  background: rgba(248, 250, 252, 0.78);
+  border-color: color-mix(in srgb, var(--73-accent-soft) 90%, transparent);
+  background: color-mix(in srgb, var(--73-surface-strong) 78%, transparent);
   box-shadow: none;
   backdrop-filter: none;
   flex-direction: column;
@@ -146,7 +146,7 @@ defineProps<{
 }
 
 .requirement-hall__stat-main span {
-  color: #475569;
+  color: var(--73-ink-soft);
   font-size: 12px;
   font-weight: 800;
   line-height: 1.35;
@@ -161,7 +161,7 @@ defineProps<{
   flex-direction: column;
   gap: 8px;
   padding: 14px 0;
-  border-bottom: 1px solid rgba(148, 163, 184, 0.18);
+  border-bottom: 1px solid color-mix(in srgb, var(--73-ink-placeholder) 18%, transparent);
 }
 
 .requirement-hall__deal-item:first-child {
@@ -179,7 +179,7 @@ defineProps<{
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
   line-clamp: 2;
-  color: #0f172a;
+  color: var(--73-ink);
   font-size: 14px;
   font-weight: 800;
   line-height: 1.45;
@@ -195,7 +195,7 @@ defineProps<{
 
 .requirement-hall__deal-meta {
   min-width: 0;
-  color: #64748b;
+  color: var(--73-ink-muted);
   font-size: 12px;
   font-weight: 700;
   line-height: 1.4;
@@ -208,18 +208,18 @@ defineProps<{
   align-items: center;
   gap: 4px;
   padding: 4px 8px;
-  border: 1px solid rgba(245, 158, 11, 0.22);
+  border: 1px solid color-mix(in srgb, var(--73-warning) 22%, transparent);
   border-radius: 999px;
-  background: linear-gradient(180deg, rgba(255, 251, 235, 0.95), rgba(254, 243, 199, 0.55));
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.65);
-  color: #b45309;
+  background: var(--73-app-grad-soft-16);
+  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--73-surface-strong) 65%, transparent);
+  color: var(--73-warning);
 }
 
 .requirement-hall__deal-rating--empty {
-  border-color: rgba(148, 163, 184, 0.28);
-  background: rgba(248, 250, 252, 0.9);
+  border-color: color-mix(in srgb, var(--73-ink-placeholder) 28%, transparent);
+  background: color-mix(in srgb, var(--73-surface-strong) 90%, transparent);
   box-shadow: none;
-  color: #94a3b8;
+  color: var(--73-ink-placeholder);
   font-size: 11px;
   font-weight: 700;
 }
@@ -237,18 +237,18 @@ defineProps<{
   height: 12px;
   align-items: center;
   justify-content: center;
-  color: #e7e5e4;
+  color: var(--73-border);
   font-size: 12px;
   line-height: 1;
 }
 
 .requirement-hall__deal-star.is-full {
-  color: #f59e0b;
+  color: var(--73-warning);
 }
 
 .requirement-hall__deal-star.is-half {
   color: transparent;
-  background: linear-gradient(90deg, #f59e0b 50%, #e7e5e4 50%);
+  background: var(--73-app-grad-warning-02);
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;
@@ -256,7 +256,7 @@ defineProps<{
 
 .requirement-hall__deal-rating > strong {
   margin-left: 2px;
-  color: #92400e;
+  color: var(--73-warning-text);
   font-size: 12px;
   font-weight: 800;
   font-variant-numeric: tabular-nums;
@@ -264,7 +264,7 @@ defineProps<{
 }
 
 .requirement-hall__deal-rating-unit {
-  color: #b45309;
+  color: var(--73-warning);
   font-size: 11px;
   font-weight: 700;
   line-height: 1;
@@ -278,10 +278,10 @@ defineProps<{
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
   line-clamp: 2;
-  border-left: 2px solid rgba(148, 163, 184, 0.45);
+  border-left: 2px solid color-mix(in srgb, var(--73-ink-placeholder) 45%, transparent);
   border-radius: 0 10px 10px 0;
-  background: rgba(248, 250, 252, 0.9);
-  color: #64748b;
+  background: color-mix(in srgb, var(--73-surface-strong) 90%, transparent);
+  color: var(--73-ink-muted);
   font-size: 12px;
   font-weight: 600;
   line-height: 1.5;
@@ -291,8 +291,8 @@ defineProps<{
   margin: 0;
   padding: 14px 16px;
   border-radius: 14px;
-  background: rgba(248, 250, 252, 0.78);
-  color: #64748b;
+  background: color-mix(in srgb, var(--73-surface-strong) 78%, transparent);
+  color: var(--73-ink-muted);
   font-size: 14px;
   font-weight: 700;
   line-height: 1.6;

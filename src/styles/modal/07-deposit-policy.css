@@ -1,0 +1,203 @@
+/* --- 优惠券选择（弹窗内） --- */
+.coupon-field {
+  margin-top: 10px;
+}
+
+.coupon-summary {
+  margin: 4px 0 10px;
+  color: var(--73-accent);
+  font-size: 13px;
+}
+
+.coupon-note {
+  margin: 0 0 10px;
+  color: var(--73-ink-muted);
+  font-size: 12px;
+}
+
+/*
+ * 定金弹窗落在浅色 `.auth-modal` 上：原先一套「深色底 + 浅字」配色会几乎看不见。
+ * 下面统一改成浅底深字，对比按正文可读（约 4.5:1）来压。
+ */
+.deposit-policy-box {
+  margin: 12px 0;
+  padding: 14px;
+  border-radius: 12px;
+  border: 1px solid var(--73-success);
+  background: var(--73-success-soft);
+  transition:
+    border-color 180ms ease,
+    background-color 180ms ease,
+    box-shadow 180ms ease;
+}
+
+.deposit-policy-box.is-pending {
+  border-color: var(--73-warning);
+  background: var(--73-warning-soft);
+  box-shadow: none;
+}
+
+.deposit-policy-box.is-confirmed {
+  border-color: var(--73-success);
+  background: var(--73-success-soft);
+}
+
+.deposit-policy-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.deposit-policy-title {
+  margin: 0;
+  color: var(--73-success);
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.deposit-policy-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.4;
+  border: 1px solid transparent;
+}
+
+.deposit-policy-badge.is-required {
+  color: var(--73-danger);
+  background: var(--73-warning-soft);
+  border-color: var(--73-warning);
+}
+
+.deposit-policy-badge.is-confirmed {
+  color: var(--73-success);
+  background: var(--73-success-soft);
+  border-color: var(--73-success);
+}
+
+.deposit-policy-list {
+  margin: 10px 0 0;
+  padding-left: 18px;
+  color: var(--73-ink-soft);
+  font-size: 13px;
+  line-height: 1.7;
+}
+
+.deposit-policy-confirm {
+  margin-top: 12px;
+  margin-bottom: 14px;
+}
+
+.deposit-policy-confirm.is-pending {
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: var(--73-warning-soft);
+  border: 1px solid var(--73-warning);
+}
+
+/* 必须盖过 `.auth-modal label { display: grid; width: 100% }`，否则勾选框和文案会竖着叠在一起。 */
+.auth-modal .deposit-policy-check,
+.deposit-policy-check {
+  position: relative;
+  margin-top: 0;
+  margin-bottom: 0;
+  width: auto;
+  max-width: 100%;
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+  gap: 10px;
+  cursor: pointer;
+  user-select: none;
+  font-size: 14px;
+  color: inherit;
+  font-weight: inherit;
+}
+
+.deposit-policy-check__input {
+  position: absolute;
+  opacity: 0;
+  width: 1px !important;
+  height: 1px !important;
+  margin: 0;
+  pointer-events: none;
+}
+
+.deposit-policy-check__box {
+  width: 20px;
+  height: 20px;
+  flex: 0 0 20px;
+  margin-top: 2px;
+  border-radius: 6px;
+  border: 1.5px solid var(--73-ink-placeholder);
+  background: var(--73-surface-strong);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition:
+    border-color 180ms ease,
+    background-color 180ms ease,
+    box-shadow 180ms ease,
+    transform 180ms ease;
+}
+
+.deposit-policy-check__tick {
+  width: 9px;
+  height: 6px;
+  border-left: 2px solid var(--73-surface-strong);
+  border-bottom: 2px solid var(--73-surface-strong);
+  transform: rotate(-45deg) translate(1px, -1px) scale(0.2);
+  transform-origin: center;
+  opacity: 0;
+  transition:
+    transform 180ms ease,
+    opacity 180ms ease;
+}
+
+.deposit-policy-check__text {
+  flex: 1 1 auto;
+  min-width: 0;
+  color: var(--73-ink);
+  font-size: 14px;
+  line-height: 1.55;
+  font-weight: 600;
+}
+
+.deposit-policy-check:hover .deposit-policy-check__box {
+  border-color: var(--73-success);
+  background: var(--73-success-soft);
+}
+
+.deposit-policy-check.is-checked .deposit-policy-check__box {
+  border-color: var(--73-success);
+  background: var(--73-success);
+  box-shadow: none;
+}
+
+.deposit-policy-check.is-checked .deposit-policy-check__tick {
+  opacity: 1;
+  transform: rotate(-45deg) translate(1px, -1px) scale(1);
+}
+
+.deposit-policy-check__input:focus-visible + .deposit-policy-check__box {
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--73-success) 22%, transparent);
+}
+
+.deposit-policy-warning {
+  margin: 8px 0 0;
+  color: var(--73-danger);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.deposit-contract-hint {
+  margin: 8px 0 0;
+  color: var(--73-ink-soft);
+  font-size: 12px;
+  line-height: 1.55;
+}

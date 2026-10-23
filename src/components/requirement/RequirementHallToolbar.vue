@@ -116,14 +116,14 @@ const keyword = defineModel<string>('keyword', { required: true })
 
 .requirement-hall__publish-btn {
   padding: 0 14px;
-  background: #2563eb;
-  color: #fff;
-  box-shadow: 0 8px 18px rgba(37, 99, 235, 0.18);
+  background: var(--73-accent);
+  color: var(--73-surface-strong);
+  box-shadow: 0 8px 18px color-mix(in srgb, var(--73-accent) 18%, transparent);
 }
 
 .requirement-hall__publish-btn:hover {
-  background: #1d4ed8;
-  box-shadow: 0 10px 22px rgba(37, 99, 235, 0.22);
+  background: var(--73-app-accent-strong);
+  box-shadow: 0 10px 22px color-mix(in srgb, var(--73-accent) 22%, transparent);
   transform: translateY(-1px);
 }
 
@@ -159,10 +159,10 @@ const keyword = defineModel<string>('keyword', { required: true })
 .requirement-hall__toolbar input {
   width: 100%;
   min-height: 42px;
-  border: 1px solid rgba(198, 210, 236, 0.86);
+  border: 1px solid color-mix(in srgb, var(--73-accent) 86%, transparent);
   border-radius: 14px;
-  background: #fff;
-  color: #0f172a;
+  background: var(--73-surface-strong);
+  color: var(--73-ink);
   padding: 0 40px 0 14px;
   outline: none;
   transition:
@@ -187,7 +187,7 @@ const keyword = defineModel<string>('keyword', { required: true })
   border: 0;
   border-radius: 999px;
   background: transparent;
-  color: #94a3b8;
+  color: var(--73-ink-placeholder);
   font-size: 12px;
   cursor: pointer;
   transition:
@@ -196,14 +196,14 @@ const keyword = defineModel<string>('keyword', { required: true })
 }
 
 .requirement-hall__search-clear:hover {
-  background: rgba(226, 232, 240, 0.66);
-  color: #475569;
+  background: color-mix(in srgb, var(--73-border) 66%, transparent);
+  color: var(--73-ink-soft);
 }
 
 .requirement-hall__toolbar input:focus {
-  border-color: rgba(37, 99, 235, 0.58);
-  background: #fff;
-  box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.1);
+  border-color: color-mix(in srgb, var(--73-accent) 58%, transparent);
+  background: var(--73-surface-strong);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--73-accent) 10%, transparent);
 }
 
 @media (max-width: 640px) {

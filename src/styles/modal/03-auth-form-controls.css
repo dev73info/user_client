@@ -1,0 +1,248 @@
+.auth-mode-switch {
+  margin-bottom: 14px;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  padding: 6px;
+  border: 1px solid color-mix(in srgb, var(--73-accent-soft) 95%, transparent);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--73-surface-strong) 90%, transparent);
+}
+
+.auth-mode-btn {
+  min-height: 34px;
+  border: 1px solid transparent;
+  border-radius: 9px;
+  background: transparent;
+  color: var(--73-ink-muted);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  cursor: pointer;
+  transition:
+    color 140ms ease,
+    border-color 140ms ease,
+    background-color 140ms ease,
+    box-shadow 140ms ease,
+    transform 140ms ease;
+}
+
+.auth-mode-btn:hover:not(:disabled) {
+  color: var(--73-accent);
+  border-color: color-mix(in srgb, var(--73-accent) 50%, transparent);
+  background: color-mix(in srgb, var(--73-accent-soft) 90%, transparent);
+}
+
+.auth-mode-btn.active,
+.auth-mode-btn:disabled {
+  color: var(--73-accent);
+  border-color: color-mix(in srgb, var(--73-accent) 72%, transparent);
+  background: color-mix(in srgb, var(--73-accent-soft) 96%, transparent);
+  box-shadow: 0 8px 18px color-mix(in srgb, var(--73-accent) 8%, transparent);
+  cursor: default;
+}
+
+.auth-modal label,
+.auth-modal input,
+.auth-modal textarea {
+  width: 100%;
+}
+
+.auth-modal label {
+  display: grid;
+  gap: 6px;
+  margin-bottom: 12px;
+  font-size: 13px;
+  color: var(--73-ink-soft);
+  font-weight: 600;
+}
+
+.auth-modal input,
+.auth-modal textarea,
+.profile-update-row input {
+  width: 100%;
+  border: 1px solid color-mix(in srgb, var(--73-border) 96%, transparent);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--73-surface-strong) 94%, transparent);
+  color: var(--73-ink);
+  padding: 10px 12px;
+  outline: none;
+}
+
+.auth-modal input::placeholder,
+.auth-modal textarea::placeholder,
+.profile-update-row input::placeholder {
+  color: var(--73-ink-placeholder);
+}
+
+.auth-modal input[type='checkbox'] {
+  width: auto;
+  max-width: none;
+  margin: 0;
+}
+
+.auth-agreement-row {
+  margin-bottom: 12px;
+}
+
+/* 人机验证与「忘记密码？」同行：控件在左、链接在右，垂直居中。
+   链接沿用原先的靠右落点（原 `.auth-forgot-row { text-align: right }`）。 */
+.auth-turnstile-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+/* Cloudflare Turnstile「normal」挂件实宽 300×65（未传 size，走默认）；
+   按它的实宽预留，既不拉伸也不压扁，窄屏再靠 max-width 收口。 */
+.auth-turnstile-row__widget {
+  flex: 0 0 300px;
+  max-width: 100%;
+}
+
+.auth-turnstile-row__actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  margin-left: auto;
+}
+
+.auth-link {
+  border: none;
+  background: transparent;
+  color: var(--73-accent);
+  font-size: 13px;
+  text-decoration: underline;
+  cursor: pointer;
+  padding: 0;
+}
+
+.auth-link:hover {
+  opacity: 0.85;
+}
+
+.auth-code-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.auth-agreement-row .checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--73-ink-muted);
+  font-size: 13px;
+  line-height: 1.7;
+  flex-wrap: wrap;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid color-mix(in srgb, var(--73-accent-soft) 95%, transparent);
+  background: color-mix(in srgb, var(--73-surface-strong) 90%, transparent);
+}
+
+.auth-agreement-row .checkbox-label .checkbox-input {
+  width: 18px;
+  height: 18px;
+  min-width: 18px;
+  min-height: 18px;
+  padding: 0;
+  margin: 0;
+  border: 1px solid color-mix(in srgb, var(--73-accent) 72%, transparent);
+  border-radius: 5px;
+  background: color-mix(in srgb, var(--73-surface-strong) 94%, transparent);
+  appearance: none;
+  box-sizing: border-box;
+  flex: 0 0 18px;
+  display: inline-grid;
+  place-content: center;
+  cursor: pointer;
+  transition:
+    border-color 140ms ease,
+    background-color 140ms ease,
+    box-shadow 140ms ease;
+}
+
+.auth-agreement-row .checkbox-label .checkbox-input::after {
+  content: '';
+  width: 9px;
+  height: 9px;
+  border-radius: 2px;
+  transform: scale(0);
+  transition: transform 120ms ease;
+  background: var(--73-accent);
+}
+
+.auth-agreement-row .checkbox-label .checkbox-input:checked {
+  border-color: color-mix(in srgb, var(--73-accent) 85%, transparent);
+  background: color-mix(in srgb, var(--73-accent-soft) 96%, transparent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--73-accent) 12%, transparent);
+}
+
+.auth-agreement-row .checkbox-label .checkbox-input:checked::after {
+  transform: scale(1);
+}
+
+.auth-agreement-row .checkbox-label .checkbox-input:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--73-accent) 16%, transparent);
+}
+
+.auth-agreement-row .checkbox-label .checkbox-text {
+  color: var(--73-ink-soft);
+  font-weight: 600;
+}
+
+.auth-agreement-row .checkbox-label .agreement-links {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.auth-agreement-row .checkbox-label .agreement-links > span {
+  color: var(--73-ink-placeholder);
+}
+
+.auth-agreement-row .checkbox-label .agreement-links a {
+  color: var(--73-accent);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.auth-agreement-row .checkbox-label .agreement-links a:hover {
+  color: var(--73-app-accent-strong);
+}
+
+.auth-modal textarea {
+  resize: vertical;
+  font: inherit;
+}
+
+.auth-modal input:focus,
+.auth-modal textarea:focus {
+  border-color: color-mix(in srgb, var(--73-accent) 72%, transparent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--73-accent) 12%, transparent);
+}
+
+.auth-modal-actions {
+  margin-top: 14px;
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  flex-wrap: wrap;
+  flex: 0 0 auto;
+}
+
+.auth-login-methods {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 16px;
+}

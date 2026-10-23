@@ -29,16 +29,16 @@ defineProps<{
   margin: 0 0 1rem;
   padding: 0.75rem 0.9rem;
   border-radius: 8px;
-  background: #fffbeb;
-  border: 1px solid #fde68a;
-  color: #92400e;
+  background: var(--73-warning-soft);
+  border: 1px solid var(--73-warning);
+  color: var(--73-warning-text);
   line-height: 1.6;
 }
 
 .archive-banner--cleared {
-  background: #f8fafc;
-  border-color: #cbd5e1;
-  color: #475569;
+  background: var(--73-surface-strong);
+  border-color: var(--73-ink-disabled);
+  color: var(--73-ink-soft);
 }
 
 .archive-banner strong {

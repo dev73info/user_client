@@ -124,7 +124,7 @@ function displayName(): string {
 }
 
 .realname-consent-upload__name {
-  color: #15803d;
+  color: var(--73-success);
   font-size: 13px;
   max-width: 100%;
   overflow: hidden;
@@ -133,19 +133,19 @@ function displayName(): string {
 }
 
 .realname-consent-upload__hint {
-  color: #64748b;
+  color: var(--73-ink-muted);
   font-size: 12px;
 }
 
 .realname-consent-template {
-  color: #d97706;
+  color: var(--73-warning);
   font-size: 13px;
   text-decoration: underline;
   text-underline-offset: 3px;
 }
 
 .realname-consent-template:hover {
-  color: #b45309;
+  color: var(--73-app-warning-text-strong);
   opacity: 1;
 }
 </style>

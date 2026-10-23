@@ -1,0 +1,36 @@
+/* 桌面资源列表**这一层自己**的样式：两栏骨架（左筛选、右结果）、三条卡面共用的描边底色、结果区栅格。
+   筛选菜单 / 卡片 / 空态的样式随模板节点搬到各自文件。 */
+
+.portal-resource-browser {
+  display: grid;
+  grid-template-columns: minmax(200px, 240px) minmax(0, 1fr);
+  align-items: start;
+  gap: 16px;
+}
+
+/* 三条卡面（筛选栏、卡片、空态）共用描边与底色；三处子组件都不再覆写这两个属性，所以放在父级作用域即可 */
+/* 层级靠描边与底色，不用投影（本轮重设计口径：卡片去阴影改描边） */
+.portal-resource-browser__filters,
+.portal-resource-browser__card,
+.portal-resource-browser__empty {
+  border: 1px solid var(--card-border);
+  background: var(--bg-soft);
+}
+
+.portal-resource-browser__grid {
+  display: grid;
+  /* 结果区：2–3 列自适应；窄屏在 900px 处回落单列 */
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  align-items: stretch;
+  gap: 14px;
+}
+
+@media (max-width: 900px) {
+  .portal-resource-browser {
+    grid-template-columns: 1fr;
+  }
+
+  .portal-resource-browser__grid {
+    grid-template-columns: 1fr;
+  }
+}

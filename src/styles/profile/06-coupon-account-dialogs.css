@@ -1,0 +1,173 @@
+/* --- 优惠券列表（个人中心） --- */
+.coupon-items {
+  display: grid;
+  gap: 12px;
+}
+
+.coupon-item {
+  width: 100%;
+  text-align: left;
+  padding: 18px;
+  border: 1px solid var(--profile-card-border);
+  border-radius: 16px;
+  background: var(--profile-card-bg-strong);
+  color: var(--profile-text-main);
+  cursor: pointer;
+  transition:
+    border-color 0.2s ease,
+    background-color 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.coupon-item:hover {
+  border-color: color-mix(in srgb, var(--73-accent) 92%, transparent);
+  background: var(--73-accent-soft);
+  box-shadow: 0 10px 24px color-mix(in srgb, var(--73-accent) 8%, transparent);
+}
+
+.coupon-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.coupon-status {
+  padding: 4px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  text-transform: uppercase;
+}
+
+.coupon-status.pending_use {
+  background: var(--profile-success-soft);
+  color: var(--profile-success-text);
+}
+
+.coupon-status.used {
+  background: var(--profile-danger-soft);
+  color: var(--profile-danger-text);
+}
+
+.coupon-item small {
+  display: block;
+  margin-bottom: 8px;
+  color: var(--profile-text-sub);
+}
+
+.coupon-meta {
+  margin: 10px 0 0;
+  color: var(--profile-text-sub);
+  font-size: 13px;
+}
+
+.profile-page .empty {
+  color: var(--profile-text-sub);
+  padding: 20px 18px;
+  font-size: 14px;
+  line-height: 1.6;
+  border: 1px dashed color-mix(in srgb, var(--73-accent-soft) 98%, transparent);
+  border-radius: 16px;
+  background: color-mix(in srgb, var(--73-accent-soft) 80%, transparent);
+}
+
+.profile-page button.ghost,
+.profile-page button.ghost.small {
+  border-color: color-mix(in srgb, var(--73-accent-soft) 95%, transparent);
+  background: var(--73-surface-strong);
+  color: var(--profile-text-main);
+  box-shadow: 0 8px 20px color-mix(in srgb, var(--73-accent) 6%, transparent);
+}
+
+.profile-page button.ghost:hover:not(:disabled) {
+  background: var(--73-accent-soft);
+  border-color: color-mix(in srgb, var(--73-accent) 92%, transparent);
+  box-shadow: 0 12px 24px color-mix(in srgb, var(--73-accent) 10%, transparent);
+}
+
+/* === 账号弹窗的共用样式（R047 收口） ===
+   下面这几条原来在 src/components/account/ 的几个弹窗里各带一份副本：`TDialog` 默认
+   teleport 到 body，父级的 scoped 规则不再命中弹窗节点，所以第 1 步拆弹窗时只能连着样式
+   一起复制。同一个视觉规格留两份、改一次要改两处，因此收回全局。
+
+   收在这里要注意两点：
+   1. 不能挂 `.profile-page` 上的 `--profile-*` 变量——teleport 出去后不在 `.profile-page`
+      子树里，取不到；颜色一律用 `:root` 上登记的 `--73-*` 令牌。
+   2. scoped 样式编译后自带 `[data-v-x]` 属性选择器，特异性比这里的类选择器高一级。所以
+      窄屏档要覆盖的那几条**基声明**必须一并搬过来（见本节末尾），否则全局媒体查询会被
+      组件里的 scoped 基规则压住、静默失效。 */
+
+/* 爱签账户管理 / 印章管理两个弹窗的行：一行控件横排，行间 10px。 */
+.asign-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.asign-row:last-child {
+  margin-bottom: 0;
+}
+
+/* 说明行：颜色取 `--73-ink-muted`，与原先的字面量 var(--73-ink-muted) 同值（两套主题一致），
+   换令牌不改观感，只是把它从裸色值里摘出来。 */
+.asign-hint {
+  margin: 0 0 12px;
+  color: var(--73-ink-muted);
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+/* 危险操作弹窗的确认词说明（注销账号 / 注销结算账户共用）。
+   这里保留字面量 var(--73-ink-soft)：最接近的 `--73-ink-soft` 在 portal 主题下是 var(--73-ink-muted)，并非同值，
+   换令牌会改动颜色，先原样搬过来。 */
+.account-close-confirm-label {
+  color: var(--73-ink-soft);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+/* 密码弹窗两行、两步验证弹窗开关行与两栏卡片：这几行的列宽在 640px 档要改成竖排。
+   基声明放在这里，窄屏档才能压过组件里剩下的 scoped 规则（原因见本节开头第 2 条）。 */
+.account-password-row--send {
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+
+.account-password-row--confirm {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto;
+}
+
+.account-security-toggle-row {
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+
+.account-security-actions {
+  grid-template-columns: minmax(0, 1fr) auto auto;
+}
+
+.account-2fa-methods {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+}
+
+/* R047 断点收敛：这条原档位 720px → 640px（本文件上方已有三块 640px）。
+   没并进那三块的原因：它前面紧挨着上面 `.account-2fa-methods` 等基声明，并到前面去会让基声明
+   反过来盖掉这里的窄屏值，所以留在原位置。等密码弹窗 / 两步验证弹窗的基声明整体收到 640 档，这条可删。 */
+@media (max-width: 640px) {
+  .account-password-row--send,
+  .account-password-row--confirm,
+  .account-security-actions,
+  .account-security-toggle-row,
+  .account-2fa-methods {
+    grid-template-columns: 1fr;
+  }
+
+  .account-switch-control {
+    justify-self: start;
+  }
+
+  .account-security-actions .ghost.small {
+    width: 100%;
+    justify-self: stretch;
+  }
+}

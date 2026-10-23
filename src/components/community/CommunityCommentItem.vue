@@ -178,12 +178,12 @@ function canAccept(
   align-items: start;
 }
 
-/* 采纳标记的琥珀色 #e6a23c / #fdf6ec，与「已采纳」角标（#b45309 / #fef3c7）同一支色相。
-   这组值没有等值的 --73-warning-*（令牌是 rgba(245,158,11,.14) / #92400e 那一支），
+/* 采纳标记的琥珀色 var(--73-warning) / var(--73-warning-soft)，与「已采纳」角标（var(--73-warning) / var(--73-warning-soft)）同一支色相。
+   这组值没有等值的 --73-warning-*（令牌是 color-mix(in srgb, var(--73-warning) 14%, transparent) / var(--73-warning-text) 那一支），
    换令牌就是改视觉，保留字面量。 */
 .community-comment-item.is-accepted {
-  border-color: #e6a23c !important;
-  background: #fdf6ec;
+  border-color: var(--73-warning) !important;
+  background: var(--73-warning-soft);
 }
 
 .community-comment-item__accepted {
@@ -194,8 +194,8 @@ function canAccept(
   border-radius: 4px;
   font-size: 11px;
   font-weight: 600;
-  color: #b45309;
-  background: #fef3c7;
+  color: var(--73-warning);
+  background: var(--73-warning-soft);
 }
 
 .community-comment-item__avatar {
@@ -205,8 +205,8 @@ function canAccept(
   place-items: center;
   overflow: hidden;
   border-radius: var(--73-radius-pill);
-  background: rgba(219, 234, 254, 0.92);
-  color: #1d4ed8;
+  background: color-mix(in srgb, var(--73-accent-soft) 92%, transparent);
+  color: var(--73-accent);
   font-weight: 900;
 }
 
@@ -219,9 +219,9 @@ function canAccept(
 .community-comment-item__body {
   min-width: 0;
   padding: 12px 14px;
-  border: 1px solid rgba(226, 232, 240, 0.9);
+  border: 1px solid color-mix(in srgb, var(--73-border) 90%, transparent);
   border-radius: var(--73-radius-inner);
-  background: rgba(248, 250, 252, 0.72);
+  background: color-mix(in srgb, var(--73-surface-strong) 72%, transparent);
 }
 
 .community-comment-item__floor {
@@ -240,7 +240,7 @@ function canAccept(
 
 .community-comment-item__reply-to {
   flex-shrink: 0;
-  color: #2563eb;
+  color: var(--73-accent);
   font-size: 12px;
   font-weight: 700;
 }
@@ -264,12 +264,12 @@ function canAccept(
 }
 
 .community-comment-item strong {
-  color: #0f172a;
+  color: var(--73-ink);
 }
 
 .community-comment-item p {
   margin: 6px 0;
-  color: #334155;
+  color: var(--73-ink-soft);
   line-height: 1.65;
   overflow-wrap: anywhere;
 }
@@ -305,20 +305,20 @@ function canAccept(
 .community-comment-item__actions button {
   min-height: 26px;
   padding: 0 9px;
-  border: 1px solid rgba(226, 232, 240, 0.95);
+  border: 1px solid color-mix(in srgb, var(--73-border) 95%, transparent);
   border-radius: var(--73-radius-pill);
-  background: rgba(255, 255, 255, 0.86);
+  background: color-mix(in srgb, var(--73-surface-strong) 86%, transparent);
 }
 
 .community-comment-replying button:hover,
 .community-comment-item__actions button:hover,
 .community-comment-item__actions button.is-liked {
-  color: #2563eb;
+  color: var(--73-accent);
 }
 
 .community-comment-item__actions .community-comment-item__accept {
-  color: #b45309;
-  border-color: #fcd34d;
+  color: var(--73-warning);
+  border-color: var(--73-warning);
 }
 
 .community-comment-item__actions button span {
@@ -329,8 +329,8 @@ function canAccept(
 
 .community-comment-item__actions button:hover,
 .community-comment-item__actions button.is-liked {
-  border-color: rgba(147, 197, 253, 0.9);
-  background: #eff6ff;
+  border-color: color-mix(in srgb, var(--73-accent) 90%, transparent);
+  background: var(--73-accent-soft);
 }
 
 .community-comment-item__actions button:disabled {
@@ -343,7 +343,7 @@ function canAccept(
   gap: 10px;
   margin-top: 12px;
   padding-top: 12px;
-  border-top: 1px solid rgba(226, 232, 240, 0.9);
+  border-top: 1px solid color-mix(in srgb, var(--73-border) 90%, transparent);
 }
 
 .community-comment-replying {
@@ -352,9 +352,9 @@ function canAccept(
   justify-content: space-between;
   gap: 10px;
   padding: 8px 10px;
-  border-left: 3px solid #2563eb;
-  background: #eff6ff;
-  color: #1d4ed8;
+  border-left: 3px solid var(--73-accent);
+  background: var(--73-accent-soft);
+  color: var(--73-accent);
   font-size: 13px;
   font-weight: 700;
 }
@@ -369,18 +369,18 @@ function canAccept(
 .community-reply-cancel {
   min-height: 28px;
   padding: 0 10px !important;
-  border: 1px solid rgba(148, 163, 184, 0.5) !important;
+  border: 1px solid color-mix(in srgb, var(--73-ink-placeholder) 50%, transparent) !important;
   border-radius: 7px;
-  background: #fff !important;
-  color: #475569 !important;
+  background: var(--73-surface-strong) !important;
+  color: var(--73-ink-soft) !important;
   font-size: 12px !important;
   font-weight: 700;
 }
 
 .community-reply-cancel:hover {
-  border-color: rgba(37, 99, 235, 0.5) !important;
-  background: #eff6ff !important;
-  color: #2563eb !important;
+  border-color: color-mix(in srgb, var(--73-accent) 50%, transparent) !important;
+  background: var(--73-accent-soft) !important;
+  color: var(--73-accent) !important;
 }
 
 .community-inline-reply-box .community-comment-submit {

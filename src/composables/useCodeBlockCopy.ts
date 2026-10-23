@@ -9,57 +9,18 @@ type UseCodeBlockCopyOptions = {
   notify?: Notify
 }
 
-const hostClass = 'rich-code-copy-host'
-const buttonClass = 'rich-code-copy-button'
-const visibleClass = 'is-visible'
-const copiedClass = 'is-copied'
-const activeClass = 'is-copy-target'
-const viewportGap = 12
-const codeBlockGap = 10
-const fallbackButtonWidth = 66
-const fallbackButtonHeight = 30
-
-function clamp(value: number, min: number, max: number): number {
-  if (max < min) {
-    return min
-  }
-
-  return Math.min(max, Math.max(min, value))
-}
-
-function getFloatingTopBoundary(root: HTMLElement): number {
-  let top = viewportGap
-  const header = document.querySelector<HTMLElement>('.portal-header')
-  const headerRect = header?.getBoundingClientRect()
-  if (headerRect && headerRect.height > 0 && headerRect.bottom > 0) {
-    top = Math.max(top, Math.round(headerRect.bottom + codeBlockGap))
-  }
-
-  const floatingToolbar = root.querySelector<HTMLElement>('.rich-text-editor__toolbar.is-floating')
-  const toolbarRect = floatingToolbar?.getBoundingClientRect()
-  if (toolbarRect && toolbarRect.height > 0 && toolbarRect.bottom > 0) {
-    top = Math.max(top, Math.round(toolbarRect.bottom + codeBlockGap))
-  }
-
-  return top
-}
-
-function findCodeBlock(target: EventTarget | null, root: HTMLElement): HTMLElement | null {
-  if (!(target instanceof Element)) {
-    return null
-  }
-
-  const preElement = target.closest('pre')
-  if (!(preElement instanceof HTMLElement) || !root.contains(preElement)) {
-    return null
-  }
-
-  return preElement.querySelector('code') ? preElement : null
-}
-
-function getCodeText(preElement: HTMLElement): string {
-  return preElement.querySelector('code')?.textContent ?? ''
-}
+import {
+  buttonClass,
+  computeButtonPlacement,
+  copiedClass,
+  fallbackButtonHeight,
+  fallbackButtonWidth,
+  findCodeBlock,
+  getCodeText,
+  getFloatingTopBoundary,
+  hostClass,
+  visibleClass,
+} from './codeBlockCopy/geometry'
 
 export function useCodeBlockCopy({ rootRef, notify }: UseCodeBlockCopyOptions) {
   let activeCodeBlock: HTMLElement | null = null
@@ -112,36 +73,23 @@ export function useCodeBlockCopy({ rootRef, notify }: UseCodeBlockCopyOptions) {
       return
     }
 
-    const rootRect = root.getBoundingClientRect()
-    const preRect = preElement.getBoundingClientRect()
-    const buttonWidth = button.offsetWidth || fallbackButtonWidth
-    const buttonHeight = button.offsetHeight || fallbackButtonHeight
-    const visibleLeft = Math.max(preRect.left, rootRect.left, viewportGap)
-    const visibleRight = Math.min(preRect.right, rootRect.right, window.innerWidth - viewportGap)
-    const visibleTop = Math.max(preRect.top, rootRect.top, getFloatingTopBoundary(root))
-    const visibleBottom = Math.min(preRect.bottom, rootRect.bottom, window.innerHeight - viewportGap)
+    const placement = computeButtonPlacement({
+      rootRect: root.getBoundingClientRect(),
+      preRect: preElement.getBoundingClientRect(),
+      buttonWidth: button.offsetWidth || fallbackButtonWidth,
+      buttonHeight: button.offsetHeight || fallbackButtonHeight,
+      viewportWidth: window.innerWidth,
+      viewportHeight: window.innerHeight,
+      topBoundary: getFloatingTopBoundary(root),
+    })
 
-    if (
-      visibleRight - visibleLeft < buttonWidth + codeBlockGap * 2 ||
-      visibleBottom - visibleTop < buttonHeight + codeBlockGap * 2
-    ) {
+    if (!placement) {
       button.classList.remove(visibleClass)
       return
     }
 
-    const left = clamp(
-      visibleRight - buttonWidth - codeBlockGap,
-      visibleLeft + codeBlockGap,
-      visibleRight - buttonWidth - codeBlockGap,
-    )
-    const top = clamp(
-      Math.max(preRect.top + codeBlockGap, visibleTop + codeBlockGap),
-      visibleTop + codeBlockGap,
-      visibleBottom - buttonHeight - codeBlockGap,
-    )
-
-    button.style.left = `${Math.round(left)}px`
-    button.style.top = `${Math.round(top)}px`
+    button.style.left = `${placement.left}px`
+    button.style.top = `${placement.top}px`
     button.classList.add(visibleClass)
   }
 

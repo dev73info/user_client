@@ -1,0 +1,194 @@
+/* --- 通用按钮 --- */
+.publish-btn {
+  flex-shrink: 0;
+  border: 0;
+  border-radius: 999px;
+  padding: 10px 16px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--73-ink);
+  background: var(--73-warning);
+  cursor: pointer;
+  transition:
+    transform 180ms ease,
+    box-shadow 180ms ease;
+}
+
+.publish-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 8px 18px color-mix(in srgb, var(--73-warning) 32%, transparent);
+}
+
+.refresh-btn {
+  border: 1px solid color-mix(in srgb, var(--73-surface-strong) 34%, transparent);
+  border-radius: 999px;
+  padding: 10px 16px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-main);
+  background: color-mix(in srgb, var(--73-surface-strong) 6%, transparent);
+  cursor: pointer;
+  transition:
+    transform 180ms ease,
+    box-shadow 180ms ease,
+    opacity 180ms ease;
+}
+
+.refresh-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 8px 18px color-mix(in srgb, var(--73-accent) 20%, transparent);
+}
+
+.refresh-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
+button.ghost,
+button.ghost.small {
+  appearance: none;
+  border: 1px solid color-mix(in srgb, var(--73-surface-strong) 24%, transparent);
+  border-radius: 12px;
+  padding: 10px 15px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-main);
+  background: color-mix(in srgb, var(--73-surface-strong) 6%, transparent);
+  cursor: pointer;
+  transition:
+    transform 180ms ease,
+    box-shadow 180ms ease,
+    background-color 180ms ease,
+    border-color 180ms ease,
+    opacity 180ms ease;
+}
+
+button.ghost:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 8px 18px color-mix(in srgb, var(--73-accent) 18%, transparent);
+  background: color-mix(in srgb, var(--73-surface-strong) 12%, transparent);
+  border-color: color-mix(in srgb, var(--73-surface-strong) 36%, transparent);
+}
+
+button.ghost:disabled {
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
+button.ghost.small {
+  padding: 8px 12px;
+  border-radius: 10px;
+  font-size: 12px;
+}
+
+.top-back {
+  appearance: none;
+  border: 1px solid color-mix(in srgb, var(--73-ink-placeholder) 34%, transparent);
+  border-radius: 12px;
+  padding: 10px 15px;
+  cursor: pointer;
+  font-weight: 600;
+  background: color-mix(in srgb, var(--73-surface-strong) 72%, transparent);
+  color: var(--text-main);
+  transition:
+    border-color 0.2s ease,
+    background 0.2s ease;
+}
+
+.top-back:hover {
+  border-color: color-mix(in srgb, var(--73-success) 52%, transparent);
+  background: color-mix(in srgb, var(--73-success) 10%, transparent);
+}
+
+/* --- 面板 --- */
+.panel {
+  margin-top: 18px;
+  border-radius: 18px;
+  border: 1px solid var(--card-border);
+  background: color-mix(in srgb, var(--73-surface-strong) 88%, transparent);
+  box-shadow: 0 20px 48px color-mix(in srgb, var(--73-ink-soft) 10%, transparent);
+  backdrop-filter: blur(12px);
+  padding: 18px;
+  animation: reveal 640ms ease-out;
+}
+
+.panel-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.panel-head > div {
+  min-width: 0;
+}
+
+.panel-head button.ghost,
+.panel-head .top-back {
+  white-space: nowrap;
+}
+
+/* R047 断点收敛：原档位 780px → 640px（同文件的 820px 档本轮保留，见报告） */
+@media (max-width: 640px) {
+  .panel-head {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .panel-head button.ghost,
+  .panel-head .top-back {
+    width: 100%;
+  }
+}
+
+.panel-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+h2 {
+  margin: 0;
+  font-size: 18px;
+}
+
+.panel-header span {
+  color: var(--text-sub);
+  font-size: 14px;
+}
+
+/* --- 工具类 --- */
+.lead {
+  margin: 0;
+  color: var(--text-sub);
+}
+
+.empty {
+  color: var(--text-sub);
+  padding: 18px;
+  border: 1px dashed color-mix(in srgb, var(--73-ink-placeholder) 42%, transparent);
+  border-radius: 16px;
+}
+
+.empty-placeholder {
+  margin: 0;
+  color: var(--text-sub);
+  font-size: 14px;
+}
+
+.card-title {
+  margin: 0;
+  width: 100%;
+  font-size: 13px;
+  color: var(--text-sub);
+}
+
+.tip,
+.qr-fallback {
+  margin: 12px 0 0;
+  color: var(--text-sub);
+  font-size: 13px;
+  text-align: center;
+}

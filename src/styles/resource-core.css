@@ -1,16 +1,19 @@
 /* --- 1. 变量与基础重置 --- */
 :root {
-  --bg-deep: #edf3f5;
-  --bg-mid: #f5f8fa;
-  --bg-soft: #ffffff;
-  --card-bg: rgba(255, 255, 255, 0.92);
-  --card-border: rgba(148, 163, 184, 0.3);
-  --text-main: #172033;
-  --text-sub: #52627a;
-  --accent: #1f4ad1;
-  --success: #16805c;
+  --bg-deep: var(--73-surface-strong);
+  --bg-mid: var(--73-surface-strong);
+  --bg-soft: var(--73-surface-strong);
+  --card-bg: color-mix(in srgb, var(--73-surface-strong) 92%, transparent);
+  --card-border: color-mix(in srgb, var(--73-ink-placeholder) 30%, transparent);
+  --text-main: var(--73-ink);
+  --text-sub: var(--73-ink-muted);
+  --accent: var(--73-accent);
+  --success: var(--73-success);
   --glass-blur: 12px;
-  --primary-gradient: linear-gradient(135deg, #2563eb, #4f8cff);
+  /* 门户品牌渐变。注意：--73-accent-gradient 是**主题相关**的——portal 主题下是
+     #2563eb → #4f8cff，dev 主题下（[data-73-theme='dev']）是平色。本仓不设
+     data-73-theme，所以恒走 portal 那一支；将来谁给 <html> 加上主题属性，这里会静默变平。 */
+  --primary-gradient: var(--73-accent-gradient);
 }
 
 * {
@@ -25,8 +28,7 @@ body {
   font-family: 'Space Grotesk', 'Noto Sans SC', sans-serif;
   color: var(--text-main);
   background:
-    radial-gradient(circle at 12% 15%, rgba(31, 74, 209, 0.08), transparent 30%),
-    radial-gradient(circle at 88% 72%, rgba(42, 166, 164, 0.08), transparent 35%),
+    var(--73-app-grad-soft-66), var(--73-app-grad-soft-65),
     linear-gradient(145deg, var(--bg-deep), var(--bg-mid) 45%, var(--bg-soft));
   background-attachment: fixed;
   min-height: 100vh;
@@ -85,13 +87,13 @@ body {
 .brand-link {
   font-size: 15px;
   font-weight: 700;
-  color: #f8fafc;
+  color: var(--73-surface-strong);
   text-decoration: none;
-  border: 1px solid rgba(56, 189, 248, 0.75);
+  border: 1px solid color-mix(in srgb, var(--73-accent) 75%, transparent);
   padding: 8px 14px;
   border-radius: 999px;
-  background: rgba(14, 165, 233, 0.16);
-  box-shadow: 0 10px 30px rgba(14, 165, 233, 0.18);
+  background: color-mix(in srgb, var(--73-accent) 16%, transparent);
+  box-shadow: 0 10px 30px color-mix(in srgb, var(--73-accent) 18%, transparent);
   line-height: 1.5;
   transition:
     background 120ms ease,
@@ -101,25 +103,25 @@ body {
 }
 
 .brand-link:hover {
-  background: rgba(14, 165, 233, 0.28);
-  color: #ffffff;
+  background: color-mix(in srgb, var(--73-accent) 28%, transparent);
+  color: var(--73-surface-strong);
   transform: translateY(-1px);
-  box-shadow: 0 12px 36px rgba(14, 165, 233, 0.22);
+  box-shadow: 0 12px 36px color-mix(in srgb, var(--73-accent) 22%, transparent);
 }
 
 .brand-dot {
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  background: #95d5b2;
-  box-shadow: 0 0 12px rgba(149, 213, 178, 0.85);
+  background: var(--73-success);
+  box-shadow: 0 0 12px color-mix(in srgb, var(--73-success) 85%, transparent);
 }
 
 .brand-text {
   font-size: 14px;
   font-weight: 700;
   letter-spacing: 0.05em;
-  color: rgba(243, 252, 255, 0.9);
+  color: color-mix(in srgb, var(--73-accent-soft) 90%, transparent);
 }
 
 .glass-panel {
@@ -141,7 +143,7 @@ body {
   margin-top: 4rem;
   padding: 2rem;
   border-top: 1px solid var(--card-border);
-  background: rgba(4, 20, 32, 0.3);
+  background: color-mix(in srgb, var(--73-accent) 30%, transparent);
   text-align: center;
 }
 
