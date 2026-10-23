@@ -39,12 +39,6 @@
     },
     {
       "rule": "line-budget",
-      "file": "src/composables/useAuthForm.ts",
-      "detail": "518 行 > 300（模块）",
-      "since": "2026-10-22"
-    },
-    {
-      "rule": "line-budget",
       "file": "src/router/dev.ts",
       "detail": "524 行 > 300（模块）",
       "since": "2026-10-22"
