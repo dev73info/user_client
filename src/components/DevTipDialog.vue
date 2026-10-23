@@ -14,12 +14,7 @@ import { computed, ref, watch } from 'vue'
 import QRCode from 'qrcode'
 import { TButton, TCheckbox, TDialog, TInput, TMessage } from 'ui_73info'
 
-import {
-  createTip,
-  getTipOrder,
-  type CreateTipPayload,
-  type TipOrder,
-} from '@/api/tips'
+import { createTip, getTipOrder, type CreateTipPayload, type TipOrder } from '@/api/tips'
 import type { PublicTipBlock } from '@/api/publicProfile'
 import { isWechatBrowser } from '@/shared/auth/browser'
 import {
@@ -119,7 +114,9 @@ const amountPreview = computed(() => {
   return parsed.ok ? formatTipPointsTier(parsed.fen) : '—'
 })
 
-const successVisible = computed(() => order.value?.pay_method === 'cash' && order.value?.status !== 'paid')
+const successVisible = computed(
+  () => order.value?.pay_method === 'cash' && order.value?.status !== 'paid',
+)
 
 function stopPoll() {
   if (pollTimer !== null) {
@@ -310,8 +307,16 @@ async function submit() {
     <div v-if="successVisible" class="tip-dialog__pay">
       <p class="tip-dialog__pay-amount">{{ amountPreview }}</p>
       <template v-if="qrDataUrl">
-        <img :src="qrDataUrl" alt="打赏支付二维码" class="tip-dialog__qr" width="220" height="220" />
-        <p class="tip-dialog__pay-tip">请用手机微信扫码，在手机上完成支付；支付完成后本窗口会自动更新。</p>
+        <img
+          :src="qrDataUrl"
+          alt="打赏支付二维码"
+          class="tip-dialog__qr"
+          width="220"
+          height="220"
+        />
+        <p class="tip-dialog__pay-tip">
+          请用手机微信扫码，在手机上完成支付；支付完成后本窗口会自动更新。
+        </p>
       </template>
       <template v-else-if="payUrl">
         <p class="tip-dialog__pay-tip">请点击下方按钮在微信中完成支付。</p>
@@ -328,7 +333,12 @@ async function submit() {
       <p v-if="tip?.thanks_message" class="tip-dialog__thanks">{{ tip.thanks_message }}</p>
 
       <!-- 通道切换：只显示对方开启的通道 -->
-      <div v-if="availability.cash && availability.points" class="tip-dialog__channels" role="radiogroup" aria-label="打赏方式">
+      <div
+        v-if="availability.cash && availability.points"
+        class="tip-dialog__channels"
+        role="radiogroup"
+        aria-label="打赏方式"
+      >
         <button
           type="button"
           class="tip-dialog__channel"
@@ -419,14 +429,18 @@ async function submit() {
           :maxlength="TIP_MESSAGE_MAX_LENGTH"
           placeholder="给开发者说点什么"
         />
-        <span class="tip-dialog__hint">{{ Array.from(message).length }} / {{ TIP_MESSAGE_MAX_LENGTH }} 字</span>
+        <span class="tip-dialog__hint"
+          >{{ Array.from(message).length }} / {{ TIP_MESSAGE_MAX_LENGTH }} 字</span
+        >
       </div>
 
       <TCheckbox v-model="anonymous" label="匿名打赏（不在公开记录里显示我的用户名）" />
 
       <p class="tip-dialog__summary">
         本次打赏 <strong>{{ amountPreview }}</strong>
-        <template v-if="channel === 'cash' && feePercentText">，平台服务费 {{ feePercentText }}</template>
+        <template v-if="channel === 'cash' && feePercentText"
+          >，平台服务费 {{ feePercentText }}</template
+        >
       </p>
 
       <p class="tip-dialog__notice">
