@@ -119,7 +119,11 @@ export function useCodeBlockCopy({ rootRef, notify }: UseCodeBlockCopyOptions) {
     const visibleLeft = Math.max(preRect.left, rootRect.left, viewportGap)
     const visibleRight = Math.min(preRect.right, rootRect.right, window.innerWidth - viewportGap)
     const visibleTop = Math.max(preRect.top, rootRect.top, getFloatingTopBoundary(root))
-    const visibleBottom = Math.min(preRect.bottom, rootRect.bottom, window.innerHeight - viewportGap)
+    const visibleBottom = Math.min(
+      preRect.bottom,
+      rootRect.bottom,
+      window.innerHeight - viewportGap,
+    )
 
     if (
       visibleRight - visibleLeft < buttonWidth + codeBlockGap * 2 ||
