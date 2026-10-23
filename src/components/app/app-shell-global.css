@@ -1,0 +1,73 @@
+/* 门户外壳的**非 scoped** 段落：全局滚动条、TScrollbar 滑块与页脚贴底的弹性底座。
+   从 `App.vue` 原样搬出（同样是 `App.vue` 里用 `<style src>` 引的非 scoped 样式），
+   选择器与顺序都不变。 */
+html {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
+}
+
+html::-webkit-scrollbar {
+  width: 4px;
+}
+
+html::-webkit-scrollbar-button {
+  display: none;
+  width: 0;
+  height: 0;
+}
+
+html::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+html::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.22);
+  border-radius: 999px;
+}
+
+html::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.42);
+}
+
+/* R047 断点收敛：原档位 780px → 640px */
+@media (max-width: 640px) {
+  html::-webkit-scrollbar {
+    width: 0;
+    height: 0;
+  }
+}
+
+/* 外壳滚动条（TScrollbar）的滑块样式。
+   Element 的 `.el-scrollbar__bar.is-vertical` 换成了库的 `.t73-scrollbar__bar--vertical`，
+   滑块本身仍按门户侧的渐变画，保持与迁移前一致。 */
+.app-scrollbar .t73-scrollbar__bar--vertical {
+  width: 4px;
+  right: 0;
+}
+
+.app-scrollbar .t73-scrollbar__bar--vertical .t73-scrollbar__thumb {
+  background: linear-gradient(180deg, rgba(56, 189, 248, 0.7), rgba(149, 213, 178, 0.8));
+  border-radius: 999px;
+}
+
+.app-scrollbar .t73-scrollbar__bar--vertical .t73-scrollbar__thumb:hover {
+  background: linear-gradient(180deg, rgba(125, 211, 252, 0.9), rgba(149, 213, 178, 1));
+}
+
+/* 页脚贴底的弹性底座。
+   门户外壳的可滚动元素是 `.t73-scrollbar__wrap`（`.app-scrollbar` 只有 100vh，wrap 靠
+   `height: 100%` 继承它），所以 100vh 的纵向弹性链要建在 wrap 的内容层上：
+   `.t73-scrollbar__view` 至少与滚动视口等高并纵向排布，它唯一的子元素
+   `.app-view-container`（scoped 段落里 `flex: 1 0 auto`）再拿下剩余高度，
+   页脚最后由 `.site-footer-host` 的 `margin-top: auto` 顶到容器底部。
+   给 body / #app 加 min-height 之所以无效，正是因为滚动不发生在它们身上。
+
+   选择器必须限定到外壳这一个实例：工作台侧栏也是 TScrollbar、也带 `app-scrollbar`
+   类（`UserWorkbenchView.vue` 的 `user-workbench__aside-scrollbar`），
+   用后代选择器会把它一起改成 flex 容器、动到侧栏排版。
+   所以这里用 `.app-shell-scrollbar`（只加在外壳上）+ 直接子代限定。 */
+.app-shell-scrollbar > .t73-scrollbar__wrap > .t73-scrollbar__view {
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
+}

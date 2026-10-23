@@ -1,0 +1,68 @@
+/* 门户外壳（`App.vue`）的 scoped 样式：滚动容器、内容栏与页脚贴底的弹性链。 */
+.app-shell {
+  min-height: 100vh;
+  height: auto;
+  overflow: visible;
+}
+
+.app-content {
+  position: relative;
+  z-index: 2;
+  min-height: 100vh;
+  background: #f6f8fb;
+}
+
+.app-scrollbar {
+  height: 100vh;
+}
+
+/* 页脚贴底：真正滚动的是 TScrollbar 内部的 `.t73-scrollbar__wrap`（`.app-scrollbar` 自身
+   只有 100vh），所以「内容不足一屏时把页脚顶到底部」的弹性链要从 `.t73-scrollbar__view`
+   （见 app-shell-global.css 的非 scoped 段落）接到这里，给 body / #app 加 min-height 是够不着的。
+   容器纵向排布并吃满父级给的剩余高度，页脚再用 margin-top: auto 压到底部。 */
+.app-view-container {
+  padding: 0 0 28px;
+  flex: 1 0 auto;
+  display: flex;
+  flex-direction: column;
+}
+
+.app-view-container--no-footer {
+  padding-bottom: 0;
+}
+
+/* 内容不足一屏时 margin-top: auto 吃掉剩余空间，把页脚压到视口底部；
+   左右 auto 维持原来的水平居中。内容超过一屏时剩余空间为 0，
+   页脚自然落在正文之后，不遮挡、不脱离文档流。 */
+.site-footer-host {
+  width: min(1280px, calc(100% - 24px));
+  margin: auto auto 0;
+}
+
+@media (max-width: 900px) {
+  .app-top-nav:not(.app-top-nav--home) {
+    display: none;
+  }
+
+  .app-shell,
+  .app-content {
+    min-height: 100vh;
+    height: auto;
+  }
+
+  .site-footer-host {
+    display: none;
+    width: calc(100% - 20px);
+  }
+
+  .app-view-container {
+    /* 底部快捷导航约 58px + 距底 8px，再留 14px 呼吸 */
+    padding-bottom: 80px;
+  }
+
+  /* 会话打开时底部快捷导航已隐藏（见 PortalMobileDock），不再给它让位，会话铺满到屏幕底边 */
+  .app-view-container:has(.conversation-modal-wrap--inline),
+  .app-view-container:has(.conversation-modal-wrap--inline) :deep(.user-workbench__content) {
+    padding-bottom: 0;
+  }
+}

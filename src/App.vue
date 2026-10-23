@@ -1,126 +1,28 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
+import { computed } from 'vue'
+import { useRoute } from 'vue-router'
 
-import { useAuthStore } from '@/stores/auth'
-import { useDownloadStore } from '@/stores/download'
+import AppDownloadCard from '@/components/app/AppDownloadCard.vue'
+import AppSiteFooter from '@/components/app/AppSiteFooter.vue'
 import PortalTopNav from '@/components/PortalTopNav.vue'
 import PortalMobileDock from '@/components/PortalMobileDock.vue'
 import SupportChatWidget from '@/components/SupportChatWidget.vue'
 import MockIdentitySwitcher from '@/mock/MockIdentitySwitcher.vue'
-import { TMessage, TScrollbar } from 'ui_73info'
-import { AUTH_UNAUTHORIZED_EVENT, type AuthUnauthorizedEventDetail } from '@/shared/api/authEvents'
-const auth = useAuthStore()
-const downloadStore = useDownloadStore()
+import { TScrollbar } from 'ui_73info'
+import { useAppShellAuth } from '@/components/app/useAppShellAuth'
+
+/**
+ * 门户外壳：滚动容器 + 顶栏 + 路由出口 + 页脚 + 浮层。
+ *
+ * 拆分（R047）：登录态接线（初始化会话、开发模式自动登录、全局 401 兜底）在
+ * `components/app/useAppShellAuth.ts`，页脚与下载进度浮层各是一个组件，
+ * 外壳样式在 `app-shell.css`（scoped）与 `app-shell-global.css`（非 scoped）。
+ */
 const route = useRoute()
-const router = useRouter()
-const currentYear = new Date().getFullYear()
+const { auth } = useAppShellAuth()
 const showSiteFooter = computed(
   () => !route.matched.some((record) => record.meta.hideSiteFooter === true),
 )
-const devAutoLoginCredentials = import.meta.env.DEV
-  ? {
-      username: import.meta.env.VITE_DEV_AUTO_LOGIN_USERNAME?.trim() ?? '',
-      password: import.meta.env.VITE_DEV_AUTO_LOGIN_PASSWORD?.trim() ?? '',
-    }
-  : null
-let handlingUnauthorized = false
-
-async function loginWithDevelopmentAccount() {
-  if (!devAutoLoginCredentials?.username || !devAutoLoginCredentials.password) {
-    return
-  }
-
-  try {
-    await auth.login(devAutoLoginCredentials.username, devAutoLoginCredentials.password)
-  } catch (error) {
-    console.warn('开发模式自动登录失败', error)
-  }
-}
-
-async function initializeAuthSession() {
-  auth.hydrate()
-
-  let hasUsableSession = false
-  if (auth.token) {
-    try {
-      await auth.initializeSession()
-      hasUsableSession = true
-    } catch (error) {
-      console.warn('初始化登录态失败', error)
-    }
-  }
-
-  if (!devAutoLoginCredentials?.username || !devAutoLoginCredentials.password) {
-    return
-  }
-
-  // 已有可用会话就不再打登录接口。开发模式的自动登录**不能**每次启动都重新登一次：
-  // 后端对同一账号的登录限流是 8 次 / 15 分（防撞库），而整页 HMR 重载、重启 dev server、
-  // 开新标签页都算一次「启动」，照旧写法十几分钟就能把额度打满，正常开发反被限流拦下。
-  if (hasUsableSession) {
-    // 会话有效但登的不是指定的开发账号（手动换过号）：这时才切回开发账号。
-    if (auth.username && auth.username !== devAutoLoginCredentials.username) {
-      auth.logout()
-      await loginWithDevelopmentAccount()
-    }
-    return
-  }
-
-  await loginWithDevelopmentAccount()
-}
-
-function currentRedirectTarget() {
-  const fullPath = route.fullPath.trim()
-  if (!fullPath || !fullPath.startsWith('/') || fullPath.startsWith('//') || fullPath === '/') {
-    return ''
-  }
-  return fullPath
-}
-
-function handleUnauthorizedSession(event: Event) {
-  const isDeveloperRoute =
-    route.path.startsWith('/dev') || route.matched.some((record) => Boolean(record.meta.devArea))
-
-  if (isDeveloperRoute) {
-    return
-  }
-
-  if (handlingUnauthorized) {
-    return
-  }
-
-  const alreadyShowingLogin = route.name === 'home' && route.query.modal === 'auth'
-  if (!auth.token.trim() && alreadyShowingLogin) {
-    return
-  }
-
-  handlingUnauthorized = true
-  const detail = (event as CustomEvent<AuthUnauthorizedEventDetail>).detail
-  const redirectTarget = currentRedirectTarget()
-  const nextQuery: Record<string, string> = { modal: 'auth', mode: 'login' }
-  if (redirectTarget) {
-    nextQuery.redirect_to = redirectTarget
-  }
-
-  auth.logout()
-  TMessage.warning(detail?.message || '未登录或登录已过期，请重新登录')
-
-  void router.replace({ name: 'home', query: nextQuery }).finally(() => {
-    window.setTimeout(() => {
-      handlingUnauthorized = false
-    }, 500)
-  })
-}
-
-onMounted(() => {
-  window.addEventListener(AUTH_UNAUTHORIZED_EVENT, handleUnauthorizedSession)
-  void initializeAuthSession()
-})
-
-onBeforeUnmount(() => {
-  window.removeEventListener(AUTH_UNAUTHORIZED_EVENT, handleUnauthorizedSession)
-})
 </script>
 
 <template>
@@ -138,64 +40,7 @@ onBeforeUnmount(() => {
             </Suspense>
           </RouterView>
 
-          <div v-if="showSiteFooter" class="site-footer-host">
-            <footer class="site-footer" aria-label="网站基础信息">
-              <div class="site-footer-grid">
-                <div class="site-footer-block">
-                  <h3>网站信息</h3>
-                  <p>平台名称：柒叁信息（73info）</p>
-                  <p>平台状态：内测中</p>
-                  <p>联系邮箱：fanbo@73info.cn</p>
-                  <p>投诉与侵权处理：fanbo@73info.cn</p>
-                </div>
-                <div class="site-footer-block">
-                  <h3>备案与合规</h3>
-                  <p>
-                    ICP备案号：
-                    <a href="https://beian.miit.gov.cn/" target="_blank" rel="noopener noreferrer"
-                      >滇ICP备2026006119号-3</a
-                    >
-                  </p>
-                  <p>
-                    公安备案号：
-                    <a
-                      class="public-security-beian-link"
-                      href="https://beian.mps.gov.cn/#/query/webSearch?code=53062802000023"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                    >
-                      <img
-                        class="public-security-beian-icon"
-                        src="/icons/beian.png"
-                        alt="公安备案图标"
-                      />
-                      <span>滇公网安备53062802000023号</span>
-                    </a>
-                  </p>
-                  <p>
-                    增值电信业务经营许可证：
-                    <a
-                      href="https://dxzhgl.miit.gov.cn/dxxzsp/xkz/xkzgl/resource/qiyesearch.jsp?num=%25E6%25BB%2587B2-20260273&type=xuke"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      >滇B2-20260273</a
-                    >
-                  </p>
-                  <p>交易说明：第三方支付担保与分账</p>
-                </div>
-                <div class="site-footer-block">
-                  <h3>服务说明</h3>
-                  <p><router-link to="/about">关于我们</router-link></p>
-                  <p><router-link to="/terms">用户协议</router-link></p>
-                  <p><router-link to="/privacy">隐私政策</router-link></p>
-                  <p><router-link to="/payment-refund">支付与退款说明</router-link></p>
-                </div>
-              </div>
-              <p class="site-footer-copy">
-                © {{ currentYear }} 柒叁信息 73Info. All rights reserved.
-              </p>
-            </footer>
-          </div>
+          <AppSiteFooter v-if="showSiteFooter" />
         </div>
       </TScrollbar>
       <PortalMobileDock />
@@ -208,256 +53,9 @@ onBeforeUnmount(() => {
     <MockIdentitySwitcher />
 
     <!-- 全局资源下载进度浮层：切换路由不中断下载，浮层持续展示进度 -->
-    <Transition name="download-pop">
-      <div
-        v-if="downloadStore.state.active"
-        class="global-download-card"
-        role="status"
-        aria-live="polite"
-      >
-        <div class="global-download-card__body">
-          <div class="global-download-card__row">
-            <span class="global-download-card__file">{{ downloadStore.state.fileName }}</span>
-            <span class="global-download-card__pct">{{ downloadStore.state.percent }}%</span>
-          </div>
-          <div class="global-download-card__track">
-            <div
-              class="global-download-card__bar"
-              :style="{ width: `${downloadStore.state.percent}%` }"
-            ></div>
-          </div>
-          <div class="global-download-card__meta">
-            <span v-if="downloadStore.loadedBytes > 0">
-              {{ downloadStore.formatBytes(downloadStore.loadedBytes) }}
-              <template v-if="downloadStore.totalBytes > 0">
-                / {{ downloadStore.formatBytes(downloadStore.totalBytes) }}
-              </template>
-            </span>
-            <span v-else>正在下载…</span>
-          </div>
-        </div>
-      </div>
-    </Transition>
+    <AppDownloadCard />
   </div>
 </template>
 
-<style scoped>
-.app-shell {
-  min-height: 100vh;
-  height: auto;
-  overflow: visible;
-}
-
-.app-content {
-  position: relative;
-  z-index: 2;
-  min-height: 100vh;
-  background: #f6f8fb;
-}
-
-.app-scrollbar {
-  height: 100vh;
-}
-
-/* 页脚贴底：真正滚动的是 TScrollbar 内部的 `.t73-scrollbar__wrap`（`.app-scrollbar` 自身
-   只有 100vh），所以「内容不足一屏时把页脚顶到底部」的弹性链要从 `.t73-scrollbar__view`
-   （见文件末尾非 scoped 段落）接到这里，给 body / #app 加 min-height 是够不着的。
-   容器纵向排布并吃满父级给的剩余高度，页脚再用 margin-top: auto 压到底部。 */
-.app-view-container {
-  padding: 0 0 28px;
-  flex: 1 0 auto;
-  display: flex;
-  flex-direction: column;
-}
-
-.app-view-container--no-footer {
-  padding-bottom: 0;
-}
-
-/* 内容不足一屏时 margin-top: auto 吃掉剩余空间，把页脚压到视口底部；
-   左右 auto 维持原来的水平居中。内容超过一屏时剩余空间为 0，
-   页脚自然落在正文之后，不遮挡、不脱离文档流。 */
-.site-footer-host {
-  width: min(1280px, calc(100% - 24px));
-  margin: auto auto 0;
-}
-
-@media (max-width: 900px) {
-  .app-top-nav:not(.app-top-nav--home) {
-    display: none;
-  }
-
-  .app-shell,
-  .app-content {
-    min-height: 100vh;
-    height: auto;
-  }
-
-  .site-footer-host {
-    display: none;
-    width: calc(100% - 20px);
-  }
-
-  .app-view-container {
-    /* 底部快捷导航约 58px + 距底 8px，再留 14px 呼吸 */
-    padding-bottom: 80px;
-  }
-
-  /* 会话打开时底部快捷导航已隐藏（见 PortalMobileDock），不再给它让位，会话铺满到屏幕底边 */
-  .app-view-container:has(.conversation-modal-wrap--inline),
-  .app-view-container:has(.conversation-modal-wrap--inline) :deep(.user-workbench__content) {
-    padding-bottom: 0;
-  }
-}
-
-/* ── 全局资源下载进度浮层 ── */
-.global-download-card {
-  position: fixed;
-  right: 18px;
-  bottom: 84px;
-  z-index: 3000;
-  width: min(340px, calc(100vw - 36px));
-  padding: 12px 14px;
-  border-radius: 14px;
-  background: rgba(15, 23, 42, 0.94);
-  box-shadow: 0 18px 40px rgba(15, 23, 42, 0.28);
-  backdrop-filter: blur(6px);
-  border: 1px solid rgba(148, 163, 184, 0.22);
-  color: #e2e8f0;
-}
-
-.global-download-card__row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  margin-bottom: 8px;
-}
-
-.global-download-card__file {
-  font-size: 13px;
-  font-weight: 600;
-  color: #f1f5f9;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.global-download-card__pct {
-  flex: 0 0 auto;
-  font-size: 13px;
-  font-weight: 800;
-  color: #93c5fd;
-  font-variant-numeric: tabular-nums;
-}
-
-.global-download-card__track {
-  position: relative;
-  height: 7px;
-  border-radius: 999px;
-  background: rgba(148, 163, 184, 0.28);
-  overflow: hidden;
-}
-
-.global-download-card__bar {
-  position: absolute;
-  inset: 0 auto 0 0;
-  height: 100%;
-  border-radius: 999px;
-  background: linear-gradient(90deg, #3b82f6, #60a5fa);
-  transition: width 120ms linear;
-}
-
-.global-download-card__meta {
-  margin-top: 6px;
-  font-size: 12px;
-  color: #94a3b8;
-  font-variant-numeric: tabular-nums;
-}
-
-.download-pop-enter-active,
-.download-pop-leave-active {
-  transition:
-    opacity 180ms ease,
-    transform 180ms ease;
-}
-
-.download-pop-enter-from,
-.download-pop-leave-to {
-  opacity: 0;
-  transform: translateY(8px);
-}
-</style>
-
-<style>
-html {
-  scrollbar-width: thin;
-  scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
-}
-
-html::-webkit-scrollbar {
-  width: 4px;
-}
-
-html::-webkit-scrollbar-button {
-  display: none;
-  width: 0;
-  height: 0;
-}
-
-html::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-html::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.22);
-  border-radius: 999px;
-}
-
-html::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.42);
-}
-
-/* R047 断点收敛：原档位 780px → 640px */
-@media (max-width: 640px) {
-  html::-webkit-scrollbar {
-    width: 0;
-    height: 0;
-  }
-}
-
-/* 外壳滚动条（TScrollbar）的滑块样式。
-   Element 的 `.el-scrollbar__bar.is-vertical` 换成了库的 `.t73-scrollbar__bar--vertical`，
-   滑块本身仍按门户侧的渐变画，保持与迁移前一致。 */
-.app-scrollbar .t73-scrollbar__bar--vertical {
-  width: 4px;
-  right: 0;
-}
-
-.app-scrollbar .t73-scrollbar__bar--vertical .t73-scrollbar__thumb {
-  background: linear-gradient(180deg, rgba(56, 189, 248, 0.7), rgba(149, 213, 178, 0.8));
-  border-radius: 999px;
-}
-
-.app-scrollbar .t73-scrollbar__bar--vertical .t73-scrollbar__thumb:hover {
-  background: linear-gradient(180deg, rgba(125, 211, 252, 0.9), rgba(149, 213, 178, 1));
-}
-
-/* 页脚贴底的弹性底座。
-   门户外壳的可滚动元素是 `.t73-scrollbar__wrap`（`.app-scrollbar` 只有 100vh，wrap 靠
-   `height: 100%` 继承它），所以 100vh 的纵向弹性链要建在 wrap 的内容层上：
-   `.t73-scrollbar__view` 至少与滚动视口等高并纵向排布，它唯一的子元素
-   `.app-view-container`（scoped 段落里 `flex: 1 0 auto`）再拿下剩余高度，
-   页脚最后由 `.site-footer-host` 的 `margin-top: auto` 顶到容器底部。
-   给 body / #app 加 min-height 之所以无效，正是因为滚动不发生在它们身上。
-
-   选择器必须限定到外壳这一个实例：工作台侧栏也是 TScrollbar、也带 `app-scrollbar`
-   类（`UserWorkbenchView.vue` 的 `user-workbench__aside-scrollbar`），
-   用后代选择器会把它一起改成 flex 容器、动到侧栏排版。
-   所以这里用 `.app-shell-scrollbar`（只加在外壳上）+ 直接子代限定。 */
-.app-shell-scrollbar > .t73-scrollbar__wrap > .t73-scrollbar__view {
-  min-height: 100%;
-  display: flex;
-  flex-direction: column;
-}
-</style>
+<style scoped src="./components/app/app-shell.css"></style>
+<style src="./components/app/app-shell-global.css"></style>
