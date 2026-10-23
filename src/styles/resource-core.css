@@ -10,6 +10,9 @@
   --accent: var(--73-accent);
   --success: var(--73-success);
   --glass-blur: 12px;
+  /* 门户品牌渐变。注意：--73-accent-gradient 是**主题相关**的——portal 主题下是
+     #2563eb → #4f8cff，dev 主题下（[data-73-theme='dev']）是平色。本仓不设
+     data-73-theme，所以恒走 portal 那一支；将来谁给 <html> 加上主题属性，这里会静默变平。 */
   --primary-gradient: var(--73-accent-gradient);
 }
 

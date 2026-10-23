@@ -125,7 +125,7 @@
   padding: 8px 16px;
   font-size: 13px;
   font-weight: 700;
-  color: var(--73-accent);
+  color: var(--73-ink);
   background: var(--accent);
   cursor: pointer;
   transition: all 0.2s;

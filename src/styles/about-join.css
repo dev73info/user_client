@@ -58,7 +58,7 @@
   font-size: 14px;
   font-weight: 700;
   text-decoration: none;
-  color: var(--73-accent);
+  color: var(--73-ink);
   background: var(--73-warning);
   transition:
     transform 160ms ease,
