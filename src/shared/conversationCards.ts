@@ -131,9 +131,7 @@ export function conversationCardMeta(
   actionRef?: string | null,
 ): ConversationCardMeta | null {
   const requirementListRoute: RouteLocationRaw =
-    role === 'developer'
-      ? { name: 'dev-my-requirements' }
-      : { name: 'workbench-requirements' }
+    role === 'developer' ? { name: 'dev-my-requirements' } : { name: 'workbench-requirements' }
   const contractSignRoute: RouteLocationRaw = {
     name: 'contract-sign',
     query: { requirement_id: requirementId, from: role === 'developer' ? 'dev' : 'user' },
@@ -143,7 +141,8 @@ export function conversationCardMeta(
     role === 'developer' && statusIn(requirementStatus, DELIVERABLE_STATUSES)
   // 缴款那一步还开着（需求方视角）：卡片上的「支付定金 / 支付尾款」原地打开支付弹窗，
   // 同样不跳页。定金与尾款各看各的状态——「合同已签署完成」那张只在待缴定金时给按钮。
-  const canPayDeposit = role !== 'developer' && statusIn(requirementStatus, DEPOSIT_PAYABLE_STATUSES)
+  const canPayDeposit =
+    role !== 'developer' && statusIn(requirementStatus, DEPOSIT_PAYABLE_STATUSES)
   const canPayFinal = role !== 'developer' && statusIn(requirementStatus, FINAL_PAYABLE_STATUSES)
   /**
    * 「验收已通过 / 视为验收通过」卡片上的支付尾款入口：尾款付清前一直挂着。
@@ -208,9 +207,7 @@ export function conversationCardMeta(
         // 对开发者写成「收到交付版本」会像是别人交给了他。
         title: role === 'developer' ? '已提交交付版本' : '收到交付版本',
         description:
-          role === 'developer'
-            ? '你已提交，等待需求方验收。'
-            : '请下载验收，通过后支付尾款。',
+          role === 'developer' ? '你已提交，等待需求方验收。' : '请下载验收，通过后支付尾款。',
         // 交付是开发者自己提交的，这张卡片对开发者只是回执，不给按钮；
         // 需求方这边直接给交付产物的下载入口（不跳页），并在同一行给出「验收」：
         // 卡片说的就是「请验收后支付尾款」，入口放这儿比只留在底部工具条里更顺路。
@@ -288,9 +285,7 @@ export function conversationCardMeta(
       return {
         title: '开发者催告支付尾款',
         description:
-          role === 'developer'
-            ? '已正式通知需求方，不会自动扣款。'
-            : '请尽快按合同支付尾款。',
+          role === 'developer' ? '已正式通知需求方，不会自动扣款。' : '请尽快按合同支付尾款。',
         actionLabel: canPayFinal ? '支付尾款' : undefined,
         paymentAction: canPayFinal,
       }
@@ -447,10 +442,7 @@ export function conversationCardMeta(
         // 下一步在需求方手上，所以只给需求方一个直达绑卡的入口；
         // 开发者侧这条只是进展说明，不给按钮（他无处可做）。
         actionLabel: role === 'customer' ? '去完成收款银行卡' : undefined,
-        to:
-          role === 'customer'
-            ? { name: 'workbench-account', query: { settle: '1' } }
-            : undefined,
+        to: role === 'customer' ? { name: 'workbench-account', query: { settle: '1' } } : undefined,
       }
     // 「需人工处理」之后的两个事件码：后台滞留提醒与客服人工结案。停在人工处理这一段时
     // 案件不再有自动动作，会话里不补卡片，双方的感受就是「点了申报之后再没下文」。
