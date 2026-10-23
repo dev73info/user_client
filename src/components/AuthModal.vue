@@ -327,16 +327,34 @@ function emitInAppOauth() {
           role="tablist"
           aria-label="认证模式切换"
         >
-          <button class="auth-mode-btn" :class="{ active: authMode === 'login' }" type="button"
-            :aria-pressed="authMode === 'login'" :disabled="authMode === 'login'" @click="changeMode('login')">
+          <button
+            class="auth-mode-btn"
+            :class="{ active: authMode === 'login' }"
+            type="button"
+            :aria-pressed="authMode === 'login'"
+            :disabled="authMode === 'login'"
+            @click="changeMode('login')"
+          >
             登录
           </button>
-          <button class="auth-mode-btn" :class="{ active: authMode === 'register' }" type="button"
-            :aria-pressed="authMode === 'register'" :disabled="authMode === 'register'" @click="changeMode('register')">
+          <button
+            class="auth-mode-btn"
+            :class="{ active: authMode === 'register' }"
+            type="button"
+            :aria-pressed="authMode === 'register'"
+            :disabled="authMode === 'register'"
+            @click="changeMode('register')"
+          >
             注册
           </button>
-          <button class="auth-mode-btn" :class="{ active: authMode === 'reset' }" type="button"
-            :aria-pressed="authMode === 'reset'" :disabled="authMode === 'reset'" @click="changeMode('reset')">
+          <button
+            class="auth-mode-btn"
+            :class="{ active: authMode === 'reset' }"
+            type="button"
+            :aria-pressed="authMode === 'reset'"
+            :disabled="authMode === 'reset'"
+            @click="changeMode('reset')"
+          >
             重置密码
           </button>
         </div>
@@ -346,9 +364,14 @@ function emitInAppOauth() {
       <div v-if="showInAppOauthPanel" class="auth-inapp-login" aria-label="端内一键登录">
         <button
           class="auth-btn auth-login-method auth-inapp-login__btn"
-          :class="inAppOauthProvider === 'wechat' ? 'auth-inapp-login__btn--wechat' : 'auth-qq-login'"
+          :class="
+            inAppOauthProvider === 'wechat' ? 'auth-inapp-login__btn--wechat' : 'auth-qq-login'
+          "
           type="button"
-          :disabled="(inAppOauthProvider === 'wechat' ? wechatLoginLoading : qqLoginLoading) || !agreementSatisfied()"
+          :disabled="
+            (inAppOauthProvider === 'wechat' ? wechatLoginLoading : qqLoginLoading) ||
+            !agreementSatisfied()
+          "
           :aria-busy="inAppOauthProvider === 'wechat' ? wechatLoginLoading : qqLoginLoading"
           :aria-label="inAppOauthProvider === 'wechat' ? '使用微信一键登录' : '使用QQ一键登录'"
           @click="emitInAppOauth"
@@ -369,7 +392,12 @@ function emitInAppOauth() {
 
         <div class="auth-agreement-row auth-agreement-row--compact">
           <label class="checkbox-label">
-            <input class="checkbox-input" type="checkbox" :checked="acceptTerms" @change="updateAcceptTerms" />
+            <input
+              class="checkbox-input"
+              type="checkbox"
+              :checked="acceptTerms"
+              @change="updateAcceptTerms"
+            />
             <span class="auth-agreement-row__text">
               同意
               <router-link to="/terms">用户协议</router-link>、
@@ -388,7 +416,13 @@ function emitInAppOauth() {
 
         <div class="auth-agreement-row auth-agreement-row--compact">
           <label class="checkbox-label">
-            <input class="checkbox-input" type="checkbox" data-testid="legal-notice-check" :checked="noticeAccepted" @change="updateNoticeAccepted" />
+            <input
+              class="checkbox-input"
+              type="checkbox"
+              data-testid="legal-notice-check"
+              :checked="noticeAccepted"
+              @change="updateNoticeAccepted"
+            />
             <span class="auth-agreement-row__text">我已阅读并理解上述重要条款提示</span>
           </label>
         </div>
@@ -398,42 +432,81 @@ function emitInAppOauth() {
         <template v-if="authMode !== 'reset'">
           <label>
             {{ authMode === 'login' ? '用户名或邮箱' : '用户名' }}
-            <input :value="authUsername" type="text" autocomplete="username"
-              :placeholder="authMode === 'login' ? '请输入用户名或邮箱' : '请输入用户名'" @input="updateUsername"
-              @keydown.enter.prevent="submitOnEnter" />
+            <input
+              :value="authUsername"
+              type="text"
+              autocomplete="username"
+              :placeholder="authMode === 'login' ? '请输入用户名或邮箱' : '请输入用户名'"
+              @input="updateUsername"
+              @keydown.enter.prevent="submitOnEnter"
+            />
           </label>
           <template v-if="authMode === 'register'">
             <label>
               邮箱
-              <input :value="authEmail" type="email" autocomplete="email" placeholder="请输入注册邮箱" @input="updateEmail" />
+              <input
+                :value="authEmail"
+                type="email"
+                autocomplete="email"
+                placeholder="请输入注册邮箱"
+                @input="updateEmail"
+              />
             </label>
             <label>
               邀请码
-              <input :value="authInviteCode" type="text" maxlength="32" autocomplete="off" placeholder="可选"
-                @input="updateInviteCode" />
+              <input
+                :value="authInviteCode"
+                type="text"
+                maxlength="32"
+                autocomplete="off"
+                placeholder="可选"
+                @input="updateInviteCode"
+              />
             </label>
           </template>
         </template>
         <template v-else>
           <label>
             邮箱
-            <input :value="authEmail" type="email" autocomplete="email" placeholder="请输入注册邮箱" @input="updateEmail" />
+            <input
+              :value="authEmail"
+              type="email"
+              autocomplete="email"
+              placeholder="请输入注册邮箱"
+              @input="updateEmail"
+            />
           </label>
         </template>
 
         <template v-if="authMode === 'login'">
           <label>
             密码
-            <input :value="authPassword" type="password" autocomplete="current-password" placeholder="至少 6 位密码"
-              @input="updatePassword" @keydown.enter.prevent="submitOnEnter" />
+            <input
+              :value="authPassword"
+              type="password"
+              autocomplete="current-password"
+              placeholder="至少 6 位密码"
+              @input="updatePassword"
+              @keydown.enter.prevent="submitOnEnter"
+            />
           </label>
           <label v-if="loginRequiresTwoFactor">
             邮箱验证码
             <div class="inline-inputs auth-code-row">
-              <input :value="authEmailCode" type="text" maxlength="6" placeholder="输入 6 位验证码" @input="updateEmailCode"
-                @keydown.enter.prevent="submitOnEnter" />
-              <button class="auth-btn ghost" type="button" :disabled="sendCodeLoading || sendCodeCountdown > 0"
-                @click="emit('sendAuthCode')">
+              <input
+                :value="authEmailCode"
+                type="text"
+                maxlength="6"
+                placeholder="输入 6 位验证码"
+                @input="updateEmailCode"
+                @keydown.enter.prevent="submitOnEnter"
+              />
+              <button
+                class="auth-btn ghost"
+                type="button"
+                :disabled="sendCodeLoading || sendCodeCountdown > 0"
+                @click="emit('sendAuthCode')"
+              >
                 {{
                   sendCodeLoading
                     ? '发送中...'
@@ -450,10 +523,19 @@ function emitInAppOauth() {
           <label>
             邮箱验证码
             <div class="inline-inputs auth-code-row">
-              <input :value="authEmailCode" type="text" maxlength="6" placeholder="输入 6 位验证码"
-                @input="updateEmailCode" />
-              <button class="auth-btn ghost" type="button" :disabled="sendCodeLoading || sendCodeCountdown > 0"
-                @click="emit('sendAuthCode')">
+              <input
+                :value="authEmailCode"
+                type="text"
+                maxlength="6"
+                placeholder="输入 6 位验证码"
+                @input="updateEmailCode"
+              />
+              <button
+                class="auth-btn ghost"
+                type="button"
+                :disabled="sendCodeLoading || sendCodeCountdown > 0"
+                @click="emit('sendAuthCode')"
+              >
                 {{
                   sendCodeLoading
                     ? '发送中...'
@@ -467,8 +549,13 @@ function emitInAppOauth() {
 
           <label>
             {{ authMode === 'register' ? '密码' : '新码' }}
-            <input :value="authPassword" type="password" autocomplete="new-password" placeholder="至少 6 位新密码"
-              @input="updatePassword" />
+            <input
+              :value="authPassword"
+              type="password"
+              autocomplete="new-password"
+              placeholder="至少 6 位新密码"
+              @input="updatePassword"
+            />
           </label>
         </template>
 
@@ -497,13 +584,24 @@ function emitInAppOauth() {
         </div>
 
         <!-- 账号面板协议：端内用紧凑一行；普通浏览器保留完整文案卡片 -->
-        <template v-if="(authMode === 'register' || authMode === 'login') && showAccountPanel && !showInAppOauthPanel">
+        <template
+          v-if="
+            (authMode === 'register' || authMode === 'login') &&
+            showAccountPanel &&
+            !showInAppOauthPanel
+          "
+        >
           <div
             class="auth-agreement-row"
             :class="{ 'auth-agreement-row--compact': preferInAppOauth }"
           >
             <label class="checkbox-label">
-              <input class="checkbox-input" type="checkbox" :checked="acceptTerms" @change="updateAcceptTerms" />
+              <input
+                class="checkbox-input"
+                type="checkbox"
+                :checked="acceptTerms"
+                @change="updateAcceptTerms"
+              />
               <template v-if="preferInAppOauth">
                 <span class="auth-agreement-row__text">
                   同意
@@ -534,46 +632,73 @@ function emitInAppOauth() {
 
           <div class="auth-agreement-row">
             <label class="checkbox-label">
-              <input class="checkbox-input" type="checkbox" data-testid="legal-notice-check" :checked="noticeAccepted" @change="updateNoticeAccepted" />
+              <input
+                class="checkbox-input"
+                type="checkbox"
+                data-testid="legal-notice-check"
+                :checked="noticeAccepted"
+                @change="updateNoticeAccepted"
+              />
               <span class="checkbox-text">我已阅读并理解上述重要条款提示</span>
             </label>
           </div>
         </template>
       </div>
 
-      <div
-        v-if="showOtherLoginMethods"
-        class="auth-login-methods" aria-label="第三方登录方式">
+      <div v-if="showOtherLoginMethods" class="auth-login-methods" aria-label="第三方登录方式">
         <div class="auth-login-divider">
           <span>其他方式登录</span>
         </div>
-        <button v-if="showGithubLogin" class="auth-btn ghost auth-login-method"
+        <button
+          v-if="showGithubLogin"
+          class="auth-btn ghost auth-login-method"
           type="button"
-          :disabled="githubLoginLoading || !agreementSatisfied()" @click="emit('loginWithGithub')">
+          :disabled="githubLoginLoading || !agreementSatisfied()"
+          @click="emit('loginWithGithub')"
+        >
           <img class="auth-login-method__icon" src="/icons/github.svg" alt="" aria-hidden="true" />
           <span>{{ githubLoginLoading ? '跳转中...' : 'GitHub 快捷登录' }}</span>
         </button>
-        <button v-if="showWechatLogin" class="auth-btn ghost auth-login-method"
+        <button
+          v-if="showWechatLogin"
+          class="auth-btn ghost auth-login-method"
           type="button"
-          :disabled="wechatLoginLoading || !agreementSatisfied()" @click="emit('loginWithWechat')">
+          :disabled="wechatLoginLoading || !agreementSatisfied()"
+          @click="emit('loginWithWechat')"
+        >
           <img class="auth-login-method__icon" src="/icons/wechat.svg" alt="" aria-hidden="true" />
           <span>{{ wechatLoginLoading ? '跳转中...' : '微信快捷登录' }}</span>
         </button>
-        <button v-if="showQqLogin"
-          class="auth-btn ghost auth-login-method auth-qq-login" type="button" :aria-busy="qqLoginLoading"
-          aria-label="使用QQ登录" :disabled="qqLoginLoading || !agreementSatisfied()" @click="emit('loginWithQq')">
+        <button
+          v-if="showQqLogin"
+          class="auth-btn ghost auth-login-method auth-qq-login"
+          type="button"
+          :aria-busy="qqLoginLoading"
+          aria-label="使用QQ登录"
+          :disabled="qqLoginLoading || !agreementSatisfied()"
+          @click="emit('loginWithQq')"
+        >
           <img class="auth-login-method__icon" :src="qqLoginIconImage" alt="" aria-hidden="true" />
           <span>{{ qqLoginLoading ? '跳转中...' : 'QQ快捷登录' }}</span>
         </button>
-        <button v-if="showGiteeLogin"
-          class="auth-btn ghost auth-login-method auth-gitee-login" type="button" :aria-busy="giteeLoginLoading"
-          aria-label="使用Gitee登录" :disabled="giteeLoginLoading || !agreementSatisfied()" @click="emit('loginWithGitee')">
+        <button
+          v-if="showGiteeLogin"
+          class="auth-btn ghost auth-login-method auth-gitee-login"
+          type="button"
+          :aria-busy="giteeLoginLoading"
+          aria-label="使用Gitee登录"
+          :disabled="giteeLoginLoading || !agreementSatisfied()"
+          @click="emit('loginWithGitee')"
+        >
           <img class="auth-login-method__icon" src="/icons/gitee.svg" alt="" aria-hidden="true" />
           <span>{{ giteeLoginLoading ? '跳转中...' : 'Gitee快捷登录' }}</span>
         </button>
       </div>
 
-      <div class="auth-modal-actions" :class="{ 'auth-modal-actions--single': showInAppOauthPanel }">
+      <div
+        class="auth-modal-actions"
+        :class="{ 'auth-modal-actions--single': showInAppOauthPanel }"
+      >
         <button class="auth-btn ghost" type="button" @click="emit('close')">取消</button>
         <button
           v-if="showAccountPanel"
