@@ -135,7 +135,6 @@ watch(realnameDialogVisible, (visible) => {
 
 onMounted(async () => {
   auth.hydrate()
-  dialogs.primeUsername(auth.username)
   dialogs.consumeWechatBindResult()
   dialogs.consumeProviderBindResult()
   await dialogs.loadProfile()

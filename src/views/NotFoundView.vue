@@ -74,8 +74,8 @@ onBeforeUnmount(() => {
       </div>
 
       <p class="not-found-hint">
-        如果是从站内链接点进来的，欢迎到<router-link to="/tickets">工单中心</router-link
-        >说一声，我们好把它修掉。
+        如果是从站内链接点进来的，欢迎到<router-link to="/about">关于我们</router-link
+        >页面按留下的联系方式说一声，我们好把它修掉。
       </p>
     </section>
   </main>

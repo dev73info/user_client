@@ -13,33 +13,6 @@
   line-height: 1.6;
 }
 
-.tip-dialog__channels {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 8px;
-}
-
-.tip-dialog__channel {
-  padding: 8px 12px;
-  border: 1px solid var(--73-accent-soft);
-  border-radius: 10px;
-  background: var(--73-surface-strong);
-  color: var(--73-ink-soft);
-  font: inherit;
-  font-weight: 700;
-  cursor: pointer;
-  transition:
-    border-color 0.18s ease,
-    background 0.18s ease,
-    color 0.18s ease;
-}
-
-.tip-dialog__channel.is-active {
-  border-color: var(--73-accent);
-  background: var(--73-accent-soft);
-  color: var(--73-accent);
-}
-
 .tip-dialog__tiers {
   display: flex;
   flex-wrap: wrap;

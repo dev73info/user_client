@@ -28,7 +28,6 @@
   --73-app-grad-accent-01: linear-gradient(90deg, #3b82f6, #60a5fa); /* src/components/app/app-download-card.css */
   --73-app-grad-soft-01: linear-gradient(180deg, rgba(125, 211, 252, 0.9), rgba(149, 213, 178, 1)); /* src/components/app/app-shell-global.css */
   --73-app-grad-soft-02: linear-gradient(180deg, rgba(56, 189, 248, 0.7), rgba(149, 213, 178, 0.8)); /* src/components/app/app-shell-global.css */
-  --73-app-grad-soft-03: linear-gradient(180deg, var(--wb-accent-soft), rgba(255, 255, 255, 0.96)); /* src/components/BadgeWall.vue */
   --73-app-grad-soft-04: linear-gradient(180deg, rgba(248, 251, 255, 0.96), rgba(237, 245, 252, 0.96)); /* src/components/conversation/conversation-modal-shell.css */
   --73-app-grad-soft-05: radial-gradient(circle at 88px 52px, rgba(94, 200, 168, 0.07) 0 1px, transparent 2px); /* src/components/conversation/conversation-modal-shell.css */
   --73-app-grad-soft-06: radial-gradient(circle at 18px 18px, rgba(79, 140, 255, 0.08) 0 1px, transparent 2px); /* src/components/conversation/conversation-modal-shell.css */
@@ -108,7 +107,6 @@
   --73-app-grad-soft-52: linear-gradient( 135deg, rgba(239, 246, 255, 0.7) 0%, rgba(240, 253, 244, 0.7) 50%, rgba(255, 247, 237, 0.7) 100% ); /* src/styles/home/07-section-beta-checkin.css */
   --73-app-grad-soft-53: linear-gradient(180deg, rgba(255, 255, 255, 0.94) 0%, rgba(248, 251, 255, 0.94) 100%); /* src/styles/home/07-section-beta-checkin.css */
   --73-app-grad-accent-12: linear-gradient(135deg, #2563eb, #60a5fa); /* src/styles/home/07-section-beta-checkin.css */
-  --73-app-grad-soft-54: linear-gradient( 135deg, var(--workflow-accent), color-mix(in srgb, var(--workflow-accent) 72%, #ffffff) ); /* src/styles/home/08-step-cards.css */
   --73-app-grad-accent-13: linear-gradient(135deg, #2563eb, #38bdf8); /* src/styles/home/09-pagination.css */
   --73-app-grad-accent-14: linear-gradient(135deg, #0f3a8a, #2563eb 58%, #7dd3fc); /* src/styles/home/10-empty-spotlight-card.css */
   --73-app-grad-cover-04: linear-gradient(135deg, #0f5132, #2f855a 58%, #79c45a); /* src/styles/home/10-empty-spotlight-card.css */
@@ -139,7 +137,6 @@
   --73-app-grad-accent-soft-12: linear-gradient(135deg, #bfd3ff, #d7e5ff); /* src/styles/shell/01-shell-container-hero-usermenu.css */
   --73-app-grad-danger-01: linear-gradient(90deg, #ff7e5f 0%, #feb47b 25%, #6d5dfc 50%, #feb47b 75%, #ff7e5f 100%); /* src/styles/user.css */
   --73-app-grad-accent-soft-13: linear-gradient(180deg, #f4f7fb 0%, #f7fbff 100%); /* src/views/DeveloperAgreementView.vue */
-  --73-app-grad-accent-soft-14: linear-gradient(135deg, #eef4ff 0%, #f7faff 55%, #ffffff 100%); /* src/views/MallView.vue */
   --73-app-grad-cover-06: linear-gradient(135deg, #0b1f3a, #2563eb 60%, #60a5fa); /* src/views/NotFoundView.vue */
   --73-app-grad-accent-17: linear-gradient(135deg, #7c3aed, #6366f1); /* src/views/TeamProfileView.vue */
   --73-app-grad-soft-71: linear-gradient(135deg, rgba(255, 255, 255, 0.98), rgba(248, 250, 252, 0.94)); /* src/views/TeamProfileView.vue */

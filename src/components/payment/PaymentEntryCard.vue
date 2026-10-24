@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import PaymentAlipayFrame from '@/components/payment/PaymentAlipayFrame.vue'
 import PaymentLinkPanel from '@/components/payment/PaymentLinkPanel.vue'
 import PaymentMismatchPanel from '@/components/payment/PaymentMismatchPanel.vue'
 import PaymentQrCodeBlock from '@/components/payment/PaymentQrCodeBlock.vue'
@@ -12,7 +11,9 @@ import type { PaymentFlags } from '@/shared/paymentFlags'
  *
  * 这里只做分发，不放任何支付逻辑——每个分支的文案与按钮都在各自的面板里；
  * 分支顺序也不能动：手机端微信 / PC 微信授权 / 支付宝手机 / 云闪付手机 / 订单不匹配 /
- * 支付宝收银台 iframe / 二维码兜底，改顺序会让两种渠道同时命中时展示错的那块。
+ * 二维码兜底，改顺序会让两种渠道同时命中时展示错的那块。
+ *
+ * 「支付宝官方收银台 iframe」那一支已删除：它依赖的 `POST /api/payments/alipay/page` 不在当前契约里。
  */
 defineProps<{
   flags: PaymentFlags
@@ -22,15 +23,10 @@ defineProps<{
   wechatMiddleBusy: boolean
   wechatMiddleCreating: boolean
   wechatAutoAuthRedirecting: boolean
-  silentAuthWaiting: boolean
-  silentAuthQrDataUrl: string
   creatingIntentOrder: boolean
   qrDataUrl: string
   alipayPaymentUrl: string
   unionPaymentUrl: string
-  alipayPageHtml: string
-  alipayPageLoading: boolean
-  alipayIframeLoading: boolean
   paymentChannel: string
   /** 订单内容与渠道对不上（`invalidAdapayPaymentContent || invalidUnionPaymentContent`） */
   mismatched: boolean
@@ -40,7 +36,6 @@ const emit = defineEmits<{
   launch: []
   retryAuth: []
   retryCreate: []
-  iframeLoad: []
 }>()
 </script>
 
@@ -63,8 +58,6 @@ const emit = defineEmits<{
 
     <PaymentWechatPcAuthPanel
       v-else-if="flags.isWechatPcPayment && (flags.isIntentMode || !qrDataUrl)"
-      :silent-auth-waiting="silentAuthWaiting"
-      :silent-auth-qr-data-url="silentAuthQrDataUrl"
       :wechat-pay-error="wechatPayError"
       :creating-intent-order="creatingIntentOrder"
       :is-intent-mode="flags.isIntentMode"
@@ -91,14 +84,6 @@ const emit = defineEmits<{
     />
 
     <PaymentMismatchPanel v-else-if="mismatched" />
-
-    <PaymentAlipayFrame
-      v-else-if="alipayPageHtml"
-      :html="alipayPageHtml"
-      :page-loading="alipayPageLoading"
-      :iframe-loading="alipayIframeLoading"
-      @load="emit('iframeLoad')"
-    />
 
     <PaymentQrCodeBlock
       v-else

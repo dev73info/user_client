@@ -54,7 +54,7 @@ export function mapResourceToCard(item: PublicMcResourceItem): McCardItem {
     ]),
   )
 
-  const priceFen = item.price_fen ?? 0
+  const priceFen = item.buyout_price_fen ?? 0
   const pricePoints = item.price_points ?? 0
   const creator = item.creator.trim()
   return {

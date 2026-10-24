@@ -1,65 +1,39 @@
 <script setup lang="ts">
 import type { NotificationCard, NotificationKind } from '@/shared/notifications'
-import { ChatDotRound, Clock, Promotion, Service, Switch, TButton, TIcon, Warning } from 'ui_73info'
+import { ChatDotRound, Clock, Service, TButton, TIcon } from 'ui_73info'
 
 /**
  * 一条系统通知（`<li class="wb-item">` 那一层）。
  *
- * 五类来源在后端字段与可做的动作上都不同，但卡片形状统一：左侧类别图标 + 中间标题与正文行 +
+ * 两类来源在后端字段与可做的动作上都不同，但卡片形状统一：左侧类别图标 + 中间标题与正文行 +
  * 右侧时间与动作。类别色由 `--nc-accent` 决定（色条、图标底、类别徽标共用同一支颜色），
  * 这个变量由页面根元素上的 `--nc-*` 令牌提供，组件自己不带色值。
  *
- * 只有公告整块可点（进社区帖详情），其余卡片的点击留给动作按钮：`postId` 有值才挂
- * `role="button"` / `tabindex`，否则键盘焦点会停在一个点不出反应的卡片上。
+ * 卡片的点击只留给动作按钮，不再整块可点。
  */
-const props = defineProps<{
+defineProps<{
   card: NotificationCard
   /** 正在投票的公开申请 id：非空时投票按钮整体禁用 */
   votingId: number | null
-  /** 正在处理的过户 id：非空时过户按钮整体禁用 */
-  respondingTransferId: number | null
 }>()
 
 const emit = defineEmits<{
   vote: [decision: 'approved' | 'rejected']
-  respond: [accepted: boolean]
-  cancel: []
-  open: []
 }>()
 
 /** 每个类别一个图标，配色由卡片的 `--nc-accent` 决定。 */
 function kindIcon(kind: NotificationKind) {
   switch (kind) {
-    case 'comment-warning':
-      return Warning
     case 'history-disclosure':
       return ChatDotRound
-    case 'resource-transfer':
-      return Switch
     case 'after-sales':
       return Service
-    case 'announcement':
-      return Promotion
-  }
-}
-
-/** 公告卡片整块可点，其余卡片只在动作按钮上响应。 */
-function openIfClickable() {
-  if (props.card.postId != null) {
-    emit('open')
   }
 }
 </script>
 
 <template>
-  <li
-    class="wb-item notifications-card"
-    :class="[`notifications-card--${card.kind}`, { 'wb-item--clickable': card.postId != null }]"
-    :role="card.postId != null ? 'button' : undefined"
-    :tabindex="card.postId != null ? 0 : undefined"
-    @click="openIfClickable"
-    @keydown.enter.prevent="openIfClickable"
-  >
+  <li class="wb-item notifications-card" :class="`notifications-card--${card.kind}`">
     <span class="notifications-card__icon">
       <TIcon :icon="kindIcon(card.kind)" />
     </span>
@@ -101,34 +75,6 @@ function openIfClickable() {
           同意公开
         </TButton>
       </div>
-      <div v-else-if="card.transferAction === 'respond'" class="notifications-card__actions">
-        <TButton
-          variant="outline"
-          :disabled="respondingTransferId !== null"
-          @click.stop="emit('respond', false)"
-        >
-          拒绝
-        </TButton>
-        <TButton
-          variant="solid"
-          tone="accent"
-          :disabled="respondingTransferId !== null"
-          @click.stop="emit('respond', true)"
-        >
-          同意接收
-        </TButton>
-      </div>
-      <TButton
-        v-else-if="card.transferAction === 'cancel'"
-        variant="outline"
-        :disabled="respondingTransferId !== null"
-        @click.stop="emit('cancel')"
-      >
-        撤销申请
-      </TButton>
-      <TButton v-else-if="card.postId != null" variant="outline" @click.stop="emit('open')">
-        查看公告
-      </TButton>
     </div>
   </li>
 </template>
@@ -147,24 +93,12 @@ function openIfClickable() {
     box-shadow 160ms ease;
 }
 
-.notifications-card--comment-warning {
-  --nc-accent: var(--nc-accent-comment-warning);
-}
-
 .notifications-card--history-disclosure {
   --nc-accent: var(--nc-accent-history-disclosure);
 }
 
-.notifications-card--resource-transfer {
-  --nc-accent: var(--nc-accent-resource-transfer);
-}
-
 .notifications-card--after-sales {
   --nc-accent: var(--nc-accent-after-sales);
-}
-
-.notifications-card--announcement {
-  --nc-accent: var(--nc-accent-announcement);
 }
 
 /* 左侧 3px 类别色条：不增加一列布局，只做视觉锚点，扫列表时先按颜色分出类别 */

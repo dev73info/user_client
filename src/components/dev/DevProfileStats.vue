@@ -1,13 +1,12 @@
 <script setup lang="ts">
 /**
- * 开发者公开主页的四项读数：资源项目、荣誉徽章、获得点赞、涉及平台。
+ * 开发者公开主页的三项读数：资源项目、获得点赞、涉及平台。
  *
- * 口径在 `useDevProfileData` 里算好（资源数 / 徽章数 / 点赞合计 / 平台去重），这里只画格子。
+ * 口径在 `useDevProfileData` 里算好（资源数 / 点赞合计 / 平台去重），这里只画格子。
  */
 defineProps<{
   stats: {
     resourceCount: number
-    badgeCount: number
     totalLikes: number
     platforms: number
   }
@@ -19,10 +18,6 @@ defineProps<{
     <div class="dev-profile__stat">
       <strong>{{ stats.resourceCount }}</strong>
       <span>资源项目</span>
-    </div>
-    <div class="dev-profile__stat">
-      <strong>{{ stats.badgeCount }}</strong>
-      <span>荣誉徽章</span>
     </div>
     <div class="dev-profile__stat">
       <strong>{{ stats.totalLikes }}</strong>
@@ -38,7 +33,7 @@ defineProps<{
 <style>
 .dev-profile__stats {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(3, 1fr);
   gap: 12px;
 }
 

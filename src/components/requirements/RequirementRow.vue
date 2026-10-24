@@ -204,8 +204,8 @@ function runMoreAction(key: unknown) {
           <strong>{{ formatBudget(item.budget) }}</strong>
         </div>
         <time>
-          <small>更新时间</small>
-          <span>{{ formatRequirementTime(item.updated_at) }}</span>
+          <small>发布时间</small>
+          <span>{{ formatRequirementTime(item.created_time) }}</span>
         </time>
       </aside>
     </div>

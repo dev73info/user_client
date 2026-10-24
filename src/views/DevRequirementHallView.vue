@@ -3,8 +3,9 @@
  * 开发者需求大厅（`/workbench/developer/requirements/hall`）。
  *
  * 这一页只负责排版与组合：
- * - 列表、服务端分页、排序、关键词防抖 → `useDevRequirementHall`；
- * - 保证金 / 信用额度 / 入驻协议，以及接单、缴纳保证金、签协议三处跳转 → `useDevOrderGate`；
+ * - 列表、排序、关键词防抖 → `useDevRequirementHall`（`/requirement/hall/query` 一次回全量，
+ *   排序、关键词与分页都在本地做）；
+ * - 入驻协议签署状态、接单与签协议两处跳转 → `useDevOrderGate`；
  * - 金额、摘要、「接单」按钮文案等纯口径 → `@/shared/devRequirementHall`；
  * - 顶栏读数条 → `DevRequirementHallMetaStrip`；签协议提示 → `DevRequirementHallAgreementNotice`；
  * - 五列表格与窄屏卡片流 → `DevRequirementHallList`。
@@ -46,18 +47,16 @@ const {
 
 const {
   developerAgreementSigned,
-  availableDepositText,
   bindGate,
-  loadDepositStatus,
+  loadGateStatus,
   openRequirement,
-  goToOrderDeposit,
   goSignDeveloperAgreement,
 } = useDevOrderGate()
 
 onMounted(async () => {
   auth.hydrate()
   syncKeywordFromRoute()
-  await Promise.all([loadRequirements(), loadDepositStatus()])
+  await Promise.all([loadRequirements(), loadGateStatus()])
 })
 </script>
 
@@ -67,9 +66,7 @@ onMounted(async () => {
       :total="total"
       :self-managed="paymentModeCounts.selfManaged"
       :guarantee="paymentModeCounts.guarantee"
-      :available-text="availableDepositText"
       :loading="loading"
-      @deposit="goToOrderDeposit"
       @refresh="loadRequirements"
     />
 
@@ -129,7 +126,7 @@ onMounted(async () => {
       />
 
       <!-- 表尾走统一层的 .dev-pager（与钱包记录同一形态）。
-           本页走服务端分页，此前只取第 1 页 10 条且不给翻页入口，第 2 页起的数据在界面上不可达。 -->
+           `/requirement/hall/query` 一次回全量，翻页在这里只是切本地切片。 -->
       <div class="dev-pager" :class="{ 'dev-pager--single': total <= pageSize }">
         <div class="dev-pager__count">
           <TSelect

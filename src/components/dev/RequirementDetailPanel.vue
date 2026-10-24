@@ -20,7 +20,7 @@ const props = defineProps<{
 }>()
 
 const budgetText = computed(() => requirementBudgetText(props.requirement.budget))
-const updatedAtText = computed(() => requirementTimeText(props.requirement.updated_at))
+const createdAtText = computed(() => requirementTimeText(props.requirement.created_time))
 /** R014：开发周期（天）——担保需求合同有效期的依据；无担保 / 未填不渲染。 */
 const developmentCycleText = computed(() => requirementDevelopmentCycleText(props.requirement))
 const descriptionHtml = computed(() =>
@@ -58,8 +58,8 @@ const acceptanceHtml = computed(() =>
       <strong>{{ requirement.creator }}</strong>
     </div>
     <div class="dev-requirement-detail__stat">
-      <span>最近更新</span>
-      <strong>{{ updatedAtText }}</strong>
+      <span>发布时间</span>
+      <strong>{{ createdAtText }}</strong>
     </div>
   </div>
 

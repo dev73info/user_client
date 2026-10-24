@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { TAlert, TButton, TCard, TLoading } from 'ui_73info'
-import ResourceTransferDialog from '@/components/ResourceTransferDialog.vue'
 import ResourceHomepageEditBar from '@/components/dev/ResourceHomepageEditBar.vue'
 import ResourceBasicInfoSection from '@/components/dev/ResourceBasicInfoSection.vue'
 import ResourceApiChannelSection from '@/components/dev/ResourceApiChannelSection.vue'
@@ -45,8 +44,6 @@ const {
   resourceVisibilityLabel,
   archiveLocked,
   boundToRequirement,
-  transferDialogVisible,
-  canTransferResource,
   userClientPreviewUrl,
   goBack,
 } = useResourceHomepageResource()
@@ -127,12 +124,10 @@ const {
       :visibility-label="resourceVisibilityLabel"
       :saving="saving"
       :save-disabled="archiveLocked || channel.needsApiAgreement.value"
-      :can-transfer="canTransferResource"
       :show-preview="Boolean(resource) && !isApiKind"
       :preview-url="userClientPreviewUrl"
       :is-loading-tags="isLoadingTags"
       @back="goBack"
-      @transfer="transferDialogVisible = true"
       @save="saveHomepage"
       @refresh-tags="loadTagTree"
     />
@@ -211,7 +206,6 @@ const {
             v-model:callback-url="form.apiCallbackUrl"
             v-model:callback-secret="form.apiCallbackSecret"
             v-model:allowed-origins="form.apiAllowedOrigins"
-            v-model:repeat-purchasable="form.apiRepeatPurchasable"
             :retry-only="channel.channelRetryOnly.value"
             :channel-save-error="channel.channelSaveError.value"
             :blockers="channel.apiChannelBlockers.value"
@@ -222,7 +216,6 @@ const {
             :integration-prompt="channel.apiIntegrationPrompt.value"
             @copy-secret="channel.copyRevealedSecret"
             @copy-prompt="channel.copyApiPrompt"
-            @repeat-change="channel.onRepeatPurchasableChange"
           />
 
           <!-- 接口资源不选标签归类（不属于任何根节点 / 二级节点），整块不出现 -->
@@ -265,8 +258,6 @@ const {
         :tag-count="tagCatalog.previewTagCount.value"
       />
     </TLoading>
-
-    <ResourceTransferDialog v-model:open="transferDialogVisible" :resource="resource" />
 
     <!-- 后端首次生成的回调密钥：明文只回这一次，弹窗最醒目地提示一次 -->
     <ResourceSecretPlainDialog

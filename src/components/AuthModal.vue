@@ -10,7 +10,6 @@ import InAppLoginPanel from '@/components/authModal/InAppLoginPanel.vue'
 import OtherLoginMethods from '@/components/authModal/OtherLoginMethods.vue'
 import type { AuthModalMode, InAppOauthProvider } from '@/components/authModal/types'
 import {
-  LEGAL_NOTICE_VERSION,
   clearLegalNoticeConfirmedAt,
   readLegalNoticeConfirmedAt,
   rememberLegalNoticeConfirmedAt,
@@ -211,7 +210,7 @@ function onNoticeLoaded(payload: { version: string; effective_at: string }) {
   noticeVersion.value = payload.version
 }
 
-/** 登录 / 注册成功后补记一次协议同意留痕（含提示确认时间与提示版本）。 */
+/** 登录 / 注册成功后补记一次协议同意留痕。 */
 async function recordLoginAcceptance() {
   const confirmedAt = readLegalNoticeConfirmedAt()
   if (!confirmedAt) return
@@ -228,8 +227,6 @@ async function recordLoginAcceptance() {
       noticeVersion.value,
       detectClientPlatform(),
       'auth',
-      confirmedAt,
-      LEGAL_NOTICE_VERSION,
     )
   } catch {
     // 留痕失败不阻断登录流程：用户已经登录成功，留痕是补记。

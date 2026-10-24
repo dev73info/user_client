@@ -2,13 +2,11 @@
 import { computed } from 'vue'
 import type { PublicMcResourceItem } from '@/api/resources'
 import { API_RESOURCE_PURCHASE_HINT } from '@/shared/resourceSale'
-import { useAuthStore } from '@/stores/auth'
 import { useDownloadStore } from '@/stores/download'
-import ShareCardGenerator from '@/components/ShareCardGenerator.vue'
 
 /**
  * 资源详情摘要卡底部的主操作行：购买 / 下载主按钮（接口资源换成引导文案）、
- * 下载进度条、点赞（心形 + 赞数）、分享卡入口。
+ * 下载进度条、点赞（心形 + 赞数）。
  *
  * 从 `ResourceDetailPanel.vue` 的摘要卡里整块搬出来，DOM 结构与类名未改，
  * 样式随节点搬到 `resource-detail-cta.css`。按钮只负责「按下」，真正的下单、
@@ -33,7 +31,6 @@ const emit = defineEmits<{
   'toggle-like': []
 }>()
 
-const auth = useAuthStore()
 const downloadStore = useDownloadStore()
 
 const primaryCtaLabel = computed(() => {
@@ -112,11 +109,6 @@ const likeCountLabel = computed(() => props.resource.like_count ?? 0)
           likeCountLabel
         }}</span>
       </button>
-      <ShareCardGenerator
-        v-if="auth.isAuthed"
-        share-type="resource"
-        :target-id="String(props.resource.id)"
-      />
     </div>
   </div>
 </template>

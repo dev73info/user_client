@@ -13,13 +13,13 @@ import { useDevRequirementDetailPage } from '@/composables/useDevRequirementDeta
 /**
  * 开发者「需求详情 / 接取需求」页（R047 拆分后只剩装配与导航）。
  *
- * - 取数时序：`composables/useDevRequirementDetailPage`（需求单 / 保证金 / 信用 / 协议 / 资源清单）；
+ * - 取数时序：`composables/useDevRequirementDetailPage`（需求单 / 接单准入 / 资源清单）；
  * - 接取闸门与提交：`composables/useDevRequirementBinding` + `useDevResourceInitForm`；
  * - 展示口径：`shared/devRequirementDetail`（状态 / 预算文案、富文本兜底、归档横幅）、
  *   `shared/devRequirementBinding`（资格闸门文案、占位资源字段）；
  * - 区块：`components/dev/Requirement*`，只吃 props / 插槽、只发 emit。
  *
- * 三处整页跳转留在这里：返回需求大厅、去缴纳保证金、去签《开发者入驻协议》——
+ * 两处整页跳转留在这里：返回需求大厅、去签《开发者入驻协议》——
  * 它们决定的是「这一页之后去哪」，属于路由身份，不塞进区块组件。
  */
 const route = useRoute()
@@ -27,7 +27,6 @@ const router = useRouter()
 
 const page = useDevRequirementDetailPage()
 const { auth, loading, requirement, requirementId, loadPage } = page
-const { depositLoading } = page.capacity
 const {
   resourcesLoading,
   bindingMode,
@@ -40,7 +39,6 @@ const {
   selectedResource,
   blockReason,
   agreementBlocked,
-  requiresDeposit,
   canSubmit,
   confirmLabel,
   binding: submitting,
@@ -86,10 +84,6 @@ function goBack() {
   })
 }
 
-function goToOrderDeposit() {
-  void router.push('/dev/wallet/order-deposit')
-}
-
 function goSignDeveloperAgreement() {
   void router.push({
     name: 'contract-sign',
@@ -125,14 +119,13 @@ function goSignDeveloperAgreement() {
       </section>
 
       <aside class="dev-requirement-detail__right">
-        <TLoading :loading="resourcesLoading || depositLoading">
+        <TLoading :loading="resourcesLoading">
           <TCard class="dev-surface-card dev-requirement-detail__binding-card">
             <RequirementBindingCard
               :mode="bindingMode"
               :requirement-title="requirement.title"
               :block-reason="blockReason"
               :agreement-blocked="agreementBlocked"
-              :requires-deposit="requiresDeposit"
               :resource-options="availableResourceOptions"
               :has-pending-bindable="hasPendingBindable"
               :selected-resource-title="selectedResource?.title ?? ''"
@@ -147,7 +140,6 @@ function goSignDeveloperAgreement() {
               @resource-change="handleResourceChange"
               @review-change="handleReviewChange"
               @sign-agreement="goSignDeveloperAgreement"
-              @go-deposit="goToOrderDeposit"
               @cancel="goBack"
               @submit="submitBinding"
             >

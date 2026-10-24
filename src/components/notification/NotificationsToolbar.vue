@@ -34,10 +34,7 @@ const keyword = defineModel<string>('keyword', { required: true })
         :key="option.value"
         type="button"
         class="wb-chip wb-chip--button"
-        :class="{
-          'is-active': kindFilter === option.value,
-          'wb-chip--muted': option.value === 'announcement',
-        }"
+        :class="{ 'is-active': kindFilter === option.value }"
         :aria-pressed="kindFilter === option.value"
         @click="kindFilter = option.value"
       >

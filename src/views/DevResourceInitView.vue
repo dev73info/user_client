@@ -99,7 +99,6 @@ const {
   apiIntegrationPrompt,
   copyRevealedSecret,
   copyApiPrompt,
-  onRepeatPurchasableChange,
 } = channel
 </script>
 
@@ -169,7 +168,6 @@ const {
           v-model:callback-url="form.apiCallbackUrl"
           v-model:callback-secret="form.apiCallbackSecret"
           v-model:allowed-origins="form.apiAllowedOrigins"
-          v-model:repeat-purchasable="form.apiRepeatPurchasable"
           :retry-only="false"
           :channel-save-error="''"
           :blockers="apiChannelBlockers"
@@ -181,7 +179,6 @@ const {
           draft-mode
           @copy-secret="copyRevealedSecret"
           @copy-prompt="copyApiPrompt"
-          @repeat-change="onRepeatPurchasableChange"
         />
 
         <!-- 接口资源不选标签归类（不属于任何根节点 / 二级节点），整块不出现 -->

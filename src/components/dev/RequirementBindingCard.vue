@@ -17,7 +17,6 @@ defineProps<{
   mode: 'existing' | 'new'
   blockReason: string
   agreementBlocked: boolean
-  requiresDeposit: boolean
   resourceOptions: BindableResourceFacts[]
   /** 有「已提审 / 已公开」的未绑定资源：要说明它们为什么不能在这里绑。 */
   hasPendingBindable: boolean
@@ -34,7 +33,6 @@ const emit = defineEmits<{
   'resource-change': []
   'review-change': []
   'sign-agreement': []
-  'go-deposit': []
   cancel: []
   submit: []
 }>()
@@ -58,9 +56,7 @@ const finalConfirmed = defineModel<boolean>('finalConfirmed', { required: true }
   <RequirementBindingNotice
     :reason="blockReason"
     :agreement-blocked="agreementBlocked"
-    :requires-deposit="requiresDeposit"
     @sign-agreement="emit('sign-agreement')"
-    @go-deposit="emit('go-deposit')"
   />
 
   <TForm label-position="top">

@@ -90,7 +90,7 @@ async function redirectToCatalog() {
     // `/resources/<slug>` 没有分类段，按资源自身的标签 / 平台推出来。
     const rootSlug = paramSlug(route.params.rootSlug) || rootAlias || getTagRouteSlug(rootName)
     const entrySlug = paramSlug(route.params.entrySlug) || entryAlias || getTagRouteSlug(entryName)
-    const sale = resourceListingSaleOf(resource.price_fen, resource.price_points)
+    const sale = resourceListingSaleOf(resource.buyout_price_fen, resource.price_points)
 
     if (!rootSlug || !entrySlug) {
       // 资源没有分类标签（历史数据未回填）：退回资源项目列表，照样不 404

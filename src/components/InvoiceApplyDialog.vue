@@ -36,7 +36,6 @@ const {
   amountCny,
   invoiceGateNotice,
   existingInvoices,
-  staleInvoices,
   openSides,
   buyer,
   isSpecialAvailable,
@@ -101,18 +100,13 @@ const {
               summary.developerInvoiceCny
             }}
           </small>
-          <small v-if="summary && summary.developerPayoutFen > 0" class="invoice-amount__note">
-            其中开发者已退还 / 赔付客户 ¥{{ summary.developerPayoutCny }}，开发者票按净额 ¥{{
+          <small v-if="summary && summary.refundedFen > 0" class="invoice-amount__note">
+            其中开发者已退还 / 赔付客户 ¥{{ summary.refundedCny }}，开发者票按净额 ¥{{
               summary.developerInvoiceCny
             }}
             开具；平台服务费未退，平台票不受影响。
           </small>
         </div>
-        <p v-if="summary && summary.pendingRefundFen > 0" class="invoice-panel__notice">
-          本需求有未结案的退款诉求 ¥{{ summary.pendingRefundCny }}（退还还没走完）：
-          开发者票已按扣除这笔诉求后的净额 ¥{{ summary.developerInvoiceCny }} 计算——钱还没退出去，
-          不能算进已经发生的销售额。诉求判不成立或撤回时，差额再补开；平台服务费不随退款减免。
-        </p>
         <!-- 未结单的闸门说明：比下面那条「暂无可开票金额」更具体，两条互斥，不叠着说。 -->
         <p v-if="invoiceGateNotice" class="invoice-panel__notice">
           {{ invoiceGateNotice }}
@@ -123,23 +117,12 @@ const {
             item.invoice.amountCny
           }}），到「我的发票」可查看进度与发票文件。
         </p>
-        <p
-          v-for="item in staleInvoices"
-          :key="`stale-${item.invoice.id}`"
-          class="invoice-panel__notice"
-        >
-          原票开具后本需求实际发生的净额变了（售后退款 / 赔付已成立）：{{
-            invoiceSideLabel(item.side)
-          }}
-          需要红冲后重开。财务端已列为「待红冲」，红冲完成后这里就能按最新净额重新申请，无需另行申请改写。
-        </p>
         <!-- 未结单的原因上面那条已经写明，这条不再重复，只管「已分账但票都开过 / 还没分账」两种情况。 -->
         <p
           v-if="!summaryLoading && summary && amountFen <= 0 && !invoiceGateNotice"
           class="invoice-panel__hint"
         >
-          本需求暂无可开票金额：要么还没有成功分账的结算（未结案的退款诉求会先扣掉这部分），
-          要么能开的票都已经提交过了。
+          本需求暂无可开票金额：要么还没有成功分账的结算，要么能开的票都已经提交过了。
         </p>
         <label>
           发票抬头

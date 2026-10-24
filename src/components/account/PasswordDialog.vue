@@ -28,6 +28,8 @@ import { TDialog } from 'ui_73info'
 const props = defineProps<{
   /** 弹窗是否打开：父级持有。 */
   visible: boolean
+  /** 当前密码输入框初值（父级那份草稿）。 */
+  initialOldPassword: string
   /** 新密码输入框初值（父级那份草稿）。 */
   initialPassword: string
   /** 再次输入的新密码初值。 */
@@ -45,6 +47,8 @@ const props = defineProps<{
 const emit = defineEmits<{
   /** 关闭弹窗，父级据此回写可见性。 */
   'update:visible': [visible: boolean]
+  /** 当前密码输入即回传。 */
+  'update:old-password': [password: string]
   /** 新密码输入即回传。 */
   'update:password': [password: string]
   /** 再次输入的新密码输入即回传。 */
@@ -58,6 +62,11 @@ const emit = defineEmits<{
 }>()
 
 /** 受控输入：取值来自父级，写入立刻回传（组件内不另存草稿）。 */
+const oldPassword = computed({
+  get: () => props.initialOldPassword,
+  set: (next: string) => emit('update:old-password', next),
+})
+
 const password = computed({
   get: () => props.initialPassword,
   set: (next: string) => emit('update:password', next),
@@ -83,10 +92,20 @@ const code = computed({
     @update:open="emit('update:visible', $event)"
   >
     <div class="dialog-form">
+      <div class="profile-update-row account-password-row">
+        <input
+          v-model="oldPassword"
+          type="password"
+          placeholder="请输入当前密码"
+          autocomplete="current-password"
+          :disabled="props.saving || props.codeSending"
+        />
+      </div>
       <div class="profile-update-row account-password-row account-password-row--send">
         <input
           v-model="password"
           type="password"
+          autocomplete="new-password"
           placeholder="请输入新的密码，至少 6 位"
           :disabled="props.saving || props.codeSending"
         />

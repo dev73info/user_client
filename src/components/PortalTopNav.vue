@@ -86,7 +86,6 @@ function logoutFromMenu() {
     <PortalNavLinks :links="headerLinks" />
 
     <div class="portal-header__tools">
-      <RouterLink class="portal-search-menu" :to="{ name: 'community' }"> 社区 </RouterLink>
       <PortalSearchBox :open-auth="openAuth" :open-dev-workbench="openDevWorkbench" />
       <div class="portal-subscription" @click.stop>
         <button

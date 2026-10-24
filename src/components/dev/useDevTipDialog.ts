@@ -1,25 +1,19 @@
 /**
  * R010 打赏弹窗的交互状态与动作。
  *
- * 宿主 `DevTipDialog.vue` 只保留弹窗外壳与模板；档位选择、通道切换、金额校验、
- * 下单与现金二维码轮询都在这里，行为与拆分前逐行一致。props / emits 契约与提交体构造
- * 在 `tipDialogModel.ts`。
+ * 宿主 `DevTipDialog.vue` 只保留弹窗外壳与模板；档位选择、金额校验、下单与扫码轮询都在这里，
+ * props / emits 契约与提交体构造在 `tipDialogModel.ts`。
+ *
+ * 只有现金一种形态：契约 `POST /api/tips` 的金额是整数分，收银台地址由后端回填在
+ * `pay_url`（电脑端扫码），支付结果靠轮询 `GET /api/tips/{order_no}`。契约里没有积分打赏、
+ * 没有支付渠道参数、也没有微信打赏中间页，所以这里没有通道切换，也不做微信内跳转。
  */
 import { computed, ref, watch } from 'vue'
 import QRCode from 'qrcode'
 import { TMessage } from 'ui_73info'
 
 import { createTip, getTipOrder, type TipOrder } from '@/api/tips'
-import { isWechatBrowser } from '@/shared/auth/browser'
-import {
-  defaultTipChannel,
-  formatTipCashTier,
-  formatTipPointsTier,
-  TIP_MESSAGE_MAX_LENGTH,
-  tipChannelAvailability,
-  validateTipCustomCash,
-  validateTipCustomPoints,
-} from '@/shared/devTip'
+import { TIP_MESSAGE_MAX_LENGTH, formatTipCashTier, validateTipCustomCash } from '@/shared/devTip'
 import {
   buildTipPayload,
   FALLBACK_NOTICE,
@@ -28,39 +22,29 @@ import {
 } from '@/components/dev/tipDialogModel'
 
 export function useDevTipDialog(props: DevTipDialogProps, emit: DevTipDialogEmits) {
-  const availability = computed(() => tipChannelAvailability(props.tip))
+  /** 开发者总开关关着（或没拿到打赏块）时不允许提交 */
+  const tipEnabled = computed(() => Boolean(props.tip?.enabled))
 
-  const channel = ref<'cash' | 'points'>('cash')
   /** 选中的固定档位下标；null 表示未选档位（走自填） */
   const selectedTierIndex = ref<number | null>(null)
   /** 是否使用自填金额（true 时忽略档位） */
   const useCustom = ref(false)
   const customCash = ref('')
-  const customPoints = ref('')
   const message = ref('')
   const anonymous = ref(false)
   const submitting = ref(false)
   const errorText = ref('')
 
-  /** 现金单：本站中间页 URL 生成的二维码 */
+  /** 已下单、还没收到钱的那张单：有它就切到扫码面板 */
   const order = ref<TipOrder | null>(null)
   const qrDataUrl = ref('')
   const payUrl = ref('')
   let pollTimer: ReturnType<typeof setInterval> | null = null
 
   const noticeText = computed(() => (props.tip?.notice ?? '').trim() || FALLBACK_NOTICE)
-  const feePercentText = computed(() => {
-    const bps = Number(props.tip?.platform_fee_bps ?? 0)
-    if (!Number.isFinite(bps) || bps <= 0) {
-      return ''
-    }
-    return `${(bps / 100).toFixed(2).replace(/\.?0+$/, '')}%`
-  })
 
   const cashTiers = computed(() => props.tip?.cash_tiers_fen ?? [])
-  const pointsTiers = computed(() => props.tip?.points_tiers ?? [])
   const allowCustomCash = computed(() => Boolean(props.tip?.allow_custom_cash))
-  const allowCustomPoints = computed(() => Boolean(props.tip?.allow_custom_points))
 
   const cashCustomHint = computed(() => {
     if (!allowCustomCash.value) {
@@ -71,34 +55,22 @@ export function useDevTipDialog(props: DevTipDialogProps, emit: DevTipDialogEmit
     return `可自填 ${min} ~ ${max}`
   })
 
-  const pointsCustomHint = computed(() => {
-    if (!allowCustomPoints.value) {
-      return ''
-    }
-    return `可自填 ${props.tip?.custom_points_min ?? 0} ~ ${props.tip?.custom_points_max ?? 0} 积分`
-  })
-
   /** 当前会提交的金额文本（用于金额摘要）。 */
   const amountPreview = computed(() => {
-    if (channel.value === 'cash') {
+    if (!useCustom.value) {
       const tier = selectedTierIndex.value
-      if (!useCustom.value && tier != null) {
-        return formatTipCashTier(cashTiers.value[tier])
+      if (tier == null) {
+        return '—'
       }
-      const parsed = validateTipCustomCash(customCash.value, props.tip)
-      return parsed.ok ? formatTipCashTier(parsed.fen) : '—'
+      const fen = cashTiers.value[tier]
+      return fen == null ? '—' : formatTipCashTier(fen)
     }
-    const tier = selectedTierIndex.value
-    if (!useCustom.value && tier != null) {
-      return formatTipPointsTier(pointsTiers.value[tier])
-    }
-    const parsed = validateTipCustomPoints(customPoints.value, props.tip)
-    return parsed.ok ? formatTipPointsTier(parsed.fen) : '—'
+    const parsed = validateTipCustomCash(customCash.value, props.tip)
+    return parsed.ok ? formatTipCashTier(parsed.fen) : '—'
   })
 
-  const successVisible = computed(
-    () => order.value?.pay_method === 'cash' && order.value?.status !== 'paid',
-  )
+  /** 扫码面板只在「已经下单但还没收到钱」时显示 */
+  const successVisible = computed(() => order.value !== null && order.value.status !== 'paid')
 
   function stopPoll() {
     if (pollTimer !== null) {
@@ -109,11 +81,9 @@ export function useDevTipDialog(props: DevTipDialogProps, emit: DevTipDialogEmit
 
   function resetState() {
     stopPoll()
-    channel.value = defaultTipChannel(availability.value)
-    selectedTierIndex.value = availability.value.cash && cashTiers.value.length > 0 ? 0 : null
+    selectedTierIndex.value = cashTiers.value.length > 0 ? 0 : null
     useCustom.value = false
     customCash.value = ''
-    customPoints.value = ''
     message.value = ''
     anonymous.value = false
     errorText.value = ''
@@ -132,14 +102,6 @@ export function useDevTipDialog(props: DevTipDialogProps, emit: DevTipDialogEmit
       }
     },
   )
-
-  watch(channel, (next) => {
-    // 切通道时重置档位选择：现金与积分的档位列表不同
-    selectedTierIndex.value =
-      (next === 'cash' ? cashTiers.value.length : pointsTiers.value.length) > 0 ? 0 : null
-    useCustom.value = false
-    errorText.value = ''
-  })
 
   function pickTier(index: number) {
     selectedTierIndex.value = index
@@ -194,21 +156,6 @@ export function useDevTipDialog(props: DevTipDialogProps, emit: DevTipDialogEmit
     pollTimer = setInterval(() => pollOnce(orderNo), 4000)
   }
 
-  /** 构造提交体：优先固定档位，其次自填（规则在 `tipDialogModel.ts`）。 */
-  function buildPayload() {
-    return buildTipPayload({
-      username: props.username,
-      tip: props.tip,
-      payMethod: channel.value,
-      message: message.value,
-      anonymous: anonymous.value,
-      useCustom: useCustom.value,
-      selectedTierIndex: selectedTierIndex.value,
-      customCash: customCash.value,
-      customPoints: customPoints.value,
-    })
-  }
-
   async function submit() {
     if (submitting.value) {
       return
@@ -223,7 +170,15 @@ export function useDevTipDialog(props: DevTipDialogProps, emit: DevTipDialogEmit
       errorText.value = `留言不能超过 ${TIP_MESSAGE_MAX_LENGTH} 字`
       return
     }
-    const built = buildPayload()
+    const built = buildTipPayload({
+      username: props.username,
+      tip: props.tip,
+      message: message.value,
+      anonymous: anonymous.value,
+      useCustom: useCustom.value,
+      selectedTierIndex: selectedTierIndex.value,
+      customCash: customCash.value,
+    })
     if ('error' in built) {
       errorText.value = built.error
       return
@@ -233,7 +188,7 @@ export function useDevTipDialog(props: DevTipDialogProps, emit: DevTipDialogEmit
     try {
       const created = await createTip(props.token, built)
       order.value = created
-      if (created.pay_method === 'points' || created.status === 'paid') {
+      if (created.status === 'paid') {
         TMessage.success('打赏成功，感谢支持')
         emit('success', created)
         emit('update:open', false)
@@ -241,15 +196,10 @@ export function useDevTipDialog(props: DevTipDialogProps, emit: DevTipDialogEmit
       }
       const url = (created.pay_url ?? '').trim()
       if (!url) {
-        errorText.value = '订单已创建，但未取到支付信息，请稍后在「我的已购」类记录中查看'
+        errorText.value = '订单已创建，但未取到收银台地址，请稍后在「我的已购」类记录中查看'
         return
       }
       payUrl.value = url
-      if (isWechatBrowser()) {
-        // 微信内：跳到本站中间页，由 PaymentView 自动完成授权并唤起 JSAPI
-        window.location.assign(url)
-        return
-      }
       await renderQr(url)
       startPoll(created.order_no)
     } catch (err) {
@@ -261,12 +211,10 @@ export function useDevTipDialog(props: DevTipDialogProps, emit: DevTipDialogEmit
   }
 
   return {
-    availability,
-    channel,
+    tipEnabled,
     selectedTierIndex,
     useCustom,
     customCash,
-    customPoints,
     message,
     anonymous,
     submitting,
@@ -274,13 +222,9 @@ export function useDevTipDialog(props: DevTipDialogProps, emit: DevTipDialogEmit
     qrDataUrl,
     payUrl,
     noticeText,
-    feePercentText,
     cashTiers,
-    pointsTiers,
     allowCustomCash,
-    allowCustomPoints,
     cashCustomHint,
-    pointsCustomHint,
     amountPreview,
     successVisible,
     stopPoll,

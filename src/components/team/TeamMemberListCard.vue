@@ -8,7 +8,6 @@
  */
 import { TButton, TIcon, TInput, Plus } from 'ui_73info'
 
-import { apiUrl } from '@/api/http'
 import type { TeamMemberResponse } from '@/api/team'
 import { teamAvatarInitial, teamRoleLabel, teamRoleToggleLabel } from '@/shared/teamDisplay'
 
@@ -84,8 +83,8 @@ const inviteUsername = defineModel<string>('inviteUsername', { required: true })
             @click="emit('open-profile', member.username)"
             @keydown.enter="emit('open-profile', member.username)"
           >
-            <img v-if="member.avatar_url" :src="apiUrl(member.avatar_url)" :alt="member.username" />
-            <span v-else>{{ teamAvatarInitial(member.username) }}</span>
+            <!-- 契约 `MemberResponse` 只有 username / role / joined_at，没有头像，一律用首字占位 -->
+            <span>{{ teamAvatarInitial(member.username) }}</span>
           </span>
           <div class="dev-team-detail__member-body">
             <button

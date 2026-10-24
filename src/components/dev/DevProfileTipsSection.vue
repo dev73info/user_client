@@ -1,6 +1,6 @@
 <script setup lang="ts">
 /**
- * 公开主页的「收到打赏」区块：累计现金 / 积分与最近留言。
+ * 公开主页的「收到打赏」区块：累计现金与最近留言（打赏只有现金一种形态，没有积分读数）。
  *
  * 只在开发者开启公开记录时由父级渲染（`showReceivedTips`）；文案口径来自 `@/shared/devTip`，
  * 组件本身不碰接口。
@@ -11,7 +11,6 @@ import { tipperDisplayLabel } from '@/shared/devTip'
 
 defineProps<{
   cashText: string
-  pointsText: string
   messages: PublicTipMessage[]
 }>()
 </script>
@@ -28,10 +27,6 @@ defineProps<{
       <div class="dev-profile__tips-stat">
         <strong>{{ cashText }}</strong>
         <span>累计现金</span>
-      </div>
-      <div class="dev-profile__tips-stat">
-        <strong>{{ pointsText }}</strong>
-        <span>累计积分</span>
       </div>
     </div>
     <ul v-if="messages.length" class="dev-profile__tips-list">
@@ -51,7 +46,7 @@ defineProps<{
 /* 收到打赏：累计 + 最近留言 */
 .dev-profile__tips-summary {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: minmax(0, 1fr);
   gap: 12px;
   margin-bottom: 14px;
 }

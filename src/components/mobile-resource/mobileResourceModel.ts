@@ -49,7 +49,7 @@ export function mapResourceToCard(item: PublicMcResourceItem): MobileCard {
     item.tag_selections.map((entry) => [entry.group_name, entry.tag_names]),
   )
 
-  const priceFen = item.price_fen ?? 0
+  const priceFen = item.buyout_price_fen ?? 0
   const pricePoints = item.price_points ?? 0
   return {
     id: item.id,

@@ -99,39 +99,6 @@
   flex-shrink: 0;
 }
 
-.portal-search-menu {
-  display: none;
-  align-items: center;
-  justify-content: center;
-  flex: 0 0 auto;
-  min-height: 42px;
-  padding: 0 14px;
-  border-radius: 14px;
-  border: 1px solid var(--ptn-line-accent);
-  background: color-mix(in srgb, var(--73-accent-soft) 94%, transparent);
-  color: var(--ptn-accent-ink);
-  font-size: 14px;
-  font-weight: 800;
-  line-height: 1;
-  text-decoration: none;
-  box-shadow: 0 8px 18px color-mix(in srgb, var(--73-accent) 8%, transparent);
-  transition:
-    background-color 160ms ease,
-    border-color 160ms ease,
-    box-shadow 160ms ease,
-    color 160ms ease,
-    transform 160ms ease;
-}
-
-.portal-search-menu:hover,
-.portal-search-menu:focus-visible {
-  border-color: color-mix(in srgb, var(--73-accent) 34%, transparent);
-  background: color-mix(in srgb, var(--73-accent-soft) 96%, transparent);
-  color: var(--ptn-accent-ink);
-  box-shadow: 0 10px 22px color-mix(in srgb, var(--73-accent) 12%, transparent);
-  transform: translateY(-1px);
-}
-
 .portal-subscription {
   position: relative;
   display: inline-grid;

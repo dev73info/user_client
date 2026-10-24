@@ -9,13 +9,13 @@ import { ref } from 'vue'
 import { TIcon, EditPen } from 'ui_73info'
 
 import { apiUrl } from '@/api/http'
-import type { TeamDetailResponse } from '@/api/team'
 import TeamProfileForm from '@/components/team/TeamProfileForm.vue'
-import type { TeamProfileInput } from '@/composables/useTeamDetail'
+import type { TeamDetailView, TeamProfileInput } from '@/composables/useTeamDetail'
 import { teamAvatarEditLabel, teamAvatarInitial, teamMemberMetaLabel } from '@/shared/teamDisplay'
 
 const props = defineProps<{
-  team: TeamDetailResponse
+  /** 团队概要 + 成员列表（`useTeamDetail` 把契约的 `{team, members}` 摊平了一层）。 */
+  team: TeamDetailView
   isOwner: boolean
   /** 非所有者才给「退出团队」（所有者走解散） */
   canLeave: boolean

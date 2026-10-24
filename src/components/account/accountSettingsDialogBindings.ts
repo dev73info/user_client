@@ -4,13 +4,11 @@ import EmailDialog from './EmailDialog.vue'
 import PasswordDialog from './PasswordDialog.vue'
 import SealDialog from './SealDialog.vue'
 import TwoFactorDialog from './TwoFactorDialog.vue'
-import UsernameDialog from './UsernameDialog.vue'
 import { dialog, type AccountDialogEntry } from './accountDialogBindings'
-import WechatBindQrModal from '@/components/WechatBindQrModal.vue'
 
 /**
- * 弹窗绑定表之二：**账号设置与第三方绑定**八个弹窗（爱签账户维护 / 印章 / 改邮箱 / 改密码 /
- * 改用户名 / 两步验证 / 注销账号 / 微信扫码绑定）。
+ * 弹窗绑定表之二：**账号设置与第三方绑定**六个弹窗（爱签账户维护 / 印章 / 改邮箱 / 改密码 /
+ * 两步验证 / 注销账号）。改用户名那条已按契约删除（不接受自助改登录名）。
  *
  * 与 `accountDialogBindings.ts`（实名与收款那四条）分开只为一件事：`.ts` 的行数预算 300——
  * 一张表写满十二个弹窗会超，按域拆两半谁都不贴上限。表结构与 `dialog()` 在那一半里，
@@ -97,6 +95,7 @@ export const settingsDialogEntries: AccountDialogEntry[] = [
     PasswordDialog,
     'visible',
     (d) => ({
+      initialOldPassword: d.security.oldPassword.value,
       initialPassword: d.security.newPassword.value,
       initialConfirm: d.security.confirmPassword.value,
       initialCode: d.security.passwordCode.value,
@@ -106,23 +105,11 @@ export const settingsDialogEntries: AccountDialogEntry[] = [
     }),
     (d) => ({
       'update:password': (value: string) => (d.security.newPassword.value = value),
+      'update:old-password': (value: string) => (d.security.oldPassword.value = value),
       'update:confirm': (value: string) => (d.security.confirmPassword.value = value),
       'update:code': (value: string) => (d.security.passwordCode.value = value),
       'send-code': d.security.sendPasswordVerificationCode,
       submit: d.security.submitPasswordChange,
-    }),
-  ),
-  dialog(
-    'username',
-    UsernameDialog,
-    'visible',
-    (d) => ({
-      initial: d.security.newUsername.value,
-      saving: d.security.usernameLoading.value,
-    }),
-    (d) => ({
-      'update:value': (value: string) => (d.security.newUsername.value = value),
-      submit: d.security.updateUsername,
     }),
   ),
   // 两步验证：开关换成目标态时父级自动补发一次验证码（`toggle` 不是纯回写）
@@ -159,20 +146,6 @@ export const settingsDialogEntries: AccountDialogEntry[] = [
     (d) => ({
       'update:value': (value: string) => (d.closeAccount.accountCloseConfirmation.value = value),
       submit: d.closeAccount.handleCloseAccount,
-    }),
-  ),
-  // 微信扫码绑定：不是 v-model（只 `emit('close')`），回写走它自己的 close
-  dialog(
-    'wechatQr',
-    WechatBindQrModal,
-    null,
-    (d) => ({
-      url: d.provider.wechatBindQr.url,
-      state: d.provider.wechatBindQr.state,
-    }),
-    (d) => ({
-      close: d.provider.closeWechatBindQr,
-      bound: d.provider.handleWechatBound,
     }),
   ),
 ]

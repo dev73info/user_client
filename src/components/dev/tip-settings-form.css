@@ -18,20 +18,6 @@
   line-height: 1.6;
 }
 
-.tip-settings__switches {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 24px;
-}
-
-.tip-settings__switch-line {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  color: var(--dev-ink-soft);
-  font-size: 13px;
-}
-
 /* 档位：输入框按内容取宽（金额就那么几位，拉满整行反而空），
    删除键贴在框右侧，「添加档位」按钮独立成行，不占档位的位置。 */
 .tip-settings__tier-list {

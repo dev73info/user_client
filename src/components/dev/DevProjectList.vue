@@ -2,10 +2,9 @@
 /**
  * 「进行中项目」卡：卡片头（标题 + 筛选胶囊 + 查看全部）+ 项目行列表 + 空态。
  *
- * 从 `views/DevHomeView.vue` 抽出来。**行是算好再传进来的**：哪几档算「进行中」、
- * 全屏时不受 5 条限制、行里的状态文案与流程进度，全在视图的 `projectRows` 里定，
- * 组件只负责画（与 `DevFunnel` 同一个分工）。筛选胶囊的当前档也留在视图——
- * 它就是 `projectRows` 的输入，放两处会各算一遍。
+ * 从 `views/DevHomeView.vue` 抽出来。**行是算好再传进来的**：哪几档算「进行中」、时间列取哪个
+ * 契约字段、行里的状态文案与流程进度，全在 `useDevHomeLists` 里定，组件只负责画。
+ * 筛选胶囊的当前档也留在视图——它就是 `projectRows` 的输入，放两处会各算一遍。
  *
  * 跳转同样不在这里做：点行 `emit('open')`（视图跳「我的接单」并定位这一单），
  * 「查看全部」的地址由视图按路由名传进来。组件里不出现 router / TMessage / `@/api`。
@@ -15,7 +14,6 @@ import { TIcon, ArrowRight } from 'ui_73info'
 import type { DevHomeProjectRow } from '@/shared/devHomeDisplay'
 import { statusChipClass } from '@/shared/devHomeDisplay'
 import { money } from '@/shared/devFundDisplay'
-import { formatCnDateTime } from '@/shared/requirementDisplay'
 
 import type { RouteLocationRaw } from 'vue-router'
 
@@ -93,7 +91,7 @@ const emit = defineEmits<{
           <p class="dev-home__project-meta">
             {{ row.requirementId }} · 预算
             <strong class="dev-home__project-amount">{{ money(row.budget) }}</strong>
-            · 更新于 {{ formatCnDateTime(row.updatedAt) }}
+            · {{ row.timeText }}
           </p>
 
           <!-- 进度条表达的是「流程走到哪一步」（按接单状态推算），不是工作量完成度 -->
@@ -295,8 +293,7 @@ const emit = defineEmits<{
   white-space: nowrap;
 }
 
-/* 卡头：标题与筛选胶囊同一行，窄了胶囊整组落到标题下面。
-   「最近交付」那张卡的卡头是同一套写法（见 DevDeliveryList），两份各自成立。 */
+/* 卡头：标题与筛选胶囊同一行，窄了胶囊整组落到标题下面 */
 .dev-home__head-main {
   display: flex;
   align-items: center;

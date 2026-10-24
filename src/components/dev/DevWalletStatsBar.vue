@@ -17,12 +17,10 @@ const props = defineProps<{
   overview: DevWalletOverview | null
   /** 收入池加载中（刷新按钮的转圈） */
   loading: boolean
-  /** 保证金池加载中：与上一条共用同一个刷新按钮 */
-  depositLoading: boolean
 }>()
 
 const emit = defineEmits<{
-  /** 两个池子一起重拉 */
+  /** 重拉钱包读数 */
   refresh: []
 }>()
 </script>
@@ -61,7 +59,7 @@ const emit = defineEmits<{
       <div class="dev-meta-strip__item dev-meta-strip__action">
         <TButton
           icon-only
-          :loading="props.loading || props.depositLoading"
+          :loading="props.loading"
           aria-label="刷新钱包数据"
           @click="emit('refresh')"
         >

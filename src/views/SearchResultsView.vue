@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import SearchCommunityCard from '@/components/search/SearchCommunityCard.vue'
 import SearchRequirementCard from '@/components/search/SearchRequirementCard.vue'
 import SearchRequirementDetailModal from '@/components/search/SearchRequirementDetailModal.vue'
 import SearchResourceCard from '@/components/search/SearchResourceCard.vue'
@@ -10,10 +9,10 @@ import { useSearchResults } from '@/composables/useSearchResults'
 /**
  * 搜索结果页的壳（R047 拆分：1017 → 本文件）。
  *
- * 页面只有一件自有的事：把「路由 query → 取数 → 三类结果」摆成三段卡片流，
+ * 页面只有一件自有的事：把「路由 query → 取数 → 两类结果」摆成两段卡片流，
  * 其余四块各归其位：
  * - 取数、关键词 / 范围的推导与前端过滤 → `composables/useSearchResults`
- * - 三处落点（资源页内详情态 / 需求工作台详情 / 帖子详情）→ `useSearchResultNavigation`
+ * - 两处落点（资源页内详情态 / 需求工作台详情）→ `useSearchResultNavigation`
  * - 需求详情弹窗的状态与补详情 → `useSearchRequirementPreview`
  * - 卡片与弹窗的 DOM → `components/search/*`，视觉在 `styles/portal-search.css`
  *
@@ -28,13 +27,14 @@ const {
   tagTree,
   filteredResources,
   filteredRequirements,
-  filteredCommunityPosts,
   resultCount,
   resultSummary,
   loadSearchData,
 } = useSearchResults()
-const { openResource, openRequirementWorkbench, openCommunityPost, openHome } =
-  useSearchResultNavigation({ keyword, tagTree })
+const { openResource, openRequirementWorkbench, openHome } = useSearchResultNavigation({
+  keyword,
+  tagTree,
+})
 const {
   selectedRequirement,
   descriptionHtml,
@@ -124,26 +124,6 @@ const {
         </div>
       </section>
 
-      <section
-        v-if="filteredCommunityPosts.length"
-        class="portal-page__panel portal-search-page__section"
-      >
-        <div class="portal-page__section-header">
-          <div>
-            <h2>社区帖子</h2>
-          </div>
-          <span class="portal-page__loading-chip">{{ filteredCommunityPosts.length }} 条</span>
-        </div>
-
-        <div class="portal-page__card-grid portal-search-page__grid">
-          <SearchCommunityCard
-            v-for="post in filteredCommunityPosts"
-            :key="post.id"
-            :post="post"
-            @open="openCommunityPost(post)"
-          />
-        </div>
-      </section>
     </template>
   </main>
 

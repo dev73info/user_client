@@ -1,37 +1,26 @@
 <script setup lang="ts">
-import { computed } from 'vue'
 import type { PropType } from 'vue'
 import type { ContractSigningStatus } from '@/shared/contracts'
-
-type DepositCoupon = {
-  code: string
-  name: string
-  discount_type: 'amount' | 'percent'
-  min_amount_cny: number
-  discount_value: number
-  max_discount_cny?: number | null
-  [key: string]: unknown
-}
+import { formatFenAsCny } from '@/shared/money'
 
 type DepositPayment = Record<string, unknown> | null
 
-const props = defineProps({
+defineProps({
   visible: { type: Boolean, default: false },
   depositRequirement: { type: Object as PropType<{ title: string; id: string; budget?: number | null }>, required: true },
   formattedBudget: { type: String, default: '' },
   paymentStageLabel: { type: String, required: true },
-  depositChannel: { type: String as PropType<'alipay' | 'wechat' | 'union'>, required: true },
-  amountCouponCode: { type: String, default: '' },
-  discountCouponCode: { type: String, default: '' },
+  depositChannel: { type: String as PropType<'alipay' | 'wechat'>, required: true },
   isFinalPayment: { type: Boolean, default: false },
   isEscrowPayment: { type: Boolean, default: false },
   depositRatioPercent: { type: Number, default: 0 },
-  couponSummary: { type: String, default: '' },
-  availableCoupons: { type: Array as PropType<DepositCoupon[]>, default: () => [] },
-  couponLoading: { type: Boolean, default: false },
   depositLoading: { type: Boolean, default: false },
   depositPayment: { type: Object as PropType<DepositPayment>, default: null },
-  couponFinalAmount: { type: Number, default: 0 },
+  /**
+   * 应付金额（**整数分**）：金额一路以分传递，只有渲染这一步换成元串。
+   * 优惠券不参与这块——契约里定金 / 尾款下单接口没有券字段，这里也不展示券。
+   */
+  payableFen: { type: Number, default: 0 },
   depositPolicyAccepted: { type: Boolean, default: false },
   contractSigningStatus: { type: Object as PropType<ContractSigningStatus | null>, default: null },
 })
@@ -39,21 +28,12 @@ const props = defineProps({
 const emit = defineEmits<{
   (e: 'close'): void
   (e: 'submit'): void
-  (e: 'update:depositChannel', value: 'alipay' | 'wechat' | 'union'): void
-  (e: 'selectCoupon', code: string, type: 'amount' | 'percent'): void
-  (e: 'loadAvailableCoupons'): void
+  (e: 'update:depositChannel', value: 'alipay' | 'wechat'): void
   (e: 'update:depositPolicyAccepted', value: boolean): void
 }>()
 
-const amountCoupons = computed(() => props.availableCoupons.filter((item) => item.discount_type === 'amount'))
-const percentCoupons = computed(() => props.availableCoupons.filter((item) => item.discount_type === 'percent'))
-
-function updateChannel(channel: 'alipay' | 'wechat' | 'union') {
+function updateChannel(channel: 'alipay' | 'wechat') {
   emit('update:depositChannel', channel)
-}
-
-function pickCoupon(code: string, type: 'amount' | 'percent') {
-  emit('selectCoupon', code, type)
 }
 
 function updateDepositPolicyAccepted(value: boolean) {
@@ -89,7 +69,7 @@ function updateDepositPolicyAccepted(value: boolean) {
       </div>
       <p v-if="!isFinalPayment" class="deposit-line"><strong>定金占比：</strong>{{ depositRatioPercent.toFixed(2) }}%
       </p>
-      <p v-else class="deposit-line"><strong>尾款金额：</strong>¥{{ couponFinalAmount.toFixed(2) }}</p>
+      <p v-else class="deposit-line"><strong>尾款金额：</strong>¥{{ formatFenAsCny(payableFen) }}</p>
 
       <div v-if="!isFinalPayment" class="contract-signing-status">
         <div class="css-step" :class="contractSigningStatus?.has_contract ? 'done' : 'pending'">
@@ -127,7 +107,7 @@ function updateDepositPolicyAccepted(value: boolean) {
           <li>该支付仅适用于已启用的电签担保订单，具体金额以双方签署的合同快照为准。</li>
           <li>定金、阶段款或平台服务费的具体用途，以订单页和合同展示为准。</li>
           <li>退款条件按订单状态、合同约定、双方确认情况和《支付与退款说明》处理。</li>
-          <li v-if="isEscrowPayment">电签担保订单不使用优惠券，支付金额由服务端合同快照计算。</li>
+          <li>电签担保订单不支持优惠券抵扣，支付金额由服务端按合同快照计算，下方金额为预估值。</li>
         </ul>
       </div>
 
@@ -143,44 +123,8 @@ function updateDepositPolicyAccepted(value: boolean) {
         <p v-if="!depositPolicyAccepted" class="deposit-policy-warning">未确认前无法支付定金</p>
       </div>
 
-      <p v-if="couponSummary" class="coupon-summary">{{ couponSummary }}</p>
-
-      <div v-if="!isFinalPayment && !isEscrowPayment" class="coupon-list">
-        <div class="coupon-list-header">
-          <span>可用优惠券</span>
-          <button class="auth-btn ghost" type="button" :disabled="couponLoading" @click="emit('loadAvailableCoupons')">
-            {{ couponLoading ? '刷新中...' : '刷新' }}
-          </button>
-        </div>
-        <div v-if="availableCoupons.length === 0" class="empty">暂无可用优惠券</div>
-        <div v-else class="coupon-sections">
-          <div class="coupon-section">
-            <div class="coupon-section-header">优惠券</div>
-            <div v-if="amountCoupons.length === 0" class="empty">暂无可用优惠券</div>
-            <div v-else class="coupon-items">
-              <button v-for="item in amountCoupons" :key="item.code" type="button" class="coupon-item"
-                :class="{ active: item.code === amountCouponCode }"
-                @click.prevent="pickCoupon(item.code, item.discount_type)">
-                <strong>{{ item.name }}</strong>
-              </button>
-            </div>
-          </div>
-          <div class="coupon-section">
-            <div class="coupon-section-header">折扣券</div>
-            <div v-if="percentCoupons.length === 0" class="empty">暂无可用折扣券</div>
-            <div v-else class="coupon-items">
-              <button v-for="item in percentCoupons" :key="item.code" type="button" class="coupon-item"
-                :class="{ active: item.code === discountCouponCode }"
-                @click.prevent="pickCoupon(item.code, item.discount_type)">
-                <strong>{{ item.name }}</strong>
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-
       <p class="deposit-amount">
-        实付款：<strong>¥{{ couponFinalAmount.toFixed(2) }}</strong>
+        实付款：<strong>¥{{ formatFenAsCny(payableFen) }}</strong>
       </p>
       <div class="auth-modal-actions">
         <button class="auth-btn ghost" type="button" @click="emit('close')">取消</button>

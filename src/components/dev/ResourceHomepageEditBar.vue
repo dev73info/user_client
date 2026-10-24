@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { TButton, TIcon, Back, Check, Refresh, Switch, View } from 'ui_73info'
+import { TButton, TIcon, Back, Check, Refresh, View } from 'ui_73info'
 import WorkbenchBarSlot from '@/components/WorkbenchBarSlot.vue'
 
 /**
@@ -16,7 +16,6 @@ defineProps<{
   saving: boolean
   /** 到期锁定 / 协议未签时保存入口置灰。 */
   saveDisabled: boolean
-  canTransfer: boolean
   /** 接口资源没有对外主页，预览入口一并不放。 */
   showPreview: boolean
   previewUrl: string
@@ -25,7 +24,6 @@ defineProps<{
 
 const emit = defineEmits<{
   back: []
-  transfer: []
   save: []
   refreshTags: []
 }>()
@@ -65,11 +63,6 @@ const emit = defineEmits<{
           ><template #prefix
             ><TIcon><View /></TIcon></template
           >预览</TButton
-        >
-        <TButton variant="outline" v-if="canTransfer" @click="emit('transfer')"
-          ><template #prefix
-            ><TIcon><Switch /></TIcon></template
-          >过户</TButton
         >
         <TButton
           variant="solid"

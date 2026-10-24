@@ -1,97 +1,133 @@
 <script setup lang="ts">
-import type { AfterSalesCase } from '@/api/afterSales'
-import {
-  decisionText,
-  executedFunds,
-  executedFundsFen,
-  expectationText,
-  moneyFromFen,
-  pendingFunds,
-  statusText,
-} from '@/shared/afterSalesView'
+import type { AfterSalesCaseDetail } from '@/api/afterSales'
+import { formatFenAsCny } from '@/shared/money'
 
 /**
- * 解除合作「在办案件」的事实表（R047 从 `components/AfterSalesModal.vue` 拆出）。
+ * 结单后「售后 / 解除合作」案件的只读事实表（契约 `CaseDetailResponse`）。
  *
- * 纯展示：一行一件事（编号 / 状态 / 发起人 / 诉求 / 双方表态 / 返工认定 / 处理说明），
- * 末尾按「已执行 / 认定但未执行 / 诉求差额」三行摆资金。
+ * 每一行都指向契约字段：案件编号 / 类型 / 状态 / 立案人 / 对方当事人 / 诉求金额（整数分）/
+ * 诉求说明 / 表态流水 / 裁决（退还与扣划都是分）/ 结案与协商一致时间。
  *
- * 认定 ≠ 执行：赔付腿失败时案件行上已经写着认定额度，钱却一分没动（实测），所以未执行的那几笔
- * 单独一行并写清「尚未执行」，别让人以为钱已经付出去了。诉求差额只认带渠道单号的**已执行**那几笔，
- * 拿认定额度算会把没执行的钱也算成「已执行」。
+ * 不出现「赔付上限」「诉求缺口」「解除合作窗口关闭时间」这类读数——契约里没有这些字段，
+ * 前端也就没有依据去声称它们存在。
  */
-defineProps<{ record: AfterSalesCase }>()
+defineProps<{ record: AfterSalesCaseDetail }>()
 </script>
 
 <template>
-  <dl class="after-sales-modal__facts">
-    <div class="is-wide">
+  <dl class="after-sales-facts">
+    <div>
       <dt>案件编号</dt>
-      <dd>{{ record.caseNo }}</dd>
+      <dd>{{ record.case_no }}</dd>
+    </div>
+    <div>
+      <dt>案件类型</dt>
+      <dd>{{ record.kind_label }}</dd>
     </div>
     <div>
       <dt>当前状态</dt>
-      <dd>{{ statusText(record.status) }}</dd>
+      <dd>{{ record.status_label }}</dd>
     </div>
     <div>
-      <dt>发起人</dt>
-      <dd>{{ record.openedBy }}</dd>
+      <dt>立案人</dt>
+      <dd>{{ record.filed_by }}</dd>
     </div>
     <div>
-      <dt>诉求</dt>
-      <dd>{{ expectationText(record) }}</dd>
+      <dt>对方当事人</dt>
+      <dd>{{ record.respondent ?? '—' }}</dd>
     </div>
-    <div v-if="record.expectsMoney">
-      <dt>主张金额</dt>
-      <dd>{{ record.claimAmountCny }} 元</dd>
+    <div>
+      <dt>诉求金额</dt>
+      <dd>{{ formatFenAsCny(record.claim_amount_fen) }} 元</dd>
     </div>
-    <div class="is-wide">
+    <div>
+      <dt>立案时间</dt>
+      <dd>{{ record.created_time }}</dd>
+    </div>
+    <div>
+      <dt>最近更新</dt>
+      <dd>{{ record.updated_time }}</dd>
+    </div>
+    <div class="after-sales-facts__wide">
       <dt>诉求说明</dt>
-      <dd>{{ record.description }}</dd>
+      <dd>{{ record.claim_note || '—' }}</dd>
     </div>
-    <div>
-      <dt>需求方表态</dt>
-      <dd>{{ decisionText(record.customerDecision) }}</dd>
+    <div v-if="record.mutual_agreed_time">
+      <dt>协商一致时间</dt>
+      <dd>{{ record.mutual_agreed_time }}</dd>
     </div>
-    <div>
-      <dt>开发者表态</dt>
-      <dd>{{ decisionText(record.developerDecision) }}</dd>
+    <div v-if="record.closed_time">
+      <dt>结案时间</dt>
+      <dd>{{ record.closed_time }}</dd>
     </div>
-    <div v-if="record.requiresRework" class="is-wide">
-      <dt>返工认定</dt>
-      <dd>本次认定要求对方返工 / 补交付，等发起人验收</dd>
+    <div v-if="record.handled_by">
+      <dt>平台处置人</dt>
+      <dd>{{ record.handled_by }}</dd>
     </div>
-    <div v-if="record.resolutionNote" class="is-wide">
-      <dt>处理说明</dt>
-      <dd>{{ record.resolutionNote }}</dd>
-    </div>
-    <div v-if="executedFunds(record).length" class="is-wide">
-      <dt>已执行资金</dt>
-      <dd>{{ executedFunds(record).join(' / ') }}</dd>
-    </div>
-    <!-- 认定 ≠ 执行：赔付腿失败时案件行上已经写着认定额度，钱却一分没动（实测）。
-               单独摆一行并写清「尚未执行」，别让人以为钱已经付出去了。 -->
-    <div v-if="pendingFunds(record).length" class="is-wide">
-      <dt>本次认定（尚未执行）</dt>
+    <div v-if="record.verdict" class="after-sales-facts__wide">
+      <dt>裁决</dt>
       <dd>
-        {{ pendingFunds(record).join(' / ') }}
-        <template v-if="record.status === 'manual_required'">
-          ——渠道尚未受理，案件已转人工，落地后自动结案。
-        </template>
+        {{ record.verdict.resolution_label }}
+        · 退还 {{ formatFenAsCny(record.verdict.refund_fen) }} 元 · 扣划
+        {{ formatFenAsCny(record.verdict.forfeit_fen) }} 元
+        <template v-if="record.verdict.note"> · {{ record.verdict.note }}</template>
       </dd>
     </div>
-    <!-- 诉求金额被两个上限截断时把差额直接摆出来：否则「实赔 200」看起来像「诉求 500 全赔了」。
-               条件与算式都只认**已执行**的那几笔（带渠道单号）：裁决还没落地时只是「诉求未决」，
-               不是「被上限截断」；拿认定额度算会把没执行的钱也算成「已执行」。 -->
-    <div v-if="executedFundsFen(record) > 0 && record.shortfallFen > 0" class="is-wide">
-      <dt>诉求差额</dt>
+    <div v-if="record.statements.length" class="after-sales-facts__wide">
+      <dt>表态流水</dt>
       <dd>
-        诉求
-        {{ record.claimAmountCny }}
-        元，受可退部分与赔付上限（冻结保证金与需求预算取小）限制，本次共执行
-        {{ moneyFromFen(executedFundsFen(record)) }} 元，差额
-        <strong>{{ record.shortfallCny }} 元</strong>
+        <ul class="after-sales-facts__statements">
+          <li v-for="item in record.statements" :key="`${item.created_time}-${item.author}`">
+            <span class="after-sales-facts__meta">
+              {{ item.created_time }} · {{ item.author }}（{{ item.role_label }}）{{
+                item.action_label
+              }}
+            </span>
+            <span>{{ item.body }}</span>
+          </li>
+        </ul>
       </dd>
     </div>
   </dl>
 </template>
+
+<style scoped>
+.after-sales-facts {
+  display: grid;
+  gap: 6px 12px;
+  margin: 0;
+  font-size: 13px;
+}
+
+.after-sales-facts > div {
+  display: grid;
+  grid-template-columns: 6em 1fr;
+  gap: 8px;
+}
+
+.after-sales-facts__wide {
+  grid-column: 1 / -1;
+}
+
+.after-sales-facts dt {
+  color: var(--dev-muted);
+}
+
+.after-sales-facts dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.after-sales-facts__statements {
+  margin: 0;
+  padding-left: 1em;
+  display: grid;
+  gap: 4px;
+}
+
+.after-sales-facts__meta {
+  display: block;
+  color: var(--dev-muted);
+  font-size: 12px;
+}
+</style>

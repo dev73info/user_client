@@ -139,18 +139,7 @@ function onUploadClick(invoice: InvoiceRecord): void {
             }}{{ invoice.reversalReason ? ` · ${invoice.reversalReason}` : '' }}
           </span>
           <span v-else-if="invoice.status === 'reversed'" class="wb-item__meta">
-            红冲原因：{{ invoice.reversalReason || '未记录' }} · 当前应开 ¥{{
-              (invoice.currentInvoiceableFen / 100).toFixed(2)
-            }}
-          </span>
-          <!-- 只有多开（建议冲减额为正）才轮得到红冲；为负是「需补开」，与红冲是两回事。 -->
-          <span
-            v-else-if="invoice.reversalRequired && invoice.reversalSuggestionFen > 0"
-            class="wb-item__meta"
-          >
-            本需求可开票净额已变为 ¥{{
-              (invoice.currentInvoiceableFen / 100).toFixed(2)
-            }}，财务端会先红冲原票
+            红冲原因：{{ invoice.reversalReason || '未记录' }}
           </span>
           <span v-if="reviewNote(invoice)" class="wb-item__meta"
             >审核说明：{{ reviewNote(invoice) }}</span
