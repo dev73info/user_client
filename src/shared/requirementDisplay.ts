@@ -1,3 +1,4 @@
+import { formatBackendDateTime } from '@/shared/datetime'
 import type {
   PublicRequirementSpotlightItem,
   RequirementOverviewResp,
@@ -35,17 +36,8 @@ export function formatCny(value?: number | null): string {
 }
 
 export function formatCnDateTime(value: string): string {
-  const date = new Date(value)
-  if (Number.isNaN(date.getTime())) {
-    return '时间未知'
-  }
-
-  return date.toLocaleString('zh-CN', {
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-  })
+  // 后端时间是东八区墙钟串，解析口径见 shared/datetime.ts。
+  return formatBackendDateTime(value)
 }
 
 /* ---------- 需求大厅：担保方式筛选 ---------- */

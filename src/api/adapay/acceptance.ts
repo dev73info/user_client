@@ -1,43 +1,7 @@
-import { authHeader, requestJson } from '@/api/http'
-
-import type {
-  AdapayAcceptanceRecord,
-  AdapayAcceptanceResponse,
-  AdapayAcceptanceResult,
-} from './types'
-
-export async function acceptAdapayDelivery(
-  token: string,
-  requirementId: string,
-  result: AdapayAcceptanceResult = 'passed',
-  note = '',
-): Promise<AdapayAcceptanceResponse> {
-  return requestJson<AdapayAcceptanceResponse>(
-    `/adapay/requirements/${encodeURIComponent(requirementId)}/accept`,
-    {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        ...authHeader(token),
-      },
-      body: JSON.stringify({ result, note }),
-    },
-    '提交验收结果失败',
-  )
-}
-
-/** 查询需求的验收留档（验收可重复提交，按时间倒序）。 */
-export async function listAdapayAcceptances(
-  token: string,
-  requirementId: string,
-): Promise<AdapayAcceptanceRecord[]> {
-  return requestJson<AdapayAcceptanceRecord[]>(
-    `/adapay/requirements/${encodeURIComponent(requirementId)}/acceptances`,
-    {
-      headers: {
-        ...authHeader(token),
-      },
-    },
-    '加载验收记录失败',
-  )
-}
+/**
+ * 验收相关的请求已迁到 `src/api/requirements/acceptance.ts`。
+ *
+ * 2.0 把验收路径从 `/adapay/requirements/{id}/accept` 换成了 `/requirement/{id}/acceptance`
+ * （可通过也可打回），旧路径只是 308 重定向。这里只保留记录类型，调用方的 import 不会断。
+ */
+export type { AdapayAcceptanceResult } from './types'

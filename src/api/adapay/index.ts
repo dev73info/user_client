@@ -6,7 +6,6 @@
  * 本文件只做汇总导出，调用方仍然 `import ... from '@/api/adapay'`。
  */
 export type {
-  AdapayAcceptanceRecord,
   AdapayAcceptanceResponse,
   AdapayAcceptanceResult,
   AdapayAvailability,
@@ -32,8 +31,6 @@ export {
   getAdapayDeveloperDepositPayment,
   getAdapayPayment,
 } from './payment'
-
-export { acceptAdapayDelivery, listAdapayAcceptances } from './acceptance'
 
 export {
   getAdapayBreachCase,

@@ -44,6 +44,190 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/admin/asign/seals": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 读平台印章配置
+         * @description 需要 `contract.seal.get`。返回平台企业主体、印章编号、回调基址与「企业是否配齐 / 印章是否已配」两个判断位。**私钥永不回显**，只回显私钥文件路径。尾斜杠别名（`/api/admin/asign/seals/`）行为一致。
+         */
+        get: operations["asign_seal_get_config"];
+        /**
+         * 改平台印章配置
+         * @description 需要 `contract.seal.manage`。部分更新：传了才生效。只写 `[asign]` 段里平台企业主体与印章那几个键，别的键（应用私钥、渠道公钥、超时）一个字节都不碰。`private_key` 非空一律 400——2.0 只接受私钥文件路径。响应带 `restart_required: true`：配置在启动时读进服务，落盘不会回灌。
+         */
+        put: operations["asign_seal_update_config"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/asign/seals/app-public-key": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 取平台应用公钥
+         * @description 需要 `contract.seal.get`。返回由配置里那把应用私钥推导出的公钥正文（PKCS#8 / SubjectPublicKeyInfo 的 base64，去掉头尾与换行的一行），直接粘到爱签开放平台的应用配置里即可。**没有可用私钥时回 503**：2.0 不在端点里生成密钥，私钥落盘属于部署动作。
+         */
+        get: operations["asign_seal_app_public_key"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/asign/seals/authorize-seal": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 授权使用印章
+         * @description 需要 `contract.seal.manage`。先尝试无校验授权；渠道要求验证码时返回`authorized: false` 与 `captcha_id`，带上 `captcha_id` + `captcha` 再调一次即完成。授权成功后该印章被设为默认用章人，配置里的用章账号同步更新。
+         */
+        post: operations["asign_seal_authorize"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/asign/seals/company-seal": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 制作企业印章
+         * @description 需要 `contract.seal.manage`。渠道制章成功后才把账号 / 编号 / 名称写进配置；渠道失败时配置原样不动（先动渠道、后落配置）。
+         */
+        post: operations["asign_seal_make_company_seal"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/asign/seals/enterprise-auth/start": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 发起企业实名认证
+         * @description 需要 `contract.seal.manage`。返回认证链接与流水号；回调地址取配置里的`callback_base_url`（拼 `/api/realname/asign/notify`，与实名域同一条）。
+         */
+        post: operations["asign_seal_start_enterprise_auth"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/asign/seals/enterprise-user": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 添加企业签署人
+         * @description 需要 `contract.seal.manage`。带 `serial_no` 走「认证流水号添加」，不带则走「业务方自行认证」；渠道说主体已存在时按成功复用。主渠道还没完成实名时回 400 并提示先去认证。
+         */
+        post: operations["asign_seal_add_enterprise_user"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/asign/seals/make-seal/notify": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 爱签制章完成回调（免登录）
+         * @description **渠道回调，前端不该调它**。免登录，靠验签识别来源：验签通过才写平台印章编号，没配渠道公钥不写（等管理端人工确认），验签失败回 403。应答固定 `{"code":0,"message":"ok"}`。
+         */
+        post: operations["asign_seal_make_seal_notify"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/asign/seals/setup": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 一键初始化平台企业主体
+         * @description 需要 `contract.seal.manage`。查实名流水号 → 加企业主体 → 生成在线制章链接。企业主体还没实名时**不保存任何配置**，改回 `auth_url` 让管理员先完成认证；主体已存在时只写账号 / 企业名 / 信用代码 / 印章名，不覆盖法人信息。印章编号由制章回调或管理端人工回填。
+         */
+        post: operations["asign_seal_setup"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/asign/seals/verify-enterprise": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 校验企业实名与印章状态
+         * @description 需要 `contract.seal.get`。按配置里的企业账号查渠道侧的主体、印章列表、默认印章与默认用章人，并给一句中文结论。配置里还没有企业账号时不打扰渠道，直接回「尚未配置」。
+         */
+        post: operations["asign_seal_verify_enterprise"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/admin/conversations": {
         parameters: {
             query?: never;
@@ -646,6 +830,26 @@ export interface paths {
          * @description 争议场景下由平台裁定验收通过，需要 `requirement.delivery_accept.post`——它会推进状态并触发结算，必须能单独收回，不跟着任何读权限一起发出去。门槛与需求方主动验收一致（已交付、未验收过、担保模式合同已签署），多一条：`basis` 至少 5 个字，「验收」两个字批不了，事后也没法回答平台凭什么替他认了；不足字数回 400。留痕落在需求行上：`accepted_by`（操作人）、依据记 `platform`、`basis` 原文进验收留痕与状态备注，这几项与状态、验收时间在**同一条 UPDATE** 里落库，不会出现「状态推进了、谁代验收的没记」。
          */
         post: operations["requirement_admin_accept_delivery"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/requirement/deliveries/{requirement_id}/acceptance": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 平台代验收（可通过 / 可打回，管理端）
+         * @description 争议场景下由平台裁定验收结论，需要 `requirement.delivery_accept.post`（与 `.../accept` 同一个码：是同一件事的两个结论，能通过就能打回）。请求体沿用 1.x 管理端形状`{ "result": "passed" | "rejected", "note": "..." }`，另加必填的 `basis`（至少 5 个字，「验收」两个字批不了）。**通过**：与 `.../accept` 完全同一份实现（推进状态、写验收留痕、双方收到通知）。**打回**：必须写 `note`（理由），状态退回 `in_development` 挡住尾款、起算限期补救期限、通知开发者整改；`basis` 与 `note` 一并进追加流水，事后能回答「谁、凭什么、为什么」判了打回。**自管模式没有打回这一支**（那边验收即结单），返回 409。
+         */
+        post: operations["requirement_admin_acceptance"];
         delete?: never;
         options?: never;
         head?: never;
@@ -3829,6 +4033,26 @@ export interface paths {
         patch: operations["requirement_update"];
         trace?: never;
     };
+    "/api/requirement/{requirement_id}/acceptance": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 需求方验收交付（可通过 / 可打回）
+         * @description 需求方验收交付，需要 `requirement.request_final_payment.post`。请求体沿用 1.x `AcceptDeliveryRequest` 的形状：`{ "result": "passed" | "rejected", "note": "..." }`（`result` 缺省按通过）。**通过**：与 `POST /{id}/request-final-payment` 同一份实现——自管模式验收即结单，担保模式验收通过进待付尾款（合同未签署回 400）。**打回**：**必须写理由**（空理由 400），状态退回 `in_development` 挡住尾款，起算限期补救期限（`[breach] remediation_hours`，默认 72 小时），通知开发者整改；打回会把「验收通过」那一面整体撤下，全部结论（含每一次打回）落在追加流水里。打回**不回滚已经发生的资金动作**：真要追回走违约或售后。**自管模式没有打回这一支**（那边验收即结单，没有「待付尾款」可退），返回 409。只有需求方本人能调，其余 403。
+         */
+        post: operations["requirement_acceptance"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/requirement/{requirement_id}/acceptances": {
         parameters: {
             query?: never;
@@ -3837,8 +4061,8 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * 验收记录（当事人可见）
-         * @description 这条需求的验收留痕：谁在什么时候验收的、依据是什么（`self` 主动验收 / `deemed` 逾期视为通过 /`platform` 平台代验收）、当时有没有超过验收催告期限。数据全部来自既有事实（需求行的验收痕迹 + 期限行的交付时间与催告期限），没有另开流水表。端点码复用 `requirement.detail.get`（不新建码）：读的是这条需求自己的过程记录，与详情同一份可见性；真正的边界在用例层——**只给当事人**（需求方 / 现任开发者），其余 403（不是 404，前端要能提示「只有当事人能看」）。`items` 为空表示还没验收过，**不是 404**：需求本身是存在的。读之前会先按需判定一次期限到期，所以可能读到的就是刚被认定为「视为通过」的那条。
+         * 验收记录与历史（当事人可见）
+         * @description 这条需求的验收留痕，分两部分：`items` 是**当前**结论（谁在什么时候验收的、依据是什么 `self` / `deemed` / `platform`、当时有没有超过验收催告期限，最多一条）；`history` 是**每一次**验收（含打回：谁打的、理由是什么、什么时候），按时间倒序。打回会把 `items` 撤空（最新结论不是「通过」），所以只看 `items` 会把打回过的单子误读成「从没验收过」——两段一起看才对。端点码复用 `requirement.detail.get`（不新建码）：读的是这条需求自己的过程记录，与详情同一份可见性；真正的边界在用例层——**只给当事人**（需求方 / 现任开发者），其余 403（不是 404，前端要能提示「只有当事人能看」）。读之前会先按需判定一次期限到期，所以可能读到的就是刚被认定为「视为通过」的那条。
          */
         get: operations["requirement_acceptances"];
         put?: never;
@@ -4060,7 +4284,7 @@ export interface paths {
         put?: never;
         /**
          * 需求方验收并申请结清尾款
-         * @description 需求方验收并申请结清尾款，需要 `requirement.request_final_payment.post`。前置：需求方本人、**已经交付**（`delivered_at` 非空——没交付就没有可验收的东西）、状态在该结算方式的验收窗口里。落点按结算方式分岔：自管模式没有平台代收尾款，验收即结单（→ `completed`）；担保模式验收通过进 `pending_final`（待付尾款），尾款到账后由支付侧推进到待分账。担保模式还要求**合同已签署**，否则回 400。已经验收过的单子不能再走「待验收」这一档：再走一次等于跳过付尾款直接进分账。只做**通过**一支，「打回（退回开发中 + 起补救期限）」2.0 未实现。
+         * @description 需求方验收并申请结清尾款，需要 `requirement.request_final_payment.post`。前置：需求方本人、**已经交付**（`delivered_at` 非空——没交付就没有可验收的东西）、状态在该结算方式的验收窗口里。落点按结算方式分岔：自管模式没有平台代收尾款，验收即结单（→ `completed`）；担保模式验收通过进 `pending_final`（待付尾款），尾款到账后由支付侧推进到待分账。担保模式还要求**合同已签署**，否则回 400。已经验收过的单子不能再走「待验收」这一档：再走一次等于跳过付尾款直接进分账。这条端点**只做通过一支**（没有请求体，老前端在用，行为不变）；要打回（退回开发中 + 起补救期限 + 通知开发者整改）请用`POST /api/requirement/{requirement_id}/acceptance`（`result = rejected`），它沿用 1.x 的 `{result, note}` 请求体。
          */
         post: operations["requirement_request_final_payment"];
         delete?: never;
@@ -5705,6 +5929,274 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/system/settings/profile": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 我的档案
+         * @description **需要登录 + `system.profile.get`**。返回本人档案：登录名、简介、主邮箱、头像与主页背景地址、两因素开关、两个订阅开关。归属即权限——只能读自己的，接口没有「读谁」的参数。1.x 响应里的 `wechat_bound` 在 2.0 没有对应能力（微信登录尚未接入），因此不返回。令牌缺失 / 无效 / 已吊销回 401；账号不存在回 404 `USER_NOT_FOUND`。
+         */
+        get: operations["profile_get"];
+        /**
+         * 改我的档案
+         * @description **需要登录 + `system.profile.update.put`**。目前只能改**个人简介**（最多 300 个字符，首尾空白会被去掉）。`new_username` 仅做兼容接收：**与当前登录名不同时回 400**——1.x 允许用户自助改登录名并级联更新关联数据，2.0 没有那条级联（合同、需求单等按用户名文本关联），静默忽略会让前端以为改名成功，所以明确拒绝；变更登录名请走管理端`POST /api/auth/users/username`。两个字段都不带（或简介为 `null`）回 400 `INVALID_ARGUMENT`「没有需要修改的字段」。响应是改完之后的完整档案。
+         */
+        put: operations["profile_update"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/system/settings/profile/avatar": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 上传头像
+         * @description **需要登录 + `system.profile.update.put`**。multipart 上传，文件字段名固定 `file`，上限 2 MiB，只收 PNG / JPG / WEBP / GIF。格式按**字节**判定（`Content-Type` 只作交叉校验）：声明与内容不一致、或内容不是可解码的图片，一律 400。落盘路径 `/uploads/user-avatars/<账号>/<uuid>.png`，原文件名不参与磁盘路径。响应是更新后的完整档案。
+         */
+        post: operations["profile_upload_avatar"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/system/settings/profile/background-dynamic": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * 设置动态主页背景
+         * @description **需要登录 + `system.profile.update.put`**。与静态背景同一套语义：传**已上传好的地址**，`image_url` 为空串表示清空，`focus` 最长 64 个字符。响应是更新后的完整档案。2.0 没有权益体系，因此不做 1.x 的背景权益校验。
+         */
+        put: operations["profile_set_background_dynamic"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/system/settings/profile/background-dynamic/upload": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 上传动态主页背景
+         * @description **需要登录 + `system.profile.update.put`**。multipart 上传，字段名 `file`，上限 20 MiB，收 GIF / WEBP 动图，或 MP4 / WEBM 视频。图片按字节解码判定；视频按容器魔数判定（MP4 的 `ftyp`、WebM 的 EBML 头），声明与内容不一致回 400。落盘后直接设为当前动态背景，响应是更新后的完整档案。
+         */
+        post: operations["profile_upload_background_dynamic"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/system/settings/profile/background-static": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * 设置静态主页背景
+         * @description **需要登录 + `system.profile.update.put`**。传的是**已经上传好的地址**（先用 `POST .../background-static/upload` 传文件），不是文件本身。`image_url` 传空串表示**清空**背景，同时清掉焦点。`focus` 是前端裁切预览用的短描述，最长 64 个字符。响应是更新后的完整档案。与 1.x 的差别：1.x 设置背景前要校验 `home_background_static` 权益，2.0 没有权益 / 积分体系，因此不做这项校验。
+         */
+        put: operations["profile_set_background_static"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/system/settings/profile/background-static/upload": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 上传静态主页背景
+         * @description **需要登录 + `system.profile.update.put`**。multipart 上传，字段名 `file`，上限 5 MiB，只收 PNG / JPG / WEBP / GIF。格式按字节判定，声明与内容不一致回 400。落盘后**直接设为当前静态背景**（焦点被清空），响应是更新后的完整档案。
+         */
+        post: operations["profile_upload_background_static"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/system/settings/profile/email": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * 换绑主邮箱
+         * @description **需要登录 + `system.profile_email.update.put`**。校验发到新邮箱的验证码后换绑主邮箱，响应是更新后的完整档案。`new_email` 与当前主邮箱相同视为无需变更：直接返回当前档案，不消费验证码。验证码不存在 / 已使用 / 不匹配 / 已过期回 400，尝试次数超限回 429；邮箱已被别的账号占用回 409 `EMAIL_TAKEN`；邮箱格式非法回 400。限流：同一账号每 15 分钟 12 次，超限 429。
+         */
+        put: operations["profile_update_email"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/system/settings/profile/email-code": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 发送换绑邮箱验证码
+         * @description **需要登录 + `system.profile_email_code.post`**。给 `new_email` 发一封换绑验证码，邮箱换绑时用 `email_code` 原样交回。验证码与「用途 + 邮箱」绑定：注册码、找回密码码、改密码都不能拿来换邮箱。`new_email` 与当前主邮箱相同时**直接返回成功且不发信**（1.x 同口径，页面允许用户「填了原邮箱再点发送」）。邮箱格式非法回 400；该邮箱已被别的账号占用回 409 `EMAIL_TAKEN`；发信失败回 500 `MAIL_FAILED`。限流：同一账号每小时 5 次，超限 429 并带 `Retry-After`。
+         */
+        post: operations["profile_send_email_code"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/system/settings/profile/password": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * 登录态改密码
+         * @description **需要登录 + `system.profile_password.update.put`**。三道关都过才改：**旧密码**正确、**邮箱验证码**正确、账号未绑定邮箱时不允许（400 `CURRENT_EMAIL_REQUIRED`，那种情况只能走免登录的找回密码）。`old_password` 与 `new_password` 都是 `md5(明文密码)`：32 位小写十六进制，明文一律 400；服务端用 Argon2id 落库，不做二次 md5。旧密码不对回 **400 `INVALID_CURRENT_PASSWORD`**（不是 401——401 会让前端把用户直接登出）。验证码不存在 / 已使用 / 不匹配 / 已过期回 400，尝试次数超限回 429。成功后**该账号已签发的全部令牌（含当前这台设备）当场失效**：密码变更会推进令牌版本号，旧令牌再用回 401 `TOKEN_REVOKED`，请用新密码重新登录。与 1.x 的差别：1.x 只看验证码，2.0 还要旧密码——拿到一枚验证码不该足以改掉密码。限流：同一账号每 15 分钟 12 次，超限 429。
+         */
+        put: operations["profile_update_password"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/system/settings/profile/password-code": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 发送改密验证码
+         * @description **需要登录 + `system.profile_password_code.post`**。给**当前主邮箱**发一封改密验证码。账号没绑邮箱回 400 `CURRENT_EMAIL_REQUIRED`——这种情况只能走免登录的找回密码流程。限流：同一账号每小时 5 次，超限 429。
+         */
+        post: operations["profile_send_password_code"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/system/settings/profile/subscriptions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 我的订阅开关
+         * @description **需要登录 + `system.profile_subscriptions.get`**。两个开关的语义是「愿不愿意收这类邮件」：`subscribe_official_activity` 是官方活动通知；`subscribe_dev_hall_deposit_paid` 是开发者大厅里「定金已付」需求的推送。**不是**需求单级的订阅（那是 `PATCH /api/requirement/.../subscription`），两者互不影响。没有记录等同于关闭。
+         */
+        get: operations["profile_get_subscriptions"];
+        /**
+         * 改我的订阅开关
+         * @description **需要登录 + `system.profile_subscriptions.update.put`**。按字段合并：传了哪项改哪项，`null` / 缺省表示不改变。响应是两个开关的最新值。幂等：与当前值相同不会写库。
+         */
+        put: operations["profile_update_subscriptions"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/system/settings/profile/two-factor": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * 开关两因素验证
+         * @description **需要登录 + `system.profile.update.put`**。目标状态与当前状态相同就直接返回档案（不消费验证码，`email_code` 可留空）；要改状态就必须带发到当前主邮箱的验证码。缺少验证码回 400 `EMAIL_CODE_REQUIRED`，账号没绑邮箱回 400 `CURRENT_EMAIL_REQUIRED`，验证码不对 / 过期 / 已用回 400，尝试次数超限回 429。响应是更新后的完整档案。这里只改**开关**，登录流程本身不变。限流：同一账号每 15 分钟 12 次，超限 429。
+         */
+        put: operations["profile_update_two_factor"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/system/settings/profile/two-factor-code": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 发送两因素开关验证码
+         * @description **需要登录 + `system.profile.update.put`**。给当前主邮箱发一封两因素开关验证码。账号没绑邮箱回 400 `CURRENT_EMAIL_REQUIRED`。限流：同一账号每小时 5 次，超限 429。注意这与登录流程里的两步验证码是**两种用途**：登录码在 `/api/auth/login`不带 `two_factor_code` 时自动发出，不能拿来改开关。
+         */
+        post: operations["profile_send_two_factor_code"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/system/sse": {
         parameters: {
             query?: never;
@@ -6101,6 +6593,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/user/{username}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 公开用户档案（免登录）
+         * @description **免登录**：任何人按用户名都能读，个人主页用它渲染。只返回展示字段——登录名、简介、头像、静态 / 动态主页背景及其焦点。**刻意不含**邮箱、手机号、实名姓名与证件号，也不含账号状态（是否被封禁 / 注销）：这个端点可以被按用户名批量遍历，多一个字段就多一份可抓取的资料；账号状态属于管理动作，公开出去等于把处罚公告挂在个人主页上。需要这些字段的只有本人，走 `GET /api/system/settings/profile`。用户不存在回 404 `USER_NOT_FOUND`。
+         */
+        get: operations["profile_public"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/auth/gitee/callback": {
         parameters: {
             query?: never;
@@ -6145,7 +6657,29 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
-        /** @description 一条验收记录（验收只有一次，`items` 里最多一条）。 */
+        /** @description 一条验收流水（历史里的一行）。 */
+        AcceptanceHistoryItemResponse: {
+            /** @description 做这次判定的人。 */
+            actor: string;
+            /** @description 谁促成的：`self` / `deemed` / `platform`。 */
+            basis: string;
+            /** @description 依据的中文说明。 */
+            basis_label: string;
+            /**
+             * Format: int64
+             * @description 流水编号。
+             */
+            id: number;
+            /** @description 打回理由 / 平台依据；通过那一支可能为空。 */
+            note?: string | null;
+            /** @description 落库时间（东八区）。 */
+            recorded_at: string;
+            /** @description 结论机器码：`passed` / `rejected`。 */
+            result: string;
+            /** @description 结论的中文说明。 */
+            result_label: string;
+        };
+        /** @description 一条验收记录（**当前**结论，`items` 里最多一条；打回后为空）。 */
         AcceptanceItemResponse: {
             /** @description 验收催告期限。 */
             acceptance_due_at?: string | null;
@@ -6166,10 +6700,70 @@ export interface components {
         };
         /** @description 验收记录列表。`items` 为空表示还没验收过（不是 404：需求本身是存在的）。 */
         AcceptanceListResponse: {
-            /** @description 验收记录（按时间倒序，最多一条）。 */
+            /**
+             * @description 每一次验收的历史（含打回），按时间倒序——打回过的单子在这里看得到「谁、为什么」。
+             *
+             *     新增字段：老前端只读 `items`，不受影响。`items` 只描述**当前**结论，
+             *     打回会把那一面撤下，只看 `items` 会让「打回过的单子」看起来从没验收过。
+             */
+            history: components["schemas"]["AcceptanceHistoryItemResponse"][];
+            /** @description 当前验收结论（按时间倒序，最多一条）。 */
             items: components["schemas"]["AcceptanceItemResponse"][];
             /** @description 需求编号。 */
             requirement_id: string;
+        };
+        /** @description 验收请求体（与 1.x `AcceptDeliveryRequest` 同形）。 */
+        AcceptanceRequest: {
+            /** @description 验收说明 / 打回理由。**打回必填**（最多 1000 字），通过时可选。 */
+            note?: string;
+            /**
+             * @description 验收结论：`passed`（通过）/ `rejected`（打回）。
+             *
+             *     缺省按**通过**处理（1.x 口径：老调用方不发这个字段）；认不出来的取值回 400，
+             *     不兜底成通过——一次「以为打回了、其实通过了」会把尾款放走。
+             */
+            result?: string;
+        };
+        /** @description 一次验收（通过 / 打回）的回执。 */
+        AcceptanceResultResponse: {
+            /** @description 当前验收结论的落库时间（东八区）；打回后为空（结论已被撤下）。 */
+            accepted_at?: string | null;
+            /** @description 验收说明 / 打回理由（已去空白）。 */
+            note?: string | null;
+            /**
+             * Format: int64
+             * @description 这条需求累计被打回过几次（含本次）。
+             */
+            rejection_count: number;
+            /** @description 本次打回起的限期补救期限（东八区）；通过时为 `null`。 */
+            remediation_due_at?: string | null;
+            /** @description 需求编号。 */
+            requirement_id: string;
+            /** @description 本次结论机器码：`passed` / `rejected`。 */
+            result: string;
+            /** @description 本次结论的中文说明。 */
+            result_label: string;
+            /** @description 处理之后的需求状态机器码（打回后为 `in_development`）。 */
+            status: string;
+            /** @description 状态的中文说明。 */
+            status_label: string;
+        };
+        /** @description 添加企业签署人请求。 */
+        AddEnterpriseUserRequest: {
+            /** @description 企业账号（空串用统一社会信用代码）。 */
+            account?: string;
+            /** @description 企业名称。 */
+            company_name: string;
+            /** @description 统一社会信用代码。 */
+            credit_code: string;
+            /** @description 法定代表人身份证号。 */
+            id_card: string;
+            /** @description 法定代表人姓名。 */
+            legal_name: string;
+            /** @description 法定代表人手机号。 */
+            mobile: string;
+            /** @description 认证流水号（有则走「认证流水号添加」）。 */
+            serial_no?: string | null;
         };
         /** @description 管理端详情：元信息 + 历史沟通的原始记录（绑定与公开申请）。 */
         AdminConversationDetailResponse: {
@@ -6551,6 +7145,15 @@ export interface components {
             /** @description 更新时间。 */
             updated_at: string;
         };
+        /** @description 应用公钥。 */
+        AppPublicKeyResponse: {
+            /** @description 是否新生成私钥（2.0 恒为 `false`：私钥落盘是部署动作）。 */
+            generated: boolean;
+            /** @description 这把公钥来自哪把私钥。 */
+            key_source: string;
+            /** @description 单行 base64 公钥正文（不带 PEM 头尾）。 */
+            public_key: string;
+        };
         /** @description 一次开票申请的结果。 */
         AppliedInvoicesResponse: {
             developer_invoice?: null | components["schemas"]["InvoiceResponse"];
@@ -6636,6 +7239,29 @@ export interface components {
             redirect_uri: string;
             /** @description scope（空格分隔）。 */
             scope?: string;
+        };
+        /** @description 授权印章请求。 */
+        AuthorizeSealRequest: {
+            /** @description 用章人账号（法人手机号）。 */
+            auth_sign_account: string;
+            /** @description 验证码（与 `captcha_id` 一起传）。 */
+            captcha?: string | null;
+            /** @description 验证码标识（续做时带上一次返回的值）。 */
+            captcha_id?: string | null;
+            /** @description 平台企业账号。 */
+            platform_account: string;
+            /** @description 平台印章编号。 */
+            platform_seal_no: string;
+        };
+        /** @description 授权结果。 */
+        AuthorizeSealResponse: {
+            /** @description 是否已授权完成。 */
+            authorized: boolean;
+            /** @description 需要验证码时给的标识。 */
+            captcha_id?: string | null;
+            config?: null | components["schemas"]["SealConfigResponse"];
+            /** @description 说明（中文）。 */
+            message: string;
         };
         /** @description 登录授权地址的查询参数。 */
         AuthorizeUrlQuery: {
@@ -6740,8 +7366,8 @@ export interface components {
              * Format: int64
              * @description 开发者交付之后、需求方提出验收异议的期限（小时）。
              *
-             *     逾期未提出**具体异议**即按合同约定视为验收通过，系统直接推进到待分账。
-             *     取值 1～720（1 小时 ~ 30 天），0 等于不给人看的时间，属于配置事故。
+             *     逾期未提出**具体异议**即按合同约定视为验收通过：担保模式推进到待付尾款，
+             *     自管模式验收即结单。取值 1～720（1 小时 ~ 30 天），0 等于不给人看的时间，属于配置事故。
              * @default 72
              */
             acceptance_cure_hours: number;
@@ -6754,6 +7380,17 @@ export interface components {
              * @default 48
              */
             deposit_pay_hours: number;
+            /**
+             * Format: int64
+             * @description 验收被打回后，开发者整改并重新交付的期限（小时）。
+             *
+             *     1.x 的口径是 `[breach] remediation_hours`（默认 72）：打回不是把单子扔回去就完了，
+             *     得给开发商一个明确的截止时刻，逾期才能谈「减少价款」。
+             *     取值 1～720（1 小时 ~ 30 天）：0 等于「打回了但不给时间整改」，
+             *     那等于让这条需求永远卡在开发中，属于配置事故而不是「关掉这个功能」。
+             * @default 72
+             */
+            remediation_hours: number;
         };
         /** @description 营业执照 OCR 请求体。 */
         BusinessLicenseOcrRequest: {
@@ -7962,6 +8599,26 @@ export interface components {
             /** @description 平台用户名。 */
             username: string;
         };
+        /** @description 企业实名认证请求（发起认证 / 一键配置 / 加签署人共用企业四要素）。 */
+        EnterpriseAuthRequest: {
+            /** @description 企业名称。 */
+            company_name: string;
+            /** @description 统一社会信用代码。 */
+            credit_code: string;
+            /** @description 法定代表人身份证号。 */
+            id_card: string;
+            /** @description 法定代表人姓名。 */
+            legal_name: string;
+            /** @description 法定代表人手机号。 */
+            mobile: string;
+        };
+        /** @description 企业实名认证结果。 */
+        EnterpriseAuthResponse: {
+            /** @description 认证链接（用户打开做人脸核身 / 对公打款）。 */
+            auth_url: string;
+            /** @description 认证流水号（加企业主体时带回）。 */
+            serial_no: string;
+        };
         /**
          * @description 对公进件的文本资料（multipart 里 `data` 字段的 JSON 内容）。
          *
@@ -8395,6 +9052,15 @@ export interface components {
             /** @description SMTP 用户名。 */
             username: string;
         };
+        /** @description 制章请求。 */
+        MakeCompanySealRequest: {
+            /** @description 平台企业账号。 */
+            platform_account: string;
+            /** @description 印章名称（空串用「平台电子印章」）。 */
+            platform_seal_name?: string;
+            /** @description 平台印章编号。 */
+            platform_seal_no: string;
+        };
         /** @description 全部已读的结果。 */
         MarkAllReadResponse: {
             /**
@@ -8547,6 +9213,16 @@ export interface components {
             recipient: string;
             /** @description 标题。 */
             title: string;
+        };
+        /** @description 回调应答：爱签只认这个形状，别改成别的信封。 */
+        NotifyAckResponse: {
+            /**
+             * Format: int32
+             * @description 固定 0。
+             */
+            code: number;
+            /** @description 固定 `ok`。 */
+            message: string;
         };
         /** @description 单个渠道配置的对外形状。 */
         OAuthChannelView: {
@@ -8861,6 +9537,20 @@ export interface components {
              */
             basis?: string;
         };
+        /** @description 平台代验收（可通过 / 可打回）的请求体：1.x `AcceptDeliveryRequest` 的形状 + `basis`。 */
+        PlatformAcceptanceRequest: {
+            /**
+             * @description 平台依据：平台凭什么这么判。**必填**，至少 5 个字。
+             *
+             *     代验收是平台替需求方做的决定，没有依据就等于没有责任主体；
+             *     打回也一样——凭什么认定交付不合格，得写下来。
+             */
+            basis?: string;
+            /** @description 打回理由（给开发者看，打回必填）/ 通过时的附加备注。 */
+            note?: string;
+            /** @description 验收结论：`passed`（通过）/ `rejected`（打回），缺省按通过。 */
+            result?: string;
+        };
         /** @description 平台内手写签署请求体（`POST /api/contract/{id}/sign`）。 */
         PlatformSignRequest: {
             /** @description 手写签名数据；可留空，留空时日志里不落签名指纹。 */
@@ -8882,6 +9572,37 @@ export interface components {
             /** @description 全部角色。 */
             roles: string[];
             /** @description 用户名。 */
+            username: string;
+        };
+        /**
+         * @description 个人的档案响应。字段名与 1.x 一致，前端共用同一份类型定义。
+         *
+         *     **没有** `wechat_bound`：1.x 那个字段来自微信登录绑定，2.0 还没有微信登录
+         *     （见 `AGENTS.md` 的 identity 缺口清单），恒为 `false` 的字段只会让前端渲染出
+         *     一个点了没反应的「去绑定」按钮，所以不返回。
+         */
+        ProfileResponse: {
+            /** @description 头像地址。 */
+            avatar_url?: string | null;
+            /** @description 主邮箱。 */
+            email?: string | null;
+            /** @description 动态主页背景地址。 */
+            home_background_dynamic?: string | null;
+            /** @description 动态背景焦点。 */
+            home_background_dynamic_focus?: string | null;
+            /** @description 静态主页背景地址。 */
+            home_background_static?: string | null;
+            /** @description 静态背景焦点。 */
+            home_background_static_focus?: string | null;
+            /** @description 个人简介。 */
+            profile_description: string;
+            /** @description 是否订阅开发者大厅「定金已付」需求推送。 */
+            subscribe_dev_hall_deposit_paid: boolean;
+            /** @description 是否订阅官方活动通知。 */
+            subscribe_official_activity: boolean;
+            /** @description 是否开启两因素验证。 */
+            two_factor_enabled: boolean;
+            /** @description 登录名。 */
             username: string;
         };
         /** @description 后台推广申请列表的查询参数。 */
@@ -8928,6 +9649,28 @@ export interface components {
             status: string;
             /** @description 更新时间。 */
             updated_at: string;
+        };
+        /**
+         * @description 公开档案响应。
+         *
+         *     只有展示字段：不含邮箱、手机号、实名信息，也不含账号状态（是否被封禁 / 注销）。
+         *     这个端点是免登录的，多一个字段就等于多一份可以被批量抓取的资料。
+         */
+        PublicProfileResponse: {
+            /** @description 头像地址。 */
+            avatar_url?: string | null;
+            /** @description 动态主页背景地址。 */
+            home_background_dynamic?: string | null;
+            /** @description 动态背景焦点。 */
+            home_background_dynamic_focus?: string | null;
+            /** @description 静态主页背景地址。 */
+            home_background_static?: string | null;
+            /** @description 静态背景焦点。 */
+            home_background_static_focus?: string | null;
+            /** @description 个人简介。 */
+            profile_description: string;
+            /** @description 登录名。 */
+            username: string;
         };
         /** @description 公开详情响应（字段与 legacy `PublicRequirementDetailResponse` 一致）。 */
         PublicRequirementResponse: {
@@ -9942,6 +10685,13 @@ export interface components {
             /** @description 是否要重启才生效。 */
             restart_required: boolean;
         };
+        /** @description 配置保存结果。 */
+        SavedSealConfigResponse: {
+            /** @description 保存后的配置。 */
+            config: components["schemas"]["SealConfigResponse"];
+            /** @description 是否要重启才生效（恒为 `true`：配置在启动时读进服务，落盘不回灌）。 */
+            restart_required: boolean;
+        };
         /** @description 保存结果。 */
         Saved_BreachConfig: {
             /** @description 违约与催告期限。 */
@@ -9950,8 +10700,8 @@ export interface components {
                  * Format: int64
                  * @description 开发者交付之后、需求方提出验收异议的期限（小时）。
                  *
-                 *     逾期未提出**具体异议**即按合同约定视为验收通过，系统直接推进到待分账。
-                 *     取值 1～720（1 小时 ~ 30 天），0 等于不给人看的时间，属于配置事故。
+                 *     逾期未提出**具体异议**即按合同约定视为验收通过：担保模式推进到待付尾款，
+                 *     自管模式验收即结单。取值 1～720（1 小时 ~ 30 天），0 等于不给人看的时间，属于配置事故。
                  * @default 72
                  */
                 acceptance_cure_hours: number;
@@ -9964,6 +10714,17 @@ export interface components {
                  * @default 48
                  */
                 deposit_pay_hours: number;
+                /**
+                 * Format: int64
+                 * @description 验收被打回后，开发者整改并重新交付的期限（小时）。
+                 *
+                 *     1.x 的口径是 `[breach] remediation_hours`（默认 72）：打回不是把单子扔回去就完了，
+                 *     得给开发商一个明确的截止时刻，逾期才能谈「减少价款」。
+                 *     取值 1～720（1 小时 ~ 30 天）：0 等于「打回了但不给时间整改」，
+                 *     那等于让这条需求永远卡在开发中，属于配置事故而不是「关掉这个功能」。
+                 * @default 72
+                 */
+                remediation_hours: number;
             };
             /** @description 是否要重启才生效。 */
             restart_required: boolean;
@@ -10177,6 +10938,54 @@ export interface components {
             };
             /** @description 是否要重启才生效。 */
             restart_required: boolean;
+        };
+        /**
+         * @description 平台印章配置回显。
+         *
+         *     字段名与 1.x 逐字一致（老前端按名字取值）。两处刻意的不同：
+         *     不带 `private_key`（私钥永不回显），也不带 1.x 的 `user_frontend_base_url`
+         *     （2.0 没有这个配置项，签完跳转用的是 `redirect_url`）。
+         */
+        SealConfigResponse: {
+            /** @description 渠道应用 id。 */
+            app_id: string;
+            /** @description 回调基础地址。 */
+            callback_base_url: string;
+            /** @description 渠道是否启用。 */
+            enabled: boolean;
+            /** @description 企业主体是否已配齐。 */
+            enterprise_configured: boolean;
+            /** @description 渠道环境。 */
+            environment: string;
+            /** @description 管理端前端基址。 */
+            frontend_base_url: string;
+            /** @description 平台企业账号。 */
+            platform_account: string;
+            /** @description 授权的个人用章账号。 */
+            platform_auth_sign_account: string;
+            /** @description 平台企业名称。 */
+            platform_company_name: string;
+            /** @description 统一社会信用代码。 */
+            platform_credit_code: string;
+            /** @description 法定代表人身份证号。 */
+            platform_legal_id_card: string;
+            /** @description 法定代表人姓名。 */
+            platform_legal_name: string;
+            /** @description 签约手机号。 */
+            platform_mobile: string;
+            /** @description 平台印章名称。 */
+            platform_seal_name: string;
+            /** @description 平台印章编号。 */
+            platform_seal_no: string;
+            /** @description 应用私钥**文件路径**（私钥正文永不回显）。 */
+            private_key_path: string;
+            /** @description 印章编号是否已配。 */
+            seal_configured: boolean;
+        };
+        /** @description 发换绑邮箱验证码请求体。 */
+        SendEmailCodeRequest: {
+            /** @description 新邮箱，验证码发到这里。 */
+            new_email: string;
         };
         /** @description 发消息。 */
         SendMessageRequest: {
@@ -10480,6 +11289,28 @@ export interface components {
             note?: string | null;
             /** @description 渠道侧结算账户号（通过时必填）。 */
             settle_account_id?: string | null;
+        };
+        /** @description 一键配置请求。 */
+        SetupSealRequest: {
+            /** @description 企业名称。 */
+            company_name: string;
+            /** @description 统一社会信用代码。 */
+            credit_code: string;
+            /** @description 法定代表人身份证号。 */
+            id_card: string;
+            /** @description 法定代表人姓名。 */
+            legal_name: string;
+            /** @description 法定代表人手机号。 */
+            mobile: string;
+            /** @description 印章名称（空串用「平台电子印章」）。 */
+            seal_name?: string;
+        };
+        /** @description 一键配置结果。 */
+        SetupSealResponse: {
+            /** @description 企业实名认证链接（需要先认证时返回）。 */
+            auth_url?: string | null;
+            /** @description 在线制章链接（企业主体还没实名时为空串）。 */
+            make_seal_url: string;
         };
         /** @description 签署日志筛选（全部可选）。 */
         SigningLogQuery: {
@@ -11047,6 +11878,13 @@ export interface components {
             /** @description 备注。 */
             note?: string | null;
         };
+        /** @description 设置主页背景请求体（传地址，不传文件）。 */
+        UpdateBackgroundRequest: {
+            /** @description 焦点位置，前端裁切预览用，最长 64 个字符。 */
+            focus?: string | null;
+            /** @description 背景地址；传空串表示清空背景。 */
+            image_url: string;
+        };
         /** @description 客户端更新请求。 */
         UpdateClientRequest: {
             /** @description 应用名。 */
@@ -11088,6 +11926,29 @@ export interface components {
              * @description 换模板（标题与正文按新模板重算）。
              */
             template_id?: number | null;
+        };
+        /** @description 换绑邮箱请求体。 */
+        UpdateEmailRequest: {
+            /** @description 发到新邮箱的 6 位验证码。 */
+            email_code: string;
+            /** @description 新邮箱。 */
+            new_email: string;
+        };
+        /** @description 改密码请求体。 */
+        UpdatePasswordRequest: {
+            /** @description 发到当前主邮箱的 6 位验证码。 */
+            email_code: string;
+            /** @description 新密码的 md5（32 位小写十六进制）。 */
+            new_password: string;
+            /** @description 当前密码的 md5（32 位小写十六进制）。 */
+            old_password: string;
+        };
+        /** @description 改档案请求体。 */
+        UpdateProfileRequest: {
+            /** @description 登录名。**不接受自助改名**：与当前登录名不同时回 400，请走管理端。 */
+            new_username?: string | null;
+            /** @description 个人简介，最多 300 个字符。 */
+            profile_description?: string | null;
         };
         /** @description 更新需求请求体。 */
         UpdateRequirementRequest: {
@@ -11171,10 +12032,50 @@ export interface components {
             /** @description `admin` 或 `member`。 */
             role: string;
         };
+        /** @description 改平台印章配置的请求（部分更新：传了才生效）。 */
+        UpdateSealConfigRequest: {
+            /** @description 渠道应用 id。 */
+            app_id?: string | null;
+            /** @description 回调基础地址。 */
+            callback_base_url?: string | null;
+            /** @description 渠道环境（`test` / `production`）。 */
+            environment?: string | null;
+            /** @description 管理端前端基址。 */
+            frontend_base_url?: string | null;
+            /** @description 平台企业账号。 */
+            platform_account?: string | null;
+            /** @description 授权的个人用章账号。 */
+            platform_auth_sign_account?: string | null;
+            /** @description 企业名称。 */
+            platform_company_name?: string | null;
+            /** @description 统一社会信用代码。 */
+            platform_credit_code?: string | null;
+            /** @description 法定代表人身份证号。 */
+            platform_legal_id_card?: string | null;
+            /** @description 法定代表人姓名。 */
+            platform_legal_name?: string | null;
+            /** @description 签约手机号。 */
+            platform_mobile?: string | null;
+            /** @description 印章名称。 */
+            platform_seal_name?: string | null;
+            /** @description 平台印章编号。 */
+            platform_seal_no?: string | null;
+            /** @description 内联私钥：**2.0 一律拒绝**（400），密钥只放文件或环境变量。 */
+            private_key?: string | null;
+            /** @description 应用私钥**文件路径**。 */
+            private_key_path?: string | null;
+        };
         /** @description 订阅开关请求体（与 legacy `UpdateRequirementSubscriptionRequest` 同形）。 */
         UpdateSubscriptionRequest: {
             /** @description 是否订阅状态变化。 */
             subscribe_status_change: boolean;
+        };
+        /** @description 改订阅开关请求体。`null` / 缺省表示不改该项。 */
+        UpdateSubscriptionsRequest: {
+            /** @description 开发者大厅「定金已付」需求推送。 */
+            subscribe_dev_hall_deposit_paid?: boolean | null;
+            /** @description 官方活动通知。 */
+            subscribe_official_activity?: boolean | null;
         };
         /** @description 改团队信息；缺省字段表示不改。 */
         UpdateTeamRequest: {
@@ -11193,6 +12094,13 @@ export interface components {
             name?: string | null;
             /** @description 标题。 */
             title?: string | null;
+        };
+        /** @description 两因素开关请求体。 */
+        UpdateTwoFactorRequest: {
+            /** @description 发到当前主邮箱的 6 位验证码；状态没变化时可以留空。 */
+            email_code?: string;
+            /** @description 目标状态。 */
+            two_factor_enabled: boolean;
         };
         /** @description 修改用户名请求体。 */
         UpdateUserNameRequest: {
@@ -11333,6 +12241,21 @@ export interface components {
             resolution: string;
             /** @description 解约方式中文说明。 */
             resolution_label: string;
+        };
+        /** @description 企业主体状态检查结果。 */
+        VerifyEnterpriseResponse: {
+            /** @description 已验证的默认用章人。 */
+            auth_sign_account?: string | null;
+            /** @description 默认印章编号。 */
+            default_seal_no?: string | null;
+            /** @description 渠道侧是否存在该主体。 */
+            exists: boolean;
+            /** @description 一句话结论。 */
+            message: string;
+            /** @description 名下印章数量。 */
+            seal_count: number;
+            /** @description 印章编号列表。 */
+            seal_list: string[];
         };
         /** @description 版本响应（在 legacy 字段之后追加 `is_current`）。 */
         VersionResponse: {
@@ -11729,6 +12652,474 @@ export interface operations {
                 content?: never;
             };
             /** @description 支付通道未装配 */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    asign_seal_get_config: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 平台印章配置 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SealConfigResponse"];
+                };
+            };
+            /** @description 没有该接口权限 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 平台印章配置未装配 */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    asign_seal_update_config: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateSealConfigRequest"];
+            };
+        };
+        responses: {
+            /** @description 保存后的配置 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SavedSealConfigResponse"];
+                };
+            };
+            /** @description 入参不合法（含传了内联私钥） */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 没有该接口权限 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 配置写盘失败 */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 平台印章配置未装配 */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    asign_seal_app_public_key: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 应用公钥 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AppPublicKeyResponse"];
+                };
+            };
+            /** @description 没有该接口权限 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 尚未配置可用私钥，或未装配 */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    asign_seal_authorize: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AuthorizeSealRequest"];
+            };
+        };
+        responses: {
+            /** @description 授权结果（可能还需要验证码） */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AuthorizeSealResponse"];
+                };
+            };
+            /** @description 入参不合法（含带 captcha_id 却没带验证码） */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 没有该接口权限 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 爱签接口调用失败 */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 爱签通道未就绪 */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    asign_seal_make_company_seal: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MakeCompanySealRequest"];
+            };
+        };
+        responses: {
+            /** @description 更新后的平台印章配置 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SealConfigResponse"];
+                };
+            };
+            /** @description 入参不合法 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 没有该接口权限 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 爱签接口调用失败 */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 爱签通道未就绪 */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    asign_seal_start_enterprise_auth: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EnterpriseAuthRequest"];
+            };
+        };
+        responses: {
+            /** @description 认证链接与流水号 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EnterpriseAuthResponse"];
+                };
+            };
+            /** @description 入参不合法 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 没有该接口权限 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 爱签接口调用失败 */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 爱签通道未就绪 */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    asign_seal_add_enterprise_user: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AddEnterpriseUserRequest"];
+            };
+        };
+        responses: {
+            /** @description 更新后的平台印章配置 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SealConfigResponse"];
+                };
+            };
+            /** @description 入参不合法，或企业主体尚未完成实名认证 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 没有该接口权限 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 爱签接口调用失败 */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 爱签通道未就绪 */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    asign_seal_make_seal_notify: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    [key: string]: unknown;
+                };
+            };
+        };
+        responses: {
+            /** @description 已收到（是否采信见服务端日志） */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotifyAckResponse"];
+                };
+            };
+            /** @description 报文不合法（缺 sealNo） */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 验签失败，或报文里的企业账号与配置不一致 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 平台印章配置未装配 */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    asign_seal_setup: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SetupSealRequest"];
+            };
+        };
+        responses: {
+            /** @description 制章链接，或需要先做的认证链接 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SetupSealResponse"];
+                };
+            };
+            /** @description 入参不合法 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 没有该接口权限 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 爱签接口调用失败 */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 爱签通道未就绪 */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    asign_seal_verify_enterprise: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 企业主体状态 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VerifyEnterpriseResponse"];
+                };
+            };
+            /** @description 没有该接口权限 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 爱签接口调用失败 */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 爱签通道未就绪 */
             503: {
                 headers: {
                     [name: string]: unknown;
@@ -13236,6 +14627,60 @@ export interface operations {
                 content?: never;
             };
             /** @description 还没交付，或已经验收过 */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    requirement_admin_acceptance: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                requirement_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PlatformAcceptanceRequest"];
+            };
+        };
+        responses: {
+            /** @description 本次代验收的回执 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AcceptanceResultResponse"];
+                };
+            };
+            /** @description basis 不足 5 个字、结论取值无法识别、打回没写理由，或担保模式下合同还没签署 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 没有该接口权限 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 需求不存在 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 还没交付、状态不允许验收 / 打回，或自管模式打回 */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -21802,6 +23247,60 @@ export interface operations {
             };
         };
     };
+    requirement_acceptance: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                requirement_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AcceptanceRequest"];
+            };
+        };
+        responses: {
+            /** @description 本次验收的回执 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AcceptanceResultResponse"];
+                };
+            };
+            /** @description 结论取值无法识别、打回没写理由，或担保模式下合同还没签署 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 没有该接口权限，或不是需求方本人 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 需求不存在 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 还没交付、状态不允许验收 / 打回，或自管模式打回 */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     requirement_acceptances: {
         parameters: {
             query?: never;
@@ -21813,7 +23312,7 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description 验收记录（最多一条） */
+            /** @description 当前结论 + 每一次历史 */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -27691,6 +29190,863 @@ export interface operations {
             };
         };
     };
+    profile_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 本人档案 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProfileResponse"];
+                };
+            };
+            /** @description 未登录，或令牌无效 / 已吊销 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 没有 `system.profile.get` */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 账号不存在（`USER_NOT_FOUND`） */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 权限查询失败或内部错误 */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    profile_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateProfileRequest"];
+            };
+        };
+        responses: {
+            /** @description 改完之后的档案 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProfileResponse"];
+                };
+            };
+            /** @description 简介超长、没有要改的字段，或请求改登录名 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 未登录，或令牌无效 / 已吊销 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 没有 `system.profile.update.put` */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 账号不存在（`USER_NOT_FOUND`） */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 权限查询失败或内部错误 */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    profile_upload_avatar: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description 字段名 `file`，图片二进制（上限 2 MiB） */
+        requestBody: {
+            content: {
+                "multipart/form-data": string;
+            };
+        };
+        responses: {
+            /** @description 更新后的档案 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProfileResponse"];
+                };
+            };
+            /** @description 没读到 `file` 字段、文件为空、超过 2 MiB，或格式不支持 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 未登录，或令牌无效 / 已吊销 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 没有 `system.profile.update.put` */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 账号不存在（`USER_NOT_FOUND`） */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 落盘失败或内部错误 */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    profile_set_background_dynamic: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateBackgroundRequest"];
+            };
+        };
+        responses: {
+            /** @description 更新后的档案 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProfileResponse"];
+                };
+            };
+            /** @description 焦点描述超过 64 个字符 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 未登录，或令牌无效 / 已吊销 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 没有 `system.profile.update.put` */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 账号不存在（`USER_NOT_FOUND`） */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 权限查询失败或内部错误 */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    profile_upload_background_dynamic: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description 字段名 `file`，动图或视频二进制（上限 20 MiB） */
+        requestBody: {
+            content: {
+                "multipart/form-data": string;
+            };
+        };
+        responses: {
+            /** @description 更新后的档案 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProfileResponse"];
+                };
+            };
+            /** @description 没读到 `file` 字段、文件为空、超过 20 MiB，或格式不支持 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 未登录，或令牌无效 / 已吊销 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 没有 `system.profile.update.put` */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 账号不存在（`USER_NOT_FOUND`） */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 落盘失败或内部错误 */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    profile_set_background_static: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateBackgroundRequest"];
+            };
+        };
+        responses: {
+            /** @description 更新后的档案 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProfileResponse"];
+                };
+            };
+            /** @description 焦点描述超过 64 个字符 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 未登录，或令牌无效 / 已吊销 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 没有 `system.profile.update.put` */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 账号不存在（`USER_NOT_FOUND`） */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 权限查询失败或内部错误 */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    profile_upload_background_static: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description 字段名 `file`，图片二进制（上限 5 MiB） */
+        requestBody: {
+            content: {
+                "multipart/form-data": string;
+            };
+        };
+        responses: {
+            /** @description 更新后的档案 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProfileResponse"];
+                };
+            };
+            /** @description 没读到 `file` 字段、文件为空、超过 5 MiB，或格式不支持 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 未登录，或令牌无效 / 已吊销 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 没有 `system.profile.update.put` */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 账号不存在（`USER_NOT_FOUND`） */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 落盘失败或内部错误 */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    profile_update_email: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateEmailRequest"];
+            };
+        };
+        responses: {
+            /** @description 更新后的档案 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProfileResponse"];
+                };
+            };
+            /** @description 邮箱格式非法、缺少验证码，或验证码不可用 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 未登录，或令牌无效 / 已吊销 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 没有 `system.profile_email.update.put` */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 该邮箱已被注册（`EMAIL_TAKEN`） */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 触发限流，或验证码尝试次数超限 */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 权限查询失败或内部错误 */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    profile_send_email_code: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SendEmailCodeRequest"];
+            };
+        };
+        responses: {
+            /** @description 已提交发信，无响应体 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 邮箱格式非法 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 未登录，或令牌无效 / 已吊销 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 没有 `system.profile_email_code.post` */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 该邮箱已被注册（`EMAIL_TAKEN`） */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 触发限流 */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 发信失败或内部错误 */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    profile_update_password: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdatePasswordRequest"];
+            };
+        };
+        responses: {
+            /** @description 密码已更新，无响应体；此后旧令牌一律 401 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 密码不是 32 位小写十六进制、缺少验证码、旧密码不对（`INVALID_CURRENT_PASSWORD`）、未绑邮箱，或验证码不可用 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 未登录，或令牌无效 / 已吊销 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 没有 `system.profile_password.update.put` */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 触发限流，或验证码尝试次数超限 */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 权限查询失败或内部错误 */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    profile_send_password_code: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 已提交发信，无响应体 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 账号未绑定邮箱（`CURRENT_EMAIL_REQUIRED`） */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 未登录，或令牌无效 / 已吊销 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 没有 `system.profile_password_code.post` */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 触发限流 */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 发信失败或内部错误 */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    profile_get_subscriptions: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 订阅开关 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SubscriptionResponse"];
+                };
+            };
+            /** @description 未登录，或令牌无效 / 已吊销 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 没有 `system.profile_subscriptions.get` */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 账号不存在（`USER_NOT_FOUND`） */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 权限查询失败或内部错误 */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    profile_update_subscriptions: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateSubscriptionsRequest"];
+            };
+        };
+        responses: {
+            /** @description 更新后的订阅开关 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SubscriptionResponse"];
+                };
+            };
+            /** @description 未登录，或令牌无效 / 已吊销 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 没有 `system.profile_subscriptions.update.put` */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 账号不存在（`USER_NOT_FOUND`） */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 权限查询失败或内部错误 */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    profile_update_two_factor: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateTwoFactorRequest"];
+            };
+        };
+        responses: {
+            /** @description 更新后的档案 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProfileResponse"];
+                };
+            };
+            /** @description 缺少验证码、未绑邮箱，或验证码不可用 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 未登录，或令牌无效 / 已吊销 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 没有 `system.profile.update.put` */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 触发限流，或验证码尝试次数超限 */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 权限查询失败或内部错误 */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    profile_send_two_factor_code: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 已提交发信，无响应体 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 账号未绑定邮箱（`CURRENT_EMAIL_REQUIRED`） */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 未登录，或令牌无效 / 已吊销 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 没有 `system.profile.update.put` */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 触发限流 */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 发信失败或内部错误 */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     system_get_sse: {
         parameters: {
             query?: never;
@@ -28790,6 +31146,36 @@ export interface operations {
             };
             /** @description 校验操作权限失败，或配置写盘失败 */
             500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    profile_public: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description 登录名 */
+                username: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 公开档案 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PublicProfileResponse"];
+                };
+            };
+            /** @description 用户不存在（`USER_NOT_FOUND`） */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };

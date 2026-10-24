@@ -44,17 +44,6 @@ export type AdapayAcceptanceResponse = {
   depositSplitStatus: string
 }
 
-/** 一条验收留档。 */
-export type AdapayAcceptanceRecord = {
-  id: number
-  result: AdapayAcceptanceResult
-  submittedBy: string
-  note: string
-  /** 提交时绑定资源的最新交付版本号；存量留档可能为空。 */
-  resourceVersion?: string | null
-  createdAt: string
-}
-
 /** 解除合作案件责任方：`customer` 客户（需求方）/ `developer` 开发者。 */
 export type AdapayBreachLiableParty = 'customer' | 'developer'
 /** 最终认定结论：责任方之外多一个 `mutual`（双方协商一致、无责退出），只能由客服人工认定。 */

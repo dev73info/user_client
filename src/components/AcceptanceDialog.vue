@@ -7,12 +7,12 @@
  */
 import { ref, watch } from 'vue'
 
+import type { AdapayAcceptanceResult } from '@/api/adapay'
 import {
-  acceptAdapayDelivery,
-  listAdapayAcceptances,
-  type AdapayAcceptanceRecord,
-  type AdapayAcceptanceResult,
-} from '@/api/adapay'
+  listRequirementAcceptances,
+  submitRequirementAcceptance,
+  type RequirementAcceptanceHistoryItem,
+} from '@/api/requirements'
 import { formatCnDateTime } from '@/shared/requirementDisplay'
 import { TMessage } from 'ui_73info'
 
@@ -32,7 +32,7 @@ const emit = defineEmits<{
 const result = ref<AdapayAcceptanceResult>('passed')
 const note = ref('')
 const submitting = ref(false)
-const records = ref<AdapayAcceptanceRecord[]>([])
+const records = ref<RequirementAcceptanceHistoryItem[]>([])
 const recordsLoading = ref(false)
 
 /** 每次打开都回到「验收通过 + 空说明」，并重新拉一遍历史留档。 */
@@ -56,7 +56,9 @@ async function loadRecords() {
 
   recordsLoading.value = true
   try {
-    records.value = await listAdapayAcceptances(props.token, props.requirementId)
+    // 契约 AcceptanceListResponse 的 history：每次验收的历史（含打回），按时间倒序。
+    const list = await listRequirementAcceptances(props.token, props.requirementId)
+    records.value = list.history ?? []
   } catch (error) {
     // 历史留档只是辅助信息，取不到不挡本次验收。
     TMessage.error(error instanceof Error ? error.message : '加载验收记录失败')
@@ -83,10 +85,22 @@ async function submit() {
 
   submitting.value = true
   try {
-    await acceptAdapayDelivery(props.token, props.requirementId, result.value, note.value.trim())
+    const outcome = await submitRequirementAcceptance(
+      props.token,
+      props.requirementId,
+      result.value,
+      note.value.trim(),
+    )
     const rejected = result.value === 'rejected'
+    // 打回成功的响应里带整改截止时间；详情响应里暂时还没有这个字段（后端在补），
+    // 所以只在这一次提示里展示「整改截止」，刷新后不显示倒计时。
+    const dueAt = outcome.remediation_due_at ? formatCnDateTime(outcome.remediation_due_at) : ''
     TMessage.success(
-      rejected ? '已记下验收结论，开发者会收到整改通知' : '验收已通过，请继续支付尾款',
+      rejected
+        ? dueAt
+          ? `已打回，开发者会收到整改通知（整改截止 ${dueAt}）`
+          : '已记下验收结论，开发者会收到整改通知'
+        : '验收已通过，请继续支付尾款',
     )
     emit('submitted', result.value)
     emit('close')
@@ -166,13 +180,10 @@ async function submit() {
                 <strong :class="record.result === 'passed' ? 'is-passed' : 'is-rejected'">
                   {{ record.result === 'passed' ? '验收通过' : '验收不通过' }}
                 </strong>
-                <time>{{ formatCnDateTime(record.createdAt) }}</time>
+                <time>{{ formatCnDateTime(record.recorded_at) }}</time>
               </div>
-              <p class="acceptance-modal__record-version">
-                交付版本：{{ record.resourceVersion?.trim() || '未记录' }}
-              </p>
               <p v-if="record.note">{{ record.note }}</p>
-              <small>提交人：{{ record.submittedBy }}</small>
+              <small>提交人：{{ record.actor }}</small>
             </li>
           </ul>
         </div>
@@ -322,12 +333,6 @@ async function submit() {
   font-size: 13px;
   line-height: 1.6;
   overflow-wrap: anywhere;
-}
-
-.pay-modal .acceptance-modal__record-version {
-  color: var(--73-ink-soft);
-  font-size: 12px;
-  font-weight: 600;
 }
 
 .pay-modal .acceptance-modal__records small {
