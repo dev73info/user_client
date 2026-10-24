@@ -335,12 +335,6 @@ async function submit() {
   overflow-wrap: anywhere;
 }
 
-.pay-modal .acceptance-modal__record-version {
-  color: var(--73-ink-soft);
-  font-size: 12px;
-  font-weight: 600;
-}
-
 .pay-modal .acceptance-modal__records small {
   color: var(--73-ink-placeholder);
   font-size: 12px;

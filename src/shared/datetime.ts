@@ -17,6 +17,10 @@ const HAS_OFFSET = /(?:Z|[+-]\d{2}:?\d{2})$/i
  * 把后端时间字符串解析成 `Date`（瞬时正确，与时区无关）。
  *
  * 解析不出来返回 `null`，由调用方各自兜底，不要在这里抛错、也不要回退成「现在」。
+ *
+ * **不支持 date-only**（`2026-10-24`）：后端的时间字段恒为 `%Y-%m-%d %H:%M:%S`，
+ * 而日期不是时刻——按 `+08:00` 补零点会让 UTC 以西的设备显示成前一天，等于把同一个坑
+ * 换个方向再踩一次。日期型字段请直接切字符串展示，不要过 `Date`。
  */
 export function parseBackendDateTime(value?: string | null): Date | null {
   const raw = value?.trim()

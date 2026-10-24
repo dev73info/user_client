@@ -33,6 +33,10 @@ describe('parseBackendDateTime', () => {
     )
   })
 
+  it('date-only 不支持：日期不是时刻，按 null 处理', () => {
+    expect(parseBackendDateTime('2026-10-24')).toBeNull()
+  })
+
   it('空值与非时间串返回 null', () => {
     expect(parseBackendDateTime('')).toBeNull()
     expect(parseBackendDateTime(null)).toBeNull()
