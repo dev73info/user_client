@@ -7,6 +7,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
  * 一是回填（三个接口的数据要落到头部、读数、打赏与资源卡，背景的裁剪焦点得还原成 `transform`）；
  * 二是保存载荷（简介 `PUT /settings/profile`、背景「先上传拿地址、再带焦点落库」，
  * 参数错了页面不报错但写进后端的数据是错的）。
+ *
+ * 夹具（档案 / 资源）在 `helpers/devProfileFixtures.ts`：本文件只留 `vi.mock`
+ * 与断言，避免再顶到 300 行的模块上限。
  */
 const mocks = vi.hoisted(() => ({
   toast: vi.fn(),
@@ -16,9 +19,7 @@ const mocks = vi.hoisted(() => ({
     fullPath: '/user/dev_alice/profile',
   },
   listResources: vi.fn(),
-  userBadges: vi.fn(),
   publicProfile: vi.fn(),
-  points: vi.fn(),
   updateProfile: vi.fn(),
   uploadStatic: vi.fn(),
   updateStatic: vi.fn(),
@@ -56,9 +57,7 @@ vi.mock('ui_73info', async (importOriginal) => {
   }
 })
 vi.mock('@/api/resources', () => ({ listAllPublicMcResources: mocks.listResources }))
-vi.mock('@/api/invite', () => ({ getUserBadges: mocks.userBadges }))
 vi.mock('@/api/publicProfile', () => ({ getPublicUserProfile: mocks.publicProfile }))
-vi.mock('@/api/points', () => ({ getMyPoints: mocks.points }))
 vi.mock('@/api/settings', () => ({
   updateProfile: mocks.updateProfile,
   uploadProfileBackground: mocks.uploadStatic,
@@ -67,103 +66,15 @@ vi.mock('@/api/settings', () => ({
   updateProfileBackgroundDynamic: mocks.updateDynamic,
 }))
 
-import type { PublicMcResourceItem } from '@/api/resources'
+import { buttonByText, profile, resources } from './helpers/devProfileFixtures'
+
 import DevProfileView from '@/views/DevProfileView.vue'
-
-const profile = {
-  username: 'dev_alice',
-  profile_description: '做模组的小团队',
-  avatar_url: '/uploads/avatar.png',
-  home_background_static: '/uploads/bg.png',
-  home_background_dynamic: null,
-  home_background_static_focus: '{"scale":1.5,"x":-10,"y":5}',
-  home_background_dynamic_focus: null,
-  username_gradient: true,
-  username_color: '',
-  tip: {
-    enabled: true,
-    public_records: true,
-    received_cash_fen: 1234,
-    received_points: 56,
-    recent_messages: [
-      { tipper_display: '小明', message: '加油', anonymous: false, created_at: '2026-10-01 10:00' },
-    ],
-  },
-}
-
-const resource = (overrides: Partial<PublicMcResourceItem>): PublicMcResourceItem => ({
-  id: 1,
-  creator: 'dev_alice',
-  requirement_id: null,
-  platform: 'java',
-  title: '资源',
-  author: 'dev_alice',
-  description: '简介',
-  tag_selections: [],
-  file_name: 'a.jar',
-  source_url: '',
-  cover_url: null,
-  docs_url: null,
-  visibility: 'published',
-  release_note: null,
-  created_at: '2026-09-01 10:00',
-  updated_at: '2026-09-01 10:00',
-  like_count: 0,
-  download_count: 0,
-  view_count: 0,
-  liked_by_me: false,
-  ownership_type: 'personal',
-  team_id: null,
-  team_name: null,
-  origin_type: 'original',
-  origin_author: null,
-  origin_url: null,
-  origin_org: null,
-  origin_note: null,
-  price_fen: 0,
-  price_points: 0,
-  copyright_declared: true,
-  purchased_by_me: false,
-  ...overrides,
-})
-
-const resources = [
-  resource({
-    id: 11,
-    title: '匠魂增强',
-    platform: 'java',
-    like_count: 5,
-    cover_url: '/uploads/r11.png',
-  }),
-  resource({ id: 12, title: '基岩版材质包', platform: 'bedrock', like_count: 7 }),
-  resource({ id: 13, creator: 'dev_bob', title: '别人的作品', like_count: 99 }),
-]
-
-const equippedBadge = {
-  code: 'first_resource',
-  name: '初次发布',
-  description: '发布第一个资源',
-  icon: '🌱',
-  tier: 1,
-  category: '成就徽章',
-  awarded_at: '2026-09-02 10:00',
-  equipped: true,
-}
-
-const staticPerk = {
-  perk_code: 'home_background_static',
-  owned: true,
-  equipped: false,
-  expires_at: null,
-}
 
 let wrapper: VueWrapper | null = null
 
 async function mountPage(): Promise<VueWrapper> {
   mocks.listResources.mockResolvedValue(resources)
-  mocks.userBadges.mockResolvedValue({ badges: [equippedBadge] })
   mocks.publicProfile.mockResolvedValue(profile)
-  mocks.points.mockResolvedValue({ points_balance: 0, perks: [staticPerk] })
   mocks.uploadStatic.mockResolvedValue({ home_background_static: '/uploads/new-bg.png' })
   mocks.updateStatic.mockResolvedValue({})
   mocks.updateProfile.mockResolvedValue({})
@@ -172,13 +83,6 @@ async function mountPage(): Promise<VueWrapper> {
   await flushPromises()
   await flushPromises()
   return mounted
-}
-
-/** 在指定根节点里按可见文案找按钮 */
-function buttonByText(root: ParentNode, text: string): HTMLButtonElement | undefined {
-  return [...root.querySelectorAll('button')].find(
-    (button) => button.textContent?.trim() === text,
-  ) as HTMLButtonElement | undefined
 }
 
 beforeEach(() => {
@@ -195,7 +99,7 @@ afterEach(() => {
 })
 
 describe('开发者公开主页', () => {
-  it('公开档案、徽章与资源回填到头部 / 读数 / 打赏 / 资源卡', async () => {
+  it('公开档案与资源回填到头部 / 读数 / 打赏 / 资源卡', async () => {
     wrapper = await mountPage()
 
     // 头部：用户名、简介、头像、背景与裁剪焦点
@@ -206,18 +110,15 @@ describe('开发者公开主页', () => {
     expect(background.attributes('src')).toBe('/uploads/bg.png')
     expect(background.attributes('style')).toContain('transform: translate(-10%, 5%) scale(1.5)')
 
-    // 读数：只算本人的两个资源；徽章数来自 getUserBadges
+    // 读数：只算本人的两个资源（资源数 / 获得点赞 / 涉及平台）
     const stats = wrapper.findAll('.dev-profile__stat strong').map((item) => item.text())
-    expect(stats).toEqual(['2', '1', '12', '2'])
-
-    // 佩戴徽章走 BadgeDisplay
-    expect(wrapper.findAll('.badge-display__item')).toHaveLength(1)
+    expect(stats).toEqual(['2', '12', '2'])
 
     // 收到打赏：累计与最近留言
     expect(wrapper.find('.dev-profile__tips').exists()).toBe(true)
+    // 打赏只有现金一种形态（2.0 没有积分），累计读数只有一格
     expect(wrapper.findAll('.dev-profile__tips-stat strong').map((item) => item.text())).toEqual([
       '¥12.34',
-      '56 积分',
     ])
     expect(wrapper.find('.dev-profile__tips-name').text()).toBe('小明')
     expect(wrapper.find('.dev-profile__tips-message').text()).toBe('加油')
@@ -228,7 +129,7 @@ describe('开发者公开主页', () => {
     expect(wrapper.findAll('.dev-profile__resource-meta')[1]!.text()).toContain('7 赞')
   })
 
-  it('编辑简介：草稿回填当前简介，保存时按 (token, 用户名, 新简介) 提交', async () => {
+  it('编辑简介：草稿回填当前简介，保存只提交 profile_description', async () => {
     wrapper = await mountPage()
 
     const editButton = buttonByText(wrapper.element, '编辑简介')
@@ -243,10 +144,10 @@ describe('开发者公开主页', () => {
     wrapper.find('.dev-profile-modal__button--primary').trigger('click')
     await flushPromises()
 
+    // 契约 `UpdateProfileRequest` 只有 `profile_description`：不接受自助改登录名
     expect(mocks.updateProfile.mock.calls[0]).toEqual([
       'test-token',
-      'dev_alice',
-      '做模组、也做整合包',
+      { profile_description: '做模组、也做整合包' },
     ])
     expect(mocks.toast).toHaveBeenCalledWith('个人简介已更新', 'success')
     // 保存成功后整页重载（公开档案再取一次）

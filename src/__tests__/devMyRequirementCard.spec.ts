@@ -45,6 +45,7 @@ function makeRow(overrides: Partial<DevMyOrderRow> = {}): DevMyOrderRow {
     item: {
       id: 1,
       requirement_id: 'REQ-1',
+      subscribe_status_change: false,
       bound_resource_id: 11,
       created_time: '2026-09-01 09:00:00',
       creator: 'alice',
@@ -53,7 +54,6 @@ function makeRow(overrides: Partial<DevMyOrderRow> = {}): DevMyOrderRow {
       description: '把客服工单表按天清洗成宽表',
       payment_mode: 'platform_guarantee',
       status: 'in_development',
-      updated_at: '2026-09-12 10:00:00',
     },
     ...overrides,
   }

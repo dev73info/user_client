@@ -9,19 +9,36 @@ const mocks = vi.hoisted(() => ({
   requestDevRole: vi.fn(),
   getDevAccessStatus: vi.fn(),
   refreshToken: vi.fn(),
+  getPrivileges: vi.fn(),
 }))
 vi.mock('@/api/auth', async (importOriginal) => ({
   ...await importOriginal<typeof import('@/api/auth')>(),
   requestDevRole: mocks.requestDevRole,
   getDevAccessStatus: mocks.getDevAccessStatus,
   refreshToken: mocks.refreshToken,
+  getPrivileges: mocks.getPrivileges,
 }))
+
+/** 生效权限（契约 `PrivilegesResponse`）：`is_dev` 的口径就是权限里有 `scope.dev.access`。 */
+function privileges(overrides: Partial<{ permissions: string[]; is_super_admin: boolean }> = {}) {
+  const permissions = overrides.permissions ?? []
+  return {
+    username: 'developer',
+    role: permissions.includes('scope.dev.access') ? 'dev' : 'user',
+    roles: ['user'],
+    permissions,
+    is_super_admin: overrides.is_super_admin ?? false,
+  }
+}
 
 beforeEach(() => {
   setActivePinia(createPinia())
   mocks.requestDevRole.mockReset()
   mocks.getDevAccessStatus.mockReset()
   mocks.refreshToken.mockReset()
+  mocks.getPrivileges.mockReset()
+  // store 拉完令牌就会去取生效权限（`GET /auth/users/privileges`）：默认「是开发者」
+  mocks.getPrivileges.mockResolvedValue(privileges({ permissions: ['scope.dev.access'] }))
 })
 
 function developer() {
@@ -91,7 +108,8 @@ it('does not allow access or clear the session when the role request fails', asy
 
 it('preserves the super administrator exemption', async () => {
   const auth = developer()
-  auth.role = 'super_admin'
+  // 超管豁免看的是 `GET /auth/users/privileges` 的 `is_super_admin`（生效权限），不是角色名
+  mocks.getPrivileges.mockResolvedValue(privileges({ is_super_admin: true }))
   expect(await auth.ensureDevAccess()).toBe(true)
   expect(mocks.getDevAccessStatus).not.toHaveBeenCalled()
   expect(mocks.requestDevRole).not.toHaveBeenCalled()

@@ -2,7 +2,6 @@ import { describe, expect, it } from 'vitest'
 
 import {
   buildFundRecords,
-  depositWithdrawalStatusText,
   filterFundRecords,
   incomeWithdrawalStatusText,
   isInflowKind,
@@ -25,6 +24,21 @@ const income = {
   requirement_refund_cny: 0,
 }
 
+const withdrawal = {
+  withdrawal_id: 'wd-1',
+  amount_fen: 200,
+  account_name: '张三',
+  account_no_tail: '1234',
+  creator: '张三',
+  status: 'pending_review',
+  status_label: '待审核',
+  note: '',
+  review_note: '',
+  payout_failure_reason: null,
+  payout_attempts: 0,
+  created_time: '2026-09-08 12:00:00',
+}
+
 describe('money', () => {
   it('统一两位小数，缺值按 0 展示', () => {
     expect(money(5)).toBe('¥5.00')
@@ -35,11 +49,13 @@ describe('money', () => {
 })
 
 describe('状态文案', () => {
-  it('两个池子的「已到账」说法不同，别混用', () => {
+  it('提现状态以契约的 status_label 为准，本地 map 只兜底且不带任何到账承诺', () => {
     expect(incomeWithdrawalStatusText('paid')).toBe('已到账')
-    expect(depositWithdrawalStatusText('paid')).toBe('已退回')
-    expect(depositWithdrawalStatusText('approved')).toBe('待退回')
-    expect(incomeWithdrawalStatusText('payout_processing')).toBe('出款中（T+1）')
+    expect(incomeWithdrawalStatusText('pending_review')).toBe('待审核')
+    // 「T+1」是 1.x 页面自己编的到账承诺，契约的 WithdrawalResponse 没有这个字段
+    expect(incomeWithdrawalStatusText('payout_processing')).toBe('出款中')
+    // 契约里没见过的状态原样透出，不猜
+    expect(incomeWithdrawalStatusText('unknown_state')).toBe('unknown_state')
   })
 
   it('标签色调按状态分档：待审核警示、出款中信息、失败危险', () => {
@@ -53,10 +69,10 @@ describe('状态文案', () => {
 })
 
 describe('类型着色', () => {
-  it('流入两类用强调色，出款用中性色，冲减用警示色', () => {
+  it('只有收入算流入，出款用中性色，冲减用警示色', () => {
     expect(isInflowKind('income')).toBe(true)
-    expect(isInflowKind('deposit_recharge')).toBe(true)
     expect(isInflowKind('income_withdrawal')).toBe(false)
+    expect(isInflowKind('income_reversal')).toBe(false)
     expect(kindTagTone('income', 'success')).toBe('success')
     expect(kindTagTone('income_withdrawal', 'info')).toBe('info')
     expect(kindTagTone('income_reversal', 'danger')).toBe('danger')
@@ -68,62 +84,31 @@ describe('buildFundRecords', () => {
     expect(buildFundRecords()).toEqual([])
   })
 
-  it('四类台账合并后按时间倒序，收入行记到账额而不是净额', () => {
+  it('两类台账合并后按时间倒序，收入行记到账额而不是净额', () => {
     const records = buildFundRecords({
       income: [{ ...income, refund_developer_cny: 2, amount_cny: 3 }],
-      incomeWithdrawals: [
-        {
-          withdrawal_id: 'wd-1',
-          amount_cny: 2,
-          channel: 'alipay',
-          account_name: '张三',
-          account_no: '6222',
-          account_no_masked: '***123',
-          creator: '张三',
-          updated_at: '2026-09-08 12:00:00',
-          status: 'pending_review',
-          created_at: '2026-09-08 12:00:00',
-        },
-      ],
-      depositOrders: [
-        {
-          payment_id: 'dep-1',
-          channel: 'adapay',
-          amount_cny: 100,
-          status: 'paid',
-          created_at: '2026-09-08 10:00:00',
-          updated_at: '2026-09-08 10:00:00',
-        },
-      ],
-      depositWithdrawals: [
-        {
-          withdrawal_id: 'dwd-1',
-          amount_cny: 100,
-          channel: 'adapay',
-          account_name: '张三',
-          account_no: '6222',
-          account_no_masked: '***456',
-          creator: '张三',
-          source: 'developer_order_deposit',
-          updated_at: '2026-09-08 11:00:00',
-          status: 'paid',
-          review_note: '已退回',
-          created_at: '2026-09-08 11:00:00',
-        },
-      ],
+      incomeWithdrawals: [withdrawal],
     })
     expect(records.map((record) => record.kind)).toEqual([
       'income',
       'income_reversal',
       'income_withdrawal',
-      'deposit_withdrawal',
-      'deposit_recharge',
     ])
     // 收入行是到账的 5 元，冲减行单独记被收回的份额 2 元
     expect(records[0]).toMatchObject({ amount: 5, status: '已入账' })
     expect(records[1]).toMatchObject({ amount: 2, status: '已冲减', tag: 'danger' })
     // 退款冲减的时间落在退款时刻；没有退款时刻就退回付款时刻
     expect(records[1]?.time).toBe('2026-09-08 13:00:00')
+    // 提现行的状态用契约下发的 status_label
+    expect(records[2]).toMatchObject({ amount: 2, status: '待审核' })
+  })
+
+  it('时间缺失的行不抛错，落到表尾', () => {
+    const records = buildFundRecords({
+      income: [{ ...income, paid_at: undefined as unknown as string }],
+      incomeWithdrawals: [withdrawal],
+    })
+    expect(records.map((record) => record.id)).toEqual(['wd-1', 'pay-1'])
   })
 
   it('客户实收高于开发者份额时，备注点明差额由平台承担', () => {
@@ -146,16 +131,7 @@ describe('buildFundRecords', () => {
 describe('filterFundRecords', () => {
   const records = buildFundRecords({
     income: [income],
-    depositOrders: [
-      {
-        payment_id: 'dep-1',
-        channel: 'adapay',
-        amount_cny: 100,
-        status: 'paid',
-        updated_at: '2026-09-08 10:00:00',
-        created_at: '2026-09-08 10:00:00',
-      },
-    ],
+    incomeWithdrawals: [withdrawal],
   })
 
   it('空关键字原样返回', () => {
@@ -163,7 +139,9 @@ describe('filterFundRecords', () => {
   })
 
   it('能按中文类型名与参考号命中', () => {
-    expect(filterFundRecords(records, '保证金充值')).toHaveLength(1)
+    // 「收入」同时命中「收入」与「收入提现」两个类型标签
+    expect(filterFundRecords(records, '收入')).toHaveLength(2)
+    expect(filterFundRecords(records, '收入提现')).toHaveLength(1)
     expect(filterFundRecords(records, 'pay-1')).toHaveLength(1)
     expect(filterFundRecords(records, '不存在的关键字')).toHaveLength(0)
   })

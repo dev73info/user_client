@@ -71,7 +71,6 @@ describe('NotFoundView', () => {
       routes: [
         { path: '/', name: 'home', component: { template: '<div />' } },
         { path: '/requirement-hall', name: 'requirement-hall', component: { template: '<div />' } },
-        { path: '/tickets', name: 'tickets', component: { template: '<div />' } },
         { path: '/:pathMatch(.*)*', name: 'not-found', component: NotFoundView },
       ],
     })

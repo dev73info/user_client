@@ -1,38 +1,44 @@
 import { describe, expect, it } from 'vitest'
 import { validateDevWithdrawalRequest, type CreateDevWithdrawalRequest } from '@/api/devWallet'
 
+/** 提现只发整数分与备注：收款账户由账号中心绑定，请求体里不再有账户字段。 */
 const payload: CreateDevWithdrawalRequest = {
-  amount_cny: 10,
-  channel: 'adapay',
-  account_name: '',
-  account_no: '',
+  amount_fen: 1000,
+  note: '',
 }
 
-const validateReturn = (request = payload, balance = 100) =>
-  validateDevWithdrawalRequest(request, balance, undefined, false, 'developer_order_deposit')
-
-describe('deposit return validation', () => {
-  it('does not ask for recipient details for deposit returns', () => {
-    expect(validateReturn()).toBeNull()
+describe('withdrawal validation', () => {
+  it('accepts integer fen without recipient fields', () => {
+    expect(validateDevWithdrawalRequest({ payload, withdrawableFen: 1000 })).toBeNull()
+    expect(validateDevWithdrawalRequest({ payload })).toBeNull()
   })
 
-  // 收益提现的出款账户由服务端按开发者已绑定的 Adapay 收款账户补全，前端不再采集收款信息，
-  // 因此留空也不拦；金额、余额与备注仍照常校验。
-  it('does not ask for recipient details for income withdrawals', () => {
-    expect(validateDevWithdrawalRequest(payload, 100)).toBeNull()
-    expect(validateDevWithdrawalRequest({ ...payload, channel: 'wechat' }, 100)).toBeNull()
-    expect(validateDevWithdrawalRequest({ ...payload, amount_cny: 0 }, 100)).not.toBeNull()
-    expect(validateDevWithdrawalRequest(payload, 9)).not.toBeNull()
+  it('rejects invalid amounts and long notes', () => {
+    expect(
+      validateDevWithdrawalRequest({ payload: { ...payload, amount_fen: 0 } }),
+    ).not.toBeNull()
+    expect(
+      validateDevWithdrawalRequest({ payload: { ...payload, amount_fen: 1.5 } }),
+    ).not.toBeNull()
+    expect(
+      validateDevWithdrawalRequest({ payload: { ...payload, note: 'x'.repeat(201) } }),
+    ).not.toBeNull()
   })
 
-  it('checks amount, balance and notes without recipient details', () => {
-    expect(validateReturn({ ...payload, amount_cny: 0 })).not.toBeNull()
-    expect(validateReturn({ ...payload, amount_cny: NaN })).not.toBeNull()
-    expect(validateReturn(payload, 9)).not.toBeNull()
-    expect(validateReturn({ ...payload, note: 'x'.repeat(201) })).not.toBeNull()
+  it('rejects amounts above the withdrawable balance in fen', () => {
+    expect(validateDevWithdrawalRequest({ payload, withdrawableFen: 999 })).not.toBeNull()
+    expect(validateDevWithdrawalRequest({ payload, withdrawableFen: 1000 })).toBeNull()
   })
 
-  it('does not accept a different payout channel for deposit returns', () => {
-    expect(validateReturn({ ...payload, channel: 'alipay' })).not.toBeNull()
+  it('applies the single-transfer limits from the contract config', () => {
+    const limits = { min_fen: 2000, max_fen: 50000 }
+    expect(validateDevWithdrawalRequest({ payload, limits })).toContain('不能少于')
+    expect(
+      validateDevWithdrawalRequest({ payload: { amount_fen: 60000 }, limits }),
+    ).toContain('不能超过')
+    // 0 表示不设限
+    expect(
+      validateDevWithdrawalRequest({ payload, limits: { min_fen: 0, max_fen: 0 } }),
+    ).toBeNull()
   })
 })

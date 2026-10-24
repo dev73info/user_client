@@ -1,30 +1,36 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { useRequirementBreach } from '@/composables/useRequirementBreach'
-import type { AdapayBreachCase } from '@/api/adapay'
 import type { RequirementItem } from '@/api/requirements'
 import type { ContractSigningStatus } from '@/shared/contracts'
+import { breachCaseDetail, breachCaseItem, breachCaseResponse } from './helpers/breachCase'
 
 /**
- * 解除合作域编排层：入口条件必须靠**注入的合同事实**判断（不能在 composable 里再查一遍
- * 「有没有合同」），身份靠注入的用户名，`close()` 的五个 loading 守卫一个都不能漏。
+ * 解除合作域编排层（读取与开关）：入口条件必须靠**注入的合同事实**判断
+ * （不能在 composable 里再查一遍「有没有合同」），身份靠注入的用户名，
+ * `close()` 的四个 loading 守卫一个都不能漏。
+ *
+ * 契约口径：读 `GET /api/requirement/{id}/breach-case`（`has_case = false` 是正常空态）。
+ * 申报 / 表态 / 撤回的接线在 `requirementBreachActions.spec.ts`。
  */
 
 const mocks = vi.hoisted(() => ({
   getCase: vi.fn(),
+  getDetail: vi.fn(),
   report: vi.fn(),
-  platformReview: vi.fn(),
-  decide: vi.fn(),
+  respond: vi.fn(),
   withdraw: vi.fn(),
   toast: vi.fn(),
 }))
 
-vi.mock('@/api/adapay', () => ({
-  getAdapayBreachCase: mocks.getCase,
-  reportAdapayTermination: mocks.report,
-  requestAdapayPlatformReview: mocks.platformReview,
-  submitAdapayBreachDecision: mocks.decide,
-  withdrawAdapayBreach: mocks.withdraw,
+vi.mock('@/api/afterSales', () => ({
+  getRequirementBreachCase: mocks.getCase,
+  getAfterSalesCase: mocks.getDetail,
+  reportTermination: mocks.report,
+  respondAfterSalesCase: mocks.respond,
+  withdrawAfterSalesCase: mocks.withdraw,
+  listMyAfterSalesCases: vi.fn(),
+  openAfterSalesCase: vi.fn(),
 }))
 
 vi.mock('ui_73info', async (importOriginal) => {
@@ -45,37 +51,17 @@ vi.mock('ui_73info', async (importOriginal) => {
   }
 })
 
-const ME = 'client_view'
-
-function breachCase(patch: Partial<AdapayBreachCase> = {}): AdapayBreachCase {
-  return {
-    id: 11,
-    caseNo: 'BREACH_11',
-    requirementId: '2026-900000000201',
-    paymentId: 'pay_1',
-    reportedBy: ME,
-    reason: '交付内容与合同不符',
-    status: 'submitted',
-    depositAmountFen: 200000,
-    depositAmountCny: '2000.00',
-    refundAmountFen: 0,
-    refundAmountCny: '0.00',
-    compensationAmountFen: 0,
-    compensationAmountCny: '0.00',
-    extraCompensationFen: 0,
-    extraCompensationCny: '0.00',
-    createdAt: '2026-10-01T10:00:00Z',
-    updatedAt: '2026-10-01T10:00:00Z',
-    ...patch,
-  }
-}
+const RID = '2026-900000000201'
+/** 夹具里立案人是 alice、对方当事人是 bob（见 `helpers/breachCase`）。 */
+const FILER = 'alice'
+const RESPONDENT = 'bob'
 
 /** 需求单：担保模式、开发中（可以申报解除合作）。 */
 function requirement(patch: Partial<RequirementItem> = {}): RequirementItem {
   return {
-    requirement_id: '2026-900000000201',
+    requirement_id: RID,
     title: '小程序首页改版',
-    creator: ME,
+    creator: FILER,
     status: 'in_development',
     payment_mode: 'platform_guarantee',
     budget: 10000,
@@ -101,7 +87,7 @@ const HALF_SIGNED: ContractSigningStatus = {
 function setup(options: { username?: string; contract?: ContractSigningStatus | null } = {}) {
   return useRequirementBreach({
     token: () => 'token',
-    username: () => options.username ?? ME,
+    username: () => options.username ?? FILER,
     // `undefined` 用默认的「已签完」；显式传 `null` 表示这条需求查不到合同。
     contractOf: () => (options.contract === undefined ? SIGNED : options.contract),
   })
@@ -133,27 +119,49 @@ describe('解除合作 composable：合同事实与身份都靠注入', () => {
   })
 
   it('撤回 / 表态 / 可撤回都按注入的当前登录人算', () => {
-    const breach = setup({ username: ME })
-    breach.breachCase.value = breachCase({ status: 'withdrawn' })
-    expect(breach.breachWithdrawnByMe.value).toBe(true)
+    const filer = setup({ username: FILER })
+    filer.breachCase.value = breachCaseItem()
+    expect(filer.breachCanWithdraw.value).toBe(true)
+    expect(filer.breachCanRespond.value).toBe(false)
 
-    breach.breachCase.value = breachCase({ status: 'submitted', reportedBy: 'developer_side' })
-    expect(breach.breachCanRespond.value).toBe(true)
-    expect(breach.breachCanWithdraw.value).toBe(false)
+    const respondent = setup({ username: RESPONDENT })
+    respondent.breachCase.value = breachCaseItem()
+    expect(respondent.breachCanRespond.value).toBe(true)
+    expect(respondent.breachCanWithdraw.value).toBe(false)
+
+    filer.breachCase.value = breachCaseItem({ status: 'withdrawn', is_open: false })
+    expect(filer.breachWithdrawnByMe.value).toBe(true)
   })
 })
 
 describe('解除合作 composable：打开 / 关闭', () => {
-  it('打开时先按注入的合同事实过一遍入口，再取案件', async () => {
-    mocks.getCase.mockResolvedValue(breachCase({ status: 'submitted' }))
+  it('打开时先按注入的合同事实过一遍入口，再取案件与详情', async () => {
+    mocks.getCase.mockResolvedValue(breachCaseResponse(breachCaseItem(), RID))
+    mocks.getDetail.mockResolvedValue(breachCaseDetail())
     const breach = setup({ contract: SIGNED })
 
     await breach.openBreachReport(requirement())
 
-    expect(mocks.getCase).toHaveBeenCalledWith('token', '2026-900000000201')
+    expect(mocks.getCase).toHaveBeenCalledWith('token', RID)
+    expect(mocks.getDetail).toHaveBeenCalledWith('token', 'BC-20261028153000-AB12')
     expect(breach.breachVisible.value).toBe(true)
-    expect(breach.breachCase.value?.caseNo).toBe('BREACH_11')
+    expect(breach.breachCase.value?.case_no).toBe('BC-20261028153000-AB12')
+    expect(breach.breachCaseDetail.value?.claim_note).toBe('交付内容与合同不符')
     expect(breach.breachCaseLoading.value).toBe(false)
+  })
+
+  it('没有案件时（has_case = false）是正常空态：弹窗照开，只是不出案件块', async () => {
+    mocks.getCase.mockResolvedValue(breachCaseResponse(null, RID))
+    const breach = setup({ contract: SIGNED })
+
+    await breach.openBreachReport(requirement())
+
+    expect(breach.breachVisible.value).toBe(true)
+    expect(breach.breachCase.value).toBeNull()
+    expect(breach.breachCaseDetail.value).toBeNull()
+    // 没有案件就没有详情可取，也不该弹错
+    expect(mocks.getDetail).not.toHaveBeenCalled()
+    expect(mocks.toast).not.toHaveBeenCalled()
   })
 
   it('入口条件不成立（无合同 / 状态不对）就什么都不做', async () => {
@@ -176,11 +184,10 @@ describe('解除合作 composable：打开 / 关闭', () => {
     expect(breach.breachCase.value).toBeNull()
   })
 
-  it('五个 loading 任意一个在跑都不关（漏掉一个就会中断请求）', () => {
+  it('四个 loading 任意一个在跑都不关（漏掉一个就会中断请求）', () => {
     const breach = setup()
     const guards = [
       'breachLoading',
-      'platformReviewLoading',
       'breachWithdrawLoading',
       'breachDecisionLoading',
       'breachCaseLoading',
@@ -206,7 +213,6 @@ describe('解除合作 composable：打开 / 关闭', () => {
     breach.breachRequirement.value = requirement()
     breach.breachReason.value = '理由'
     breach.breachNewRound.value = true
-    breach.breachRejectPanel.value = true
     breach.breachDecisionNote.value = '说明'
     breach.breachWithdrawConfirm.value = true
 
@@ -216,82 +222,7 @@ describe('解除合作 composable：打开 / 关闭', () => {
     expect(breach.breachRequirement.value).toBeNull()
     expect(breach.breachReason.value).toBe('')
     expect(breach.breachNewRound.value).toBe(false)
-    expect(breach.breachRejectPanel.value).toBe(false)
     expect(breach.breachDecisionNote.value).toBe('')
     expect(breach.breachWithdrawConfirm.value).toBe(false)
-  })
-})
-
-describe('解除合作 composable：申报 / 撤回 / 表态', () => {
-  it('申报成功会新建案件并提示先协商，理由为空则拦下', async () => {
-    const breach = setup()
-    breach.breachRequirement.value = requirement()
-
-    await breach.submitBreachReport()
-    expect(mocks.report).not.toHaveBeenCalled()
-    expect(mocks.toast).toHaveBeenCalledWith('请填写解除合作的事实和相关依据', 'warning')
-
-    mocks.report.mockResolvedValue(breachCase())
-    breach.breachReason.value = '  对方连续两周未交付  '
-    await breach.submitBreachReport()
-
-    expect(mocks.report).toHaveBeenCalledWith('token', '2026-900000000201', '对方连续两周未交付')
-    expect(mocks.toast).toHaveBeenCalledWith('解除合作申请已提交，请先与对方协商', 'success')
-    expect(breach.breachNewRound.value).toBe(false)
-    expect(breach.breachCase.value?.caseNo).toBe('BREACH_11')
-  })
-
-  it('撤回成功后收起二次确认', async () => {
-    mocks.withdraw.mockResolvedValue(breachCase({ status: 'withdrawn' }))
-    const breach = setup()
-    breach.breachCase.value = breachCase()
-    breach.openBreachWithdrawConfirm()
-    expect(breach.breachWithdrawConfirm.value).toBe(true)
-
-    await breach.submitBreachWithdraw()
-
-    expect(mocks.withdraw).toHaveBeenCalledWith('token', 11)
-    expect(breach.breachWithdrawConfirm.value).toBe(false)
-    expect(breach.breachCase.value?.status).toBe('withdrawn')
-  })
-
-  it('协商阶段表态与 AI 判定阶段表态的提示语不同（同一句「不同意」含义不一样）', async () => {
-    mocks.decide.mockResolvedValue(breachCase({ status: 'ai_judged' }))
-    const breach = setup()
-    breach.breachCase.value = breachCase({ status: 'submitted', reportedBy: 'developer_side' })
-
-    await breach.submitBreachDecision('rejected')
-    expect(mocks.decide).toHaveBeenCalledWith('token', 11, 'rejected', '')
-    expect(mocks.toast).toHaveBeenCalledWith('已表示不同意，任一方可申请平台介入', 'success')
-
-    breach.breachCase.value = breachCase({ status: 'ai_judged' })
-    await breach.submitBreachDecision('rejected')
-    expect(mocks.toast).toHaveBeenCalledWith('已提交不接受，案件转客服人工判定', 'success')
-  })
-
-  it('申请平台介入后刷新案件', async () => {
-    mocks.platformReview.mockResolvedValue(breachCase({ status: 'ai_reviewing' }))
-    const breach = setup()
-    breach.breachCase.value = breachCase()
-
-    await breach.submitPlatformReview()
-
-    expect(mocks.platformReview).toHaveBeenCalledWith('token', 11)
-    expect(breach.breachCase.value?.status).toBe('ai_reviewing')
-    expect(breach.platformReviewLoading.value).toBe(false)
-  })
-
-  it('重新申报：进入新一轮表单、清空理由，上一轮案件留着给说明引用', () => {
-    const breach = setup()
-    breach.breachCase.value = breachCase({ status: 'rejected' })
-    breach.breachReason.value = '旧理由'
-    breach.breachWithdrawConfirm.value = true
-
-    breach.reopenBreachReport()
-
-    expect(breach.breachNewRound.value).toBe(true)
-    expect(breach.breachReason.value).toBe('')
-    expect(breach.breachWithdrawConfirm.value).toBe(false)
-    expect(breach.breachCase.value?.status).toBe('rejected')
   })
 })

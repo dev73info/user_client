@@ -178,7 +178,8 @@ describe('需求会话弹窗', () => {
     const labels = [...(drawer?.querySelectorAll('.conversation-drawer__meta dt') ?? [])].map((n) =>
       n.textContent?.trim(),
     )
-    expect(labels.join(',')).toBe('编号,发布方式,状态,预算,创建,更新,需求方,开发者')
+    // 契约里没有「更新时间」列（`RequirementResponse` 不带 updated_at），这一行改摆发布时间
+    expect(labels.join(',')).toBe('编号,发布方式,状态,预算,创建,需求方,开发者')
     expect(drawer?.textContent).toContain('开发中')
     expect(drawer?.textContent).toContain('5,000')
 

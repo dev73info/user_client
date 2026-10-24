@@ -78,55 +78,22 @@ describe('progressPercent', () => {
 })
 
 describe('buildPortalNotices', () => {
-  const post = (id: number, title: string) => ({
-    id,
-    title,
-    published_at: localIso(2026, 3, 5, 9, id),
-  })
-
   const resource = {
     id: 88,
     title: '联机工具',
     platform: 'Minecraft',
     updated_at: localIso(2026, 3, 4, 10, 0),
+    buyout_price_fen: 0,
     price_fen: 0,
     price_points: 0,
   }
 
   it('没有任何来源时给空列表（侧栏不渲染条目）', () => {
-    expect(buildPortalNotices({ posts: [] })).toEqual([])
+    expect(buildPortalNotices({})).toEqual([])
   })
 
-  it('公告最多取 3 条', () => {
+  it('三类来源各 1 条时按「成交 → 资源 → 需求」的顺序排列', () => {
     const notices = buildPortalNotices({
-      posts: [post(1, 'A'), post(2, 'B'), post(3, 'C'), post(4, 'D'), post(5, 'E')],
-    })
-
-    expect(notices).toHaveLength(3)
-    expect(notices.map((notice) => notice.title)).toEqual(['A', 'B', 'C'])
-  })
-
-  it('公告取 3 条 + 三类来源各 1 条时，整体截断到 4 条（需求被挤掉）', () => {
-    const notices = buildPortalNotices({
-      posts: [post(1, 'A'), post(2, 'B'), post(3, 'C')],
-      latestDeal: { title: '成交一单', at: '3/2 20:00' },
-      resource,
-      resourceRoute: { rootSlug: 'client', entrySlug: 'java' },
-      spotlight: {
-        title: '做个联机工具',
-        updated_at: localIso(2026, 3, 6, 8, 0),
-        status: 'pending_review',
-        payment_mode: 'self_managed',
-      },
-    })
-
-    expect(notices).toHaveLength(4)
-    expect(notices.map((notice) => notice.tag)).toEqual(['公告', '公告', '公告', 'HOT'])
-  })
-
-  it('公告不足 3 条时按「公告 → 成交 → 资源 → 需求」的顺序补齐 4 条', () => {
-    const notices = buildPortalNotices({
-      posts: [post(1, 'A')],
       latestDeal: { title: '成交一单', at: '3/2 20:00' },
       resource,
       resourceRoute: { rootSlug: 'client', entrySlug: 'java' },
@@ -139,21 +106,20 @@ describe('buildPortalNotices', () => {
     })
 
     expect(notices.map((notice) => notice.title)).toEqual([
-      'A',
       '最新成交：成交一单',
       '公开资源：联机工具',
       '需求：做个联机工具',
     ])
-    expect(notices[3]?.tag).toBe('待审核')
+    expect(notices[2]?.tag).toBe('待审核')
+    expect(notices[0]?.tag).toBe('HOT')
   })
 
   it('资源能解析出标签路由时深链到详情，解析不到时回落免费资源列表', () => {
     const linked = buildPortalNotices({
-      posts: [],
       resource,
       resourceRoute: { rootSlug: 'client', entrySlug: 'java' },
     })
-    const fallback = buildPortalNotices({ posts: [], resource, resourceRoute: null })
+    const fallback = buildPortalNotices({ resource, resourceRoute: null })
 
     expect(linked[0]?.to).toEqual({
       name: 'resource-catalog',
@@ -163,12 +129,10 @@ describe('buildPortalNotices', () => {
     expect(fallback[0]?.to).toEqual({ name: 'resources', query: { sale: 'free' } })
   })
 
-  it('公告条目的日期走统一时间口径，标签固定为「公告」', () => {
-    const notices = buildPortalNotices({ posts: [post(1, 'A')] })
+  it('资源条目的日期走统一时间口径', () => {
+    const notices = buildPortalNotices({ resource })
 
-    expect(notices[0]?.tag).toBe('公告')
-    expect(notices[0]?.date).toBe('3/5 09:01')
-    expect(notices[0]?.to).toEqual({ name: 'community-post', params: { postId: '1' } })
+    expect(notices[0]?.date).toBe('3/4 10:00')
   })
 })
 

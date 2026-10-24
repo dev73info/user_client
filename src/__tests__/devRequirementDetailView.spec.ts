@@ -3,8 +3,6 @@ import { flushPromises, mount, type VueWrapper } from '@vue/test-utils'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   createDetailRouter,
-  creditSelf,
-  depositStatus,
   draftResource,
   requirementItem,
 } from '@/__tests__/fixtures/devRequirementDetail'
@@ -29,8 +27,6 @@ const mocks = vi.hoisted(() => ({
   bindProject: vi.fn(),
   listResources: vi.fn(),
   createResource: vi.fn(),
-  depositStatus: vi.fn(),
-  creditSelf: vi.fn(),
   accessStatus: vi.fn(),
   tagTree: vi.fn(),
 }))
@@ -44,14 +40,6 @@ vi.mock('@/api/mcResources', async (orig) => ({
   ...(await orig<typeof import('@/api/mcResources')>()),
   listMcResources: mocks.listResources,
   createMcResource: mocks.createResource,
-}))
-vi.mock('@/api/devOrderDeposit', async (orig) => ({
-  ...(await orig<typeof import('@/api/devOrderDeposit')>()),
-  getDevOrderDepositStatus: mocks.depositStatus,
-}))
-vi.mock('@/api/devCredit', async (orig) => ({
-  ...(await orig<typeof import('@/api/devCredit')>()),
-  getDevCreditSelf: mocks.creditSelf,
 }))
 vi.mock('@/api/auth', async (orig) => ({
   ...(await orig<typeof import('@/api/auth')>()),
@@ -88,8 +76,6 @@ beforeEach(() => {
   mocks.bindProject.mockResolvedValue(requirementItem({ status: 'in_development' }))
   mocks.listResources.mockResolvedValue([draftResource()])
   mocks.createResource.mockResolvedValue(draftResource({ id: 99, title: '清洗能力包' }))
-  mocks.depositStatus.mockResolvedValue(depositStatus())
-  mocks.creditSelf.mockResolvedValue(creditSelf())
   mocks.accessStatus.mockResolvedValue({
     is_dev: true,
     is_super_admin: false,
@@ -132,10 +118,8 @@ describe('开发者需求详情页：渲染与资格闸门', () => {
     const { wrapper } = await render()
 
     expect(mocks.hallItem).toHaveBeenCalledWith('test-token', 'REQ-1')
-    // 接取侧的三次取数也都在进页时打过一遍（资源清单 / 保证金 / 信用 / 权限）
+    // 接取侧的两次取数也都在进页时打过一遍（资源清单 / 接单准入）
     expect(mocks.listResources).toHaveBeenCalledWith('test-token')
-    expect(mocks.depositStatus).toHaveBeenCalledWith('test-token')
-    expect(mocks.creditSelf).toHaveBeenCalledWith('test-token')
     expect(mocks.accessStatus).toHaveBeenCalledWith('test-token')
 
     const values = wrapper.findAll('.dev-meta-strip__value').map((cell) => cell.text())

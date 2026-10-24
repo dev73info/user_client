@@ -41,6 +41,8 @@ function requirement(patch: Partial<RequirementItem> = {}): RequirementItem {
   return {
     id: 1,
     requirement_id: '2026-900000000501',
+    created_time: '2026-10-09 10:00:00',
+    creator: 'customer',
     subscribe_status_change: false,
     title: '小程序订单页改版',
     description: '<p>需要重做订单列表与详情页，支持批量操作。</p>',
@@ -49,7 +51,6 @@ function requirement(patch: Partial<RequirementItem> = {}): RequirementItem {
     budget: 3000,
     payment_mode: 'self_managed',
     development_cycle_days: null,
-    updated_at: '2026-10-20 10:00:00',
     ...patch,
   }
 }

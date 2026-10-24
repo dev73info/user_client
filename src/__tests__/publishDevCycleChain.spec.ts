@@ -95,7 +95,6 @@ async function renderHall() {
         RequirementHallCard: true,
         RequirementHallAside: true,
         RequirementHallDetailDialog: true,
-        RequirementAgentPanel: true,
       },
     },
   })

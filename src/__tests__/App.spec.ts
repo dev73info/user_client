@@ -30,15 +30,18 @@ describe('api/http utilities', () => {
     expect(normalizeBackendPath('/contracts/signing-status/rq_1')).toBe(
       '/api/contract/signing-status/rq_1',
     )
+    // 别名是**链条**：`/public/requirements` → `/requirements` 还是别名，要再翻一次才落到
+    // `/requirement`。只翻一轮会把中间的 `/api/requirements/public-overview` 发出去——契约里没有这条路径。
     expect(normalizeBackendPath('/public/requirements/public-overview')).toBe(
-      '/api/requirements/public-overview',
+      '/api/requirement/public-overview',
     )
     expect(normalizeBackendPath('/resource/resources')).toBe('/api/resource/resources')
     expect(normalizeBackendPath('/dev/resources/resources')).toBe('/api/resources/resources')
     expect(normalizeBackendPath('/resources/tags')).toBe('/api/tag/tags')
     expect(normalizeBackendPath('/api/resources/tags')).toBe('/api/tag/tags')
     expect(normalizeBackendPath('/dev/requirements/hall/query')).toBe('/api/requirement/hall/query')
-    expect(normalizeBackendPath('/dev/credit/me')).toBe('/api/credit/credit/me')
+    // `/dev/credit` 的别名已删：信用额度后端没上线（契约里没有 `/credit/**`），整块能力下线，
+    // 留着别名只会把一条不存在的路径翻译得更像真的。
   })
 
   it('apiUrl keeps backend static uploads outside the /api prefix', () => {

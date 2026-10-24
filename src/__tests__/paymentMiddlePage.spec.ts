@@ -4,21 +4,20 @@ import { reactive } from 'vue'
 import PaymentView from '@/views/PaymentView.vue'
 
 /**
- * 支付页中间页（资源购买 `resource_wechat=1` / 打赏 `tip_wechat=1`）与支付宝扫码的用例。
+ * 支付页中间页（资源购买 `resource_wechat=1`）与支付宝扫码的用例。
  *
- * 这两条中间页原来在视图里是两份各 ~120 行的同构代码，拆成一套引擎后必须证明：
- * 接口实参没串味（资源只打资源接口、打赏只打打赏接口）、建单后真的调起 JSAPI、
- * 已支付的单不再重复调起。断的都是「点一下 → 接口实参」这个层级，不是渲染快照。
+ * 打赏中间页的用例已删：契约里**没有**打赏中间页（`POST /api/tips` 只回电脑端扫码的
+ * `pay_url`，没有授权地址 / JSAPI / 授权状态三支），中间页引擎只剩资源购买一条流程。
+ *
+ * 中间页原来在视图里是两份各 ~120 行的同构代码，拆成一套引擎后必须证明：
+ * 接口实参没串味（资源只打资源接口）、建单后真的调起 JSAPI、已支付的单不再重复调起。
+ * 断的都是「点一下 → 接口实参」这个层级，不是渲染快照。
  */
 
 const mocks = vi.hoisted(() => ({
   resourceStatus: vi.fn(),
   resourceAuthUrl: vi.fn(),
   resourceJsapi: vi.fn(),
-  tipStatus: vi.fn(),
-  tipAuthUrl: vi.fn(),
-  tipJsapi: vi.fn(),
-  alipayHtml: vi.fn(),
   replace: vi.fn(),
   back: vi.fn(),
   push: vi.fn(),
@@ -71,14 +70,7 @@ vi.mock('@/api/adapay', () => ({
 
 vi.mock('@/api/payments', () => ({
   confirmPayment: vi.fn(),
-  getAlipayPageHtml: mocks.alipayHtml,
   listPaymentOrders: vi.fn(),
-}))
-
-vi.mock('@/api/auth', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/api/auth')>()),
-  getWechatPaymentAuthorizationStatus: vi.fn(),
-  getWechatPaymentAuthorizeUrl: vi.fn(),
 }))
 
 vi.mock('@/api/resourcePurchase', () => ({
@@ -87,19 +79,13 @@ vi.mock('@/api/resourcePurchase', () => ({
   completeResourceWechatJsapi: mocks.resourceJsapi,
 }))
 
-vi.mock('@/api/tips', () => ({
-  getTipWechatStatus: mocks.tipStatus,
-  getTipWechatAuthUrl: mocks.tipAuthUrl,
-  completeTipWechatJsapi: mocks.tipJsapi,
-}))
-
 const paymentInfo = {
-  appId: 'wx-tip',
+  appId: 'wx-resource',
   timeStamp: '1700000000',
-  nonceStr: 'nonce-tip',
-  package: 'prepay_id=tip',
+  nonceStr: 'nonce-resource',
+  package: 'prepay_id=resource',
   signType: 'RSA',
-  paySign: 'sign-tip',
+  paySign: 'sign-resource',
 }
 
 const resourceOrder = {
@@ -111,23 +97,6 @@ const resourceOrder = {
   seller: 'seller-a',
   platform_fee_fen: 0,
   seller_net_fen: 1234,
-  status: 'pending',
-  created_at: '2026-10-22 06:00:00',
-}
-
-const tipOrder = {
-  order_no: 'TP-1',
-  tipper: 'buyer-b',
-  developer: 'dev-b',
-  pay_method: 'wechat',
-  amount_fen: 500,
-  amount_points: 0,
-  platform_fee_fen: 0,
-  developer_net_fen: 500,
-  platform_fee_points: 0,
-  developer_net_points: 0,
-  platform_fee_bps: 0,
-  message: '谢谢',
   status: 'pending',
   created_at: '2026-10-22 06:00:00',
 }
@@ -144,8 +113,6 @@ beforeEach(() => {
     order: resourceOrder,
     pay_info: JSON.stringify(paymentInfo),
   })
-  mocks.tipStatus.mockResolvedValue({ order: tipOrder, authorized: true })
-  mocks.tipJsapi.mockResolvedValue({ order: tipOrder, pay_info: JSON.stringify(paymentInfo) })
   vi.spyOn(window.navigator, 'userAgent', 'get').mockReturnValue('Mobile MicroMessenger')
   vi.stubGlobal('WeixinJSBridge', { invoke: mocks.invoke })
 })
@@ -170,8 +137,6 @@ describe('PaymentView 资源购买中间页', () => {
       paymentInfo,
       expect.any(Function),
     )
-    expect(mocks.tipStatus).not.toHaveBeenCalled()
-    expect(mocks.tipJsapi).not.toHaveBeenCalled()
     // 中间页的「资源号 / 金额」来自回填订单，不是 query（query 里没有金额）
     expect(wrapper.text()).toContain('资源号')
     expect(wrapper.text()).toContain('77')
@@ -193,39 +158,8 @@ describe('PaymentView 资源购买中间页', () => {
   })
 })
 
-describe('PaymentView 打赏中间页', () => {
-  it('走打赏接口建单并调起 JSAPI，不碰资源接口', async () => {
-    route.query = { tip_wechat: '1', order_no: 'TP-1', token: 'tk-tip' }
-    wrapper = mount(PaymentView)
-    await flushPromises()
-
-    expect(mocks.tipStatus).toHaveBeenCalledWith('TP-1', 'tk-tip')
-    expect(mocks.tipJsapi).toHaveBeenCalledExactlyOnceWith('TP-1', 'tk-tip')
-    expect(mocks.invoke).toHaveBeenCalledExactlyOnceWith(
-      'getBrandWCPayRequest',
-      paymentInfo,
-      expect.any(Function),
-    )
-    expect(mocks.resourceStatus).not.toHaveBeenCalled()
-    expect(mocks.resourceJsapi).not.toHaveBeenCalled()
-    expect(wrapper.text()).toContain('打赏给')
-    expect(wrapper.text()).toContain('dev-b')
-  })
-
-  it('不在微信内时给扫码提示，宁可不出按钮也不重复建单', async () => {
-    route.query = { tip_wechat: '1', order_no: 'TP-2', token: 'tk-tip2' }
-    vi.spyOn(window.navigator, 'userAgent', 'get').mockReturnValue('Desktop Chrome')
-    wrapper = mount(PaymentView)
-    await flushPromises()
-
-    expect(wrapper.text()).toContain('请用手机微信扫码打开本页后再完成支付。')
-    expect(mocks.tipJsapi).not.toHaveBeenCalled()
-    expect(mocks.invoke).not.toHaveBeenCalled()
-  })
-})
-
-describe('PaymentView 支付宝扫码与支付信息栏', () => {
-  it('内嵌支付宝收银台并展示需求号 / 金额 / 优惠券 / 剩余时间', async () => {
+describe('PaymentView 支付信息栏', () => {
+  it('展示需求号 / 金额 / 优惠券 / 剩余时间', async () => {
     route.query = {
       payment_id: 'P-9',
       channel: 'alipay',
@@ -237,13 +171,8 @@ describe('PaymentView 支付宝扫码与支付信息栏', () => {
     }
     auth.token = 'pc-session'
     auth.isAuthed = true
-    mocks.alipayHtml.mockResolvedValue('<html><body>alipay</body></html>')
     wrapper = mount(PaymentView)
     await flushPromises()
-
-    expect(mocks.alipayHtml).toHaveBeenCalledWith('pc-session', 'P-9')
-    const frame = wrapper.get('.alipay-frame')
-    expect(frame.attributes('srcdoc')).toContain('alipay')
 
     const text = wrapper.text()
     expect(text).toContain('RQ-9')

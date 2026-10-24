@@ -98,6 +98,7 @@ function resourceFixture(part: Partial<McResourcePayload> = {}): McResourcePaylo
     origin_url: null,
     origin_org: null,
     origin_note: null,
+    buyout_price_fen: 0,
     price_fen: 0,
     price_points: 0,
     copyright_declared: false,

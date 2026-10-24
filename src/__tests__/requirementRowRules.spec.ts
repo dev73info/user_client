@@ -1,8 +1,5 @@
 import { describe, expect, it } from 'vitest'
 
-import type { RequirementItem } from '@/api/requirements'
-import type { PublicMcResourceVersionItem } from '@/api/resources'
-import type { ContractSigningStatus } from '@/shared/contracts'
 import {
   canCancel,
   canComment,
@@ -27,58 +24,11 @@ import {
   publishedVersionCount,
   settlementHint,
   statusBadgeClass,
-  type RequirementRowFacts,
 } from '@/shared/requirementRowRules'
+import { AWAITING_B, NO_CONTRACT, SIGNED, facts, requirement, version } from './helpers/requirementRowFixtures'
 
 /* 这个视图没有挂载测试，行内判定只有这一层网：合同 / 版本两种事实下的各判定取值、
    时间与金额的格式化边界。主操作与「更多」菜单的分组见 requirementRowActions.spec.ts。 */
-
-const SIGNED: ContractSigningStatus = {
-  has_contract: true,
-  party_a_signed: true,
-  party_b_signed: true,
-}
-// party_a 是需求方（本页用户），「只签了一方」的两档在状态文案上都是「待签合同」
-const AWAITING_B: ContractSigningStatus = {
-  has_contract: true,
-  party_a_signed: true,
-  party_b_signed: false,
-}
-const NO_CONTRACT: ContractSigningStatus = {
-  has_contract: false,
-  party_a_signed: false,
-  party_b_signed: false,
-}
-
-function version(no: string, id = 1): PublicMcResourceVersionItem {
-  return {
-    id,
-    resource_id: 48,
-    version: no,
-    resource: `https://cdn.example.com/${no}.zip`,
-    note: null,
-    creator: 'dev',
-    created_at: '2026-10-09 10:00:00',
-  }
-}
-
-function requirement(part: Partial<RequirementItem> = {}): RequirementItem {
-  return {
-    id: 1,
-    requirement_id: '2026-1',
-    subscribe_status_change: false,
-    title: '需求单',
-    payment_mode: 'platform_guarantee',
-    status: 'pending_deposit',
-    updated_at: '2026-10-09 10:00:00',
-    bound_resource_id: 48,
-    ...part,
-  }
-}
-
-function facts(part: Partial<RequirementRowFacts> = {}): RequirementRowFacts {
-  return { contract: null, ...part }
-}
 
 describe('行内判定：支付模式与资源绑定', () => {
   it('支付模式两档互斥', () => {

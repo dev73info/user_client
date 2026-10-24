@@ -1,150 +1,91 @@
 import { describe, expect, it } from 'vitest'
 
-import type { AdapayBreachCase } from '@/api/adapay'
+import type { RequirementBreachCaseItem } from '@/api/afterSales'
 import {
-  breachDecisionText,
   breachDialogTitle,
-  breachLiablePartyLabel,
   breachRoundHint,
   breachSubmitLabel,
-  breachVerdictSourceText,
   breachWithdrawnByMe,
-  canDecideBreachCase,
-  canRequestPlatformReview,
-  canRespondTermination,
+  canRespondBreachCase,
   canWithdrawBreachCase,
-  isTerminationNegotiating,
-  showBreachDecisions,
+  isBreachCaseSettled,
 } from '@/shared/requirementBreach'
 
 /**
  * 解除合作案件的判定与文案：视图没有挂载测试，这一层就是唯一的回归网。
  * 钉住的是口径（谁是谁、沿用同一条还是新建一条），不是实现。
+ *
+ * 夹具字段全部照契约 `BreachCaseItemResponse`：`status` / `is_open` / `filed_by` /
+ * `respondent` / `turn`。契约里没有「AI 判定」「责任认定」「双方表态列」这些读数，
+ * 所以这三类判定连同它们的用例一起删了（原先它们依赖 `customerDecision` 等不存在的字段）。
  */
 
-const ME = 'client_view'
+const FILER = 'alice'
+const RESPONDENT = 'bob'
 
 /** 解除合作案件：只给判定用得到的字段。 */
-function breachCase(patch: Partial<AdapayBreachCase> = {}): AdapayBreachCase {
+function breachCase(patch: Partial<RequirementBreachCaseItem> = {}): RequirementBreachCaseItem {
   return {
-    id: 11,
-    caseNo: 'BREACH_11',
-    requirementId: '2026-900000000201',
-    paymentId: 'pay_1',
-    reportedBy: ME,
-    reason: '交付内容与合同不符',
-    status: 'submitted',
-    depositAmountFen: 200000,
-    depositAmountCny: '2000.00',
-    refundAmountFen: 0,
-    refundAmountCny: '0.00',
-    compensationAmountFen: 0,
-    compensationAmountCny: '0.00',
-    extraCompensationFen: 0,
-    extraCompensationCny: '0.00',
-    createdAt: '2026-10-01T10:00:00Z',
-    updatedAt: '2026-10-01T10:00:00Z',
+    case_no: 'BC-20261028153000-AB12',
+    kind: 'mutual_unbind',
+    kind_label: '协商解除',
+    status: 'negotiating',
+    status_label: '协商中',
+    is_open: true,
+    filed_by: FILER,
+    respondent: RESPONDENT,
+    claim_amount_fen: 0,
+    claim_amount_cny: 0,
+    opened_at: '2026-10-28 15:30:00',
+    turn: 'respondent',
+    turn_label: `等待 ${RESPONDENT} 表态`,
     ...patch,
   }
 }
 
-describe('解除合作：责任方与表态文案', () => {
-  it('责任方三档 + 协商一致', () => {
-    expect(breachLiablePartyLabel('customer')).toBe('客户（需求方）违约')
-    expect(breachLiablePartyLabel('mutual')).toBe('双方协商一致（无责退出）')
-    expect(breachLiablePartyLabel('developer')).toBe('开发者违约')
-  })
-
-  it('未表态与两种表态', () => {
-    expect(breachDecisionText(null)).toBe('未表态')
-    expect(breachDecisionText(undefined)).toBe('未表态')
-    expect(breachDecisionText('accepted')).toBe('已接受 AI 判定')
-    expect(breachDecisionText('rejected')).toBe('不接受 AI 判定')
-  })
-
-  it('判定来源：协商一致不能被说成客服人工判定', () => {
-    expect(breachVerdictSourceText('ai')).toBe('双方接受 AI 判定')
-    expect(breachVerdictSourceText('mutual')).toBe('双方协商一致')
-    expect(breachVerdictSourceText('support')).toBe('客服人工判定')
-    expect(breachVerdictSourceText(null)).toBe('客服人工判定')
-  })
-
-  it('双方表态只在 AI 判定后展示', () => {
-    expect(showBreachDecisions(breachCase({ status: 'submitted' }))).toBe(false)
-    expect(showBreachDecisions(breachCase({ status: 'ai_judged' }))).toBe(true)
-    expect(showBreachDecisions(breachCase({ status: 'support_reviewing' }))).toBe(false)
-    expect(
-      showBreachDecisions(
-        breachCase({ status: 'support_reviewing', customerDecision: 'accepted' }),
-      ),
-    ).toBe(true)
-  })
-})
-
 describe('解除合作：谁能做什么', () => {
-  it('AI 判定后本人还没表态才需要选接受 / 不接受', () => {
-    expect(canDecideBreachCase(breachCase({ status: 'ai_judged' }))).toBe(true)
+  it('表态的是「对方当事人」：立案人自己与无关账号都不行', () => {
+    const item = breachCase()
+    expect(canRespondBreachCase(item, RESPONDENT)).toBe(true)
+    expect(canRespondBreachCase(item, FILER)).toBe(false)
+    expect(canRespondBreachCase(item, 'carol')).toBe(false)
+  })
+
+  it('表态只在 filed / negotiating 的窗口内（与后端 can_transition 同一口径）', () => {
+    expect(canRespondBreachCase(breachCase({ status: 'filed' }), RESPONDENT)).toBe(true)
+    expect(canRespondBreachCase(breachCase({ status: 'platform_review' }), RESPONDENT)).toBe(false)
+    expect(canRespondBreachCase(breachCase({ status: 'decided' }), RESPONDENT)).toBe(false)
+    expect(canRespondBreachCase(breachCase({ status: 'mutual_agreed' }), RESPONDENT)).toBe(false)
+    expect(canRespondBreachCase(null, RESPONDENT)).toBe(false)
+  })
+
+  it('案件未在办（is_open = false）时不能表态', () => {
     expect(
-      canDecideBreachCase(breachCase({ status: 'ai_judged', customerDecision: 'accepted' })),
+      canRespondBreachCase(breachCase({ status: 'negotiating', is_open: false }), RESPONDENT),
     ).toBe(false)
-    expect(canDecideBreachCase(breachCase({ status: 'support_reviewing' }))).toBe(false)
-    expect(canDecideBreachCase(null)).toBe(false)
   })
 
-  it('表态视角按调用侧切换：需求方看 customerDecision，开发者看 developerDecision', () => {
-    const judged = breachCase({ status: 'ai_judged' })
-    // 需求方已表态、开发者还没表态：两侧结论必须相反，否则一侧会替另一侧表态
-    const peerDecided = breachCase({ status: 'ai_judged', customerDecision: 'accepted' })
-    expect(canDecideBreachCase(peerDecided)).toBe(false)
-    expect(canDecideBreachCase(peerDecided, 'creator')).toBe(false)
-    expect(canDecideBreachCase(peerDecided, 'dev')).toBe(true)
-
-    const mineDecided = breachCase({ status: 'ai_judged', developerDecision: 'rejected' })
-    expect(canDecideBreachCase(mineDecided, 'dev')).toBe(false)
-    expect(canDecideBreachCase(mineDecided, 'creator')).toBe(true)
-    // 两边都没表态 / 还没出 AI 判定
-    expect(canDecideBreachCase(judged, 'dev')).toBe(true)
-    expect(canDecideBreachCase(breachCase({ status: 'support_reviewing' }), 'dev')).toBe(false)
-    expect(canDecideBreachCase(null, 'dev')).toBe(false)
-  })
-
-  it('只有协商中（submitted）能申请平台介入', () => {
-    expect(canRequestPlatformReview(breachCase({ status: 'submitted' }))).toBe(true)
-    expect(canRequestPlatformReview(breachCase({ status: 'ai_reviewing' }))).toBe(false)
-    expect(canRequestPlatformReview(null)).toBe(false)
-  })
-
-  it('协商阶段 = submitted 且双方都还没表态', () => {
-    expect(isTerminationNegotiating(breachCase())).toBe(true)
-    expect(isTerminationNegotiating(breachCase({ mutualAgreedAt: '2026-10-02T10:00:00Z' }))).toBe(
-      false,
-    )
-    expect(isTerminationNegotiating(breachCase({ mutualRejectedAt: '2026-10-02T10:00:00Z' }))).toBe(
-      false,
-    )
-    expect(isTerminationNegotiating(breachCase({ status: 'ai_judged' }))).toBe(false)
-  })
-
-  it('表态的是「非发起人」，发起人自己只能等对方回应', () => {
-    const mine = breachCase({ reportedBy: ME })
-    expect(canRespondTermination(mine, ME)).toBe(false)
-    expect(canRespondTermination(mine, 'developer_side')).toBe(true)
-    expect(canRespondTermination(breachCase({ status: 'ai_judged' }), 'developer_side')).toBe(false)
-  })
-
-  it('只有本人能在判定 / 客服介入之前撤回，判完就不给撤了', () => {
-    expect(canWithdrawBreachCase(breachCase({ status: 'submitted' }), ME)).toBe(true)
-    expect(canWithdrawBreachCase(breachCase({ status: 'ai_reviewing' }), ME)).toBe(true)
-    expect(canWithdrawBreachCase(breachCase({ status: 'ai_judged' }), ME)).toBe(false)
-    expect(canWithdrawBreachCase(breachCase({ status: 'submitted' }), 'developer_side')).toBe(false)
-    expect(canWithdrawBreachCase(null, ME)).toBe(false)
+  it('只有立案人能在 filed / negotiating / platform_review 撤回', () => {
+    expect(canWithdrawBreachCase(breachCase({ status: 'negotiating' }), FILER)).toBe(true)
+    expect(canWithdrawBreachCase(breachCase({ status: 'platform_review' }), FILER)).toBe(true)
+    expect(canWithdrawBreachCase(breachCase({ status: 'decided' }), FILER)).toBe(false)
+    expect(canWithdrawBreachCase(breachCase({ status: 'negotiating' }), RESPONDENT)).toBe(false)
+    expect(canWithdrawBreachCase(null, FILER)).toBe(false)
   })
 
   it('撤回人是不是本人：决定「重新发起」还是「首次申报」', () => {
-    expect(breachWithdrawnByMe(breachCase({ status: 'withdrawn' }), ME)).toBe(true)
-    expect(breachWithdrawnByMe(breachCase({ status: 'withdrawn' }), 'developer_side')).toBe(false)
-    expect(breachWithdrawnByMe(breachCase({ status: 'submitted' }), ME)).toBe(false)
-    expect(breachWithdrawnByMe(null, ME)).toBe(false)
+    expect(breachWithdrawnByMe(breachCase({ status: 'withdrawn' }), FILER)).toBe(true)
+    expect(breachWithdrawnByMe(breachCase({ status: 'withdrawn' }), RESPONDENT)).toBe(false)
+    expect(breachWithdrawnByMe(breachCase({ status: 'negotiating' }), FILER)).toBe(false)
+    expect(breachWithdrawnByMe(null, FILER)).toBe(false)
+  })
+
+  it('已收口只有结案与驳回两支（协商一致还在办，撤回不算结论）', () => {
+    expect(isBreachCaseSettled(breachCase({ status: 'closed', is_open: false }))).toBe(true)
+    expect(isBreachCaseSettled(breachCase({ status: 'rejected', is_open: false }))).toBe(true)
+    expect(isBreachCaseSettled(breachCase({ status: 'mutual_agreed' }))).toBe(false)
+    expect(isBreachCaseSettled(breachCase({ status: 'withdrawn', is_open: false }))).toBe(false)
+    expect(isBreachCaseSettled(null)).toBe(false)
   })
 })
 
@@ -155,7 +96,7 @@ describe('解除合作：标题 / 按钮 / 上一轮说明的口径', () => {
   })
 
   it('撤回后沿用同一条案件：本人措辞是「重新发起」，对方撤回时是首次申报', () => {
-    const withdrawn = breachCase({ status: 'withdrawn' })
+    const withdrawn = breachCase({ status: 'withdrawn', is_open: false })
     // 点「重新发起」之前先看进展（`newRound` 还是 false），点了才切到申报表单。
     expect(breachDialogTitle(withdrawn, false, true)).toBe('解除合作进展')
     expect(breachDialogTitle(withdrawn, true, true)).toBe('重新发起解除合作')
@@ -171,7 +112,7 @@ describe('解除合作：标题 / 按钮 / 上一轮说明的口径', () => {
   })
 
   it('撤回：说明本次沿用同一条案件（编号不变），发起人不同措辞不同', () => {
-    const withdrawn = breachCase({ status: 'withdrawn' })
+    const withdrawn = breachCase({ status: 'withdrawn', is_open: false })
     expect(breachRoundHint(withdrawn, true)).toContain('上一轮由你撤回')
     expect(breachRoundHint(withdrawn, true)).toContain('沿用同一条案件')
     expect(breachRoundHint(withdrawn, false)).toContain('上一轮由对方申请后撤回')
@@ -179,14 +120,16 @@ describe('解除合作：标题 / 按钮 / 上一轮说明的口径', () => {
   })
 
   it('结案：合同已作废、需求退回大厅，要说清「重新接单并签约」而不是「新建案件」', () => {
-    const hint = breachRoundHint(breachCase({ status: 'succeeded' }), true)
+    const hint = breachRoundHint(breachCase({ status: 'closed', is_open: false }), true)
     expect(hint).toContain('原合同已作废')
     expect(hint).toContain('重新接单并签约')
     expect(hint).not.toContain('新建一条案件')
   })
 
   it('驳回：结论不能翻案，本次新建一条案件', () => {
-    expect(breachRoundHint(breachCase({ status: 'rejected' }), true)).toContain('新建一条案件')
+    expect(breachRoundHint(breachCase({ status: 'rejected', is_open: false }), true)).toContain(
+      '新建一条案件',
+    )
     expect(breachRoundHint(null, true)).toBe('')
   })
 })

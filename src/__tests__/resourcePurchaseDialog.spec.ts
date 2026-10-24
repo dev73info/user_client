@@ -16,7 +16,7 @@ const dialogSource = readFileSync(
  * 购买确认弹窗（R047 从 `ResourceDetailPanel` 拆出的第三块）。
  *
  * 这一块是纯展示：下单队列 / 支付面世代号 / 轮询都在 `useResourcePurchase` 里，
- * 所以这里只钉「渲染」与「三个出口各 emit 一次」——拆分最容易坏的就是出口接线。
+ * 所以这里只钉「渲染」与「两个出口各 emit 一次」——拆分最容易坏的就是出口接线。
  *
  * Teleport 就地渲染（`stubs: { teleport: true }`），否则节点会跑到 body 上、
  * 只能按 `document` 查，断言写法与现有弹窗测试不一致。
@@ -27,8 +27,6 @@ function mountDialog(props: Record<string, unknown> = {}) {
       open: true,
       title: '红石自动化整合包',
       priceLabel: '¥9.90',
-      isPointsListing: false,
-      balance: null,
       showPromoHint: false,
       channel: 'alipay',
       error: '',
@@ -57,21 +55,18 @@ describe('ResourcePurchaseDialog', () => {
     expect(wrapper.emitted('select-channel')?.[0]).toEqual(['wechat'])
   })
 
-  it('点 × 与点遮罩都各 emit 一次 close；积分单底部换成「确认兑换」并 emit confirm', async () => {
+  it('点 × 与点遮罩都各 emit 一次 close', async () => {
     const wrapper = mountDialog()
     await wrapper.get('.resource-purchase-modal__close').trigger('click')
     await wrapper.get('.resource-purchase-modal-wrap').trigger('click')
     expect(wrapper.emitted('close')).toHaveLength(2)
+  })
 
-    const points = mountDialog({ isPointsListing: true, priceLabel: '30 积分', balance: 120 })
-    // 积分单没有渠道选择与二维码
-    expect(points.find('.payment-option').exists()).toBe(false)
-    expect(points.get('.resource-purchase-modal__balance').text()).toContain('120')
-
-    const confirm = points.get('.actions .ghost')
-    expect(confirm.text()).toBe('确认兑换 30 积分')
-    await confirm.trigger('click')
-    expect(points.emitted('confirm')).toHaveLength(1)
+  it('推广轻提示只在 showPromoHint 为真时出现', async () => {
+    expect(mountDialog().find('.resource-purchase-modal__promo-hint').exists()).toBe(false)
+    expect(
+      mountDialog({ showPromoHint: true }).get('.resource-purchase-modal__promo-hint').text(),
+    ).toContain('推广者')
   })
 
   it('关闭态不渲染任何弹窗节点', () => {

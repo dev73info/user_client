@@ -5,6 +5,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { useAuthStore } from '@/stores/auth'
 import RequirementBreachDialog from '@/components/dev/RequirementBreachDialog.vue'
 import DevMyRequirementsView from '@/views/DevMyRequirementsView.vue'
+import { breachCaseDetail, breachCaseItem, breachCaseResponse } from './helpers/breachCase'
 
 /**
  * 「我的接单」页最小挂载烟测（这页原先零覆盖）。拆「解除合作案件」弹窗时先补一层网，只钉四件事：
@@ -24,10 +25,7 @@ const mocks = vi.hoisted(() => ({
   afterSales: vi.fn(),
   conversations: vi.fn(),
   breachCase: vi.fn(),
-}))
-vi.mock('@/api/adapay', async (orig) => ({
-  ...(await orig<typeof import('@/api/adapay')>()),
-  getAdapayBreachCase: mocks.breachCase,
+  breachDetail: vi.fn(),
 }))
 vi.mock('@/api/devRequirements', async (orig) => ({
   ...(await orig<typeof import('@/api/devRequirements')>()),
@@ -53,6 +51,9 @@ vi.mock('@/api/invoices', async (orig) => ({
 vi.mock('@/api/afterSales', async (orig) => ({
   ...(await orig<typeof import('@/api/afterSales')>()),
   listMyAfterSalesCases: mocks.afterSales,
+  // 解除合作案件：读 `GET /api/requirement/{id}/breach-case`，详情另取一次
+  getRequirementBreachCase: mocks.breachCase,
+  getAfterSalesCase: mocks.breachDetail,
 }))
 vi.mock('@/api/conversations', async (orig) => ({
   ...(await orig<typeof import('@/api/conversations')>()),
@@ -92,26 +93,8 @@ const baseRequirements = [
   },
 ]
 
-/** 一条「协商中、由对方发起」的解除合作案件：开发者这侧只等回应，案件还能再发起一轮。 */
-const baseBreachCase = {
-  id: 21,
-  caseNo: 'BREACH_21',
-  requirementId: 'REQ-1',
-  paymentId: 'pay_1',
-  reportedBy: 'alice',
-  reason: '交付进度落后',
-  status: 'submitted' as const,
-  depositAmountFen: 200000,
-  depositAmountCny: '2000.00',
-  refundAmountFen: 0,
-  refundAmountCny: '0.00',
-  compensationAmountFen: 0,
-  compensationAmountCny: '0.00',
-  extraCompensationFen: 0,
-  extraCompensationCny: '0.00',
-  createdAt: '2026-10-01T10:00:00Z',
-  updatedAt: '2026-10-01T10:00:00Z',
-}
+/** 一条「协商中、由 alice 发起」的案件：开发者（`dev_flow`）这侧是对方当事人，只等回应。 */
+const baseBreachItem = breachCaseItem({ respondent: 'dev_flow', turn_label: '等待 dev_flow 表态' })
 
 beforeEach(() => {
   vi.clearAllMocks()
@@ -152,9 +135,10 @@ beforeEach(() => {
     party_a_signed: true,
     party_b_signed: true,
   })
-  mocks.afterSales.mockResolvedValue({ items: [], windowOpen: null, windowClosesAt: null })
+  mocks.afterSales.mockResolvedValue([])
   mocks.conversations.mockResolvedValue([])
-  mocks.breachCase.mockResolvedValue(baseBreachCase)
+  mocks.breachCase.mockResolvedValue(breachCaseResponse(baseBreachItem, 'REQ-1'))
+  mocks.breachDetail.mockResolvedValue(breachCaseDetail({ claim_note: '交付进度落后' }))
 })
 
 async function render(query: Record<string, string> = {}) {
@@ -268,32 +252,36 @@ describe('我的接单：最小挂载烟测', () => {
     const first = await openBreachDialog()
     expect(mocks.breachCase).toHaveBeenCalledWith('test-token', 'REQ-1')
     expect(first.dialog.props('visible')).toBe(true)
-    expect(first.dialog.props('breachCase')?.caseNo).toBe('BREACH_21')
+    expect(first.dialog.props('breachCase')?.case_no).toBe('BC-20261028153000-AB12')
     // 有生效合同（列表一次取回的 signingStatusMap）才能再发起一轮：由页面注入，弹窗不自己查第二次
     expect(first.dialog.props('canStartNewRound')).toBe(true)
-    // 案件由对方发起 → 我是非发起人、能表态；不是申请人所以不能撤回
+    // 案件由 alice 发起、我是对方当事人（`respondent`）→ 能表态；不是立案人所以不能撤回
     expect(first.dialog.props('canRespond')).toBe(true)
     expect(first.dialog.props('canWithdraw')).toBe(false)
-    // 还没出 AI 判定：这段表态区不出现
-    expect(first.dialog.props('canDecide')).toBe(false)
     first.wrapper.unmount()
 
     // 反过来：案件是我发起的 → 我能撤回，但不能替自己表态（两枚布尔各自独立）
-    mocks.breachCase.mockResolvedValue({ ...baseBreachCase, reportedBy: 'dev_flow' })
+    mocks.breachCase.mockResolvedValue(
+      breachCaseResponse({ ...baseBreachItem, filed_by: 'dev_flow', respondent: 'alice' }),
+    )
     const mine = await openBreachDialog()
     expect(mine.dialog.props('canWithdraw')).toBe(true)
     expect(mine.dialog.props('canRespond')).toBe(false)
     mine.wrapper.unmount()
 
-    // 出了 AI 判定、且对方已表态而我方还没表态：本页是开发者视角，仍该给我选接受 / 不接受。
-    // 照抄需求方的判据（看 customerDecision）这里就会变成 false——按钮会凭空消失。
-    mocks.breachCase.mockResolvedValue({
-      ...baseBreachCase,
-      status: 'ai_judged',
-      customerDecision: 'accepted',
-    })
-    const judged = await openBreachDialog()
-    expect(judged.dialog.props('canDecide')).toBe(true)
-    judged.wrapper.unmount()
+    // 案件已转平台（不再等当事人表态）：两枚布尔都该是 false，弹窗只显示进展
+    mocks.breachCase.mockResolvedValue(
+      breachCaseResponse({
+        ...baseBreachItem,
+        status: 'platform_review',
+        status_label: '平台介入中',
+        turn: 'platform',
+        turn_label: '等待平台处理',
+      }),
+    )
+    const reviewing = await openBreachDialog()
+    expect(reviewing.dialog.props('canRespond')).toBe(false)
+    expect(reviewing.dialog.props('canWithdraw')).toBe(false)
+    reviewing.wrapper.unmount()
   })
 })

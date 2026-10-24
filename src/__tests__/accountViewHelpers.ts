@@ -33,7 +33,7 @@ export function buttonByText(wrapper: VueWrapper, text: string) {
 export async function renderView(component: Component): Promise<VueWrapper> {
   const wrapper = mount(component, {
     global: {
-      stubs: { Teleport: true, RealnameHero: true, WechatBindQrModal: true },
+      stubs: { Teleport: true, RealnameHero: true },
       config: { warnHandler: () => {} },
     },
   })

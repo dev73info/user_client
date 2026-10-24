@@ -51,9 +51,8 @@ function row(requirementId: string, status: 'in_development' | 'completed', titl
       title,
       payment_mode: 'platform_guarantee',
       status,
-      updated_at: '2026-09-12 10:00:00',
     },
-  } as DevMyOrderRow
+  } as unknown as DevMyOrderRow
 }
 
 function makeRows() {
@@ -69,7 +68,7 @@ function makeRows() {
       title: '一笔无主到账',
       customer: 'bob',
       item: null,
-    } as DevMyOrderRow,
+    } as unknown as DevMyOrderRow,
   ]
 }
 

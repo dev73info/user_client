@@ -23,10 +23,7 @@ const mocks = vi.hoisted(() => ({
   getVerification: vi.fn(),
   depositRatio: vi.fn(),
   coupons: vi.fn(),
-  communityPosts: vi.fn(),
   resources: vi.fn(),
-  promoMeta: vi.fn(),
-  checkinStatus: vi.fn(),
   tagTree: vi.fn(),
   toast: vi.fn(),
 }))
@@ -48,18 +45,9 @@ vi.mock('@/api/coupons', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/api/coupons')>()),
   listAvailableCoupons: mocks.coupons,
 }))
-vi.mock('@/api/community', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/api/community')>()),
-  listCommunityPosts: mocks.communityPosts,
-}))
 vi.mock('@/api/resources', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/api/resources')>()),
   listAllPublicMcResources: mocks.resources,
-}))
-vi.mock('@/api/points', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/api/points')>()),
-  getResourcePromoMeta: mocks.promoMeta,
-  getCheckinStatus: mocks.checkinStatus,
 }))
 // 首页会 `void tagTreeStore.ensure()`：这个 promise 不接 rejection，真请求会变成未处理拒绝。
 vi.mock('@/api/resourceTags', async (importOriginal) => ({
@@ -104,7 +92,7 @@ const RichTextEditorStub = {
 
 // 只为 `router.resolve` / `RouterLink` 提供名字：路径统一 `/${name}`，与真路由表无关。
 const ROUTE_NAMES =
-  'home requirement-hall workbench workbench-realname workbench-requirements workbench-badges dev-profile dev-plugins team-profile'.split(
+  'home requirement-hall workbench workbench-realname workbench-requirements dev-profile dev-plugins team-profile'.split(
     ' ',
   )
 
@@ -129,7 +117,6 @@ async function renderHome(query: Record<string, string> = { modal: 'publish' }) 
         // `PublishModal` 内部用 `<Teleport>`：桩掉它，弹窗内容留在 wrapper 里能直接查。
         teleport: true,
         RichTextEditor: RichTextEditorStub,
-        RequirementAgentPanel: true,
         // 登录 / 微信扫码两个弹窗与本用例无关，桩掉免得它们在挂载时自己起轮询。
         AuthModal: true,
         WechatLoginQrModal: true,
@@ -169,7 +156,7 @@ const REJECTED_REQUIREMENT = {
   title: '小程序订单页改版',
   status: 'rejected' as const,
   statusLabel: '已驳回',
-  updatedAtLabel: '3/5 10:00',
+  publishedAtLabel: '3/5 10:00',
   description: '需要重做订单列表与详情页，支持批量操作。',
   acceptanceCriteria: '订单列表可翻页，详情页字段齐全。',
   budget: 3000,
@@ -207,11 +194,7 @@ beforeEach(() => {
   mocks.overview.mockResolvedValue({ total_orders: 0, positive_rate: 100, recent_deals: [] })
   mocks.depositRatio.mockResolvedValue({ deposit_ratio_percent: 20 })
   mocks.coupons.mockResolvedValue([])
-  mocks.communityPosts.mockResolvedValue([])
   mocks.resources.mockResolvedValue([])
-  mocks.promoMeta.mockResolvedValue({ high_like_threshold: 5 })
-  // 签到状态与本用例无关：给 null（卡片回落「已签到」，composable 内部也接受 null）。
-  mocks.checkinStatus.mockResolvedValue(null)
   mocks.tagTree.mockResolvedValue({ roots: [] })
 })
 

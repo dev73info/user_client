@@ -40,7 +40,6 @@ describe('DeveloperRankCard', () => {
     const wrapper = mount(DeveloperRankCard, {
       props: {
         ranks: [developerRank(), developerRank({ username: 'bo', name: '博' })],
-        badges: {},
         totalResources: 2,
       },
     })
@@ -55,7 +54,7 @@ describe('DeveloperRankCard', () => {
 
   it('点行只回抛一次 open-developer（不会连点两次跳两次）', async () => {
     const wrapper = mount(DeveloperRankCard, {
-      props: { ranks: [developerRank({ username: 'ali' })], badges: {}, totalResources: 1 },
+      props: { ranks: [developerRank({ username: 'ali' })], totalResources: 1 },
     })
 
     await wrapper.find('.portal-contrib-item').trigger('click')
@@ -69,7 +68,6 @@ describe('DeveloperRankCard', () => {
     const wrapper = mount(DeveloperRankCard, {
       props: {
         ranks: [developerRank({ avatarUrl: 'https://api.test/uploads/a.png' })],
-        badges: {},
         totalResources: 1,
       },
     })
@@ -88,7 +86,6 @@ describe('DeveloperRankCard', () => {
           developerRank({ username: 'gradient', name: '渐变', gradient: true }),
           developerRank({ username: 'colored', name: '有色', gradient: true, userColor: 'blue' }),
         ],
-        badges: {},
         totalResources: 2,
       },
     })
@@ -99,34 +96,10 @@ describe('DeveloperRankCard', () => {
     expect(names[1]?.attributes('style')).toContain('color: blue')
   })
 
-  it('徽章最多显示 3 枚，其余折成「+N」；没有徽章时不渲染容器', () => {
-    const badges = {
-      ali: Array.from({ length: 5 }, (_, index) => ({
-        code: `b${index}`,
-        name: `徽章${index}`,
-        description: '说明',
-        icon: '🏅',
-      })),
-    }
-    const wrapper = mount(DeveloperRankCard, {
-      props: {
-        ranks: [developerRank({ username: 'ali' }), developerRank({ username: 'bo', name: '博' })],
-        badges,
-        totalResources: 2,
-      },
-    })
-
-    const rows = wrapper.findAll('.portal-contrib-item')
-    expect(rows[0]?.findAll('.portal-contrib-item__badge')).toHaveLength(3)
-    expect(rows[0]?.find('.portal-contrib-item__badge-more').text()).toBe('+2')
-    expect(rows[1]?.find('.portal-contrib-item__badges').exists()).toBe(false)
-  })
-
   it('页脚用传入的合计，不自己再算一遍', () => {
     const wrapper = mount(DeveloperRankCard, {
       props: {
         ranks: [developerRank({ resourceCount: 3 })],
-        badges: {},
         totalResources: 3,
       },
     })
@@ -139,7 +112,7 @@ describe('DeveloperRankCard', () => {
 
   it('空榜显示空状态且不渲染页脚', () => {
     const wrapper = mount(DeveloperRankCard, {
-      props: { ranks: [], badges: {}, totalResources: 0 },
+      props: { ranks: [], totalResources: 0 },
     })
 
     expect(wrapper.find('.portal-contrib-list').exists()).toBe(false)

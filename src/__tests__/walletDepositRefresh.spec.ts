@@ -3,11 +3,17 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import DevWalletIncomeCard from '@/components/dev/DevWalletIncomeCard.vue'
 import DevWalletView from '@/views/DevWalletView.vue'
 
+/**
+ * 收益钱包页：自动提现开关必须由服务端确认后才动。
+ *
+ * 这个文件名保留着历史原因（原先还覆盖「保证金台账 5 秒轮询 / 回到页面节流」那一套）。
+ * 预付保证金那套端点（`developer-order-deposit*`）在当前契约里不存在，整块功能已删除，
+ * 相关用例随功能一起删；剩下这两条钉的是 `useDevWalletOverview` 的开关口径。
+ */
 const mocks = vi.hoisted(() => ({
-  summary: vi.fn(),
-  status: vi.fn(),
-  toast: vi.fn(),
+  overview: vi.fn(),
   setting: vi.fn(),
+  toast: vi.fn(),
 }))
 
 vi.mock('vue-router', () => ({
@@ -34,17 +40,16 @@ vi.mock('ui_73info', async (importOriginal) => {
     },
   }
 })
-vi.mock('@/api/devOrderDeposit', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/api/devOrderDeposit')>()),
-  getDevOrderDepositStatus: mocks.status,
-  getDevOrderDepositWithdrawalSummary: mocks.summary,
-}))
 vi.mock('@/api/devWallet', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/api/devWallet')>()),
-  getDevWalletOverview: vi.fn().mockResolvedValue({ recent_income: [] }),
+  getDevWalletOverview: mocks.overview,
+  getDevWithdrawalBalance: vi.fn().mockResolvedValue({
+    income_fen: 0,
+    withdrawn_fen: 0,
+    withdrawable_fen: 0,
+  }),
   updateDevWithdrawalSetting: mocks.setting,
 }))
-vi.mock('@/api/devCredit', () => ({ getDevCreditSelf: vi.fn().mockResolvedValue(null) }))
 
 function mountWallet() {
   return shallowMount(DevWalletView, {
@@ -60,7 +65,7 @@ function mountWallet() {
           template: '<div />',
         },
         TSelect: { name: 'TSelect', props: ['modelValue'], template: '<div />' },
-        // 自动提现开关在「接单收入」卡里（R047 拆分后成了子组件），这一张卡按真实组件渲染，
+        // 自动提现开关在「接单收入」卡里，这一张卡按真实组件渲染，
         // 否则桩里的开关根本不存在，两条关于开关的用例就点不到东西
         DevWalletIncomeCard: false,
         // 开关按真实用法点击触发，缺了 @update:model-value 绑定时点不动，这条用例就红
@@ -79,110 +84,19 @@ function walletState(wrapper: ReturnType<typeof mountWallet>): Record<string, un
   return (wrapper.vm.$ as unknown as { setupState: Record<string, unknown> }).setupState
 }
 
-/** 「接单收入」卡上渲染出来的自动提现开关值（R047 拆分后卡是子组件，状态经 props 下去） */
+/** 「接单收入」卡上渲染出来的自动提现开关值（卡是子组件，状态经 props 下去） */
 function autoWithdrawSwitchValue(wrapper: ReturnType<typeof mountWallet>): boolean {
   return wrapper.getComponent(DevWalletIncomeCard).props('autoWithdrawEnabled') as boolean
 }
 
-describe('wallet deposit status refresh', () => {
+describe('wallet auto-withdraw switch', () => {
   beforeEach(() => {
-    vi.useFakeTimers()
     vi.clearAllMocks()
-    mocks.status.mockResolvedValue({ total_paid_cny: 2 })
-    mocks.summary.mockResolvedValue({ withdrawals: [{ status: 'payout_processing' }] })
-    vi.spyOn(document, 'visibilityState', 'get').mockReturnValue('visible')
+    mocks.overview.mockResolvedValue({ recent_income: [] })
   })
 
   afterEach(() => {
     vi.restoreAllMocks()
-    vi.useRealTimers()
-  })
-
-  it('refreshes pending records and balances until the backend reports paid', async () => {
-    const wrapper = mountWallet()
-    await flushPromises()
-    mocks.summary.mockResolvedValue({ withdrawals: [{ status: 'paid' }] })
-    await vi.advanceTimersByTimeAsync(5000)
-    await flushPromises()
-    expect(mocks.summary).toHaveBeenCalledTimes(2)
-    expect(mocks.status).toHaveBeenCalledTimes(2)
-    await vi.advanceTimersByTimeAsync(5000)
-    expect(mocks.summary).toHaveBeenCalledTimes(2)
-    wrapper.unmount()
-  })
-
-  it('keeps the table loading state untouched for background refreshes', async () => {
-    mocks.summary.mockResolvedValue({ withdrawals: [{ status: 'payout_processing' }] })
-    const wrapper = mountWallet()
-    await flushPromises()
-    expect(walletState(wrapper).depositLoading).toBe(false)
-
-    await vi.advanceTimersByTimeAsync(5000)
-    await flushPromises()
-    expect(mocks.summary).toHaveBeenCalledTimes(2)
-    // 后台轮询不得点亮表格 loading 遮罩，否则会持续闪烁
-    expect(walletState(wrapper).depositLoading).toBe(false)
-    wrapper.unmount()
-  })
-
-  it('slows polling when the only pending record needs manual handling', async () => {
-    mocks.summary.mockResolvedValue({ withdrawals: [{ status: 'payout_failed' }] })
-    const wrapper = mountWallet()
-    await flushPromises()
-    expect(mocks.summary).toHaveBeenCalledTimes(1)
-
-    await vi.advanceTimersByTimeAsync(10000)
-    await flushPromises()
-    expect(mocks.summary).toHaveBeenCalledTimes(1)
-
-    await vi.advanceTimersByTimeAsync(20000)
-    await flushPromises()
-    expect(mocks.summary).toHaveBeenCalledTimes(2)
-    wrapper.unmount()
-  })
-
-  it('refreshes on return to the page, throttles repeat events and removes listeners on unmount', async () => {
-    const wrapper = mountWallet()
-    await flushPromises()
-    expect(mocks.summary).toHaveBeenCalledTimes(1)
-
-    // 刚加载完就触发的 focus / visibilitychange 应被节流，避免重复请求
-    window.dispatchEvent(new Event('focus'))
-    document.dispatchEvent(new Event('visibilitychange'))
-    await flushPromises()
-    expect(mocks.summary).toHaveBeenCalledTimes(1)
-
-    // 超过节流窗口后回到页面才真正刷新
-    await vi.advanceTimersByTimeAsync(3000)
-    window.dispatchEvent(new Event('focus'))
-    await flushPromises()
-    expect(mocks.summary).toHaveBeenCalledTimes(2)
-
-    // 轮询心跳同样遵守节流：t=5000 的心跳距上次刷新（t=3000）不足 5s 会被跳过，
-    // t=10000 的心跳才真正发起请求，因此不会与回到页面的刷新叠加
-    await vi.advanceTimersByTimeAsync(7000)
-    await flushPromises()
-    expect(mocks.summary).toHaveBeenCalledTimes(3)
-
-    wrapper.unmount()
-    window.dispatchEvent(new Event('focus'))
-    document.dispatchEvent(new Event('visibilitychange'))
-    await vi.advanceTimersByTimeAsync(10000)
-    expect(mocks.summary).toHaveBeenCalledTimes(3)
-  })
-
-  it('does not poll while hidden or display repeated background errors', async () => {
-    const wrapper = mountWallet()
-    await flushPromises()
-    vi.spyOn(document, 'visibilityState', 'get').mockReturnValue('hidden')
-    await vi.advanceTimersByTimeAsync(5000)
-    expect(mocks.summary).toHaveBeenCalledTimes(1)
-    vi.spyOn(document, 'visibilityState', 'get').mockReturnValue('visible')
-    mocks.summary.mockRejectedValueOnce(new Error('offline'))
-    document.dispatchEvent(new Event('visibilitychange'))
-    await flushPromises()
-    expect(mocks.toast).not.toHaveBeenCalled()
-    wrapper.unmount()
   })
 
   it('toggles auto-withdraw through the server instead of flipping the switch locally', async () => {
@@ -192,7 +106,6 @@ describe('wallet deposit status refresh', () => {
         confirmSetting = resolve
       }),
     )
-    mocks.summary.mockResolvedValue({ withdrawals: [] })
     const wrapper = mountWallet()
     await flushPromises()
 
@@ -212,7 +125,6 @@ describe('wallet deposit status refresh', () => {
 
   it('keeps the switch in place and reports the reason when the server refuses', async () => {
     mocks.setting.mockRejectedValue(new Error('出款通道未就绪'))
-    mocks.summary.mockResolvedValue({ withdrawals: [] })
     const wrapper = mountWallet()
     await flushPromises()
 

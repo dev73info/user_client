@@ -88,6 +88,7 @@ export function resourceFixture(part: Partial<McResourcePayload> = {}): McResour
     origin_url: 'https://origin.example.com/post/1',
     origin_org: '苦力怕论坛',
     origin_note: '已获授权',
+    buyout_price_fen: 1234,
     price_fen: 1234,
     price_points: 0,
     copyright_declared: true,
@@ -99,21 +100,16 @@ export function resourceFixture(part: Partial<McResourcePayload> = {}): McResour
   }
 }
 
-/** 接口资源已保存的渠道配置（读取时的回显口径：密钥只有掩码）。 */
+/** 接口资源已保存的渠道配置（契约 `ApiChannelResponse`：密钥只回「有没有」+ 掩码前缀）。 */
 export function channelFixture(
   part: Partial<ResourceApiChannelPayload> = {},
 ): ResourceApiChannelPayload {
   return {
     resource_id: 158100,
-    resource_kind: 'api',
-    repeat_purchasable: false,
     callback_url: 'https://shop.example.com/73info/callback',
-    callback_secret_masked: 'sk***ab',
-    callback_secret_set: true,
-    hidden_from_catalog: true,
+    has_secret: true,
+    callback_secret_prefix: 'sk***ab',
     allowed_origins: ['https://shop.example.com'],
-    updated_at: '2026-10-18 06:00:00',
-    updated_by: 'dev_flow_03562487',
     ...part,
   }
 }
@@ -140,7 +136,6 @@ export type HomepageEditForm = {
   apiCallbackUrl: string
   apiCallbackSecret: string
   apiAllowedOrigins: string
-  apiRepeatPurchasable: boolean
 }
 
 /** 视图 `setupState` 里用例要读的那几个入口（拆视图后仍由视图透传）。 */

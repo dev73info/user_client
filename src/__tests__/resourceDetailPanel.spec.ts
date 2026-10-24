@@ -55,6 +55,7 @@ const resource: PublicMcResourceItem = publicResourceFixture({
   title: '红石自动化整合包',
   description: 'Minecraft · 红石与自动化的一站式整合包',
   platform: 'Minecraft',
+  buyout_price_fen: 990,
   price_fen: 990,
   // 正文同时有标题与表格：表格要能被包进 .rich-table-scroll，标题要还是 <h2> 而不是文字
   release_note:
@@ -73,6 +74,9 @@ const versions: PublicMcResourceVersionItem[] = [
     note: '修复了 **红石时钟** 偶发停摆',
     creator: 'alice',
     created_at: '2026-02-02 10:00:00',
+    is_current: true,
+    price_fen: 0,
+    purchasable: false,
   },
 ]
 

@@ -34,19 +34,23 @@ vi.mock('@/api/team', async (importOriginal) => {
   }
 })
 
-const team = {
-  team_id: 1,
-  name: '七星团队',
-  description: '做资源整合',
-  avatar_url: null,
-  owner_username: 'alice',
+/** 契约 `GET /teams/{team_id}` 回的是 `{team, members}`，不是摊平的一层。 */
+const teamDetail = {
+  team: {
+    team_id: 1,
+    name: '七星团队',
+    description: '做资源整合',
+    avatar_url: null,
+    owner_username: 'alice',
+    member_count: 3,
+    created_at: '2026-10-01',
+    updated_at: '2026-10-01',
+  },
   members: [
-    { username: 'alice', role: 'owner', joined_at: '2026-10-01', avatar_url: null },
-    { username: 'bob', role: 'admin', joined_at: '2026-10-02', avatar_url: null },
-    { username: 'carol', role: 'member', joined_at: '2026-10-03', avatar_url: null },
+    { username: 'alice', role: 'owner', joined_at: '2026-10-01' },
+    { username: 'bob', role: 'admin', joined_at: '2026-10-02' },
+    { username: 'carol', role: 'member', joined_at: '2026-10-03' },
   ],
-  created_at: '2026-10-01',
-  updated_at: '2026-10-01',
 }
 
 beforeEach(() => {
@@ -57,7 +61,7 @@ beforeEach(() => {
   auth.token = 'test-token'
   auth.username = 'alice'
   // 每次取详情都给一份新的：视图会把取回来的团队对象就地改（改名、移除成员），共用一份会串场
-  mocks.detail.mockImplementation(async () => JSON.parse(JSON.stringify(team)))
+  mocks.detail.mockImplementation(async () => JSON.parse(JSON.stringify(teamDetail)))
   mocks.update.mockImplementation(async () => ({ name: '新名字', description: '新简介' }))
   mocks.invite.mockResolvedValue(undefined)
   mocks.role.mockResolvedValue({ username: 'bob', role: 'member' })

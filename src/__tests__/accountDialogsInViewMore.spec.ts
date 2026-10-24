@@ -121,18 +121,25 @@ beforeEach(() => {
 })
 
 describe('账号与安全页：改密码 / 两步验证 / 印章 / 爱签账户的父子接线', () => {
-  it('改密码：三个草稿都回写到父级，保存带上新密码 + 验证码', async () => {
+  it('改密码：四个草稿都回写，保存带旧密码、新密码和验证码并退出登录', async () => {
     const wrapper = await renderView(AccountCouponsView)
     await openEntry(wrapper, 'password')
 
     const inputs = wrapper.findAll('input')
-    await inputs[0]!.setValue('pw123456')
+    await inputs[0]!.setValue('old-pw123456')
     await inputs[1]!.setValue('pw123456')
-    await inputs[2]!.setValue('654321')
+    await inputs[2]!.setValue('pw123456')
+    await inputs[3]!.setValue('654321')
     await buttonByText(wrapper, '保存密码').trigger('click')
     await flushPromises()
 
-    expect(mocks.updateProfilePassword).toHaveBeenCalledWith('test-token', 'pw123456', '654321')
+    expect(mocks.updateProfilePassword).toHaveBeenCalledWith(
+      'test-token',
+      'old-pw123456',
+      'pw123456',
+      '654321',
+    )
+    expect(auth.logout).toHaveBeenCalledTimes(1)
     wrapper.unmount()
   })
 

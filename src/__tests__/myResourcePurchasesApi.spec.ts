@@ -10,7 +10,6 @@ const mocks = vi.hoisted(() => ({
   listPage: vi.fn(),
   count: vi.fn(),
   push: vi.fn(),
-  initiate: vi.fn(),
   messageSuccess: vi.fn(),
   messageError: vi.fn(),
   messageWarning: vi.fn(),
@@ -24,9 +23,6 @@ vi.mock('@/api/resourceTags', () => ({ getResourceDetailSlug: () => 'resource--1
 vi.mock('@/api/resourcePurchase', () => ({
   listMyResourcePurchasesPage: mocks.listPage,
   countMyResourcePurchases: mocks.count,
-}))
-vi.mock('@/api/resourcePurchaseTransfers', () => ({
-  initiatePurchaseTransfer: mocks.initiate,
 }))
 vi.mock('ui_73info', () => ({
   Refresh: { template: '<span />' },
@@ -60,6 +56,7 @@ function makeOrder(overrides: Partial<ResourcePurchaseOrder>): ResourcePurchaseO
   return {
     order_no: 'RPO-1',
     buyer: 'shop_owner',
+    source_kind: 'platform',
     resource_id: 1,
     resource_title: '接口资源订单',
     seller: 'shop_owner',
@@ -89,12 +86,6 @@ function makeOrder(overrides: Partial<ResourcePurchaseOrder>): ResourcePurchaseO
     refund_initiator: null,
     refund_operator: null,
     last_refund_at: null,
-    promoter: null,
-    promo_code: null,
-    promo_share_bps: 0,
-    promoter_fee_fen: 0,
-    promoter_split_status: 'none',
-    promo_reject_reason: null,
     ...overrides,
   }
 }
@@ -109,11 +100,11 @@ beforeEach(() => {
       makeOrder({
         order_no: 'RPO-API',
         resource_title: '短信发送接口',
-        source_kind: 'api',
-        buyer_account: 'u_9f2c',
+        source_kind: 'oauth',
+        client_id: 'u_9f2c',
         buyer_external_id: 'shop-user-10086',
       }),
-      makeOrder({ order_no: 'RPO-NORMAL', resource_title: '设计素材包', source_kind: 'normal' }),
+      makeOrder({ order_no: 'RPO-NORMAL', resource_title: '设计素材包', source_kind: 'platform' }),
     ],
     total: 2,
   })
@@ -125,11 +116,11 @@ afterEach(() => {
 })
 
 describe('我的已购资源：接口资源订单标签', () => {
-  it('isApiResourcePurchaseOrder 只认 source_kind=api 或已记录平台买家', () => {
-    expect(isApiResourcePurchaseOrder({ source_kind: 'api' })).toBe(true)
-    expect(isApiResourcePurchaseOrder({ source_kind: ' API ' })).toBe(true)
-    expect(isApiResourcePurchaseOrder({ buyer_account: 'u_9f2c' })).toBe(true)
-    expect(isApiResourcePurchaseOrder({ source_kind: 'normal', buyer_account: null })).toBe(false)
+  it('isApiResourcePurchaseOrder 只认 OAuth 来源或开放客户端标识', () => {
+    expect(isApiResourcePurchaseOrder({ source_kind: 'oauth' })).toBe(true)
+    expect(isApiResourcePurchaseOrder({ source_kind: ' OAUTH ' })).toBe(true)
+    expect(isApiResourcePurchaseOrder({ client_id: 'u_9f2c' })).toBe(true)
+    expect(isApiResourcePurchaseOrder({ source_kind: 'platform', client_id: null })).toBe(false)
     expect(isApiResourcePurchaseOrder({})).toBe(false)
   })
 
@@ -145,101 +136,5 @@ describe('我的已购资源：接口资源订单标签', () => {
     const tags = wrapper.findAll('.purchases__tag')
     expect(tags).toHaveLength(1)
     expect(tags[0]?.text()).toBe('接口资源')
-  })
-})
-
-describe('我的已购资源：发起使用权转移', () => {
-  it('只有接口资源的已支付订单出现「转移使用权」', async () => {
-    mocks.listPage.mockResolvedValue({
-      items: [
-        makeOrder({ order_no: 'RPO-API', source_kind: 'api', buyer_account: 'u_9f2c' }),
-        makeOrder({ order_no: 'RPO-NORMAL', source_kind: 'normal' }),
-        // 接口资源但未支付：不该出现入口
-        makeOrder({ order_no: 'RPO-PENDING', source_kind: 'api', status: 'pending' }),
-      ],
-      total: 3,
-    })
-    wrapper = mount(MyResourcePurchasesView)
-    await flushPromises()
-    await flushPromises()
-
-    const transferButtons = wrapper
-      .findAll('button')
-      .filter((button) => button.text() === '转移使用权')
-    expect(transferButtons).toHaveLength(1)
-  })
-
-  it('接收方用户名为空时不发请求并提示', async () => {
-    wrapper = mount(MyResourcePurchasesView)
-    await flushPromises()
-    await flushPromises()
-
-    const openButton = wrapper.findAll('button').find((button) => button.text() === '转移使用权')
-    expect(openButton).toBeTruthy()
-    await openButton!.trigger('click')
-
-    const submitButton = wrapper.findAll('button').find((button) => button.text() === '发送申请')
-    expect(submitButton).toBeTruthy()
-    await submitButton!.trigger('click')
-    await flushPromises()
-
-    expect(mocks.initiate).not.toHaveBeenCalled()
-    expect(mocks.messageWarning).toHaveBeenCalledWith('请填写接收方用户名')
-  })
-
-  it('提交成功后关闭弹窗、提示并跳到转移处理页', async () => {
-    mocks.initiate.mockResolvedValue({ transfer_id: 7, status: 'pending' })
-    wrapper = mount(MyResourcePurchasesView)
-    await flushPromises()
-    await flushPromises()
-
-    const openButton = wrapper.findAll('button').find((button) => button.text() === '转移使用权')
-    await openButton!.trigger('click')
-
-    const inputs = wrapper.findAll('.purchases-transfer input')
-    // 弹窗里两个输入框：接收方用户名、留言
-    await inputs[0]!.setValue(' support_dev ')
-    await inputs[1]!.setValue('  请帮我接收  ')
-    const submitButton = wrapper.findAll('button').find((button) => button.text() === '发送申请')
-    await submitButton!.trigger('click')
-    await flushPromises()
-
-    expect(mocks.initiate).toHaveBeenCalledWith('buyer-token', 'RPO-API', {
-      to_username: 'support_dev',
-      message: '请帮我接收',
-    })
-    expect(mocks.messageSuccess).toHaveBeenCalledWith('转移申请已发送，等待对方确认')
-    expect(mocks.push).toHaveBeenCalledWith({ name: 'workbench-purchase-transfers' })
-  })
-
-  it('后端拒绝（冷却中 / 已有待处理）时透出后端文案', async () => {
-    mocks.initiate.mockRejectedValue(new Error('该订单在冷却期内，剩余 5 天才能再次转移'))
-    wrapper = mount(MyResourcePurchasesView)
-    await flushPromises()
-    await flushPromises()
-
-    const openButton = wrapper.findAll('button').find((button) => button.text() === '转移使用权')
-    await openButton!.trigger('click')
-
-    const inputs = wrapper.findAll('.purchases-transfer input')
-    await inputs[0]!.setValue('support_dev')
-    const submitButton = wrapper.findAll('button').find((button) => button.text() === '发送申请')
-    await submitButton!.trigger('click')
-    await flushPromises()
-
-    expect(mocks.messageError).toHaveBeenCalledWith('该订单在冷却期内，剩余 5 天才能再次转移')
-    expect(mocks.push).not.toHaveBeenCalled()
-  })
-
-  it('留言框带 200 字上限，与后端一致', async () => {
-    wrapper = mount(MyResourcePurchasesView)
-    await flushPromises()
-    await flushPromises()
-
-    const openButton = wrapper.findAll('button').find((button) => button.text() === '转移使用权')
-    await openButton!.trigger('click')
-
-    const inputs = wrapper.findAll('.purchases-transfer input')
-    expect(inputs[1]?.attributes('maxlength')).toBe('200')
   })
 })

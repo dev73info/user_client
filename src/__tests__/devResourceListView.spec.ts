@@ -15,6 +15,7 @@ const mocks = vi.hoisted(() => ({
   push: vi.fn(),
   listResources: vi.fn(),
   updateHomepage: vi.fn(),
+  submitReview: vi.fn(),
   deleteResource: vi.fn(),
 }))
 
@@ -46,14 +47,10 @@ vi.mock('ui_73info', async (importOriginal) => {
 vi.mock('@/api/mcResources', () => ({
   listMcResources: mocks.listResources,
   updateMcResourceHomepage: mocks.updateHomepage,
+  submitMcResourceReview: mocks.submitReview,
   deleteMcResource: mocks.deleteResource,
   createMcResourceVersion: vi.fn(),
   applyResourcePromoCard: vi.fn(),
-}))
-vi.mock('@/api/points', () => ({
-  listMyPromoCards: vi.fn().mockResolvedValue([]),
-  getResourcePromoMeta: vi.fn().mockResolvedValue({ high_like_threshold: 5 }),
-  promoCardLabel: (code: string) => code,
 }))
 
 import type { McResourcePayload } from '@/api/mcResources'
@@ -211,7 +208,7 @@ describe('DevResourceListView：动作的请求实参', () => {
     mocks.listResources.mockResolvedValue(resourceRows())
   })
 
-  it('申请公开把整页字段原样提交，visibility 改成 review，并重拉列表', async () => {
+  it('申请公开走契约的 submit-review 端点（不再 PATCH 整页字段），并重拉列表', async () => {
     const wrapper = mountList()
     await flushPromises()
     const view = state(wrapper)
@@ -220,19 +217,10 @@ describe('DevResourceListView：动作的请求实参', () => {
     view.handleResourceCommand({ action: 'request-review', resource: target })
     await flushPromises()
 
-    expect(mocks.updateHomepage).toHaveBeenCalledWith('test-token', target.id, {
-      title: target.title,
-      author: target.author,
-      description: target.description,
-      cover_url: target.cover_url,
-      docs_url: target.docs_url,
-      visibility: 'review',
-      release_note: target.release_note,
-      price_fen: target.price_fen ?? 0,
-      price_points: target.price_points ?? 0,
-      copyright_declared: target.copyright_declared ?? false,
-    })
-    // 可见性由后端改，提交成功后重拉一次（挂载时那次 + 这次）
+    // 审核是动作端点：只发资源编号，可见性由后端从 draft/rejected → review
+    expect(mocks.submitReview).toHaveBeenCalledWith('test-token', target.id)
+    expect(mocks.updateHomepage).not.toHaveBeenCalled()
+    // 提交成功后重拉一次（挂载时那次 + 这次）
     expect(mocks.listResources).toHaveBeenCalledTimes(2)
     wrapper.unmount()
   })

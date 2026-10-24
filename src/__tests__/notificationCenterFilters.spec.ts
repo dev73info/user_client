@@ -4,13 +4,9 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 const mocks = vi.hoisted(() => ({
   toast: vi.fn(),
   push: vi.fn(),
-  warnings: vi.fn(),
-  posts: vi.fn(),
   disclosures: vi.fn(),
   respondDisclosure: vi.fn(),
   afterSales: vi.fn(),
-  inbox: vi.fn(),
-  mine: vi.fn(),
 }))
 
 // 用户工作台这一侧：matched 里没有 devArea，资源过户整类不出现、两份过户列表也不该被请求
@@ -42,10 +38,6 @@ vi.mock('ui_73info', async (importOriginal) => {
     },
   }
 })
-vi.mock('@/api/community', () => ({
-  listMyCommentWarnings: mocks.warnings,
-  listCommunityPosts: mocks.posts,
-}))
 vi.mock('@/api/conversations', () => ({
   listConversationHistoryDisclosures: mocks.disclosures,
   respondConversationHistoryDisclosure: mocks.respondDisclosure,
@@ -53,34 +45,22 @@ vi.mock('@/api/conversations', () => ({
 vi.mock('@/api/afterSales', () => ({
   listMyAfterSalesCases: mocks.afterSales,
 }))
-vi.mock('@/api/resourceTransfers', () => ({
-  listMyResourceTransferInbox: mocks.inbox,
-  listMyResourceTransfers: mocks.mine,
-  acceptResourceTransfer: vi.fn(),
-  rejectResourceTransfer: vi.fn(),
-  cancelResourceTransfer: vi.fn(),
-}))
 
 import type { NotificationCard } from '@/shared/notifications'
 import NotificationCardItem from '@/components/notification/NotificationCardItem.vue'
 import NotificationsToolbar from '@/components/notification/NotificationsToolbar.vue'
 import NotificationCenterView from '@/views/NotificationCenterView.vue'
-import {
-  commentWarningFixture,
-  communityPostFixture,
-  historyDisclosureFixture,
-} from './notificationCenterFixtures'
+import { historyDisclosureFixture } from './notificationCenterFixtures'
 
 /**
  * 「系统通知」页（R047 拆分后）的挂载烟测：列表渲染、筛选切换、投票接口实参与跳转实参。
  *
  * 起这个用例的原因是拆分本身：数据搬进 `useNotificationCenter`、卡片搬进 `NotificationCardItem`、
  * 筛选搬进 `NotificationsToolbar`，三处接线都可能在拆分中接错，而原有用例只钉了资源过户那几个动作。
- * 这里钉用户工作台一侧的四件事：
- * 1. 四支请求都发出、公告只留已发布、用户端不拉过户；
+ * 这里钉用户工作台一侧的三件事：
+ * 1. 两支请求都发出（公开申请 + 解除合作案件）；
  * 2. 类别胶囊与关键词真的会收窄列表，重置能回到全部；
- * 3. 投票调接口的实参（令牌 / 申请 id / 决定），且只重拉公开申请那一支；
- * 4. 点公告卡片跳到社区帖，非公告卡片点了不跳。
+ * 3. 投票调接口的实参（令牌 / 申请 id / 决定），且只重拉公开申请那一支。
  */
 
 function mountView(): VueWrapper {
@@ -116,39 +96,24 @@ function cardTitles(wrapper: VueWrapper): string[] {
 
 beforeEach(() => {
   vi.clearAllMocks()
-  mocks.warnings.mockResolvedValue([commentWarningFixture()])
   mocks.disclosures.mockResolvedValue([historyDisclosureFixture()])
-  mocks.afterSales.mockResolvedValue({ items: [] })
-  // 一条已发布 + 一条待审核：待审核的不该出现在用户的通知里
-  mocks.posts.mockResolvedValue([
-    communityPostFixture(),
-    communityPostFixture({ id: 8, title: '待审核的公告', status: 'pending_review' }),
-  ])
+  // 契约 `GET /api/dispute/cases` 回的是数组本身，不是 `{ items }` 那种分页壳
+  mocks.afterSales.mockResolvedValue([])
   mocks.respondDisclosure.mockResolvedValue({})
 })
 
 describe('系统通知：渲染与筛选', () => {
-  it('四支请求都发、公告只留已发布、用户端不拉过户', async () => {
+  it('两支请求都发、用户端不拉过户', async () => {
     const wrapper = mountView()
     await flushPromises()
 
-    expect(mocks.warnings).toHaveBeenCalledWith('test-token')
     expect(mocks.disclosures).toHaveBeenCalledWith('test-token')
     expect(mocks.afterSales).toHaveBeenCalledWith('test-token')
-    // 公告是公开接口：不带令牌，取最近 50 条
-    expect(mocks.posts).toHaveBeenCalledWith({ tag: '公告', limit: 50, offset: 0 })
-    // 用户端没有过户这一类，两份过户列表一次都不该请求
-    expect(mocks.inbox).not.toHaveBeenCalled()
-    expect(mocks.mine).not.toHaveBeenCalled()
 
-    expect(state(wrapper).cards).toHaveLength(3)
-    expect(cardTitles(wrapper)).toContain('平台维护公告')
-    expect(cardTitles(wrapper)).not.toContain('待审核的公告')
-    expect(wrapper.findAll('.notifications-card')).toHaveLength(3)
+    expect(state(wrapper).cards).toHaveLength(1)
+    expect(cardTitles(wrapper)).toContain('企业官网改版')
+    expect(wrapper.findAll('.notifications-card')).toHaveLength(1)
 
-    // 顶栏第三格在用户端是「评论警告」，不是「资源过户」
-    expect(wrapper.text()).toContain('评论警告')
-    expect(wrapper.text()).not.toContain('资源过户')
     wrapper.unmount()
   })
 
@@ -157,25 +122,19 @@ describe('系统通知：渲染与筛选', () => {
     await flushPromises()
 
     const chips = wrapper.findAll('.wb-chip')
-    // 用户端胶囊：全部 / 评论警告 / 公开申请 / 解除合作案件 / 平台公告（过户那一格不出现）
-    expect(chips.map((chip) => chip.text())).toEqual([
-      '全部3',
-      '评论警告1',
-      '公开申请1',
-      '解除合作案件0',
-      '平台公告1',
-    ])
+    // 胶囊：全部 / 公开申请 / 解除合作案件
+    expect(chips.map((chip) => chip.text())).toEqual(['全部1', '公开申请1', '解除合作案件0'])
 
     await chips[1]!.trigger('click')
-    expect(state(wrapper).kindFilter).toBe('comment-warning')
+    expect(state(wrapper).kindFilter).toBe('history-disclosure')
     expect(state(wrapper).filteredCards).toHaveLength(1)
     expect(wrapper.findAll('.notifications-card')).toHaveLength(1)
 
     // 搜索词走工具栏的 v-model 回传（TInput 被 shallowMount 换成桩，直接发 model 事件）
-    wrapper.findComponent(NotificationsToolbar).vm.$emit('update:keyword', '平台公告')
+    wrapper.findComponent(NotificationsToolbar).vm.$emit('update:keyword', '不存在的词')
     await flushPromises()
-    expect(state(wrapper).keyword).toBe('平台公告')
-    // 评论警告卡里没有「平台公告」四个字 → 筛选后为空，空态给的是「没有匹配」
+    expect(state(wrapper).keyword).toBe('不存在的词')
+    // 公开申请卡里没有这个关键词 → 筛选后为空，空态给的是「没有匹配」
     expect(state(wrapper).filteredCards).toHaveLength(0)
     expect(wrapper.text()).toContain('没有匹配的系统通知')
 
@@ -183,7 +142,7 @@ describe('系统通知：渲染与筛选', () => {
     await flushPromises()
     expect(state(wrapper).kindFilter).toBe('all')
     expect(state(wrapper).keyword).toBe('')
-    expect(wrapper.findAll('.notifications-card')).toHaveLength(3)
+    expect(wrapper.findAll('.notifications-card')).toHaveLength(1)
     wrapper.unmount()
   })
 
@@ -191,13 +150,13 @@ describe('系统通知：渲染与筛选', () => {
     const wrapper = mountView()
     await flushPromises()
 
-    wrapper.findComponent(NotificationsToolbar).vm.$emit('update:keyword', '广告')
+    wrapper.findComponent(NotificationsToolbar).vm.$emit('update:keyword', '公开')
     await flushPromises()
 
-    // 「包含广告信息」是评论警告的正文行：搜索要能搜到正文，而不只是标题
+    // 「你和对方都同意后，这段记录才会向他公开」是公开申请的正文行：搜索要能搜到正文
     expect(state(wrapper).filteredCards).toHaveLength(1)
-    expect(cardTitles(wrapper)).toEqual(['社区评论被平台警告'])
-    expect(wrapper.text()).toContain('筛选出 1 / 3 条')
+    expect(cardTitles(wrapper)).toEqual(['企业官网改版'])
+    expect(wrapper.text()).toContain('筛选出 1 / 1 条')
     wrapper.unmount()
   })
 })
@@ -217,31 +176,13 @@ describe('系统通知：卡片动作与跳转', () => {
 
     expect(mocks.respondDisclosure).toHaveBeenCalledWith('test-token', 3, 'approved')
     expect(mocks.toast).toHaveBeenCalledWith('已同意公开这段历史沟通', 'success')
-    // 只重拉公开申请：另三支不会因为这一票变化，重拉会把列表滚回顶部
+    // 只重拉公开申请：另一支不会因为这一票变化，重拉会把列表滚回顶部
     expect(mocks.disclosures).toHaveBeenCalledTimes(2)
-    expect(mocks.warnings).toHaveBeenCalledTimes(1)
     expect(mocks.afterSales).toHaveBeenCalledTimes(1)
-    expect(mocks.posts).toHaveBeenCalledTimes(1)
     wrapper.unmount()
   })
 
-  it('点公告卡片跳社区帖，点非公告卡片不跳', async () => {
-    const wrapper = mountView()
-    await flushPromises()
-
-    const items = wrapper.findAllComponents(NotificationCardItem)
-    const announcement = items.find((item) => item.props('card').postId != null)!
-    const plain = items.find((item) => item.props('card').postId == null)!
-
-    await plain.trigger('click')
-    expect(mocks.push).not.toHaveBeenCalled()
-
-    await announcement.trigger('click')
-    expect(mocks.push).toHaveBeenCalledWith({ name: 'community-post', params: { postId: 7 } })
-    wrapper.unmount()
-  })
-
-  it('未登录：需要令牌的三支直接跳过，公告照常取', async () => {
+  it('未登录：需要令牌的两支直接跳过', async () => {
     const auth = await import('@/stores/auth')
     vi.spyOn(auth, 'useAuthStore').mockReturnValue({
       token: '',
@@ -252,11 +193,9 @@ describe('系统通知：卡片动作与跳转', () => {
     const wrapper = mountView()
     await flushPromises()
 
-    expect(mocks.warnings).not.toHaveBeenCalled()
     expect(mocks.disclosures).not.toHaveBeenCalled()
     expect(mocks.afterSales).not.toHaveBeenCalled()
-    expect(mocks.posts).toHaveBeenCalledTimes(1)
-    expect(wrapper.findAll('.notifications-card')).toHaveLength(1)
+    expect(wrapper.findAll('.notifications-card')).toHaveLength(0)
     wrapper.unmount()
   })
 })

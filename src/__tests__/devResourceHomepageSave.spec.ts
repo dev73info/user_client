@@ -193,7 +193,8 @@ describe('DevResourceHomepageEditView：回填与保存载荷', () => {
       origin_url: 'https://origin.example.com/post/1',
       origin_org: '苦力怕论坛',
       origin_note: '已获授权',
-      price_fen: 1234,
+      // 契约的写入口是买断价 `buyout_price_fen`（`price_fen` 只是后端兼容的旧名）
+      buyout_price_fen: 1234,
       price_points: 0,
       copyright_declared: true,
       // 0 也要显式下发：清空比例不能靠省略字段变成静默失效

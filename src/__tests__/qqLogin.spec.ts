@@ -50,7 +50,12 @@ describe('QQ direct authorization', () => {
     popup.location.href = ''
     popup.closed = false
     vi.spyOn(window, 'open').mockReturnValue(popup as unknown as Window)
-    mocks.getUrl.mockResolvedValue({ url: 'https://graph.qq.com/oauth2.0/show?state=test', state: 'test' })
+    // 契约 `QrUrlResponse` 三个字段缺一不可：轮询要靠 `poll_secret`
+    mocks.getUrl.mockResolvedValue({
+      url: 'https://graph.qq.com/oauth2.0/show?state=test',
+      state: 'test',
+      poll_secret: 'test-secret',
+    })
     mocks.getStatus.mockResolvedValue({ token: null })
     wrapper = mount(defineComponent({
       setup() {
@@ -87,6 +92,8 @@ describe('QQ direct authorization', () => {
     mocks.getStatus.mockResolvedValueOnce({ token: 'qq-token' })
     await vi.advanceTimersByTimeAsync(2000)
     await flushPromises()
+    // 轮询必须带 `state` + `poll_secret` 两个查询参数（契约 `QrStatusQuery`）
+    expect(mocks.getStatus).toHaveBeenCalledWith('test', 'test-secret')
     expect(mocks.auth.setToken).toHaveBeenCalledWith('qq-token')
     expect(mocks.auth.fetchProfile).toHaveBeenCalledWith(true)
     expect(mocks.router.replace).toHaveBeenCalledWith('/')

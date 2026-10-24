@@ -59,15 +59,17 @@ describe('WeChat browser-only polling credential', () => {
     vi.restoreAllMocks()
   })
 
-  it('sends the credential only in the request header through the HTTP client', async () => {
+  it('sends the credential as the contract requires: poll_secret in the query string', async () => {
     mocks.fetch.mockResolvedValueOnce(new Response(JSON.stringify({ token: null }), {
       headers: { 'Content-Type': 'application/json' },
     }))
     await getWechatLoginQrStatus(qr.state, qr.poll_secret)
     const [url, init] = mocks.fetch.mock.calls.find(([url]) => String(url).includes('/qr/status'))!
+    // 契约 `QrStatusQuery` 只认两个**查询参数** `state` + `poll_secret`；
+    // 早先按自定义头 `X-Wechat-Login-Poll-Secret` 传，后端根本不读，轮询一律回过期。
     expect(String(url)).toContain('state=pc-state')
-    expect(String(url)).not.toContain(qr.poll_secret)
-    expect(new Headers(init.headers).get('X-Wechat-Login-Poll-Secret')).toBe(qr.poll_secret)
+    expect(String(url)).toContain(`poll_secret=${qr.poll_secret}`)
+    expect(new Headers(init.headers).get('Authorization')).toBeNull()
     expect(init.cache).toBe('no-store')
   })
 

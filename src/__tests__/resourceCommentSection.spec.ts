@@ -33,11 +33,9 @@ const comments: PublicMcResourceCommentItem[] = [
     id: 31,
     resource_id: 7,
     commenter: 'bob',
-    comment_text: '兼容 1.20 没问题',
+    comment: '兼容 1.20 没问题',
     created_at: '2026-02-03 08:00:00',
     updated_at: '2026-02-03 09:00:00',
-    commenter_username_gradient: false,
-    commenter_username_color: '',
   },
 ]
 
@@ -131,11 +129,9 @@ describe('ResourceCommentSection', () => {
       id: 32,
       resource_id: 7,
       commenter: 'alice',
-      comment_text: '装完就能跑',
+      comment: '装完就能跑',
       created_at: '2026-02-04 08:00:00',
       updated_at: '2026-02-04 09:00:00',
-      commenter_username_gradient: false,
-      commenter_username_color: '',
     }
     mocks.createComment.mockResolvedValue(saved)
 

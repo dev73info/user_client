@@ -25,7 +25,7 @@ function requirement(
     title: '需求单',
     payment_mode: 'platform_guarantee',
     status: 'in_development',
-    updated_at: '2026-09-10 10:00:00',
+    subscribe_status_change: false,
     ...part,
   }
 }
@@ -53,6 +53,7 @@ function resource(
     origin_url: null,
     origin_org: null,
     origin_note: null,
+    buyout_price_fen: 0,
     price_fen: 0,
     price_points: 0,
     copyright_declared: false,
@@ -74,6 +75,9 @@ function version(
     note: null,
     creator: 'dev_flow',
     created_at: '2026-09-05 10:00:00',
+    is_current: false,
+    price_fen: 0,
+    purchasable: false,
     ...part,
   }
 }
@@ -200,15 +204,15 @@ describe('交付与到账的归并行', () => {
   it('需求单按接口给的顺序在前，未关联的补充行排在其后', () => {
     const rows = buildDevOrderRows(
       [
-        requirement({ requirement_id: 'REQ-B', updated_at: '2026-09-10 10:00:00' }),
-        requirement({ requirement_id: 'REQ-A', updated_at: '2026-09-09 10:00:00' }),
+        requirement({ requirement_id: 'REQ-B', created_time: '2026-09-10 10:00:00' }),
+        requirement({ requirement_id: 'REQ-A', created_time: '2026-09-09 10:00:00' }),
       ],
       [resource({ id: 11 })],
       new Map([[11, [version(11, { id: 1, version: 'v0.1.0' })]]]),
       [income({ payment_id: 'p9', requirement_id: 'REQ-9' })],
     )
 
-    // 需求单接口给的就是更新时间倒序，这里不再重排；补充行（已解绑的到账）跟在后头。
+    // 需求单接口给的就是倒序，这里不再重排；补充行（已解绑的到账）跟在后头。
     // 这份数据里资源 11 有版本却没被任何需求单绑定，按新口径不成行，列表里只剩两条需求单加一条到账。
     expect(rows.map((row) => row.requirementId)).toEqual(['REQ-B', 'REQ-A', 'REQ-9'])
   })

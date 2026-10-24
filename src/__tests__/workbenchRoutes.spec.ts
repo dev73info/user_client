@@ -13,7 +13,6 @@ import {
   messagesRouteNameFor,
   notificationsRouteNameFor,
   resolveWorkbenchTitle,
-  ticketsRouteNameFor,
   workbenchBrandTitleFor,
 } from '@/shared/workbenchRoutes'
 
@@ -36,7 +35,7 @@ describe('isMenuItemActive', () => {
   })
 
   it('名字不同不高亮', () => {
-    expect(isMenuItemActive(itemOf(), contextOf({ name: 'workbench-points' }))).toBe(false)
+    expect(isMenuItemActive(itemOf(), contextOf({ name: 'workbench-coupons' }))).toBe(false)
   })
 
   it('条目带 hash 时按 hash 精确比对', () => {
@@ -164,11 +163,9 @@ describe('resolveWorkbenchTitle', () => {
 })
 
 describe('两种工作台各自的路由名', () => {
-  it('消息中心 / 工单中心 / 系统通知各有一对路由', () => {
+  it('消息中心 / 系统通知各有一对路由', () => {
     expect(messagesRouteNameFor(false)).toBe('workbench-messages')
     expect(messagesRouteNameFor(true)).toBe('dev-messages')
-    expect(ticketsRouteNameFor(false)).toBe('workbench-tickets')
-    expect(ticketsRouteNameFor(true)).toBe('dev-tickets')
     expect(notificationsRouteNameFor(false)).toBe('workbench-notifications')
     expect(notificationsRouteNameFor(true)).toBe('dev-notifications')
   })
@@ -176,7 +173,6 @@ describe('两种工作台各自的路由名', () => {
   it('只有两条消息路由算「停在消息中心」', () => {
     expect(isMessagesRouteName('workbench-messages')).toBe(true)
     expect(isMessagesRouteName('dev-messages')).toBe(true)
-    expect(isMessagesRouteName('workbench-tickets')).toBe(false)
     expect(isMessagesRouteName(null)).toBe(false)
   })
 

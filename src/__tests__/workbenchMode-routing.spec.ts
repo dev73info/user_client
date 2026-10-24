@@ -49,22 +49,6 @@ describe('workbench route switching', () => {
     user.wrapper.unmount()
   })
 
-  it('工单中心在两种工作台各走各的路由：开发者端不切回用户菜单', async () => {
-    const dev = await renderWorkbench('dev-resource-list')
-    await rootLink(dev.wrapper, '工单中心').trigger('click')
-    await flushPromises()
-    expect(dev.router.currentRoute.value.name).toBe('dev-tickets')
-    expect(dev.wrapper.find('.user-workbench__brand-title').text()).toBe('开发者工作台')
-    dev.wrapper.unmount()
-
-    const user = await renderWorkbench('workbench')
-    await rootLink(user.wrapper, '工单中心').trigger('click')
-    await flushPromises()
-    expect(user.router.currentRoute.value.name).toBe('workbench-tickets')
-    expect(user.wrapper.find('.user-workbench__brand-title').text()).toBe('我的工作台')
-    user.wrapper.unmount()
-  })
-
   it('侧栏「退出登录」确认后清会话并回到首页', async () => {
     const { TMessageBox } = await import('ui_73info')
     vi.mocked(TMessageBox.confirm).mockResolvedValue(true)

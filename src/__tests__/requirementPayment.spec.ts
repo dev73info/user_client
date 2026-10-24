@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest'
 
 import {
-  calculateFinalDepositAmount,
-  calculateFinalPaymentAmount,
+  calculateDepositFen,
+  calculateFinalPaymentFen,
   isRequirementFinalPayment,
-  requirementPayAmount,
+  requirementPayFen,
   requirementPayStageLabel,
 } from '@/shared/requirementPayment'
 
@@ -13,35 +13,37 @@ import {
  *
  * 这个视图没有挂载测试，纯函数层是拆分后唯一的回归网：比例是**注入**的（`useMyRequirementsData`
  * 从 settings 接口取），所以这里只验「给定比例算出什么」，不验比例从哪来。
+ *
+ * 金额一律**整数分**：契约里 `budget` 是元，进函数时换成整数分，出函数也是分，
+ * 元只在渲染那一步用 `formatFenAsCny`。
  */
 
-describe('定金 / 尾款金额', () => {
+describe('定金 / 尾款金额（整数分）', () => {
   it('有比例时定金按比例、尾款按差额，两者相加等于总额', () => {
     const item = { budget: 10000 }
-    expect(calculateFinalDepositAmount(item, 20)).toBe(2000)
-    expect(calculateFinalPaymentAmount(item, 20)).toBe(8000)
-    expect(calculateFinalDepositAmount(item, 20) + calculateFinalPaymentAmount(item, 20)).toBe(
-      10000,
-    )
+    expect(calculateDepositFen(item, 20)).toBe(200000)
+    expect(calculateFinalPaymentFen(item, 20)).toBe(800000)
+    expect(calculateDepositFen(item, 20) + calculateFinalPaymentFen(item, 20)).toBe(1000000)
   })
 
-  it('比例为 0 / 非法 / 缺失时定金按全额（老口径，别在这里改成报错）', () => {
+  it('比例为 0 / 非法时定金按全额（老口径，别在这里改成报错）', () => {
     const item = { budget: 500 }
-    expect(calculateFinalDepositAmount(item, 0)).toBe(500)
-    expect(calculateFinalDepositAmount(item, Number.NaN)).toBe(500)
-    expect(calculateFinalPaymentAmount(item, 0)).toBe(0.01)
+    expect(calculateDepositFen(item, 0)).toBe(50000)
+    expect(calculateDepositFen(item, Number.NaN)).toBe(50000)
+    expect(calculateFinalPaymentFen(item, 0)).toBe(1)
   })
 
-  it('预算缺失时按 1 元兜底，预算为 0 或过小时地到 0.01 下限，不会算出 0 元订单', () => {
-    // 缺 budget 走 `requirementBudgetAmount` 的 1 元兜底（老口径），不是 0.01。
-    expect(calculateFinalDepositAmount({}, 20)).toBe(0.2)
-    expect(calculateFinalDepositAmount({ budget: 0 }, 20)).toBe(0.01)
-    expect(calculateFinalPaymentAmount({ budget: 0.01 }, 20)).toBe(0.01)
+  it('预算缺失时按 1 元兜底，预算为 0 或过小时落到 1 分下限，不会算出 0 元订单', () => {
+    // 缺 budget 走 1 元兜底（老口径），显式的 0 就是 0
+    expect(calculateDepositFen({}, 20)).toBe(20)
+    expect(calculateDepositFen({ budget: 0 }, 20)).toBe(1)
+    expect(calculateFinalPaymentFen({ budget: 0.01 }, 20)).toBe(1)
   })
 
-  it('金额保留两位小数（预算带小数时不会出现长小数）', () => {
-    expect(calculateFinalDepositAmount({ budget: 333.33 }, 33)).toBe(110)
-    expect(calculateFinalPaymentAmount({ budget: 333.33 }, 33)).toBe(223.33)
+  it('结果天然是整数分（预算带小数时不会出现长小数）', () => {
+    expect(calculateDepositFen({ budget: 333.33 }, 33)).toBe(11000)
+    expect(calculateFinalPaymentFen({ budget: 333.33 }, 33)).toBe(22333)
+    expect(Number.isInteger(calculateDepositFen({ budget: 333.33 }, 33))).toBe(true)
   })
 })
 
@@ -60,7 +62,7 @@ describe('支付阶段与本次应付', () => {
   })
 
   it('本次应付按阶段取金额：定金取比例、尾款取差额', () => {
-    expect(requirementPayAmount({ status: 'pending_deposit', budget: 10000 }, 20)).toBe(2000)
-    expect(requirementPayAmount({ status: 'pending_final', budget: 10000 }, 20)).toBe(8000)
+    expect(requirementPayFen({ status: 'pending_deposit', budget: 10000 }, 20)).toBe(200000)
+    expect(requirementPayFen({ status: 'pending_final', budget: 10000 }, 20)).toBe(800000)
   })
 })

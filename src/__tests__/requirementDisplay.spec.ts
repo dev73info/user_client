@@ -36,8 +36,10 @@ function spotlight(overrides: Partial<PublicRequirementSpotlightItem> = {}) {
     budget: 8000,
     payment_mode: 'platform_guarantee',
     status: 'pending_deposit',
-    created_at: '2026-10-01T02:00:00Z',
-    updated_at: '2026-10-02T02:00:00Z',
+    creator: 'alice',
+    claimable: true,
+    created_at: '2026-10-01 10:00:00',
+    updated_at: '2026-10-02 10:00:00',
     ...overrides,
   } as PublicRequirementSpotlightItem
 }
@@ -130,7 +132,7 @@ describe('大厅读数、空态与最近交付', () => {
     total_turnover_cny: 0,
     total_turnover_change_rate: 0,
     recent_deals: [],
-  } as RequirementOverviewResp
+  } as unknown as RequirementOverviewResp
 
   it('三格读数：可浏览需求取后端 total，概览缺失时其余两格归零', () => {
     expect(requirementHallStats(25, overview)).toEqual([
@@ -205,7 +207,10 @@ describe('详情浮层的接取入口判定', () => {
     expect(requirementOwnedByCurrentUser(false, 'alice', spotlight({ creator: 'alice' }))).toBe(
       false,
     )
-    expect(requirementOwnedByCurrentUser(true, 'alice', spotlight())).toBe(false)
+    // 契约里 `creator` 是必填，但列表侧历史上可能拿不到这份数据——缺了就按「不是自己的」处理
+    expect(
+      requirementOwnedByCurrentUser(true, 'alice', {} as PublicRequirementSpotlightItem),
+    ).toBe(false)
     expect(requirementOwnedByCurrentUser(true, 'alice', null)).toBe(false)
   })
 

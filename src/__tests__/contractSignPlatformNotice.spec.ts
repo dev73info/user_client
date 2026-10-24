@@ -5,7 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi, type Mock } from 'vite
 
 import type { ContractDetail } from '@/api/contracts'
 import type { RequirementItem } from '@/api/requirements'
-import { LEGAL_NOTICE_VERSION, readLegalNoticeConfirmedAt } from '@/components/legal/legalNotice'
+import { readLegalNoticeConfirmedAt } from '@/components/legal/legalNotice'
 import { CONTRACT_STATUS } from '@/shared/contracts'
 import { useAuthStore } from '@/stores/auth'
 import ContractSignView from '@/views/ContractSignView.vue'
@@ -46,7 +46,7 @@ vi.mock('@/api/requirements', async (orig) => ({
 vi.mock('@/api/auth', async (orig) => ({
   ...(await orig<typeof import('@/api/auth')>()),
   recordAgreementAcceptance: mocks.recordAcceptance,
-  fetchAgreementContent: mocks.agreementContent,
+  fetchUserServiceAgreement: mocks.agreementContent,
 }))
 vi.mock('@/components/ContractAttachmentPanel.vue', () => ({
   default: {
@@ -63,8 +63,9 @@ vi.mock('@/components/ContractAttachmentPanel.vue', () => ({
 }))
 
 const SIGN_URL = 'https://asign.example/sign/HT-2026-9001'
-const AGREEMENT_VERSION = '2026-10-21-v2'
-const AGREEMENT_EFFECTIVE_AT = '2026-10-21'
+/** 契约里协议版本是**自增整数**（`AgreementContentResponse.version`），不是 1.x 的日期串。 */
+const AGREEMENT_VERSION = 20261021
+const AGREEMENT_EFFECTIVE_AT = '2026-10-21 00:00:00'
 
 /** 开发者入驻协议：平台是甲方，当前登录账号是乙方。 */
 function developerAgreement(patch: Partial<ContractDetail> = {}): ContractDetail {
@@ -152,9 +153,13 @@ beforeEach(() => {
   mocks.syncStatus.mockResolvedValue(developerAgreement())
   mocks.previewUrl.mockResolvedValue('')
   mocks.recordAcceptance.mockResolvedValue({
+    username: 'alice',
+    role: 'user',
     agreement_code: 'developer_agreement',
     agreement_version: AGREEMENT_VERSION,
-    accepted_at: '2026-10-22 10:00:00',
+    client_platform: 'web',
+    source: 'sign',
+    agreed_at: '2026-10-22 10:00:00',
   })
   mocks.agreementContent.mockResolvedValue({
     code: 'developer_agreement',
@@ -162,6 +167,7 @@ beforeEach(() => {
     content: '一、协议主体与适用范围\n1. 本协议由平台与开发者共同订立。',
     version: AGREEMENT_VERSION,
     effective_at: AGREEMENT_EFFECTIVE_AT,
+    updated_at: AGREEMENT_EFFECTIVE_AT,
   })
 
   let href = ''
@@ -223,9 +229,10 @@ describe('平台协议签署页：重要条款提示与二次确认', () => {
     expect(notice.text()).toContain('重要条款提示')
     expect(notice.text()).toContain('责任限制')
     expect(notice.text()).toContain('争议解决')
-    // 提示组件自己读到了协议版本（页面没传，所以它发了一次请求）
-    expect(mocks.agreementContent).toHaveBeenCalledWith('developer_agreement')
-    expect(notice.text()).toContain(AGREEMENT_VERSION)
+    // 开发者入驻协议在契约里只有合同详情（`ContractResponse` 没有版本号），
+    // 所以提示组件**不发请求、也不显示版本**——原来那条 `/auth/agreement-content` 是 404 的假接口。
+    expect(mocks.agreementContent).not.toHaveBeenCalled()
+    expect(notice.text()).not.toContain(String(AGREEMENT_VERSION))
 
     expect(signButton(wrapper)?.attributes('disabled')).toBeDefined()
 
@@ -235,7 +242,7 @@ describe('平台协议签署页：重要条款提示与二次确认', () => {
     wrapper.unmount()
   })
 
-  it('勾选后发起签署：留痕带上提示确认时间与提示版本', async () => {
+  it('勾选后发起签署：留痕只带契约支持的字段，提示确认时间落在本次会话', async () => {
     const wrapper = await render({ agreement: 'developer' })
 
     await noticeCheckbox(wrapper).setValue(true)
@@ -243,19 +250,21 @@ describe('平台协议签署页：重要条款提示与二次确认', () => {
     await flushPromises()
 
     expect(mocks.initiateSign).toHaveBeenCalledWith('test-token', 901, false)
-    // 留痕：协议 code / 协议版本 / 来源 / 提示确认时间（ISO 串）/ 提示版本
+    // 留痕请求体按契约 `AgreementAcceptanceRequest`：协议 code / 版本 / 客户端形态 / 来源。
+    // **没有**「提示确认时间」「提示版本」这两个字段——2.0 的留痕表不存它们，
+    // 传了也会被后端丢弃，所以不虚构一次「提示信息已留痕」。
     expect(mocks.recordAcceptance).toHaveBeenCalledTimes(1)
-    const [token, code, version, platform, source, confirmedAt, noticeVersion] = mocks
-      .recordAcceptance.mock.calls[0] as string[]
+    const [token, code, version, platform, source] = mocks.recordAcceptance.mock
+      .calls[0] as string[]
     expect(token).toBe('test-token')
     expect(code).toBe('developer_agreement')
-    expect(version).toBe(AGREEMENT_VERSION)
+    // 拿不到版本就留空：后端按「留空取模板当前版本」落库（`application/agreement.rs`），
+    // 前端不编一个版本号出来。
+    expect(version).toBe('')
     expect(platform).toBeTruthy()
     expect(source).toBe('sign')
-    expect(confirmedAt).toMatch(/^\d{4}-\d{2}-\d{2}T/)
-    expect(noticeVersion).toBe(LEGAL_NOTICE_VERSION)
-    // 确认时间同时记进本次会话（第三方快捷登录补记时要用）
-    expect(readLegalNoticeConfirmedAt()).toBe(confirmedAt)
+    // 提示确认时间只留在本次会话（sessionStorage），第三方快捷登录补记时要用
+    expect(readLegalNoticeConfirmedAt()).toMatch(/^\d{4}-\d{2}-\d{2}T/)
 
     expect(redirectTo).toHaveBeenCalledWith(SIGN_URL)
 

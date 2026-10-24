@@ -7,35 +7,33 @@ import {
 } from '@/utils/settlementAccount'
 
 const validForm = {
-  card_id: '6222 0000 0000 0000',
+  card_id: '1234',
   bank_code: '01020000',
-  bank_name: 'wrong name',
-  prov_code: '0011',
-  area_code: '1100',
   bank_acct_type: '2',
 }
 
 describe('settlement account selections', () => {
-  it('normalizes the card and submits official codes and the selected bank name', () => {
-    expect(prepareSettlementAccount(validForm)).toEqual({
-      ...validForm,
-      card_id: '6222000000000000',
+  it('submits only the current settlement DTO fields', () => {
+    expect(prepareSettlementAccount(validForm, '张三')).toEqual({
+      account_name: '张三',
       bank_name: '工商银行',
+      account_no_tail: '1234',
+      member_type: 'personal',
     })
   })
 
   it.each([
-    [{ card_id: '' }, '银行卡号'],
-    [{ card_id: '6222-abcd-0000' }, '银行卡号'],
+    [{ card_id: '' }, '后四位'],
+    [{ card_id: 'abcd' }, '后四位'],
     [{ bank_code: '' }, '开户银行'],
     [{ bank_code: 'unknown' }, '开户银行'],
-    [{ prov_code: '' }, '开户省份'],
-    [{ prov_code: '110000' }, '开户省份'],
-    [{ area_code: '' }, '开户城市'],
-    [{ area_code: '1200' }, '开户城市'],
     [{ bank_acct_type: '3' }, '账户类型'],
   ])('rejects invalid fields: %j', (overrides, message) => {
-    expect(() => prepareSettlementAccount({ ...validForm, ...overrides })).toThrow(message)
+    expect(() => prepareSettlementAccount({ ...validForm, ...overrides }, '张三')).toThrow(message)
+  })
+
+  it('requires the realname account holder', () => {
+    expect(() => prepareSettlementAccount(validForm, '')).toThrow('收款户名')
   })
 
   it('only offers cities belonging to the selected province', () => {
@@ -53,6 +51,8 @@ describe('settlement account selections', () => {
   })
 
   it('preserves the corporate account type', () => {
-    expect(prepareSettlementAccount({ ...validForm, bank_acct_type: '1' }).bank_acct_type).toBe('1')
+    expect(prepareSettlementAccount({ ...validForm, bank_acct_type: '1' }, '某公司').member_type).toBe(
+      'enterprise',
+    )
   })
 })
