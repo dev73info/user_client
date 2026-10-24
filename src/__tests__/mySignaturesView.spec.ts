@@ -10,23 +10,42 @@ import type { MyContractSummary } from '@/api/contracts'
 import { CONTRACT_STATUS } from '@/shared/contracts'
 
 const mocks = vi.hoisted(() => ({
-  list: vi.fn(), realname: vi.fn(), detail: vi.fn(), developerAgreement: vi.fn(), sync: vi.fn(),
-  initiate: vi.fn(), preview: vi.fn(), requirementContract: vi.fn(),
+  list: vi.fn(),
+  realname: vi.fn(),
+  detail: vi.fn(),
+  developerAgreement: vi.fn(),
+  sync: vi.fn(),
+  initiate: vi.fn(),
+  preview: vi.fn(),
+  requirementContract: vi.fn(),
 }))
 vi.mock('@/api/contracts', () => ({
-  listMyContracts: mocks.list, fetchMyContract: mocks.detail,
-  fetchDeveloperAgreement: mocks.developerAgreement, fetchMyRequirementContract: mocks.requirementContract,
-  syncAsignSignStatus: mocks.sync, initiateAsignSign: mocks.initiate,
+  listMyContracts: mocks.list,
+  fetchMyContract: mocks.detail,
+  fetchDeveloperAgreement: mocks.developerAgreement,
+  fetchMyRequirementContract: mocks.requirementContract,
+  syncAsignSignStatus: mocks.sync,
+  initiateAsignSign: mocks.initiate,
   fetchAsignContractPreviewUrl: mocks.preview,
 }))
 vi.mock('@/api/realname', () => ({ getMyRealnameVerification: mocks.realname }))
-vi.mock('@/api/conversations', () => ({ listRequirementConversations: vi.fn().mockResolvedValue([]) }))
+vi.mock('@/api/conversations', () => ({
+  listRequirementConversations: vi.fn().mockResolvedValue([]),
+}))
 vi.mock('@/api/team', () => ({ listUserInvitations: vi.fn().mockResolvedValue([]) }))
 
 const base: MyContractSummary = {
-  id: 1, contract_no: 'HT-001', title: '网站服务合同', template_name: 'service', status: CONTRACT_STATUS.signing,
-  party_a_name: '甲方公司', party_a_username: 'alice', party_a_signed_at: null,
-  party_b_name: '乙方公司', party_b_username: 'bob', party_b_signed_at: null,
+  id: 1,
+  contract_no: 'HT-001',
+  title: '网站服务合同',
+  template_name: 'service',
+  status: CONTRACT_STATUS.signing,
+  party_a_name: '甲方公司',
+  party_a_username: 'alice',
+  party_a_signed_at: null,
+  party_b_name: '乙方公司',
+  party_b_username: 'bob',
+  party_b_signed_at: null,
   created_at: '2026-09-09 10:00:00',
 }
 
@@ -40,8 +59,16 @@ beforeEach(() => {
   vi.spyOn(auth, 'hydrate').mockImplementation(() => {})
   vi.spyOn(auth, 'initializeSession').mockResolvedValue({ username: 'alice', role: 'user' })
   mocks.realname.mockResolvedValue({ status: 'approved' })
-  mocks.list.mockResolvedValue([base, { ...base, id: 2, contract_no: 'HT-002', title: '已完成合同', status: CONTRACT_STATUS.signed }])
-  mocks.detail.mockResolvedValue({ ...base, content: '合同正文内容', content_sha256: 'abc', signing_logs: [] })
+  mocks.list.mockResolvedValue([
+    base,
+    { ...base, id: 2, contract_no: 'HT-002', title: '已完成合同', status: CONTRACT_STATUS.signed },
+  ])
+  mocks.detail.mockResolvedValue({
+    ...base,
+    content: '合同正文内容',
+    content_sha256: 'abc',
+    signing_logs: [],
+  })
 })
 
 async function render(
@@ -49,18 +76,42 @@ async function render(
   detail = false,
   initialPath?: string,
 ) {
-  const names = ['workbench', 'workbench-requirements', 'workbench-account',
-    'workbench-authorized-apps', 'workbench-purchase-transfers',
-    'workbench-invoices', 'workbench-points', 'workbench-perks', 'workbench-coupons',
-    'workbench-badges', 'workbench-notifications', 'workbench-favorites', 'workbench-resource-purchases', 'workbench-invite', 'workbench-teams',
-    'workbench-team-resources', 'workbench-tickets', 'dev-resource-list', 'dev-requirement-hall',
-    'dev-my-requirements', 'dev-wallet']
-  const router = createRouter({ history: createMemoryHistory(), routes: [
-    ...names.map((name) => ({ name, path: `/${name}`, component: { template: '<div />' } })),
-    { name: 'workbench-signatures', path: '/workbench/signatures', component: MySignaturesView },
-    { name: 'workbench-signature-detail', path: '/workbench/signatures/:contractId', component: ContractSignView },
-    { name: 'contract-sign', path: '/contract-sign', component: ContractSignView },
-  ] })
+  const names = [
+    'workbench',
+    'workbench-requirements',
+    'workbench-account',
+    'workbench-authorized-apps',
+    'workbench-purchase-transfers',
+    'workbench-invoices',
+    'workbench-points',
+    'workbench-perks',
+    'workbench-coupons',
+    'workbench-badges',
+    'workbench-notifications',
+    'workbench-favorites',
+    'workbench-resource-purchases',
+    'workbench-invite',
+    'workbench-teams',
+    'workbench-team-resources',
+    'workbench-tickets',
+    'dev-resource-list',
+    'dev-requirement-hall',
+    'dev-my-requirements',
+    'dev-wallet',
+  ]
+  const router = createRouter({
+    history: createMemoryHistory(),
+    routes: [
+      ...names.map((name) => ({ name, path: `/${name}`, component: { template: '<div />' } })),
+      { name: 'workbench-signatures', path: '/workbench/signatures', component: MySignaturesView },
+      {
+        name: 'workbench-signature-detail',
+        path: '/workbench/signatures/:contractId',
+        component: ContractSignView,
+      },
+      { name: 'contract-sign', path: '/contract-sign', component: ContractSignView },
+    ],
+  })
   const path = initialPath ?? (detail ? '/workbench/signatures/1' : '/workbench/signatures')
   await router.push(path)
   const wrapper = mount(component, {
@@ -127,7 +178,12 @@ describe('my signatures list', () => {
     const { wrapper } = await render(MySignaturesView)
     expect(wrapper.text()).toContain('暂无签署记录')
     let resolve!: (items: MyContractSummary[]) => void
-    mocks.list.mockImplementationOnce(() => new Promise((done) => { resolve = done }))
+    mocks.list.mockImplementationOnce(
+      () =>
+        new Promise((done) => {
+          resolve = done
+        }),
+    )
     await wrapper.find('.wb-strip__action button').trigger('click')
     expect(wrapper.text()).toContain('正在加载签署记录')
     useAuthStore().token = ''
@@ -161,7 +217,14 @@ describe('realname-gated menu', () => {
 
 describe('signature detail', () => {
   it('loads the exact contract without creating a developer agreement', async () => {
-    mocks.detail.mockResolvedValue({ ...base, template_name: 'developer_agreement', status: CONTRACT_STATUS.signed, content: '正文', content_sha256: 'abc', signing_logs: [] })
+    mocks.detail.mockResolvedValue({
+      ...base,
+      template_name: 'developer_agreement',
+      status: CONTRACT_STATUS.signed,
+      content: '正文',
+      content_sha256: 'abc',
+      signing_logs: [],
+    })
     const { wrapper, router } = await render(ContractSignView, true)
     expect(mocks.detail).toHaveBeenCalledWith('test-token', 1)
     expect(mocks.developerAgreement).not.toHaveBeenCalled()
@@ -175,7 +238,13 @@ describe('signature detail', () => {
     wrapper.unmount()
   })
   it('falls back to the local body when asign has no preview for the signed contract', async () => {
-    mocks.detail.mockResolvedValue({ ...base, status: CONTRACT_STATUS.signed, content: '正文', content_sha256: 'abc', signing_logs: [] })
+    mocks.detail.mockResolvedValue({
+      ...base,
+      status: CONTRACT_STATUS.signed,
+      content: '正文',
+      content_sha256: 'abc',
+      signing_logs: [],
+    })
     mocks.preview.mockResolvedValue('')
     const { wrapper } = await render(ContractSignView, true)
     await wrapper.find('.contract-meta .btn-primary').trigger('click')
@@ -186,7 +255,14 @@ describe('signature detail', () => {
     wrapper.unmount()
   })
   it('keeps signing enabled once identity is verified, whatever the notice checkbox says', async () => {
-    mocks.detail.mockResolvedValue({ ...base, content: '正文', content_sha256: 'abc', party_a_real_name: 'Alice', party_a_id_card_no_masked: '****1234', signing_logs: [] })
+    mocks.detail.mockResolvedValue({
+      ...base,
+      content: '正文',
+      content_sha256: 'abc',
+      party_a_real_name: 'Alice',
+      party_a_id_card_no_masked: '****1234',
+      signing_logs: [],
+    })
     mocks.initiate.mockRejectedValue(new Error('签署服务暂不可用'))
     const { wrapper } = await render(ContractSignView, true)
     // 实名信息齐全、当前不在签署中，就应当能点：那个勾选框是「短信通知签署」（是否给签署人发短信），
@@ -202,8 +278,13 @@ describe('signature detail', () => {
   })
   it('lets party A sign the requirement contract before the developer has signed', async () => {
     mocks.detail.mockResolvedValue({
-      ...base, requirement_id: 'REQ-001', content: '正文', content_sha256: 'abc',
-      party_a_real_name: 'Alice', party_a_id_card_no_masked: '****1234', signing_logs: [],
+      ...base,
+      requirement_id: 'REQ-001',
+      content: '正文',
+      content_sha256: 'abc',
+      party_a_real_name: 'Alice',
+      party_a_id_card_no_masked: '****1234',
+      signing_logs: [],
     })
     const { wrapper } = await render(ContractSignView, true)
     // 甲乙双方各自独立签署、不设先后（爱签侧同样是无序签约）：乙方还没签，甲方这边就该有签署入口，
@@ -242,7 +323,11 @@ describe('signature detail', () => {
   it('keeps an already-signed contract detail open when the user opened it on purpose', async () => {
     sessionStorage.removeItem('73info_requirement_sign_pending_return')
     mocks.detail.mockResolvedValue({
-      ...base, status: CONTRACT_STATUS.signed, content: '正文', content_sha256: 'abc', signing_logs: [],
+      ...base,
+      status: CONTRACT_STATUS.signed,
+      content: '正文',
+      content_sha256: 'abc',
+      signing_logs: [],
     })
     const { router } = await render(ContractSignView, true)
     await flushPromises()

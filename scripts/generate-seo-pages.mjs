@@ -142,7 +142,8 @@ const pages = [
     path: '/community',
     kind: 'posts',
     title: '社区交流 - 平台公告、经验分享与用户讨论 - 73Info 柒叁信息',
-    description: '73Info 社区用于发布平台公告、经验分享、资源反馈和用户讨论，帮助需求方与开发者建立公开沟通；帖子按时间与标签组织，可以按分类浏览历史内容，也可以在帖子下继续讨论，或把有价值的内容分享给协作方。',
+    description:
+      '73Info 社区用于发布平台公告、经验分享、资源反馈和用户讨论，帮助需求方与开发者建立公开沟通；帖子按时间与标签组织，可以按分类浏览历史内容，也可以在帖子下继续讨论，或把有价值的内容分享给协作方。',
     heading: '社区交流',
     lead: '查看平台公告、经验分享、资源反馈和用户讨论，了解 73Info 的最新动态。',
   },
@@ -161,7 +162,8 @@ const pages = [
     kind: 'doc',
     docKey: 'terms',
     title: '用户协议 - 账号使用、内容发布与平台服务规则 - 73Info 柒叁信息',
-    description: '查看 73Info 柒叁信息用户协议，了解账号注册与使用、内容发布规范、资源浏览与需求协作规则、平台服务范围，以及违规内容的处理方式；注册或使用平台即表示同意协议中的约定，协议更新后会在本页说明生效时间。',
+    description:
+      '查看 73Info 柒叁信息用户协议，了解账号注册与使用、内容发布规范、资源浏览与需求协作规则、平台服务范围，以及违规内容的处理方式；注册或使用平台即表示同意协议中的约定，协议更新后会在本页说明生效时间。',
     heading: '用户协议',
     lead: '查看账号使用、内容发布、资源浏览、需求协作和平台服务规则。',
   },
@@ -170,7 +172,8 @@ const pages = [
     kind: 'doc',
     docKey: 'privacy',
     title: '隐私政策 - 个人信息处理与数据安全说明 - 73Info 柒叁信息',
-    description: '查看 73Info 柒叁信息隐私政策，了解个人信息的收集范围与使用目的、数据存储与安全保护措施、Cookie 使用说明，以及查询、更正与删除个人信息的途径；涉及实名认证与支付的信息按对应渠道的要求单独处理。',
+    description:
+      '查看 73Info 柒叁信息隐私政策，了解个人信息的收集范围与使用目的、数据存储与安全保护措施、Cookie 使用说明，以及查询、更正与删除个人信息的途径；涉及实名认证与支付的信息按对应渠道的要求单独处理。',
     heading: '隐私政策',
     lead: '了解个人信息处理、数据使用、存储保护和用户权利说明。',
   },
@@ -179,7 +182,8 @@ const pages = [
     kind: 'doc',
     docKey: 'payment-refund',
     title: '支付与退款说明 - 支付阶段、退款条件与处理流程 - 73Info 柒叁信息',
-    description: '查看 73Info 柒叁信息支付与退款说明，了解需求协作各阶段的支付方式与时间点、退款条件与处理流程，以及当前暂未开放的资金托管与自动分账功能；发生争议时可按说明中的渠道提交工单。',
+    description:
+      '查看 73Info 柒叁信息支付与退款说明，了解需求协作各阶段的支付方式与时间点、退款条件与处理流程，以及当前暂未开放的资金托管与自动分账功能；发生争议时可按说明中的渠道提交工单。',
     heading: '支付与退款说明',
     lead: '了解需求协作中的支付阶段、退款条件和处理流程。',
   },
@@ -231,7 +235,9 @@ async function writeSpaFallbackShell(template) {
 async function loadDataset() {
   const [resources, posts, requirements] = await Promise.all([
     fetchPublishedResources(apiBaseUrl).catch((error) => handleFetchFailure('resources', error)),
-    fetchPublishedPosts(apiBaseUrl, listLimit).catch((error) => handleFetchFailure('community posts', error)),
+    fetchPublishedPosts(apiBaseUrl, listLimit).catch((error) =>
+      handleFetchFailure('community posts', error),
+    ),
     fetchPublicRequirementSpotlights(apiBaseUrl, listLimit).catch((error) =>
       handleFetchFailure('requirement spotlight', error),
     ),
@@ -257,7 +263,10 @@ async function loadDataset() {
 // 避免 sitemap 列出的详情 URL 只能返回无内容的 SPA 空壳。
 async function generateDetailPages(template, templatePath, dataset) {
   const selectedResources = dataset.resources.slice(0, maxDetailPages)
-  const selectedPosts = dataset.posts.slice(0, Math.max(maxDetailPages - selectedResources.length, 0))
+  const selectedPosts = dataset.posts.slice(
+    0,
+    Math.max(maxDetailPages - selectedResources.length, 0),
+  )
   const postsWithContent = await fetchPostContents(selectedPosts)
   const selectedProfiles = dataset.profiles.slice(0, maxDetailPages)
 
@@ -301,7 +310,9 @@ async function fetchPostContents(posts) {
           }
         } catch (error) {
           const message = error instanceof Error ? error.message : String(error)
-          console.warn(`[seo] failed to fetch community post ${post.id}, using summary only: ${message}`)
+          console.warn(
+            `[seo] failed to fetch community post ${post.id}, using summary only: ${message}`,
+          )
           return post
         }
       }),
@@ -438,7 +449,8 @@ function isAgreementHeading(line) {
 
 // 「关于我们」的文案是结构化字段（卡片 / 数据 / 段落），这里压成一篇可读的文档交给渲染器。
 function aboutDocument(about) {
-  const cards = (items) => items.map((item) => ({ type: 'paragraph', text: `${item.title}：${item.text}` }))
+  const cards = (items) =>
+    items.map((item) => ({ type: 'paragraph', text: `${item.title}：${item.text}` }))
   const facts = about.facts.items.map((item) => `${item.big}（${item.small}）`).join('；')
 
   return {
@@ -474,18 +486,39 @@ function renderPageHtml(template, page, dataset, doc) {
 
   return template
     .replace(/<title>[\s\S]*?<\/title>/, `<title>${escapeHtml(page.title)}</title>`)
-    .replace(/(<meta\s+name="description"\s+content=")[^"]*("\s*\/?>)/, `$1${escapeAttribute(page.description)}$2`)
-    .replace(/(<meta\s+property="og:title"\s+content=")[^"]*("\s*\/?>)/, `$1${escapeAttribute(page.title)}$2`)
-    .replace(/(<meta\s+property="og:description"\s+content=")[^"]*("\s*\/?>)/, `$1${escapeAttribute(page.description)}$2`)
-    .replace(/(<meta\s+property="og:url"\s+content=")[^"]*("\s*\/?>)/, `$1${escapeAttribute(url)}$2`)
-    .replace(/(<meta\s+name="twitter:title"\s+content=")[^"]*("\s*\/?>)/, `$1${escapeAttribute(page.title)}$2`)
-    .replace(/(<meta\s+name="twitter:description"\s+content=")[^"]*("\s*\/?>)/, `$1${escapeAttribute(page.description)}$2`)
+    .replace(
+      /(<meta\s+name="description"\s+content=")[^"]*("\s*\/?>)/,
+      `$1${escapeAttribute(page.description)}$2`,
+    )
+    .replace(
+      /(<meta\s+property="og:title"\s+content=")[^"]*("\s*\/?>)/,
+      `$1${escapeAttribute(page.title)}$2`,
+    )
+    .replace(
+      /(<meta\s+property="og:description"\s+content=")[^"]*("\s*\/?>)/,
+      `$1${escapeAttribute(page.description)}$2`,
+    )
+    .replace(
+      /(<meta\s+property="og:url"\s+content=")[^"]*("\s*\/?>)/,
+      `$1${escapeAttribute(url)}$2`,
+    )
+    .replace(
+      /(<meta\s+name="twitter:title"\s+content=")[^"]*("\s*\/?>)/,
+      `$1${escapeAttribute(page.title)}$2`,
+    )
+    .replace(
+      /(<meta\s+name="twitter:description"\s+content=")[^"]*("\s*\/?>)/,
+      `$1${escapeAttribute(page.description)}$2`,
+    )
     .replace(/(<link\s+rel="canonical"\s+href=")[^"]*("\s*\/?>)/, `$1${escapeAttribute(url)}$2`)
     .replace(
       /<!-- SEO_FALLBACK_START -->[\s\S]*?<!-- SEO_FALLBACK_END -->/,
       `<!-- SEO_FALLBACK_START -->\n${renderFallback(page, dataset, doc)}\n      <!-- SEO_FALLBACK_END -->`,
     )
-    .replace('</head>', `    <!-- SEO_JSONLD_START -->\n    <script type="application/ld+json">${serializeJsonLd(jsonLd)}</script>\n    <!-- SEO_JSONLD_END -->\n  </head>`)
+    .replace(
+      '</head>',
+      `    <!-- SEO_JSONLD_START -->\n    <script type="application/ld+json">${serializeJsonLd(jsonLd)}</script>\n    <!-- SEO_JSONLD_END -->\n  </head>`,
+    )
 }
 
 // 同一份 dist 上重复生成时（例如构建完又单独重跑脚本），先清掉上一次注入的结构化数据，
@@ -495,8 +528,9 @@ function renderPageHtml(template, page, dataset, doc) {
 function stripInjectedSeoJsonLd(html) {
   return html
     .replace(/[ \t]*<!-- SEO_JSONLD_START -->[\s\S]*?<!-- SEO_JSONLD_END -->\n?/g, '')
-    .replace(/[ \t]*<script type="application\/ld\+json">(?:(?!<\/script>)[\s\S])*?<\/script>\n?/g, (block) =>
-      block.includes(`${siteUrl}/#organization`) ? '' : block,
+    .replace(
+      /[ \t]*<script type="application\/ld\+json">(?:(?!<\/script>)[\s\S])*?<\/script>\n?/g,
+      (block) => (block.includes(`${siteUrl}/#organization`) ? '' : block),
     )
 }
 
@@ -838,7 +872,12 @@ function entryItemLists(page, dataset) {
       }))
 
     if (listItems.length > 0) {
-      lists.push({ '@type': 'ItemList', name, numberOfItems: listItems.length, itemListElement: listItems })
+      lists.push({
+        '@type': 'ItemList',
+        name,
+        numberOfItems: listItems.length,
+        itemListElement: listItems,
+      })
     }
   }
 
@@ -904,7 +943,10 @@ function renderResourceDetailPage(resource, dataset) {
     lead: truncateText(rawDescription, 800) || description,
     itemType: 'https://schema.org/CreativeWork',
     image,
-    breadcrumb: [{ name: listingLabel, path: listingPath }, { name: title, path }],
+    breadcrumb: [
+      { name: listingLabel, path: listingPath },
+      { name: title, path },
+    ],
     meta: [
       { label: '发布者', value: uploader },
       { label: '作者', value: author === uploader ? '' : author },
@@ -939,7 +981,11 @@ function renderResourceDetailPage(resource, dataset) {
           ]
         : []),
       { href: listingPath, title: listingLabel, description: '浏览更多同类公开资源。' },
-      { href: '/requirement-hall', title: '需求大厅', description: '发布需求、查看合作机会、对接开发者。' },
+      {
+        href: '/requirement-hall',
+        title: '需求大厅',
+        description: '发布需求、查看合作机会、对接开发者。',
+      },
       { href: '/community', title: '社区交流', description: '查看平台公告、经验分享和用户讨论。' },
       { href: '/', title: '返回首页', description: '回到 73Info 柒叁信息首页。' },
     ],
@@ -950,17 +996,25 @@ function renderResourceDetailPage(resource, dataset) {
         websiteNode(),
         breadcrumbNode(title, path, [{ name: listingLabel, path: listingPath }]),
         {
-      '@type': 'CreativeWork',
+          '@type': 'CreativeWork',
           '@id': canonicalPageUrl(path),
-      name: title,
-      description,
-      url: canonicalPageUrl(path),
+          name: title,
+          description,
+          url: canonicalPageUrl(path),
           ...(uploader ? { author: { '@type': 'Person', name: uploader } } : {}),
-          ...(uploaderProfilePath ? { creator: { '@type': 'Person', name: uploader, url: canonicalPageUrl(uploaderProfilePath) } } : {}),
-      ...(created ? { datePublished: created } : {}),
-      ...(updated ? { dateModified: updated } : {}),
-      ...(image ? { image } : {}),
-      ...(tags.length > 0 ? { keywords: tags.join(',') } : {}),
+          ...(uploaderProfilePath
+            ? {
+                creator: {
+                  '@type': 'Person',
+                  name: uploader,
+                  url: canonicalPageUrl(uploaderProfilePath),
+                },
+              }
+            : {}),
+          ...(created ? { datePublished: created } : {}),
+          ...(updated ? { dateModified: updated } : {}),
+          ...(image ? { image } : {}),
+          ...(tags.length > 0 ? { keywords: tags.join(',') } : {}),
           ...(isPaid
             ? {
                 offers: {
@@ -985,12 +1039,17 @@ function renderPostDetailPage(post, dataset) {
   const plain = stripHtml(post.content_html)
   const description =
     truncateText(plain, 150) ||
-    truncateText(`73Info 社区帖子「${title}」${tags.length > 0 ? `，标签：${tags.join('、')}` : ''}。`, 150)
+    truncateText(
+      `73Info 社区帖子「${title}」${tags.length > 0 ? `，标签：${tags.join('、')}` : ''}。`,
+      150,
+    )
   const path = `/community/posts/${Number(post.id)}`
   const published = toDateTimeIso(post.published_at || post.created_at)
   const updated = toDateTimeIso(post.updated_at) || published
   const bodyParagraphs = stripHtmlParagraphs(post.content_html, bodyLimit)
-  const related = dataset.posts.filter((item) => Number(item.id) !== Number(post.id)).slice(0, relatedLimit)
+  const related = dataset.posts
+    .filter((item) => Number(item.id) !== Number(post.id))
+    .slice(0, relatedLimit)
 
   return {
     path,
@@ -1002,7 +1061,10 @@ function renderPostDetailPage(post, dataset) {
     lead: truncateText(plain, 300) || description,
     itemType: 'https://schema.org/DiscussionForumPosting',
     image: '',
-    breadcrumb: [{ name: '社区交流', path: '/community' }, { name: title, path }],
+    breadcrumb: [
+      { name: '社区交流', path: '/community' },
+      { name: title, path },
+    ],
     bodyParagraphs,
     meta: [
       { label: '作者', value: author },
@@ -1020,7 +1082,11 @@ function renderPostDetailPage(post, dataset) {
     ],
     links: [
       { href: '/community', title: '社区交流', description: '查看平台公告、经验分享和用户讨论。' },
-      { href: '/requirement-hall', title: '需求大厅', description: '发布需求、查看合作机会、对接开发者。' },
+      {
+        href: '/requirement-hall',
+        title: '需求大厅',
+        description: '发布需求、查看合作机会、对接开发者。',
+      },
       { href: '/resources', title: '资源项目', description: '浏览公开的免费资源与付费资源。' },
       { href: '/', title: '返回首页', description: '回到 73Info 柒叁信息首页。' },
     ],
@@ -1031,15 +1097,15 @@ function renderPostDetailPage(post, dataset) {
         websiteNode(),
         breadcrumbNode(title, path, [{ name: '社区交流', path: '/community' }]),
         {
-      '@type': 'DiscussionForumPosting',
+          '@type': 'DiscussionForumPosting',
           '@id': canonicalPageUrl(path),
-      headline: title,
-      url: canonicalPageUrl(path),
-      ...(author ? { author: { '@type': 'Person', name: author } } : {}),
-      ...(published ? { datePublished: published } : {}),
-      ...(updated ? { dateModified: updated } : {}),
-      ...(plain ? { articleBody: truncateText(plain, 500) } : {}),
-      ...(tags.length > 0 ? { keywords: tags.join(',') } : {}),
+          headline: title,
+          url: canonicalPageUrl(path),
+          ...(author ? { author: { '@type': 'Person', name: author } } : {}),
+          ...(published ? { datePublished: published } : {}),
+          ...(updated ? { dateModified: updated } : {}),
+          ...(plain ? { articleBody: truncateText(plain, 500) } : {}),
+          ...(tags.length > 0 ? { keywords: tags.join(',') } : {}),
         },
       ],
     },
@@ -1099,7 +1165,11 @@ function renderProfileDetailPage(profile, dataset) {
     ],
     links: [
       { href: '/resources', title: '资源项目', description: '浏览公开的免费资源与付费资源。' },
-      { href: '/requirement-hall', title: '需求大厅', description: '发布需求、查看合作机会、对接开发者。' },
+      {
+        href: '/requirement-hall',
+        title: '需求大厅',
+        description: '发布需求、查看合作机会、对接开发者。',
+      },
       { href: '/community', title: '社区交流', description: '查看平台公告、经验分享和用户讨论。' },
       { href: '/', title: '返回首页', description: '回到 73Info 柒叁信息首页。' },
     ],
@@ -1154,13 +1224,34 @@ function renderDetailHtml(template, page) {
 
   let html = template
     .replace(/<title>[\s\S]*?<\/title>/, `<title>${escapeHtml(page.title)}</title>`)
-    .replace(/(<meta\s+name="description"\s+content=")[^"]*("\s*\/?>)/, `$1${escapeAttribute(page.description)}$2`)
-    .replace(/(<meta\s+property="og:type"\s+content=")[^"]*("\s*\/?>)/, `$1${escapeAttribute(page.ogType || 'website')}$2`)
-    .replace(/(<meta\s+property="og:title"\s+content=")[^"]*("\s*\/?>)/, `$1${escapeAttribute(page.title)}$2`)
-    .replace(/(<meta\s+property="og:description"\s+content=")[^"]*("\s*\/?>)/, `$1${escapeAttribute(page.description)}$2`)
-    .replace(/(<meta\s+property="og:url"\s+content=")[^"]*("\s*\/?>)/, `$1${escapeAttribute(url)}$2`)
-    .replace(/(<meta\s+name="twitter:title"\s+content=")[^"]*("\s*\/?>)/, `$1${escapeAttribute(page.title)}$2`)
-    .replace(/(<meta\s+name="twitter:description"\s+content=")[^"]*("\s*\/?>)/, `$1${escapeAttribute(page.description)}$2`)
+    .replace(
+      /(<meta\s+name="description"\s+content=")[^"]*("\s*\/?>)/,
+      `$1${escapeAttribute(page.description)}$2`,
+    )
+    .replace(
+      /(<meta\s+property="og:type"\s+content=")[^"]*("\s*\/?>)/,
+      `$1${escapeAttribute(page.ogType || 'website')}$2`,
+    )
+    .replace(
+      /(<meta\s+property="og:title"\s+content=")[^"]*("\s*\/?>)/,
+      `$1${escapeAttribute(page.title)}$2`,
+    )
+    .replace(
+      /(<meta\s+property="og:description"\s+content=")[^"]*("\s*\/?>)/,
+      `$1${escapeAttribute(page.description)}$2`,
+    )
+    .replace(
+      /(<meta\s+property="og:url"\s+content=")[^"]*("\s*\/?>)/,
+      `$1${escapeAttribute(url)}$2`,
+    )
+    .replace(
+      /(<meta\s+name="twitter:title"\s+content=")[^"]*("\s*\/?>)/,
+      `$1${escapeAttribute(page.title)}$2`,
+    )
+    .replace(
+      /(<meta\s+name="twitter:description"\s+content=")[^"]*("\s*\/?>)/,
+      `$1${escapeAttribute(page.description)}$2`,
+    )
     .replace(/(<link\s+rel="canonical"\s+href=")[^"]*("\s*\/?>)/, `$1${escapeAttribute(url)}$2`)
     .replace(
       /<!-- SEO_FALLBACK_START -->[\s\S]*?<!-- SEO_FALLBACK_END -->/,
@@ -1173,8 +1264,14 @@ function renderDetailHtml(template, page) {
   // 封面尺寸未知，同时去掉模板里针对默认卡（1200x630）的宽高声明，避免与实际图片不符。
   if (page.image) {
     html = html
-      .replace(/(<meta\s+property="og:image"\s+content=")[^"]*("\s*\/?>)/, `$1${escapeAttribute(page.image)}$2`)
-      .replace(/(<meta\s+name="twitter:image"\s+content=")[^"]*("\s*\/?>)/, `$1${escapeAttribute(page.image)}$2`)
+      .replace(
+        /(<meta\s+property="og:image"\s+content=")[^"]*("\s*\/?>)/,
+        `$1${escapeAttribute(page.image)}$2`,
+      )
+      .replace(
+        /(<meta\s+name="twitter:image"\s+content=")[^"]*("\s*\/?>)/,
+        `$1${escapeAttribute(page.image)}$2`,
+      )
       .replace(
         /(<meta\s+property="og:image:alt"\s+content=")[^"]*("\s*\/?>)/,
         `$1${escapeAttribute(page.heading || page.title)}$2`,
@@ -1272,7 +1369,9 @@ function relatedResources(resource, allResources) {
     .map((item) => ({
       item,
       sharedTags: resourceTagNames(item).filter((tag) => ownTags.has(tag)).length,
-      sameAuthor: ownAuthor !== 'resource' && normalizeResourceOwnerSlug(item.creator || item.author || '') === ownAuthor,
+      sameAuthor:
+        ownAuthor !== 'resource' &&
+        normalizeResourceOwnerSlug(item.creator || item.author || '') === ownAuthor,
     }))
     .filter((entry) => entry.sharedTags > 0 || entry.sameAuthor)
 
@@ -1426,7 +1525,10 @@ function formatDateTimeText(value) {
 
 // 一组时间戳里最新的那个（同格式下字典序等于时间序），转成 JSON-LD 用的 ISO 时间。
 function latestDateTime(values) {
-  const list = values.map((value) => String(value ?? '').trim()).filter(Boolean).sort()
+  const list = values
+    .map((value) => String(value ?? '').trim())
+    .filter(Boolean)
+    .sort()
   return list.length > 0 ? toDateTimeIso(list.at(-1)) : ''
 }
 
@@ -1477,10 +1579,7 @@ function outputPathsForPage(path, templatePath) {
   }
 
   const cleanPath = path.replace(/^\/+|\/+$/g, '')
-  return [
-    resolve(distRoot, `${cleanPath}.html`),
-    resolve(distRoot, cleanPath, 'index.html'),
-  ]
+  return [resolve(distRoot, `${cleanPath}.html`), resolve(distRoot, cleanPath, 'index.html')]
 }
 
 function renderNavigationLink(link) {
@@ -1495,10 +1594,7 @@ const DETAIL_FALLBACK_STYLE =
   '.seo-fallback__meta strong{margin-right:8px;color:#1e293b}'
 
 function escapeHtml(value) {
-  return String(value)
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
+  return String(value).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
 }
 
 function escapeAttribute(value) {

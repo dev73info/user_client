@@ -134,8 +134,6 @@ describe('PurchaseTransfersView', () => {
     mountView()
     await flushPromises()
 
-    expect(mocks.replace).toHaveBeenCalledWith(
-      expect.objectContaining({ name: 'home' }),
-    )
+    expect(mocks.replace).toHaveBeenCalledWith(expect.objectContaining({ name: 'home' }))
   })
 })

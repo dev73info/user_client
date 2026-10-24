@@ -37,38 +37,38 @@ async function loadAgreement() {
 onMounted(loadAgreement)
 
 function goBack() {
-    if (window.history.state?.back) {
-        router.back()
-        return
-    }
+  if (window.history.state?.back) {
+    router.back()
+    return
+  }
 
-    router.push('/')
+  router.push('/')
 }
 </script>
 
 <template>
-    <main class="page-shell">
-        <section class="panel">
-            <header class="panel-head">
-                <div>
-                    <h2>{{ title }}</h2>
-                </div>
-                <button class="top-back" type="button" @click="goBack">返回</button>
-            </header>
+  <main class="page-shell">
+    <section class="panel">
+      <header class="panel-head">
+        <div>
+          <h2>{{ title }}</h2>
+        </div>
+        <button class="top-back" type="button" @click="goBack">返回</button>
+      </header>
 
-            <article class="content-block">
-                <p v-if="version"><strong>版本号：</strong>{{ version }}</p>
-                <p v-if="effectiveAt"><strong>生效日期：</strong>{{ effectiveAt }}</p>
-                <p v-if="loading" class="legal-loading">说明内容加载中…</p>
+      <article class="content-block">
+        <p v-if="version"><strong>版本号：</strong>{{ version }}</p>
+        <p v-if="effectiveAt"><strong>生效日期：</strong>{{ effectiveAt }}</p>
+        <p v-if="loading" class="legal-loading">说明内容加载中…</p>
 
-                <template v-for="(block, index) in blocks" :key="index">
-                    <h3 v-if="block.type === 'heading'" :id="block.id">{{ block.text }}</h3>
-                    <ul v-else-if="block.type === 'list'">
-                        <li v-for="(item, itemIndex) in block.items" :key="itemIndex">{{ item }}</li>
-                    </ul>
-                    <p v-else>{{ block.text }}</p>
-                </template>
-            </article>
-        </section>
-    </main>
+        <template v-for="(block, index) in blocks" :key="index">
+          <h3 v-if="block.type === 'heading'" :id="block.id">{{ block.text }}</h3>
+          <ul v-else-if="block.type === 'list'">
+            <li v-for="(item, itemIndex) in block.items" :key="itemIndex">{{ item }}</li>
+          </ul>
+          <p v-else>{{ block.text }}</p>
+        </template>
+      </article>
+    </section>
+  </main>
 </template>

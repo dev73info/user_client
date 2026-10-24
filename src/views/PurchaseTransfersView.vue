@@ -82,10 +82,7 @@ async function load() {
   }
 }
 
-async function run(
-  item: PurchaseTransfer,
-  action: 'accept' | 'reject' | 'cancel',
-) {
+async function run(item: PurchaseTransfer, action: 'accept' | 'reject' | 'cancel') {
   if (busyId.value) {
     return
   }
@@ -152,16 +149,10 @@ onMounted(() => {
           <h3 class="wb-card-head__title">使用权转移</h3>
         </div>
         <div class="wb-card-head__actions">
-          <TButton
-            :variant="tab === 'incoming' ? 'solid' : 'outline'"
-            @click="tab = 'incoming'"
-          >
+          <TButton :variant="tab === 'incoming' ? 'solid' : 'outline'" @click="tab = 'incoming'">
             待我确认
           </TButton>
-          <TButton
-            :variant="tab === 'outgoing' ? 'solid' : 'outline'"
-            @click="tab = 'outgoing'"
-          >
+          <TButton :variant="tab === 'outgoing' ? 'solid' : 'outline'" @click="tab = 'outgoing'">
             我发起的
           </TButton>
         </div>
@@ -174,12 +165,16 @@ onMounted(() => {
         <TButton variant="outline" @click="load">重试</TButton>
       </div>
       <div v-else-if="!currentList.length" class="wb-empty">
-        <span class="wb-empty__title">{{ tab === 'incoming' ? '没有待确认的申请' : '还没有发起过转移' }}</span>
+        <span class="wb-empty__title">{{
+          tab === 'incoming' ? '没有待确认的申请' : '还没有发起过转移'
+        }}</span>
       </div>
       <ul v-else class="wb-list" aria-label="使用权转移申请">
         <li v-for="item in currentList" :key="item.transfer_id" class="wb-item">
           <div class="wb-item__main">
-            <span class="wb-item__title">{{ item.resource_title || `资源 #${item.resource_id}` }}</span>
+            <span class="wb-item__title">{{
+              item.resource_title || `资源 #${item.resource_id}`
+            }}</span>
             <span class="wb-item__meta">
               订单 {{ item.order_no }} · {{ item.from_username }} → {{ item.to_username }}
             </span>
@@ -197,11 +192,7 @@ onMounted(() => {
               >
                 接受
               </TButton>
-              <TButton
-                variant="outline"
-                :disabled="Boolean(busyId)"
-                @click="run(item, 'reject')"
-              >
+              <TButton variant="outline" :disabled="Boolean(busyId)" @click="run(item, 'reject')">
                 拒绝
               </TButton>
             </template>

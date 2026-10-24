@@ -25,7 +25,10 @@ export function readEnvFile(path) {
         .map((line) => {
           const index = line.indexOf('=')
           const name = line.slice(0, index).trim()
-          const value = line.slice(index + 1).trim().replace(/^['"]|['"]$/g, '')
+          const value = line
+            .slice(index + 1)
+            .trim()
+            .replace(/^['"]|['"]$/g, '')
           return [name, value]
         }),
     )
@@ -38,11 +41,15 @@ export function readEnvFile(path) {
 }
 
 export function normalizeBaseUrl(value) {
-  return String(value || '').trim().replace(/\/+$/, '')
+  return String(value || '')
+    .trim()
+    .replace(/\/+$/, '')
 }
 
 export function resolveSiteUrl() {
-  return normalizeBaseUrl(process.env.SITEMAP_SITE_URL || process.env.VITE_SITE_URL || DEFAULT_SITE_URL)
+  return normalizeBaseUrl(
+    process.env.SITEMAP_SITE_URL || process.env.VITE_SITE_URL || DEFAULT_SITE_URL,
+  )
 }
 
 export function resolveApiBaseUrl(projectRoot) {
