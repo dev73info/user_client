@@ -22,6 +22,10 @@ describe('md5Hex', () => {
     expect(md5Hex('Test@123456')).toBe('aff8c7c4f8d9fab3bb7322ea79cc5170')
   })
 
+  it('含 emoji（代理对）的密码也按 UTF-8 取摘要', () => {
+    expect(md5Hex('😀难懂的密码🔒')).toBe('4c2378919f7cda6b09320b27c2d38cc8')
+  })
+
   it('含中文的密码按 UTF-8 取摘要', () => {
     expect(md5Hex('密码Test@123456')).toBe('4f12124de759ba8b44bd8140e2907ed9')
   })

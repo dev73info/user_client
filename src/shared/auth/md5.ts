@@ -21,6 +21,12 @@ const K = Array.from(
   (_, i) => Math.floor(Math.abs(Math.sin(i + 1)) * 2 ** 32) >>> 0,
 )
 
+/**
+ * 按 UTF-8 编码成字节。
+ *
+ * 入参假定是**合法 UTF-16 字符串**（密码框不会产生孤立代理项）；对孤立代理项的行为未定义，
+ * 与 TextEncoder 的 U+FFFD 替换不一致——那种输入本来就认证不过，不做特别处理。
+ */
 function utf8Bytes(text: string): number[] {
   const out: number[] = []
   for (const ch of text) {
