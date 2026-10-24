@@ -48,9 +48,7 @@ export async function getWorkbenchRequirementHallItem(
     },
     '加载需求详情失败',
   )
-  const item = payload.find(
-    (requirement) => requirement.requirement_id === normalizedRequirementId,
-  )
+  const item = payload.find((requirement) => requirement.requirement_id === normalizedRequirementId)
 
   if (!item) {
     throw new Error('需求不存在或已不可接取')

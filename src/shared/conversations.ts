@@ -118,9 +118,7 @@ type ConversationHttpClient = {
 }
 
 export function createConversationApi(http: ConversationHttpClient) {
-  async function listRequirementConversations(
-    token: string,
-  ): Promise<RequirementConversation[]> {
+  async function listRequirementConversations(token: string): Promise<RequirementConversation[]> {
     return http.requestJson<RequirementConversation[]>(
       // 契约是 `/api/conversation`（**不带尾斜杠**）：actix 按路径逐字匹配，多一个 `/` 就是 404
       '/conversation',

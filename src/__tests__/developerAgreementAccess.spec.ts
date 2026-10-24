@@ -12,7 +12,7 @@ const mocks = vi.hoisted(() => ({
   getPrivileges: vi.fn(),
 }))
 vi.mock('@/api/auth', async (importOriginal) => ({
-  ...await importOriginal<typeof import('@/api/auth')>(),
+  ...(await importOriginal<typeof import('@/api/auth')>()),
   requestDevRole: mocks.requestDevRole,
   getDevAccessStatus: mocks.getDevAccessStatus,
   refreshToken: mocks.refreshToken,
@@ -50,7 +50,9 @@ function developer() {
   return auth
 }
 
-function signedStatus(overrides: Partial<Awaited<ReturnType<typeof mocks.getDevAccessStatus>>> = {}) {
+function signedStatus(
+  overrides: Partial<Awaited<ReturnType<typeof mocks.getDevAccessStatus>>> = {},
+) {
   return {
     is_dev: true,
     is_super_admin: false,

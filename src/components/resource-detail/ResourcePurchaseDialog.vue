@@ -124,7 +124,6 @@ const emit = defineEmits<{
             订单号 {{ orderNo }} · {{ orderStatus }}
           </p>
         </div>
-
       </section>
     </div>
   </Teleport>

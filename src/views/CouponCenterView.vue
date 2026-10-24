@@ -77,7 +77,8 @@ function formatDiscount(item: CouponItem) {
   if (item.discount_type === 'amount') {
     return `减免 ¥${formatFenAsCny(item.amount_off_fen)}`
   }
-  const cap = item.max_discount_fen != null ? `，上限 ¥${formatFenAsCny(item.max_discount_fen)}` : ''
+  const cap =
+    item.max_discount_fen != null ? `，上限 ¥${formatFenAsCny(item.max_discount_fen)}` : ''
   return `优惠 ${formatBpsPercent(item.discount_bps)}${cap}`
 }
 
@@ -174,8 +175,13 @@ onMounted(() => {
           </div>
           <p v-if="amountCoupons.length === 0" class="wb-empty" role="status">暂无满减优惠券</p>
           <div v-else class="coupon-items">
-            <button v-for="item in amountCoupons" :key="item.code" type="button" class="coupon-item"
-              @click="copyCouponCode(item.code)">
+            <button
+              v-for="item in amountCoupons"
+              :key="item.code"
+              type="button"
+              class="coupon-item"
+              @click="copyCouponCode(item.code)"
+            >
               <div class="coupon-item__head">
                 <strong>{{ item.code }}</strong>
                 <span class="wb-badge" :class="{ 'wb-badge--success': item.status !== 'used' }">
@@ -198,8 +204,13 @@ onMounted(() => {
           </div>
           <p v-if="discountCoupons.length === 0" class="wb-empty" role="status">暂无折扣优惠券</p>
           <div v-else class="coupon-items">
-            <button v-for="item in discountCoupons" :key="item.code" type="button" class="coupon-item"
-              @click="copyCouponCode(item.code)">
+            <button
+              v-for="item in discountCoupons"
+              :key="item.code"
+              type="button"
+              class="coupon-item"
+              @click="copyCouponCode(item.code)"
+            >
               <div class="coupon-item__head">
                 <strong>{{ item.code }}</strong>
                 <span class="wb-badge" :class="{ 'wb-badge--success': item.status !== 'used' }">
@@ -257,7 +268,9 @@ onMounted(() => {
   font: inherit;
   text-align: left;
   cursor: pointer;
-  transition: border-color 160ms ease, box-shadow 160ms ease;
+  transition:
+    border-color 160ms ease,
+    box-shadow 160ms ease;
 }
 
 .coupon-item:hover,

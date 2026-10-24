@@ -43,9 +43,7 @@ export function createAuthSession() {
   const isSuperAdmin = ref(false)
 
   const isAuthed = computed(() => token.value.length > 0)
-  const isDev = computed(
-    () => isSuperAdmin.value || permissions.value.includes('scope.dev.access'),
-  )
+  const isDev = computed(() => isSuperAdmin.value || permissions.value.includes('scope.dev.access'))
   const profileState = {
     username,
     role,

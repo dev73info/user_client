@@ -47,7 +47,8 @@ export function useResourcePricingFields(
   // 积分价可直接改现金价：输入现金价时清空积分价
   const cashPriceDisabled = computed(() => boundToRequirement.value)
   const pointsLockedBySavedCash = computed(
-    () => !canSwitchToPointsPrice(resource.value?.buyout_price_fen, resource.value?.cash_price_locked),
+    () =>
+      !canSwitchToPointsPrice(resource.value?.buyout_price_fen, resource.value?.cash_price_locked),
   )
   const pointsPriceDisabled = computed(
     () =>

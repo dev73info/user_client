@@ -29,7 +29,9 @@ let sitemapFetchFailed = false
 // 爬虫发现这个字段不可信之后会整体忽略它。列表页取该列表里最新的内容时间，
 // 关于/协议/隐私/支付退款这几页没有可推断的改动时间，索性不写 lastmod（写错比不写更糟）。
 function buildStaticEntries({ resources, posts, requirements, profiles }) {
-  const resourceDates = resources.map((item) => dateOnly(item.updated_at || item.created_at)).filter(Boolean)
+  const resourceDates = resources
+    .map((item) => dateOnly(item.updated_at || item.created_at))
+    .filter(Boolean)
   const freeResourceDates = resources
     .filter(isFreeListingResource)
     .map((item) => dateOnly(item.updated_at || item.created_at))
@@ -38,7 +40,9 @@ function buildStaticEntries({ resources, posts, requirements, profiles }) {
     .filter(isCashPaidListingResource)
     .map((item) => dateOnly(item.updated_at || item.created_at))
     .filter(Boolean)
-  const postDates = posts.map((item) => dateOnly(item.updated_at || item.published_at)).filter(Boolean)
+  const postDates = posts
+    .map((item) => dateOnly(item.updated_at || item.published_at))
+    .filter(Boolean)
   const requirementDates = requirements
     .map((item) => dateOnly(item.updated_at || item.created_at))
     .filter(Boolean)
@@ -48,10 +52,25 @@ function buildStaticEntries({ resources, posts, requirements, profiles }) {
     { path: '/', lastmod: overall, changefreq: 'daily', priority: '1.0' },
     // 「资源项目」是顶栏与首页导航指向的一级入口（免费 / 付费在同一页内切换），
     // 原先漏在 sitemap 之外，一级入口没有可爬路径（见 任务/缺陷/BUG-016）。
-    { path: '/resources', lastmod: latestOf(resourceDates) || today, changefreq: 'daily', priority: '0.9' },
-    { path: '/free-resources', lastmod: latestOf(freeResourceDates) || today, changefreq: 'daily', priority: '0.8' },
+    {
+      path: '/resources',
+      lastmod: latestOf(resourceDates) || today,
+      changefreq: 'daily',
+      priority: '0.9',
+    },
+    {
+      path: '/free-resources',
+      lastmod: latestOf(freeResourceDates) || today,
+      changefreq: 'daily',
+      priority: '0.8',
+    },
     // 付费厅与免费厅是两个入口页：原先只列了免费厅，付费资源在站内没有任何可爬入口。
-    { path: '/paid-resources', lastmod: latestOf(paidResourceDates) || today, changefreq: 'daily', priority: '0.7' },
+    {
+      path: '/paid-resources',
+      lastmod: latestOf(paidResourceDates) || today,
+      changefreq: 'daily',
+      priority: '0.7',
+    },
     {
       path: '/requirement-hall',
       lastmod: latestOf(requirementDates) || today,
@@ -85,7 +104,9 @@ async function main() {
   // 否则 sitemap 会列出一批只有用户名的空页。
   const profiles = await collectPublicProfiles(apiBaseUrl, resources, posts).catch((error) => {
     sitemapFetchFailed = true
-    console.warn(`[sitemap] failed to fetch public profiles: ${error instanceof Error ? error.message : error}`)
+    console.warn(
+      `[sitemap] failed to fetch public profiles: ${error instanceof Error ? error.message : error}`,
+    )
     return []
   })
 
@@ -116,7 +137,9 @@ async function main() {
   ]
 
   if (sitemapFetchFailed && hasExistingSitemap()) {
-    console.warn(`[sitemap] keeping existing sitemap because dynamic API data is unavailable -> ${sitemapPath}`)
+    console.warn(
+      `[sitemap] keeping existing sitemap because dynamic API data is unavailable -> ${sitemapPath}`,
+    )
     return
   }
 

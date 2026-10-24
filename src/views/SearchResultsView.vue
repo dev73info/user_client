@@ -123,7 +123,6 @@ const {
           />
         </div>
       </section>
-
     </template>
   </main>
 

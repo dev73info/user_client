@@ -77,9 +77,7 @@ export async function updateMcResourceVersion(
   versionId: number,
   payload: UpdateMcResourceVersionRequest,
 ): Promise<McResourceVersionPayload> {
-  const uploaded = payload.file
-    ? await uploadVersionFile(token, resourceId, payload.file)
-    : null
+  const uploaded = payload.file ? await uploadVersionFile(token, resourceId, payload.file) : null
 
   return requestJson<McResourceVersionPayload>(
     `/dev/resources/resources/${resourceId}/versions/${versionId}`,
@@ -93,9 +91,7 @@ export async function updateMcResourceVersion(
         version: payload.version,
         note: payload.note?.trim() || null,
         price_fen: payload.price_fen ?? null,
-        ...(uploaded
-          ? { resource: uploaded.resource, file_name: uploaded.file_name }
-          : {}),
+        ...(uploaded ? { resource: uploaded.resource, file_name: uploaded.file_name } : {}),
       }),
     },
     '更新版本失败',

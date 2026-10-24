@@ -5,7 +5,10 @@ type Schemas = components['schemas']
 
 export type ResourcePurchaseOrder = Schemas['OrderResponse']
 
-export type CreateResourcePurchasePayload = Omit<Schemas['CreatePurchaseRequest'], 'pay_channel'> & {
+export type CreateResourcePurchasePayload = Omit<
+  Schemas['CreatePurchaseRequest'],
+  'pay_channel'
+> & {
   pay_channel: ResourcePayChannelUi
 }
 

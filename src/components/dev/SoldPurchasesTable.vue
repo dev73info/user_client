@@ -45,7 +45,6 @@ function refundTraceText(order: ResourcePurchaseOrder): string {
   }
   return parts.join(' · ')
 }
-
 </script>
 
 <template>

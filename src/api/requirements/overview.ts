@@ -19,11 +19,7 @@ export async function getRequirementOverview(token: string): Promise<Requirement
 }
 
 export async function getPublicRequirementOverview(): Promise<RequirementOverviewResp> {
-  return requestJson<RequirementOverviewResp>(
-    '/requirement/public-overview',
-    {},
-    '加载概览失败',
-  )
+  return requestJson<RequirementOverviewResp>('/requirement/public-overview', {}, '加载概览失败')
 }
 
 export async function listPublicRequirementSpotlights(

@@ -110,10 +110,7 @@ function buildAfterSalesCard(row: AfterSalesCaseSummary): NotificationCard {
     kind: 'after-sales',
     kindLabel: NOTIFICATION_KIND_LABELS['after-sales'],
     title: row.requirement_id,
-    body: [
-      `${row.case_no} · ${row.kind_label}`,
-      `诉求：${claim} · 当前状态：${row.status_label}`,
-    ],
+    body: [`${row.case_no} · ${row.kind_label}`, `诉求：${claim} · 当前状态：${row.status_label}`],
     meta: `${row.created_time} 由 ${row.filed_by} 发起`,
     createdAt: row.created_time,
     sortTime: parseNoticeTime(row.created_time),

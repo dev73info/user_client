@@ -14,7 +14,9 @@ export type AdapayPaymentRouteOptions = {
   intent?: boolean
 }
 
-export function buildAdapayPaymentQuery(options: AdapayPaymentRouteOptions): Record<string, string> {
+export function buildAdapayPaymentQuery(
+  options: AdapayPaymentRouteOptions,
+): Record<string, string> {
   const query: Record<string, string> = {
     adapay: '1',
     requirement_id: options.requirementId,

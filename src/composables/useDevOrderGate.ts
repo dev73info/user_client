@@ -5,10 +5,7 @@ import { TMessage } from 'ui_73info'
 
 import { getDevAccessStatus } from '@/api/auth'
 import { describeBackendError } from '@/shared/backendErrorText'
-import {
-  requiresAgreementGate,
-  type RequirementBindGate,
-} from '@/shared/devRequirementHall'
+import { requiresAgreementGate, type RequirementBindGate } from '@/shared/devRequirementHall'
 import type { RequirementItem } from '@/api/requirements/types'
 import { useAuthStore } from '@/stores/auth'
 
@@ -54,9 +51,7 @@ export function useDevOrderGate() {
   /**
    * 点某一行的「接单」：担保单要过入驻协议，签完靠 `redirect_to` 回到大厅；其余直接进需求详情。
    */
-  function openRequirement(
-    requirement: Pick<RequirementItem, 'requirement_id' | 'payment_mode'>,
-  ) {
+  function openRequirement(requirement: Pick<RequirementItem, 'requirement_id' | 'payment_mode'>) {
     if (requiresAgreementGate(requirement) && !developerAgreementSigned.value) {
       goSignDeveloperAgreement(requirement.requirement_id)
       return

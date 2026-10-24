@@ -57,12 +57,14 @@ describe('QQ direct authorization', () => {
       poll_secret: 'test-secret',
     })
     mocks.getStatus.mockResolvedValue({ token: null })
-    wrapper = mount(defineComponent({
-      setup() {
-        form = useAuthForm(ref('login'))
-        return () => null
-      },
-    }))
+    wrapper = mount(
+      defineComponent({
+        setup() {
+          form = useAuthForm(ref('login'))
+          return () => null
+        },
+      }),
+    )
   })
 
   afterEach(() => {

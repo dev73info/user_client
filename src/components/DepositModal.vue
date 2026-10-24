@@ -7,7 +7,10 @@ type DepositPayment = Record<string, unknown> | null
 
 defineProps({
   visible: { type: Boolean, default: false },
-  depositRequirement: { type: Object as PropType<{ title: string; id: string; budget?: number | null }>, required: true },
+  depositRequirement: {
+    type: Object as PropType<{ title: string; id: string; budget?: number | null }>,
+    required: true,
+  },
   formattedBudget: { type: String, default: '' },
   paymentStageLabel: { type: String, required: true },
   depositChannel: { type: String as PropType<'alipay' | 'wechat'>, required: true },
@@ -47,29 +50,42 @@ function updateDepositPolicyAccepted(value: boolean) {
       <h3>支付{{ paymentStageLabel }}</h3>
       <p class="deposit-line"><strong>需求标题：</strong>{{ depositRequirement.title }}</p>
       <p class="deposit-line"><strong>需求编号：</strong>{{ depositRequirement.id }}</p>
-      <p class="deposit-line">
-        <strong>预算：</strong>{{ formattedBudget }}
-      </p>
+      <p class="deposit-line"><strong>预算：</strong>{{ formattedBudget }}</p>
       <div class="deposit-channel-row">
         <strong>支付方式：</strong>
         <div class="payment-options" role="radiogroup" aria-label="支付方式选择">
-          <button type="button" class="payment-option"
-            :class="{ active: depositChannel === 'alipay', 'payment-option--alipay': depositChannel === 'alipay' }"
-            @click="updateChannel('alipay')">
+          <button
+            type="button"
+            class="payment-option"
+            :class="{
+              active: depositChannel === 'alipay',
+              'payment-option--alipay': depositChannel === 'alipay',
+            }"
+            @click="updateChannel('alipay')"
+          >
             <img class="payment-option-icon" src="/icons/alipay.png" alt="支付宝" />
             支付宝
           </button>
-          <button type="button" class="payment-option"
-            :class="{ active: depositChannel === 'wechat', 'payment-option--wechat': depositChannel === 'wechat' }"
-            @click="updateChannel('wechat')">
+          <button
+            type="button"
+            class="payment-option"
+            :class="{
+              active: depositChannel === 'wechat',
+              'payment-option--wechat': depositChannel === 'wechat',
+            }"
+            @click="updateChannel('wechat')"
+          >
             <img class="payment-option-icon" src="/icons/wechat-pay.png" alt="微信" />
             微信
           </button>
         </div>
       </div>
-      <p v-if="!isFinalPayment" class="deposit-line"><strong>定金占比：</strong>{{ depositRatioPercent.toFixed(2) }}%
+      <p v-if="!isFinalPayment" class="deposit-line">
+        <strong>定金占比：</strong>{{ depositRatioPercent.toFixed(2) }}%
       </p>
-      <p v-else class="deposit-line"><strong>尾款金额：</strong>¥{{ formatFenAsCny(payableFen) }}</p>
+      <p v-else class="deposit-line">
+        <strong>尾款金额：</strong>¥{{ formatFenAsCny(payableFen) }}
+      </p>
 
       <div v-if="!isFinalPayment" class="contract-signing-status">
         <div class="css-step" :class="contractSigningStatus?.has_contract ? 'done' : 'pending'">
@@ -87,19 +103,32 @@ function updateDepositPolicyAccepted(value: boolean) {
           <span class="css-step-label">甲方（您）已签</span>
         </div>
         <span class="css-step-line"></span>
-        <div class="css-step"
-          :class="contractSigningStatus?.party_a_signed && contractSigningStatus?.party_b_signed ? 'done' : 'pending'">
+        <div
+          class="css-step"
+          :class="
+            contractSigningStatus?.party_a_signed && contractSigningStatus?.party_b_signed
+              ? 'done'
+              : 'pending'
+          "
+        >
           <span class="css-step-dot"></span>
           <span class="css-step-label">可支付定金</span>
         </div>
       </div>
 
-      <div v-if="!isFinalPayment" class="deposit-policy-box"
-        :class="{ 'is-pending': !depositPolicyAccepted, 'is-confirmed': depositPolicyAccepted }" role="note"
-        aria-label="定金服务费与退款规则">
+      <div
+        v-if="!isFinalPayment"
+        class="deposit-policy-box"
+        :class="{ 'is-pending': !depositPolicyAccepted, 'is-confirmed': depositPolicyAccepted }"
+        role="note"
+        aria-label="定金服务费与退款规则"
+      >
         <div class="deposit-policy-head">
           <p class="deposit-policy-title">定金服务费说明</p>
-          <span class="deposit-policy-badge" :class="depositPolicyAccepted ? 'is-confirmed' : 'is-required'">
+          <span
+            class="deposit-policy-badge"
+            :class="depositPolicyAccepted ? 'is-confirmed' : 'is-required'"
+          >
             {{ depositPolicyAccepted ? '已确认' : '必选' }}
           </span>
         </div>
@@ -111,10 +140,18 @@ function updateDepositPolicyAccepted(value: boolean) {
         </ul>
       </div>
 
-      <div v-if="!isFinalPayment" class="deposit-policy-confirm" :class="{ 'is-pending': !depositPolicyAccepted }">
+      <div
+        v-if="!isFinalPayment"
+        class="deposit-policy-confirm"
+        :class="{ 'is-pending': !depositPolicyAccepted }"
+      >
         <label class="deposit-policy-check" :class="{ 'is-checked': depositPolicyAccepted }">
-          <input class="deposit-policy-check__input" type="checkbox" :checked="depositPolicyAccepted"
-            @change="updateDepositPolicyAccepted(($event.target as HTMLInputElement).checked)" />
+          <input
+            class="deposit-policy-check__input"
+            type="checkbox"
+            :checked="depositPolicyAccepted"
+            @change="updateDepositPolicyAccepted(($event.target as HTMLInputElement).checked)"
+          />
           <span class="deposit-policy-check__box" aria-hidden="true">
             <span class="deposit-policy-check__tick" />
           </span>
@@ -128,10 +165,21 @@ function updateDepositPolicyAccepted(value: boolean) {
       </p>
       <div class="auth-modal-actions">
         <button class="auth-btn ghost" type="button" @click="emit('close')">取消</button>
-        <button class="auth-btn solid" type="button"
-          :disabled="depositLoading || (!isFinalPayment && !depositPolicyAccepted && !depositPayment)"
-          @click="emit('submit')">
-          {{ depositLoading ? '处理中...' : depositPayment ? '查询支付结果' : `支付${paymentStageLabel}` }}
+        <button
+          class="auth-btn solid"
+          type="button"
+          :disabled="
+            depositLoading || (!isFinalPayment && !depositPolicyAccepted && !depositPayment)
+          "
+          @click="emit('submit')"
+        >
+          {{
+            depositLoading
+              ? '处理中...'
+              : depositPayment
+                ? '查询支付结果'
+                : `支付${paymentStageLabel}`
+          }}
         </button>
       </div>
     </section>

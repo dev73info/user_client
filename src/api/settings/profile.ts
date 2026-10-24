@@ -76,10 +76,7 @@ export async function updateProfileBackgroundStatic(
   )
 }
 
-export async function uploadProfileBackground(
-  token: string,
-  file: File,
-): Promise<ProfileResponse> {
+export async function uploadProfileBackground(token: string, file: File): Promise<ProfileResponse> {
   const formData = new FormData()
   formData.append('file', file)
 

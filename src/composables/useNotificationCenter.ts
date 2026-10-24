@@ -127,9 +127,7 @@ export function useNotificationCenter() {
       authed
         ? listConversationHistoryDisclosures(auth.token)
         : Promise.resolve<ConversationHistoryDisclosure[]>([]),
-      authed
-        ? listMyAfterSalesCases(auth.token)
-        : Promise.resolve<AfterSalesCaseSummary[]>([]),
+      authed ? listMyAfterSalesCases(auth.token) : Promise.resolve<AfterSalesCaseSummary[]>([]),
     ])
 
     if (disclosuresResult.status === 'fulfilled') {

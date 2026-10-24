@@ -88,9 +88,7 @@ const invoices: InvoiceRecord[] = requirements
     const list: InvoiceRecord[] = []
 
     if (item.payment_mode === 'platform_guarantee') {
-      list.push(
-        buildInvoice(index * 2 + 1, item.requirement_id, 'platform', depositAmountOf(item)),
-      )
+      list.push(buildInvoice(index * 2 + 1, item.requirement_id, 'platform', depositAmountOf(item)))
     }
 
     list.push(
@@ -98,17 +96,21 @@ const invoices: InvoiceRecord[] = requirements
         index * 2 + 2,
         item.requirement_id,
         'developer',
-        item.payment_mode === 'platform_guarantee'
-          ? finalAmountOf(item)
-          : (item.budget ?? 0),
+        item.payment_mode === 'platform_guarantee' ? finalAmountOf(item) : (item.budget ?? 0),
       ),
     )
 
     return list
   })
 
-function invoiceFor(requirementId: string, role: InvoiceRecord['invoiceRole']): InvoiceRecord | null {
-  return invoices.find((item) => item.requirementId === requirementId && item.invoiceRole === role) ?? null
+function invoiceFor(
+  requirementId: string,
+  role: InvoiceRecord['invoiceRole'],
+): InvoiceRecord | null {
+  return (
+    invoices.find((item) => item.requirementId === requirementId && item.invoiceRole === role) ??
+    null
+  )
 }
 
 function buildSummary(requirementId: string): InvoiceableSummary | null {
@@ -201,8 +203,16 @@ const routes: MockRoute[] = [
 
       const created: InvoiceRecord[] = []
 
-      if (requirement.payment_mode === 'platform_guarantee' && !invoiceFor(requirementId, 'platform')) {
-        const record = buildInvoice(invoices.length + 1, requirementId, 'platform', depositAmountOf(requirement))
+      if (
+        requirement.payment_mode === 'platform_guarantee' &&
+        !invoiceFor(requirementId, 'platform')
+      ) {
+        const record = buildInvoice(
+          invoices.length + 1,
+          requirementId,
+          'platform',
+          depositAmountOf(requirement),
+        )
         invoices.push(record)
         created.push(record)
       }

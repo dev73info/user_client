@@ -67,14 +67,8 @@ export function useInvoiceApplyForm(
     buyerBankAccount: '',
   })
 
-  const {
-    copy,
-    amountFen,
-    amountCny,
-    invoiceGateNotice,
-    existingInvoices,
-    openSides,
-  } = useInvoiceApplyView({ summary, role: options.role })
+  const { copy, amountFen, amountCny, invoiceGateNotice, existingInvoices, openSides } =
+    useInvoiceApplyView({ summary, role: options.role })
 
   const { restoreDraft, saveDraft, clearDraft } = useInvoiceApplyDraft()
 

@@ -67,9 +67,7 @@ const {
           width="220"
           height="220"
         />
-        <p class="tip-dialog__pay-tip">
-          请用手机扫码完成支付；支付完成后本窗口会自动更新。
-        </p>
+        <p class="tip-dialog__pay-tip">请用手机扫码完成支付；支付完成后本窗口会自动更新。</p>
       </template>
       <template v-else-if="payUrl">
         <p class="tip-dialog__pay-tip">请点击下方链接完成支付。</p>

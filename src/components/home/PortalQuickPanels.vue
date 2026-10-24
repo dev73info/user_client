@@ -82,7 +82,14 @@ const emit = defineEmits<{ (e: 'open', panel: PortalQuickPanel): void }>()
             </filter>
           </defs>
           <g filter="url(#quickRequirementShadow)">
-            <rect x="18" y="16" width="60" height="68" rx="14" fill="url(#quickRequirementOrange)" />
+            <rect
+              x="18"
+              y="16"
+              width="60"
+              height="68"
+              rx="14"
+              fill="url(#quickRequirementOrange)"
+            />
             <rect x="32" y="12" width="32" height="14" rx="7" fill="#fff7ed" />
             <path
               d="M31 40h12m7 0h15M31 54h12m7 0h15M31 68h12m7 0h10"

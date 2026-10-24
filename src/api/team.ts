@@ -38,10 +38,7 @@ const jsonHeaders = (token: string) => ({
   'Content-Type': 'application/json',
 })
 
-export async function createTeam(
-  token: string,
-  payload: CreateTeamRequest,
-): Promise<TeamResponse> {
+export async function createTeam(token: string, payload: CreateTeamRequest): Promise<TeamResponse> {
   return requestJson<TeamResponse>(
     '/teams',
     { method: 'POST', headers: jsonHeaders(token), body: JSON.stringify(payload) },
@@ -50,10 +47,7 @@ export async function createTeam(
 }
 
 /** 团队详情：契约回 `{team, members}`。 */
-export async function getTeamDetail(
-  token: string,
-  teamId: number,
-): Promise<TeamDetailResponse> {
+export async function getTeamDetail(token: string, teamId: number): Promise<TeamDetailResponse> {
   return requestJson<TeamDetailResponse>(
     `/teams/${teamId}`,
     { headers: authHeader(token) },
@@ -63,11 +57,7 @@ export async function getTeamDetail(
 
 /** 团队名片：免登录，任何人都能读团队的名字、简介与头像。 */
 export async function getPublicTeam(teamId: number): Promise<TeamResponse> {
-  return requestJson<TeamResponse>(
-    `/team/public/${teamId}`,
-    { headers: {} },
-    '获取团队名片失败',
-  )
+  return requestJson<TeamResponse>(`/team/public/${teamId}`, { headers: {} }, '获取团队名片失败')
 }
 
 export async function listMyTeams(token: string): Promise<TeamResponse[]> {
@@ -102,7 +92,11 @@ export async function uploadTeamAvatar(
 }
 
 export async function deleteTeam(token: string, teamId: number): Promise<void> {
-  return requestVoid(`/teams/${teamId}`, { method: 'DELETE', headers: authHeader(token) }, '解散团队失败')
+  return requestVoid(
+    `/teams/${teamId}`,
+    { method: 'DELETE', headers: authHeader(token) },
+    '解散团队失败',
+  )
 }
 
 /** 邀请成员：后端落一条邀请，返回的就是这条邀请（**不是**直接把成员加进团队）。 */
@@ -118,11 +112,7 @@ export async function inviteMember(
   )
 }
 
-export async function removeMember(
-  token: string,
-  teamId: number,
-  username: string,
-): Promise<void> {
+export async function removeMember(token: string, teamId: number, username: string): Promise<void> {
   return requestVoid(
     `/teams/${teamId}/members/${encodeURIComponent(username)}`,
     { method: 'DELETE', headers: authHeader(token) },
@@ -182,10 +172,7 @@ export async function listUserInvitations(token: string): Promise<TeamInvitation
   )
 }
 
-export async function acceptInvitation(
-  token: string,
-  invitationId: number,
-): Promise<TeamResponse> {
+export async function acceptInvitation(token: string, invitationId: number): Promise<TeamResponse> {
   return requestJson<TeamResponse>(
     `/teams/invitations/${invitationId}/accept`,
     { method: 'POST', headers: authHeader(token) },

@@ -25,7 +25,14 @@ import {
   settlementHint,
   statusBadgeClass,
 } from '@/shared/requirementRowRules'
-import { AWAITING_B, NO_CONTRACT, SIGNED, facts, requirement, version } from './helpers/requirementRowFixtures'
+import {
+  AWAITING_B,
+  NO_CONTRACT,
+  SIGNED,
+  facts,
+  requirement,
+  version,
+} from './helpers/requirementRowFixtures'
 
 /* 这个视图没有挂载测试，行内判定只有这一层网：合同 / 版本两种事实下的各判定取值、
    时间与金额的格式化边界。主操作与「更多」菜单的分组见 requirementRowActions.spec.ts。 */

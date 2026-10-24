@@ -77,13 +77,7 @@ describe('workbench mode switch', () => {
     )!
     expect(
       accountGroup.findAll('.user-workbench__submenu-link').map((link) => link.text()),
-    ).toEqual([
-      '账户详情',
-      '我的合同',
-      '我的发票',
-      '优惠券中心',
-      '我的已购',
-    ])
+    ).toEqual(['账户详情', '我的合同', '我的发票', '优惠券中心', '我的已购'])
     expect(accountGroup.findAll('.user-workbench__submenu-link')[3]?.attributes('href')).toBe(
       '/workbench/workbench-coupons',
     )

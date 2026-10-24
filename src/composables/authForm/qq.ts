@@ -35,12 +35,7 @@ export function useQqLogin({
     qqAuthorizationWindow = null
   }
 
-  async function checkQqLogin(
-    state: string,
-    pollSecret: string,
-    generation: number,
-    attempt = 0,
-  ) {
+  async function checkQqLogin(state: string, pollSecret: string, generation: number, attempt = 0) {
     if (generation !== qqLoginGeneration) return
     try {
       const result = await getQqLoginQrStatus(state, pollSecret)

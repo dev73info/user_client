@@ -1,9 +1,7 @@
 import { computed, ref, type Ref } from 'vue'
 
 import { detectClientPlatform, recordAgreementAcceptance } from '@/api/auth'
-import {
-  rememberLegalNoticeConfirmedAt,
-} from '@/components/legal/legalNotice'
+import { rememberLegalNoticeConfirmedAt } from '@/components/legal/legalNotice'
 import { useAuthStore } from '@/stores/auth'
 
 /**

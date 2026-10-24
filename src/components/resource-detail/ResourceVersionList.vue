@@ -108,7 +108,9 @@ function downloadLabel(version: PublicMcResourceVersionItem): string {
             <span>{{ formatResourceTime(version.created_at) }}</span>
           </div>
           <div class="resource-detail-page__version-flags">
-            <span v-if="version.is_current" class="resource-detail-page__version-current">当前版本</span>
+            <span v-if="version.is_current" class="resource-detail-page__version-current"
+              >当前版本</span
+            >
             <span v-if="versionPriceLabel(version)" class="resource-detail-page__version-price">{{
               versionPriceLabel(version)
             }}</span>

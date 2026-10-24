@@ -11,9 +11,12 @@ const mocks = vi.hoisted(() => ({
 }))
 
 vi.mock('@/stores/auth', () => ({ useAuthStore: () => mocks.auth }))
-vi.mock('vue-router', () => ({ useRouter: () => ({
-  resolve: () => ({ href: '/' }), replace: vi.fn().mockResolvedValue(undefined),
-}) }))
+vi.mock('vue-router', () => ({
+  useRouter: () => ({
+    resolve: () => ({ href: '/' }),
+    replace: vi.fn().mockResolvedValue(undefined),
+  }),
+}))
 vi.mock('ui_73info', async (importOriginal) => {
   const actual = await importOriginal<typeof import('ui_73info')>()
   const toast =
@@ -35,22 +38,30 @@ vi.mock('ui_73info', async (importOriginal) => {
 describe('WeChat browser-only polling credential', () => {
   let form: ReturnType<typeof useAuthForm>
   let wrapper: ReturnType<typeof mount>
-  const qr = { url: 'https://example.invalid/oauth?state=pc-state', state: 'pc-state', poll_secret: 'pc-only-secret' }
+  const qr = {
+    url: 'https://example.invalid/oauth?state=pc-state',
+    state: 'pc-state',
+    poll_secret: 'pc-only-secret',
+  }
 
   beforeEach(() => {
     vi.clearAllMocks()
     vi.stubGlobal('fetch', mocks.fetch)
     mocks.fetch.mockReset()
-    mocks.fetch.mockImplementation(async (url: string) => new Response(
-      JSON.stringify(url.includes('/oauth-status') ? { wechat: true } : qr),
-      { headers: { 'Content-Type': 'application/json' } },
-    ))
-    wrapper = mount(defineComponent({
-      setup() {
-        form = useAuthForm(ref('login'))
-        return () => null
-      },
-    }))
+    mocks.fetch.mockImplementation(
+      async (url: string) =>
+        new Response(JSON.stringify(url.includes('/oauth-status') ? { wechat: true } : qr), {
+          headers: { 'Content-Type': 'application/json' },
+        }),
+    )
+    wrapper = mount(
+      defineComponent({
+        setup() {
+          form = useAuthForm(ref('login'))
+          return () => null
+        },
+      }),
+    )
   })
 
   afterEach(() => {
@@ -60,9 +71,11 @@ describe('WeChat browser-only polling credential', () => {
   })
 
   it('sends the credential as the contract requires: poll_secret in the query string', async () => {
-    mocks.fetch.mockResolvedValueOnce(new Response(JSON.stringify({ token: null }), {
-      headers: { 'Content-Type': 'application/json' },
-    }))
+    mocks.fetch.mockResolvedValueOnce(
+      new Response(JSON.stringify({ token: null }), {
+        headers: { 'Content-Type': 'application/json' },
+      }),
+    )
     await getWechatLoginQrStatus(qr.state, qr.poll_secret)
     const [url, init] = mocks.fetch.mock.calls.find(([url]) => String(url).includes('/qr/status'))!
     // 契约 `QrStatusQuery` 只认两个**查询参数** `state` + `poll_secret`；
@@ -77,7 +90,12 @@ describe('WeChat browser-only polling credential', () => {
     const storage = vi.spyOn(Storage.prototype, 'setItem')
     form.acceptTerms.value = true
     await form.loginWithWechat()
-    expect(form.wechatQrLogin).toEqual({ visible: true, url: qr.url, state: qr.state, pollSecret: qr.poll_secret })
+    expect(form.wechatQrLogin).toEqual({
+      visible: true,
+      url: qr.url,
+      state: qr.state,
+      pollSecret: qr.poll_secret,
+    })
     expect(form.wechatQrLogin.url).not.toContain(qr.poll_secret)
     expect(storage).not.toHaveBeenCalled()
     form.closeWechatQrLogin()
@@ -94,9 +112,11 @@ describe('WeChat browser-only polling credential', () => {
   })
 
   it('rejects legacy QR responses without a polling credential', async () => {
-    mocks.fetch.mockResolvedValueOnce(new Response(JSON.stringify({ url: qr.url, state: qr.state }), {
-      headers: { 'Content-Type': 'application/json' },
-    }))
+    mocks.fetch.mockResolvedValueOnce(
+      new Response(JSON.stringify({ url: qr.url, state: qr.state }), {
+        headers: { 'Content-Type': 'application/json' },
+      }),
+    )
     form.acceptTerms.value = true
     await form.loginWithWechat()
     expect(form.wechatQrLogin.visible).toBe(false)

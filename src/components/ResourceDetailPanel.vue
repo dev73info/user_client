@@ -105,7 +105,10 @@ const isOwner = computed(() => {
   return Boolean(creator && username && creator === username)
 })
 const priceLabel = computed(() =>
-  formatResourcePriceLabel(resource.value?.buyout_price_fen ?? 0, resource.value?.price_points ?? 0),
+  formatResourcePriceLabel(
+    resource.value?.buyout_price_fen ?? 0,
+    resource.value?.price_points ?? 0,
+  ),
 )
 /**
  * BUG-020：接口资源只在开发者自有站点的服务端下单，平台内没有购买入口。

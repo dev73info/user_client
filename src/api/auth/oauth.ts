@@ -1,11 +1,6 @@
 import { authHeaders, requestJson, requestVoid } from '@/api/http'
 
-import type {
-  AuthorizeUrlResp,
-  BoundProvidersResp,
-  OAuthProvider,
-  OauthStatusResp,
-} from './types'
+import type { AuthorizeUrlResp, BoundProvidersResp, OAuthProvider, OauthStatusResp } from './types'
 
 export async function getOauthStatus(): Promise<OauthStatusResp> {
   return requestJson<OauthStatusResp>('/auth/oauth-status', { headers: {} }, '加载登录方式失败')

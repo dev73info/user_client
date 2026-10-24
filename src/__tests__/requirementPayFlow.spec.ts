@@ -1,6 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { useRequirementPayFlow, type RequirementPayOrder } from '@/composables/useRequirementPayFlow'
+import {
+  useRequirementPayFlow,
+  type RequirementPayOrder,
+} from '@/composables/useRequirementPayFlow'
 import { HttpError } from '@/api/http'
 import type { RequirementItem } from '@/api/requirements'
 
@@ -86,7 +89,9 @@ function existingOrder(patch: Partial<RequirementPayOrder> = {}): RequirementPay
   }
 }
 
-function setup(options: { ratio?: number; canPay?: boolean; platform?: 'desktop' | 'mobile' } = {}) {
+function setup(
+  options: { ratio?: number; canPay?: boolean; platform?: 'desktop' | 'mobile' } = {},
+) {
   mocks.clientPlatform.mockReturnValue(options.platform ?? 'desktop')
   return useRequirementPayFlow({
     token: () => 'token',

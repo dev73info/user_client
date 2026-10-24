@@ -132,10 +132,14 @@ function handleRowClick(event: MouseEvent) {
         <TTag
           variant="outline"
           :tone="
-            isPricedResource(scope.row.buyout_price_fen, scope.row.price_points) ? 'accent' : 'neutral'
+            isPricedResource(scope.row.buyout_price_fen, scope.row.price_points)
+              ? 'accent'
+              : 'neutral'
           "
         >
-          {{ formatResourcePriceLabel(scope.row.buyout_price_fen ?? 0, scope.row.price_points ?? 0) }}
+          {{
+            formatResourcePriceLabel(scope.row.buyout_price_fen ?? 0, scope.row.price_points ?? 0)
+          }}
         </TTag>
       </template>
     </TTableColumn>

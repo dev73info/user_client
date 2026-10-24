@@ -1,10 +1,4 @@
-import {
-  findRequirement,
-  markPaymentPaid,
-  paymentOf,
-  payments,
-  type MockPayment,
-} from '../../db'
+import { findRequirement, markPaymentPaid, paymentOf, payments, type MockPayment } from '../../db'
 
 export function nowText(): string {
   return new Date().toISOString().slice(0, 19).replace('T', ' ')

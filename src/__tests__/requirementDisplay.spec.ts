@@ -208,9 +208,9 @@ describe('详情浮层的接取入口判定', () => {
       false,
     )
     // 契约里 `creator` 是必填，但列表侧历史上可能拿不到这份数据——缺了就按「不是自己的」处理
-    expect(
-      requirementOwnedByCurrentUser(true, 'alice', {} as PublicRequirementSpotlightItem),
-    ).toBe(false)
+    expect(requirementOwnedByCurrentUser(true, 'alice', {} as PublicRequirementSpotlightItem)).toBe(
+      false,
+    )
     expect(requirementOwnedByCurrentUser(true, 'alice', null)).toBe(false)
   })
 

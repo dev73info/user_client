@@ -185,12 +185,9 @@ describe('交付与到账的归并行', () => {
   })
 
   it('需求已解绑的到账单独成行，抬头与委托方取自钱包回执', () => {
-    const rows = buildDevOrderRows(
-      [],
-      [],
-      new Map(),
-      [income({ payment_id: 'p9', requirement_id: 'REQ-9', title: '已解绑需求', customer: 'bob' })],
-    )
+    const rows = buildDevOrderRows([], [], new Map(), [
+      income({ payment_id: 'p9', requirement_id: 'REQ-9', title: '已解绑需求', customer: 'bob' }),
+    ])
 
     expect(rows).toHaveLength(1)
     expect(rows[0]?.key).toBe(devRowKey('REQ-9'))

@@ -45,7 +45,9 @@ export function useDevWalletOverview() {
   /** 设置接口是否已经返回：返回前不判断通道状态，避免误报「通道未就绪」。 */
   const withdrawalSettingLoaded = computed(() => withdrawalSetting.value !== null)
   const payoutChannelReady = computed(() => withdrawalSetting.value?.payout_channel_ready ?? false)
-  const payoutChannelMessage = computed(() => withdrawalSetting.value?.auto_payout_blocked_reason ?? '')
+  const payoutChannelMessage = computed(
+    () => withdrawalSetting.value?.auto_payout_blocked_reason ?? '',
+  )
   /** 通道状态未知时按就绪处理，真正的拦截交给后端，避免一次请求失败就禁用提现入口。 */
   const payoutChannelUsable = computed(
     () => withdrawalSettingLoaded.value === false || payoutChannelReady.value,

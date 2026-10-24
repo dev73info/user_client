@@ -140,7 +140,6 @@ describe('支付通道切换：从弹窗按键到下单参数', () => {
     expect(mocks.createPayment.mock.calls[0]?.[3]).toBe('alipay')
     wrapper.unmount()
   })
-
 })
 
 describe('支付通道切换：事件键本身', () => {

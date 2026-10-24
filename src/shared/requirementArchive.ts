@@ -67,7 +67,10 @@ export function isRequirementArchived(item: ArchiveLike): boolean {
  * 未锁定 / 已清除 / 时间解析不出时返回 `null`，调用方不显示剩余天数即可。
  * `now` 便于单测注入固定时刻。
  */
-export function requirementLockRemainingDays(item: ArchiveLike, now: number = Date.now()): number | null {
+export function requirementLockRemainingDays(
+  item: ArchiveLike,
+  now: number = Date.now(),
+): number | null {
   if (!isRequirementLocked(item) || !hasText(item.archive_lock_expires_at)) {
     return null
   }
@@ -153,10 +156,7 @@ export function canClaimResourceWhileLocked(item: ArchiveLike): boolean {
  * 平台配置的「最短天数下限」不在前端写死——后端会按配置校验并返回中文提示
  * （`开发周期不能少于平台配置的最短天数`），前端原样展示，避免两处数字漂移。
  */
-export function validateDevelopmentCycleInput(
-  raw: unknown,
-  paymentMode: string,
-): string {
+export function validateDevelopmentCycleInput(raw: unknown, paymentMode: string): string {
   if (paymentMode !== 'platform_guarantee') {
     return ''
   }
@@ -179,10 +179,7 @@ export function validateDevelopmentCycleInput(
  * 调用前应先跑 {@link validateDevelopmentCycleInput}；这里对非法输入返回 `undefined`，
  * 由后端兜最后的校验与中文提示。
  */
-export function normalizeDevelopmentCycle(
-  raw: unknown,
-  paymentMode: string,
-): number | undefined {
+export function normalizeDevelopmentCycle(raw: unknown, paymentMode: string): number | undefined {
   if (paymentMode !== 'platform_guarantee') {
     return undefined
   }

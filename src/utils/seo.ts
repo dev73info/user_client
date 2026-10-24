@@ -1,10 +1,9 @@
 const DEFAULT_TITLE = '73Info 柒叁信息 - 资源与需求协作平台'
 const DEFAULT_DESCRIPTION =
   '73Info 柒叁信息是内测中的资源与需求协作平台，优先沉淀网站开发和小工具资源，支持公开资源浏览、需求发布、沟通记录、合同签署、担保支付、交付验收和合规说明。'
-const SITE_URL = ((import.meta.env.VITE_SITE_URL as string | undefined)?.trim() || 'https://73info.cn').replace(
-  /\/+$/,
-  '',
-)
+const SITE_URL = (
+  (import.meta.env.VITE_SITE_URL as string | undefined)?.trim() || 'https://73info.cn'
+).replace(/\/+$/, '')
 
 type SeoMetaInput = {
   title: string

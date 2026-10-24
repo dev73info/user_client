@@ -1,7 +1,11 @@
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 
 import { getAdapayPayment, type PaymentOrderResponse } from '@/api/adapay'
-import { normalizePaymentChannel, type PaymentChannel, type PaymentQueryContext } from '@/shared/paymentQuery'
+import {
+  normalizePaymentChannel,
+  type PaymentChannel,
+  type PaymentQueryContext,
+} from '@/shared/paymentQuery'
 import type { PaymentSession } from '@/composables/usePaymentSession'
 
 type UseAdapayOrderOptions = {
@@ -129,7 +133,9 @@ export function useAdapayOrder(options: UseAdapayOrderOptions) {
     hasAdapayPayment,
     /** 订单上的支付动作（收银台地址 / 微信支付参数），前端据此跳转或渲二维码 */
     adapayPayUrl: () =>
-      typeof adapayPayment.value?.client_action === 'string' ? adapayPayment.value.client_action : '',
+      typeof adapayPayment.value?.client_action === 'string'
+        ? adapayPayment.value.client_action
+        : '',
     confirmPayment,
     refreshPaymentOnReturn,
   }

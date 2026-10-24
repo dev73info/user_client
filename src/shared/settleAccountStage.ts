@@ -58,9 +58,7 @@ export function settleAccountStage(
  * 这期间**实名认证早已通过**、但结算账户绑不上，所以界面如实写「审核中」——
  * 写成「未设置」会让用户以为要自己再点一次绑定，而实际是渠道还没放行。
  */
-export function isSettleUnderReview(
-  status: SettlementAccountStatus | null | undefined,
-): boolean {
+export function isSettleUnderReview(status: SettlementAccountStatus | null | undefined): boolean {
   return status === 'under_review' || status === 'pending'
 }
 

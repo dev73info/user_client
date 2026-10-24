@@ -20,16 +20,8 @@ import { Refresh, TButton, TCard, TIcon } from 'ui_73info'
 import DevReceivedTipsCard from '@/components/dev/DevReceivedTipsCard.vue'
 import DevTipSettingsForm from '@/components/dev/DevTipSettingsForm.vue'
 
-const {
-  loading,
-  saving,
-  form,
-  received,
-  receivedLoading,
-  receivedCashText,
-  save,
-  refreshAll,
-} = useDevTipSettings()
+const { loading, saving, form, received, receivedLoading, receivedCashText, save, refreshAll } =
+  useDevTipSettings()
 </script>
 
 <template>

@@ -39,9 +39,7 @@ export function formatTipCashTier(fen: number | null | undefined): string {
   return `¥${formatFenAsCny(fen ?? 0)}`
 }
 
-export type TipCashAmountResult =
-  | { ok: true; fen: number }
-  | { ok: false; message: string }
+export type TipCashAmountResult = { ok: true; fen: number } | { ok: false; message: string }
 
 /** 元输入 → 分：空串与非两位小数的数字都返回 null（不猜用户意图）。 */
 function readCnyFen(raw: string | number | null | undefined): number | null {
@@ -81,9 +79,7 @@ export function validateTipCustomCash(
   return { ok: true, fen }
 }
 
-export type TipTierValidation =
-  | { ok: true; tiers: number[] }
-  | { ok: false; message: string }
+export type TipTierValidation = { ok: true; tiers: number[] } | { ok: false; message: string }
 
 /** 校验现金档位列表（元输入）：每项最多两位小数，1..=TIP_MAX_CASH_FEN 分，最多 6 个。 */
 export function validateTipCashTiers(rawTiers: (string | number)[]): TipTierValidation {

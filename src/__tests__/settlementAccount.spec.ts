@@ -51,8 +51,8 @@ describe('settlement account selections', () => {
   })
 
   it('preserves the corporate account type', () => {
-    expect(prepareSettlementAccount({ ...validForm, bank_acct_type: '1' }, '某公司').member_type).toBe(
-      'enterprise',
-    )
+    expect(
+      prepareSettlementAccount({ ...validForm, bank_acct_type: '1' }, '某公司').member_type,
+    ).toBe('enterprise')
   })
 })

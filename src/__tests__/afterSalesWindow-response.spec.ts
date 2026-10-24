@@ -9,7 +9,12 @@ import {
 } from './helpers/afterSalesWindow'
 
 const mocks = vi.hoisted(() => ({
-  list: vi.fn(), open: vi.fn(), respond: vi.fn(), withdraw: vi.fn(), detail: vi.fn(), toast: vi.fn(),
+  list: vi.fn(),
+  open: vi.fn(),
+  respond: vi.fn(),
+  withdraw: vi.fn(),
+  detail: vi.fn(),
+  toast: vi.fn(),
 })) satisfies AfterSalesMocks
 
 vi.mock('@/api/afterSales', () => ({
@@ -22,7 +27,16 @@ vi.mock('@/api/afterSales', () => ({
 vi.mock('ui_73info', async (importOriginal) => {
   const actual = await importOriginal<typeof import('ui_73info')>()
   const toast = (type: string) => (message: string) => mocks.toast(message, type)
-  return { ...actual, TMessage: { ...actual.TMessage, success: toast('success'), error: toast('error'), warning: toast('warning'), info: toast('info') } }
+  return {
+    ...actual,
+    TMessage: {
+      ...actual.TMessage,
+      success: toast('success'),
+      error: toast('error'),
+      warning: toast('warning'),
+      info: toast('info'),
+    },
+  }
 })
 
 let wrapper: VueWrapper | undefined

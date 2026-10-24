@@ -225,7 +225,9 @@ defineExpose({ open })
     </TForm>
     <template #footer>
       <TButton @click="visible = false">取消</TButton>
-      <TButton variant="solid" tone="accent" :loading="submitting" @click="submit">确认提现</TButton>
+      <TButton variant="solid" tone="accent" :loading="submitting" @click="submit"
+        >确认提现</TButton
+      >
     </template>
   </TDialog>
 </template>

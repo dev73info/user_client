@@ -2,11 +2,7 @@ import { authHeader, requestJson } from '@/api/http'
 
 import type { RequirementItem } from './requirements'
 
-export type {
-  RequirementItem,
-  RequirementPaymentMode,
-  RequirementStatus,
-} from './requirements'
+export type { RequirementItem, RequirementPaymentMode, RequirementStatus } from './requirements'
 
 /**
  * 需求大厅的候选单（契约 `GET /api/requirement/hall/query`）。
@@ -33,9 +29,7 @@ export async function getRequirementHallItem(
 ): Promise<RequirementItem> {
   const normalizedRequirementId = requirementId.trim()
   const payload = await listRequirementHall(token)
-  const item = payload.find(
-    (requirement) => requirement.requirement_id === normalizedRequirementId,
-  )
+  const item = payload.find((requirement) => requirement.requirement_id === normalizedRequirementId)
 
   if (!item) {
     throw new Error('需求不存在或已不可接取')
