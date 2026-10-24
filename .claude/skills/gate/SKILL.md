@@ -3,7 +3,7 @@ name: gate
 description: 在本仓跑质量门禁（类型 / lint / 单测 / 结构检查 / 契约 / 构建）并按失败类别处置。改到 src/** 之后、git commit 之前、开 PR 之前使用；门禁红了但不确定是哪一类问题时也用它。
 ---
 
-# 跑门禁（user-client）
+# 跑门禁（user_client）
 
 ## 一、两条命令
 

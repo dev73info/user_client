@@ -37,7 +37,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           ref: ${{ inputs.tag || github.ref }}
-          path: user-client
+          path: user_client
 
       - name: 取 ui_73info
         uses: actions/checkout@v4
@@ -75,7 +75,7 @@ jobs:
         with:
           node-version: 24
           cache: pnpm
-          cache-dependency-path: user-client/pnpm-lock.yaml
+          cache-dependency-path: user_client/pnpm-lock.yaml
 
       # ui_73info 发的是源码、被 link 进宿主，但它自己的 vue 是 devDependency，
       # 不装的话宿主构建时从 ui_73info 的真实路径解析不到 vue。
@@ -84,16 +84,16 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: 装依赖
-        working-directory: user-client
+        working-directory: user_client
         run: pnpm install --frozen-lockfile
 
       - name: 构建
-        working-directory: user-client
+        working-directory: user_client
         run: pnpm build
 
       - name: 构建产物自检
         if: ${{ inputs.build_only }}
-        working-directory: user-client
+        working-directory: user_client
         run: |
           test -f dist/index.html
           ls -1 dist/assets | head -5
@@ -116,7 +116,7 @@ jobs:
 
       - name: 部署并探活
         if: ${{ !inputs.build_only }}
-        working-directory: user-client
+        working-directory: user_client
         env:
           SSH_HOST: ${{ secrets.SSH_HOST }}
           SSH_USER: ${{ secrets.SSH_USER }}

@@ -15,6 +15,10 @@
 
 ## 一、开工（在本仓动手之前，包括「只是看看 / 改个文案」）
 
+> **CodeGraph 硬规则**：每次修改代码前先用 codegraph 定位符号与影响面
+> （`codegraph_context` / `codegraph_search` → `codegraph_callers` / `codegraph_impact`），
+> 详见 `.claude/rules/codegraph.md`。不要跳过索引直接 grep。
+
 1. **先读** `.claude/rules/dev-workflow.md` 与 `.claude/rules/code-quality.md`；改界面文案还要看 `ui-copy.md`。
 2. `pwd` 确认在本仓目录；一次只处理一个仓库，不跨仓批量提交。
 3. `git fetch origin` → `git status --porcelain` → `git branch --show-current`。

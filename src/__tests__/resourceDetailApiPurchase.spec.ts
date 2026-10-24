@@ -8,7 +8,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
  * 接口资源只认「开发者自有站点的服务端 + 指定来源 + 接口密钥」这一条入口。
  * 前端因此不能在详情页给出平台内购买入口，只给一条「到开发者站点下单」的引导。
  *
- * 盯的是资源详情面板（ResourceDetailPanel）：它是 user-client 里唯一调用
+ * 盯的是资源详情面板（ResourceDetailPanel）：它是 user_client 里唯一调用
  * `POST /api/resources/resources/{id}/purchase` 的地方。
  * 场景取「团队成员看接口资源」——这类人能看到详情（后端放行团队成员），
  * 但不是作者，`needsPurchase` 本来会算出「要买」，正是修复前会露出购买按钮的那一档。

@@ -6,7 +6,7 @@ name: ci
 # `TS2307: Cannot find module 'ui_73info'`——所以三个仓要检出成兄弟目录，
 # 布局与本地 /home/banch/dev73info 一致，也和 deploy.yml 那套完全一样：
 #
-#   $GITHUB_WORKSPACE/user-client   本仓
+#   $GITHUB_WORKSPACE/user_client   本仓
 #   $GITHUB_WORKSPACE/ui_73info     发的是源码，被 link 进宿主
 #   $GITHUB_WORKSPACE/tags-wasm     仓库里不含 pkg/（构建物），要现场 wasm-pack build
 #
@@ -31,13 +31,13 @@ jobs:
     timeout-minutes: 25
     defaults:
       run:
-        working-directory: user-client
+        working-directory: user_client
     steps:
       - name: 取本仓
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          path: user-client
+          path: user_client
 
       - name: 取 ui_73info
         uses: actions/checkout@v4
@@ -74,7 +74,7 @@ jobs:
           cache: pnpm
           # 两个仓各装各的，缓存键要把两份 lockfile 都算上
           cache-dependency-path: |
-            user-client/pnpm-lock.yaml
+            user_client/pnpm-lock.yaml
             ui_73info/pnpm-lock.yaml
 
       # ui_73info 发的是源码、被 link 进宿主，但它自己的 vue 是 devDependency，
@@ -142,7 +142,7 @@ jobs:
       # `src/**/*.ts` 里的 `**/` 要求至少一层子目录，顶层的 `src/main.ts` 匹配不到，
       # 格式门禁对它是盲区；补上 `src/*.ts` 一并检查。
       # 再补 CSS 与 scripts：审阅实测 prettier 在多文件模式下能抓出「规则被切在两半」的坏样式表
-      # （退出码 2 并点名那几个文件）——user-client 的样式大量在 `src/styles/*.css`，漏掉等于没这道门。
+      # （退出码 2 并点名那几个文件）——user_client 的样式大量在 `src/styles/*.css`，漏掉等于没这道门。
       - name: Format（仅改动文件）
         run: |
           BASE="${{ github.event.pull_request.base.sha || github.event.before }}"

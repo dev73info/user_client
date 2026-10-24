@@ -15,7 +15,7 @@ describe('api/http utilities', () => {
     expect(apiUrl('/api/auth/login')).toBe('/api/auth/login')
   })
 
-  it('normalizeBackendPath maps user-client aliases to backend routes', () => {
+  it('normalizeBackendPath maps user_client aliases to backend routes', () => {
     expect(normalizeBackendPath('/payments/orders')).toBe('/api/payment/orders')
     expect(normalizeBackendPath('/coupons/available')).toBe('/api/coupon/available')
     expect(normalizeBackendPath('/settings/deposit-ratio')).toBe(
