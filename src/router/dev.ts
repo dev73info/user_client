@@ -3,7 +3,7 @@
  *
  * 路由表按域拆在 `dev/` 下：`workbenchAccount`（账号 / 钱包 / 发票）、`workbenchResource`
  * （资源创建与管理）、`workbenchRequirement`（需求大厅与我的接单）、`workbenchShared`
- * （团队 / 消息 / 工单 / 通知 / 权限兜底页）、`legacy`（旧版 `/dev/*` 重定向）、
+ * （团队 / 消息 / 通知 / 权限兜底页）、`legacy`（旧版 `/dev/*` 重定向）、
  * `guard`（全局前置守卫）。
  *
  * 对外面不变：仍然导出 `devRoutes`、`devWorkbenchRoutes`、`installDevRouteGuard` 三个名字，

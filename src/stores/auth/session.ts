@@ -9,6 +9,7 @@ import { computed, ref } from 'vue'
 import {
   authRequest,
   type AuthPayload,
+  getPrivileges,
   isTwoFactorRequiredPayload,
   refreshToken as refreshTokenApi,
 } from '@/api/auth'
@@ -37,9 +38,14 @@ export function createAuthSession() {
   const devAccessError = ref('')
   const developerAgreementSigned = ref(false)
   const apiUsageAgreementSigned = ref(false)
+  const permissions = ref<string[]>([])
+  const privilegesLoaded = ref(false)
+  const isSuperAdmin = ref(false)
 
   const isAuthed = computed(() => token.value.length > 0)
-  const isDev = computed(() => role.value === 'dev' || role.value === 'super_admin')
+  const isDev = computed(
+    () => isSuperAdmin.value || permissions.value.includes('scope.dev.access'),
+  )
   const profileState = {
     username,
     role,
@@ -63,8 +69,15 @@ export function createAuthSession() {
     return createAuthHeaders(token.value, headers)
   }
 
+  function hasPermission(permission: string): boolean {
+    return isSuperAdmin.value || permissions.value.includes(permission)
+  }
+
   function resetProfile() {
     resetAuthProfileState(profileState)
+    permissions.value = []
+    privilegesLoaded.value = false
+    isSuperAdmin.value = false
   }
 
   function resetAuthState() {
@@ -124,6 +137,34 @@ export function createAuthSession() {
     applyAuthPayloadToState(profileState, payload, persist, preserveProfile)
   }
 
+  /**
+   * 拉取当前登录人的**生效**权限码（`GET /auth/users/privileges`）。
+   *
+   * 后端已经把「角色」与「用户级权限覆盖」合成好了：`permissions` 是最终结果，
+   * `role` / `roles` 只是展示用的角色快照。所以前端的「能不能看到 / 能不能点」
+   * 一律读 `permissions`（`hasPermission(code)`），不要按固定角色名判断。
+   * 请求失败**原样抛出**：权限拿不到就当作没有，绝不放行。
+   */
+  async function fetchPrivileges(): Promise<void> {
+    const sourceToken = token.value
+    if (!sourceToken) {
+      resetProfile()
+      return
+    }
+
+    const payload = await getPrivileges(sourceToken)
+    if (token.value !== sourceToken) {
+      throw new Error('会话已更新')
+    }
+    permissions.value = payload.permissions
+    isSuperAdmin.value = payload.is_super_admin
+    // 角色以服务端为准：角色被收回 / 补授后，刷新即生效，不用重新登录。
+    if (payload.role) {
+      role.value = payload.role
+    }
+    privilegesLoaded.value = true
+  }
+
   async function fetchProfile(force = false): Promise<AuthProfile> {
     return fetchAuthProfile({
       token: token.value,
@@ -136,6 +177,7 @@ export function createAuthSession() {
           throw new Error('会话已更新')
         }
         persist(payload.token, true)
+        await fetchPrivileges()
 
         if (payload.username && payload.role) {
           return {
@@ -218,9 +260,14 @@ export function createAuthSession() {
     apiUsageAgreementSigned,
     isAuthed,
     isDev,
+    permissions,
+    privilegesLoaded,
+    isSuperAdmin,
+    hasPermission,
     authHeaders,
     hydrate,
     fetchProfile,
+    fetchPrivileges,
     initializeSession,
     setToken,
     applyExternalSession,

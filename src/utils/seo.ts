@@ -57,7 +57,7 @@ function normalizePath(path: string): string {
       ? path
       : `/${path}`
 
-  // 线上静态快照以目录形式提供（/community/ 而非 /community，无斜杠会 301），
+  // 线上静态快照以目录形式提供（/resources/ 而非 /resources，无斜杠会 301），
   // canonical 统一输出带斜杠的最终形态，避免“canonical 指向重定向地址”。
   if (normalized === '/') {
     return '/'

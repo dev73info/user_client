@@ -6,12 +6,10 @@ import { fileURLToPath } from 'node:url'
 import {
   collectPublicProfiles,
   dateOnly,
-  fetchPublishedPosts,
   fetchPublishedResources,
   fetchPublicRequirementSpotlights,
   isCashPaidListingResource,
   isFreeListingResource,
-  positiveInteger,
   publicProfilePath,
   resourceDetailSlug,
   resolveApiBaseUrl,
@@ -24,7 +22,6 @@ const sitemapPath = resolve(projectRoot, 'public/sitemap.xml')
 
 const siteUrl = resolveSiteUrl()
 const apiBaseUrl = resolveApiBaseUrl(projectRoot)
-const maxCommunityPosts = positiveInteger(process.env.SITEMAP_MAX_COMMUNITY_POSTS, 1000)
 const today = new Date().toISOString().slice(0, 10)
 let sitemapFetchFailed = false
 
@@ -61,7 +58,6 @@ function buildStaticEntries({ resources, posts, requirements, profiles }) {
       changefreq: 'daily',
       priority: '0.8',
     },
-    { path: '/community', lastmod: latestOf(postDates) || today, changefreq: 'weekly', priority: '0.6' },
     { path: '/about', changefreq: 'monthly', priority: '0.5' },
     { path: '/terms', changefreq: 'monthly', priority: '0.4' },
     { path: '/privacy', changefreq: 'monthly', priority: '0.4' },
@@ -76,11 +72,10 @@ function latestOf(...groups) {
 }
 
 async function main() {
-  const [resources, posts, requirements] = await Promise.all([
+  // 社区整块已随后端契约下线（`/community/**` 一条路径都没有），sitemap 不再收录帖子。
+  const posts = []
+  const [resources, requirements] = await Promise.all([
     fetchPublishedResources(apiBaseUrl).catch((error) => handleFetchFailure('resources', error)),
-    fetchPublishedPosts(apiBaseUrl, maxCommunityPosts).catch((error) =>
-      handleFetchFailure('community posts', error),
-    ),
     fetchPublicRequirementSpotlights(apiBaseUrl).catch((error) =>
       handleFetchFailure('requirement spotlight', error),
     ),
