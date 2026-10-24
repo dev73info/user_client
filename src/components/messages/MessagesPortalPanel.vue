@@ -19,7 +19,7 @@ import MessagesHistoryDisclosurePanel from '@/components/messages/MessagesHistor
  * 门户侧的消息中心：历史沟通公开申请面板 + 会话卡。
  *
  * 版式走统一层 portal-workbench.css 的 `.wb-*`（卡头 / 工具栏 / 列表 / 空态 / 徽标 / 分页），
- * 与「我的需求」「我的收藏」「工单中心」是同一套；这里只把行排成「主区（标题 + 编号 + 预览）+
+ * 与「我的需求」「系统通知」是同一套；这里只把行排成「主区（标题 + 编号 + 预览）+
  * 右列（状态 → 对方 → 时间）」，并把打开会话、清空筛选、表决三件事 emit 出去。
  */
 defineProps<{
@@ -136,7 +136,7 @@ const emit = defineEmits<{
       </li>
     </ul>
 
-    <!-- 表尾走统一层的 .wb-pager（与我的需求、我的收藏、工单中心同一形态） -->
+    <!-- 表尾走统一层的 .wb-pager（与我的需求、系统通知同一形态） -->
     <div v-if="!loading && filteredCount > 0" class="wb-pager">
       <div class="wb-pager__count">
         <TSelect v-model="pageSize" class="wb-pager__size" aria-label="每页会话数">

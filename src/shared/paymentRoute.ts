@@ -1,5 +1,6 @@
 export type PaymentRouteChannel = 'alipay' | 'wechat' | 'union'
-export type PaymentRoutePlatform = 'mobile' | 'pc'
+/** 与契约 `client_platform` 同取值域：`mobile` / `desktop`（历史链接里的 `pc` 由 `readPaymentPlatform` 归一）。 */
+export type PaymentRoutePlatform = 'mobile' | 'desktop'
 export type PaymentRouteMilestone = 'deposit' | 'final'
 
 export type AdapayPaymentRouteOptions = {
@@ -13,7 +14,9 @@ export type AdapayPaymentRouteOptions = {
   intent?: boolean
 }
 
-export function buildAdapayPaymentQuery(options: AdapayPaymentRouteOptions): Record<string, string> {
+export function buildAdapayPaymentQuery(
+  options: AdapayPaymentRouteOptions,
+): Record<string, string> {
   const query: Record<string, string> = {
     adapay: '1',
     requirement_id: options.requirementId,

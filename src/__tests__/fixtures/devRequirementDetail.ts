@@ -1,6 +1,4 @@
 import { createMemoryHistory, createRouter } from 'vue-router'
-import type { DevCreditSelf } from '@/api/devCredit'
-import type { DevOrderDepositStatus } from '@/api/devOrderDeposit'
 import type { RequirementItem } from '@/api/devRequirements'
 import type { McResourcePayload } from '@/api/mcResources'
 import type { McProcessedTagTree } from '@/api/resourceTags'
@@ -9,7 +7,7 @@ import type { McProcessedTagTree } from '@/api/resourceTags'
  * 开发者「需求详情 / 接取需求」页的测试夹具。
  *
  * 放在 `__tests__/fixtures/` 而不是某个 spec 里：这条页面的用例按「渲染 / 资格闸门」与
- * 「两条接单路径」拆成了两个 spec，两边都要同一批需求单、保证金、资源与标签树数据。
+ * 「两条接单路径」拆成了两个 spec，两边都要同一批需求单、资源与标签树数据。
  */
 
 export function requirementItem(patch: Partial<RequirementItem> = {}): RequirementItem {
@@ -32,38 +30,6 @@ export function requirementItem(patch: Partial<RequirementItem> = {}): Requireme
     archive_can_claim_resource: false,
     ...patch,
   } as RequirementItem
-}
-
-/** 保证金余额 1000 元、够接 500 元的需求。 */
-export function depositStatus(patch: Partial<DevOrderDepositStatus> = {}): DevOrderDepositStatus {
-  return {
-    username: 'bob',
-    role: 'dev',
-    has_paid_deposit: true,
-    can_bind_requirement: true,
-    total_paid_cny: 1000,
-    frozen_cny: 0,
-    available_cny: 1000,
-    pending_refund_cny: 0,
-    pending_withdraw_cny: 0,
-    paid_withdraw_cny: 0,
-    ...patch,
-  }
-}
-
-/** 未开启订单额度限制：信用不拦预算。 */
-export function creditSelf(patch: Partial<DevCreditSelf> = {}): DevCreditSelf {
-  return {
-    username: 'bob',
-    credit_score: 100,
-    cny_per_credit: 10,
-    max_deposit_cny: 5000,
-    max_order_amount_cny: 0,
-    remaining_deposit_cap_cny: 5000,
-    enforce_deposit_limit: false,
-    enforce_order_limit: false,
-    ...patch,
-  }
 }
 
 /** 一个「私有草稿且未绑定」的资源：唯一能直接关联的那种。 */
@@ -134,7 +100,7 @@ export const TAG_TREE: McProcessedTagTree = {
   ],
 }
 
-/** 详情页要用到的四条路由（其余落点用空组件接住）。 */
+/** 详情页要用到的路由（其余落点用空组件接住）。 */
 export function createDetailRouter() {
   return createRouter({
     history: createMemoryHistory(),
@@ -155,11 +121,6 @@ export function createDetailRouter() {
         component: { template: '<div />' },
       },
       { name: 'contract-sign', path: '/contract-sign', component: { template: '<div />' } },
-      {
-        name: 'dev-order-deposit',
-        path: '/dev/wallet/order-deposit',
-        component: { template: '<div />' },
-      },
     ],
   })
 }

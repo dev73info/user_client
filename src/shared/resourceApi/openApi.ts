@@ -14,7 +14,7 @@ export const API_OPEN_USERS_ENSURE_PATH = '/api/resource/open/users/ensure'
 export const API_OPEN_ORDER_PATH = '/api/resource/open/orders'
 
 /** 一次性票据换平台登录态。 */
-export const API_OPEN_CHECKOUT_EXCHANGE_PATH = '/api/resource/open/checkout/exchange'
+export const API_OPEN_CHECKOUT_EXCHANGE_PATH = '/api/resource/checkout/exchange'
 
 /** 接入指导文档路径：后端公开读，返回 markdown。 */
 export const API_INTEGRATION_GUIDE_PATH = '/api/resource/open/integration-guide'

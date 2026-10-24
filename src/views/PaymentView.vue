@@ -32,15 +32,10 @@ const {
   wechatMiddleBusy,
   wechatMiddleCreating,
   wechatAutoAuthRedirecting,
-  silentAuthWaiting,
-  silentAuthQrDataUrl,
   creatingIntentOrder,
   alipayPaymentUrl,
   unionPaymentUrl,
   mismatched,
-  alipayPageHtml,
-  alipayPageLoading,
-  alipayIframeLoading,
   displayOrderNo,
   displayAmountCny,
   displayRequirementLabel,
@@ -53,7 +48,6 @@ const {
   launchWechatPayment,
   retryMiddlePageAuth,
   createIntentAdapayOrder,
-  handleIframeLoad,
 } = usePaymentPage()
 </script>
 
@@ -90,21 +84,15 @@ const {
           :wechat-middle-busy="wechatMiddleBusy"
           :wechat-middle-creating="wechatMiddleCreating"
           :wechat-auto-auth-redirecting="wechatAutoAuthRedirecting"
-          :silent-auth-waiting="silentAuthWaiting"
-          :silent-auth-qr-data-url="silentAuthQrDataUrl"
           :creating-intent-order="creatingIntentOrder"
           :qr-data-url="qrDataUrl"
           :alipay-payment-url="alipayPaymentUrl"
           :union-payment-url="unionPaymentUrl"
-          :alipay-page-html="alipayPageHtml"
-          :alipay-page-loading="alipayPageLoading"
-          :alipay-iframe-loading="alipayIframeLoading"
           :payment-channel="paymentChannel"
           :mismatched="mismatched"
           @launch="launchWechatPayment"
           @retry-auth="retryMiddlePageAuth"
           @retry-create="createIntentAdapayOrder"
-          @iframe-load="handleIframeLoad"
         />
 
         <PaymentMetaCard

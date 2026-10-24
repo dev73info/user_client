@@ -63,7 +63,7 @@ export function formatTipTime(value: string): string {
   return date.toLocaleString('zh-CN')
 }
 
-/** 头部读数里的资源侧三项：资源数、总点赞、涉及平台数（徽章数由调用方补）。 */
+/** 头部读数里的资源侧三项：资源数、总点赞、涉及平台数。 */
 export function computeResourceStats(resources: PublicMcResourceItem[]) {
   return {
     resourceCount: resources.length,
@@ -103,6 +103,6 @@ export function resolveResourceTarget(resource: PublicMcResourceItem): RouteLoca
     resourceId: resource.id,
     rootSlug,
     entrySlug,
-    sale: resourceListingSaleOf(resource.price_fen, resource.price_points),
+    sale: resourceListingSaleOf(resource.buyout_price_fen, resource.price_points),
   })
 }

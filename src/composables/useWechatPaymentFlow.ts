@@ -1,6 +1,5 @@
 import { watch } from 'vue'
 
-import { getWechatPaymentAuthorizeUrl, getWechatPaymentAuthorizationStatus } from '@/api/auth'
 import type { WechatJsapiPaymentInfo } from '@/utils/wechatPayment'
 import type { PaymentFlags } from '@/shared/paymentFlags'
 import type { PaymentQueryContext } from '@/shared/paymentQuery'
@@ -75,38 +74,8 @@ export function useWechatPaymentFlow(options: UseWechatPaymentFlowOptions) {
     if (!options.isWechatBrowser()) {
       return
     }
-    // 授权回调返回失败：提示并停止
-    if (ctx.wechatOauthError) {
-      session.wechatAuthChecked.value = true
-      session.wechatPayError.value = `微信授权失败：${ctx.wechatOauthError}`
-      return
-    }
-
-    if (!session.wechatAuthChecked.value) {
-      session.wechatAutoAuthRedirecting.value = true
-      let authorized = ctx.wechatOauthReturned
-      try {
-        if (!ctx.wechatOauthReturned) {
-          const { authorized: ok } = await getWechatPaymentAuthorizationStatus(options.token())
-          authorized = ok
-        }
-        session.wechatAuthChecked.value = true
-        if (!authorized) {
-          const { url } = await getWechatPaymentAuthorizeUrl(options.token(), window.location.href)
-          if (url.trim()) {
-            window.location.assign(url)
-            return
-          }
-        }
-      } catch {
-        session.wechatAuthChecked.value = true
-      } finally {
-        session.wechatAutoAuthRedirecting.value = false
-      }
-      if (!authorized) {
-        return
-      }
-    }
+    // 当前契约没有独立支付授权接口；资源订单的授权只在其专属中间页处理。
+    session.wechatAuthChecked.value = true
 
     // 意图模式：订单未创建则先创建
     if (

@@ -4,47 +4,46 @@ import {
   getTipSettings,
   listReceivedTips,
   updateTipSettings,
+  type TipConfig,
   type TipOrder,
-  type TipSettings,
-  type TipSettingsResponse,
+  type TipSettingsPayload,
 } from '@/api/tips'
 import { useAuthStore } from '@/stores/auth'
 import {
   TIP_THANKS_MAX_LENGTH,
   validateTipCashTiers,
   validateTipCustomCashRange,
-  validateTipCustomPointsRange,
-  validateTipPointsTiers,
 } from '@/shared/devTip'
-import { fenToYuanText } from '@/shared/resourceSale'
+import { formatFenAsCny } from '@/shared/money'
 
 import { TMessage } from 'ui_73info'
 
-/** 一次取回本页全部收到打赏（后端单页上限 100 条），前端分页。 */
-const RECEIVED_FETCH_LIMIT = 100
-
-/** 打赏表单的字段（与后端 `TipSettings` 一一对应，金额单位在这里是元 / 分之间的展示态）。 */
+/**
+ * 打赏表单的字段。
+ *
+ * 金额这一层有**两种表示**，别混：`cashTiers` / `customCashMin` / `customCashMax` 是输入框里
+ * 的**元文本**（用户直接编辑的字符串），提交前统一换成整数分；其余字段与契约
+ * `UpdateTipConfigRequest` 一一对应。契约里没有积分档位与手续费，所以没有对应字段。
+ */
 export type DevTipSettingsForm = {
   enabled: boolean
-  cashEnabled: boolean
-  pointsEnabled: boolean
+  /** 固定档位（元文本，提交时换成分） */
   cashTiers: string[]
-  pointsTiers: number[]
   allowCustomCash: boolean
+  /** 自填下限（元文本） */
   customCashMin: string
+  /** 自填上限（元文本） */
   customCashMax: string
-  allowCustomPoints: boolean
-  customPointsMin: number
-  customPointsMax: number
   thanksMessage: string
   publicRecords: boolean
 }
 
 /**
- * R010「打赏设置」页的取数与表单域：打赏设置（开关 / 档位 / 自填上下限 / 感谢语 / 公开记录）、
- * 保存前的本地校验（与后端 `normalize_settings` 同口径）、收到打赏列表与累计读数。
+ * R010「打赏设置」页的取数与表单域：打赏设置（开关 / 现金档位 / 自填上下限 / 感谢语 /
+ * 公开记录）、保存前的本地校验（与后端 `normalize_settings` 同口径）、收到打赏列表与累计读数。
  *
- * 视图只剩读数条、提示条与两个卡片挂点；档位增删这类纯表单动作在表单组件里就地做。
+ * 只有现金一种形态：契约的 `TipConfigResponse` 没有积分档位、没有分通道开关、也没有
+ * 平台服务费基点与结算账户标记，这些一律不再读（读出来恒为假值，页面会显示错的东西）。
  */
 export function useDevTipSettings() {
   const auth = useAuthStore()
@@ -52,22 +51,13 @@ export function useDevTipSettings() {
   const loading = ref(false)
   const saving = ref(false)
   const settingsLoaded = ref(false)
-  const settlementReady = ref(true)
-  const platformFeeBps = ref(0)
-  const noticeText = ref('')
 
   const form = reactive<DevTipSettingsForm>({
     enabled: false,
-    cashEnabled: true,
-    pointsEnabled: true,
     cashTiers: [] as string[],
-    pointsTiers: [] as number[],
     allowCustomCash: true,
     customCashMin: '1.00',
     customCashMax: '20000.00',
-    allowCustomPoints: true,
-    customPointsMin: 10,
-    customPointsMax: 100000,
     thanksMessage: '',
     publicRecords: false,
   })
@@ -75,45 +65,23 @@ export function useDevTipSettings() {
   const received = ref<TipOrder[]>([])
   const receivedLoading = ref(false)
 
-  const feePercentText = computed(() =>
-    platformFeeBps.value > 0
-      ? `${(platformFeeBps.value / 100).toFixed(2).replace(/\.?0+$/, '')}%`
-      : '—',
-  )
-
+  /** 累计现金收入（整数分，只算已支付的单）。 */
   const receivedCashTotal = computed(() =>
     received.value
-      .filter((item) => item.status === 'paid' && item.amount_points <= 0)
+      .filter((item) => item.status === 'paid')
       .reduce((sum, item) => sum + item.amount_fen, 0),
   )
-  const receivedPointsTotal = computed(() =>
-    received.value
-      .filter((item) => item.status === 'paid' && item.amount_points > 0)
-      .reduce((sum, item) => sum + item.amount_points, 0),
-  )
+  /** 累计现金文案：分 → 元由 `@/shared/money` 统一转换。 */
+  const receivedCashText = computed(() => `¥${formatFenAsCny(receivedCashTotal.value)}`)
 
-  function fillForm(settings: TipSettings) {
+  function fillForm(settings: TipConfig) {
     form.enabled = settings.enabled
-    form.cashEnabled = settings.cash_enabled
-    form.pointsEnabled = settings.points_enabled
-    form.cashTiers = (settings.cash_tiers_fen ?? []).map((fen) => fenToYuanText(fen))
-    form.pointsTiers = [...(settings.points_tiers ?? [])]
+    form.cashTiers = (settings.cash_tiers_fen ?? []).map((fen) => formatFenAsCny(fen))
     form.allowCustomCash = settings.allow_custom_cash
-    form.customCashMin = fenToYuanText(settings.custom_cash_min_fen)
-    form.customCashMax = fenToYuanText(settings.custom_cash_max_fen)
-    form.allowCustomPoints = settings.allow_custom_points
-    form.customPointsMin = settings.custom_points_min
-    form.customPointsMax = settings.custom_points_max
+    form.customCashMin = formatFenAsCny(settings.custom_cash_min_fen)
+    form.customCashMax = formatFenAsCny(settings.custom_cash_max_fen)
     form.thanksMessage = settings.thanks_message ?? ''
     form.publicRecords = settings.public_records
-  }
-
-  /** 设置响应里与表单无关的那几项（结算账户、平台服务费、提示语）统一回填。 */
-  function applyResponse(resp: TipSettingsResponse) {
-    fillForm(resp)
-    settlementReady.value = resp.settlement_ready !== false
-    platformFeeBps.value = resp.platform_fee_bps ?? 0
-    noticeText.value = resp.notice ?? ''
   }
 
   async function loadSettings() {
@@ -123,8 +91,7 @@ export function useDevTipSettings() {
     }
     loading.value = true
     try {
-      const resp = await getTipSettings(auth.token)
-      applyResponse(resp)
+      fillForm(await getTipSettings(auth.token))
       settingsLoaded.value = true
     } catch (error) {
       TMessage.error(error instanceof Error ? error.message : '加载打赏设置失败')
@@ -140,7 +107,7 @@ export function useDevTipSettings() {
     }
     receivedLoading.value = true
     try {
-      received.value = await listReceivedTips(auth.token, { limit: RECEIVED_FETCH_LIMIT })
+      received.value = await listReceivedTips(auth.token)
     } catch (error) {
       TMessage.error(error instanceof Error ? error.message : '加载收到打赏失败')
     } finally {
@@ -153,46 +120,32 @@ export function useDevTipSettings() {
     if (Array.from(form.thanksMessage).length > TIP_THANKS_MAX_LENGTH) {
       return `感谢语不能超过 ${TIP_THANKS_MAX_LENGTH} 字`
     }
-    if (form.enabled && !form.cashEnabled && !form.pointsEnabled) {
-      return '至少需要开启一种打赏方式'
-    }
-    const cashTiers = validateTipCashTiers(form.cashTiers.map((item) => item.trim() || '0'))
+    const cashTiers = validateTipCashTiers(form.cashTiers)
     if (!cashTiers.ok) {
       return cashTiers.message
-    }
-    const pointsTiers = validateTipPointsTiers(form.pointsTiers.map((item) => String(item ?? '')))
-    if (!pointsTiers.ok) {
-      return pointsTiers.message
     }
     const cashRange = validateTipCustomCashRange(form.customCashMin, form.customCashMax)
     if (!cashRange.ok) {
       return cashRange.message
     }
-    const pointsRange = validateTipCustomPointsRange(form.customPointsMin, form.customPointsMax)
-    if (!pointsRange.ok) {
-      return pointsRange.message
-    }
     return null
   }
 
-  function buildPayload(): TipSettings {
-    const cashTiers = validateTipCashTiers(form.cashTiers.map((item) => item.trim() || '0'))
-    const pointsTiers = validateTipPointsTiers(form.pointsTiers.map((item) => String(item ?? '')))
+  /**
+   * 提交体（契约 `UpdateTipConfigRequest`）：金额一律整数分。
+   *
+   * 只在 `validateForm()` 通过后调用；档位 / 区间取回换算结果时仍做了兜底，
+   * 免得校验与构造两处口径漂移时发出去一个 `NaN`。
+   */
+  function buildPayload(): TipSettingsPayload {
+    const cashTiers = validateTipCashTiers(form.cashTiers)
     const cashRange = validateTipCustomCashRange(form.customCashMin, form.customCashMax)
-    const pointsRange = validateTipCustomPointsRange(form.customPointsMin, form.customPointsMax)
-    // 上面已校验通过，这里用非空断言取回换算结果
     return {
       enabled: form.enabled,
-      cash_enabled: form.cashEnabled,
-      points_enabled: form.pointsEnabled,
       cash_tiers_fen: cashTiers.ok ? cashTiers.tiers : [],
-      points_tiers: pointsTiers.ok ? pointsTiers.tiers : [],
       allow_custom_cash: form.allowCustomCash,
       custom_cash_min_fen: cashRange.ok ? cashRange.minFen : 100,
-      custom_cash_max_fen: cashRange.ok ? cashRange.maxFen : 2000000,
-      allow_custom_points: form.allowCustomPoints,
-      custom_points_min: pointsRange.ok ? pointsRange.minPoints : 10,
-      custom_points_max: pointsRange.ok ? pointsRange.maxPoints : 100000,
+      custom_cash_max_fen: cashRange.ok ? cashRange.maxFen : 2_000_000,
       thanks_message: form.thanksMessage.trim(),
       public_records: form.publicRecords,
     }
@@ -214,8 +167,7 @@ export function useDevTipSettings() {
     }
     saving.value = true
     try {
-      const resp = await updateTipSettings(auth.token, buildPayload())
-      applyResponse(resp)
+      fillForm(await updateTipSettings(auth.token, buildPayload()))
       TMessage.success('打赏设置已保存')
     } catch (err) {
       TMessage.error(err instanceof Error ? err.message : '保存打赏设置失败')
@@ -242,14 +194,11 @@ export function useDevTipSettings() {
     loading,
     saving,
     settingsLoaded,
-    settlementReady,
-    noticeText,
     form,
     received,
     receivedLoading,
-    feePercentText,
     receivedCashTotal,
-    receivedPointsTotal,
+    receivedCashText,
     save,
     refreshAll,
   }

@@ -8,24 +8,16 @@ import UserWorkbenchView from '@/views/UserWorkbenchView.vue'
 
 // 开发者页面在 router/dev.ts 里都带 devArea 标记，侧边栏据此把整条菜单换成开发者菜单。
 // 团队服务已整体移入开发者工作台，这三个页面同样是 devArea 路由，不再属于用户菜单。
-// 消息中心与工单中心两端共用同一套页面，但各自一条路由：开发者端走 dev-messages / dev-tickets，
+// 消息中心两端共用同一套页面，但各自一条路由：开发者端走 dev-messages / 用户端走 workbench-messages，
 // 点进去不会切回用户工作台，页面也据此走开发者体系的外观。系统通知与两者同一办法。
 export const USER_ROUTE_NAMES = [
   'workbench',
   'workbench-requirements',
   'workbench-account',
-  'workbench-authorized-apps',
-  'workbench-purchase-transfers',
   'workbench-signatures',
   'workbench-invoices',
-  'workbench-points',
-  'workbench-perks',
   'workbench-coupons',
-  'workbench-badges',
-  'workbench-favorites',
   'workbench-resource-purchases',
-  'workbench-invite',
-  'workbench-tickets',
   'workbench-messages',
   'workbench-notifications',
 ]
@@ -42,7 +34,6 @@ export const DEV_ROUTE_NAMES = [
   'workbench-team-detail',
   'workbench-team-resources',
   'dev-messages',
-  'dev-tickets',
   'dev-invoices',
   'dev-notifications',
 ]

@@ -11,87 +11,25 @@ import { buildMilestoneStats, type PortalNotice } from '@/shared/home/portalDisp
  *
  * 重点钉住搬迁中最容易静默坏掉的两处：
  * - 动态拼接的色板 class（`portal-stat-item--tone-N`）与 `--stat-index` 仍跟着卡走；
- * - 卡片只回抛事件、不自己发请求（签到、QQ 群、跳转都由视图/父级处理）。
+ * - 卡片只回抛事件、不自己发请求（QQ 群、跳转都由视图/父级处理）。
  */
 
-const routerLinkStub = {
-  props: ['to'],
-  template: '<a class="router-link-stub"><slot /></a>',
-}
-
 describe('PortalBetaCard', () => {
-  it('未登录时不渲染邀请区块，QQ 群按钮回抛 open-group', async () => {
-    const wrapper = mount(PortalBetaCard, {
-      props: { isAuthed: false, checkin: null },
-      global: { stubs: { RouterLink: routerLinkStub } },
-    })
+  it('QQ 群按钮回抛 open-group', async () => {
+    const wrapper = mount(PortalBetaCard)
 
-    expect(wrapper.find('.portal-beta-invite').exists()).toBe(false)
+    expect(wrapper.find('.portal-beta-notice__badge').text()).toBe('内测中')
     await wrapper.find('.portal-beta-notice__btn').trigger('click')
     expect(wrapper.emitted('open-group')).toHaveLength(1)
-  })
-
-  it('今日未签到：显示签到卡，按钮回抛 checkin 且带上今日可得与连续天数', async () => {
-    const wrapper = mount(PortalBetaCard, {
-      props: {
-        isAuthed: true,
-        checkin: { today_checked_in: false, today_potential: 12, streak_count: 3 },
-      },
-    })
-
-    expect(wrapper.text()).toContain('📅 每日签到')
-    expect(wrapper.text()).toContain('12')
-    expect(wrapper.text()).toContain('3')
-
-    const cta = wrapper.find('.portal-checkin-card__cta')
-    expect(cta.text()).toBe('立即签到')
-    expect(cta.attributes('disabled')).toBeUndefined()
-
-    await cta.trigger('click')
-    expect(wrapper.emitted('checkin')).toHaveLength(1)
-  })
-
-  it('签到进行中：按钮置灰并显示「签到中…」', async () => {
-    const wrapper = mount(PortalBetaCard, {
-      props: {
-        isAuthed: true,
-        checkin: { today_checked_in: false, today_potential: 12, streak_count: 3 },
-        checkinSaving: true,
-      },
-    })
-
-    const cta = wrapper.find('.portal-checkin-card__cta')
-    expect(cta.text()).toBe('签到中…')
-    expect(cta.attributes('disabled')).toBeDefined()
-  })
-
-  it('已签到或拿不到状态：露出「邀请有礼」', () => {
-    const checked = mount(PortalBetaCard, {
-      props: {
-        isAuthed: true,
-        checkin: { today_checked_in: true, today_potential: 0, streak_count: 3 },
-      },
-      global: { stubs: { RouterLink: routerLinkStub } },
-    })
-    const unknown = mount(PortalBetaCard, {
-      props: { isAuthed: true, checkin: null },
-      global: { stubs: { RouterLink: routerLinkStub } },
-    })
-
-    for (const wrapper of [checked, unknown]) {
-      expect(wrapper.text()).toContain('🎁 邀请有礼')
-      expect(wrapper.find('.portal-checkin-card__cta').exists()).toBe(false)
-      expect(wrapper.find('.router-link-stub').text()).toBe('立即邀请')
-    }
   })
 })
 
 describe('PortalNoticeCard', () => {
   const withTarget: PortalNotice = {
-    title: '平台公告 A',
+    title: '公开资源：联机工具',
     date: '3/5 14:30',
-    tag: '公告',
-    to: { name: 'community' },
+    tag: 'Minecraft',
+    to: { name: 'resources', query: { sale: 'free' } },
   }
   const withoutTarget: PortalNotice = { title: '最新成交：做个工具', date: '3/5 15:00', tag: 'HOT' }
 
@@ -121,14 +59,6 @@ describe('PortalNoticeCard', () => {
     expect(emitted).toHaveLength(2)
     expect(emitted?.[0]).toEqual([withTarget])
     expect(emitted?.[1]).toEqual([withoutTarget])
-  })
-
-  it('「更多」回抛 more 由父级决定去哪', async () => {
-    const wrapper = mount(PortalNoticeCard, { props: { notices: [] } })
-
-    await wrapper.find('.portal-link-btn--notice').trigger('click')
-
-    expect(wrapper.emitted('more')).toHaveLength(1)
   })
 })
 

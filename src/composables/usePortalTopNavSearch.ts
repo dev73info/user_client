@@ -7,13 +7,12 @@ import { useAuthStore } from '@/stores/auth'
 import { usePortalMenuDismiss } from './usePortalSubscription'
 import type { AuthMode } from './usePortalTopNavNav'
 
-export type SearchScope = 'auto' | 'resources' | 'requirements' | 'community'
+export type SearchScope = 'auto' | 'resources' | 'requirements'
 
 const searchScopeOptions: Array<{ value: SearchScope; label: string }> = [
   { value: 'auto', label: '全部' },
   { value: 'resources', label: '资源' },
   { value: 'requirements', label: '需求' },
-  { value: 'community', label: '社区' },
 ]
 
 /** 哪些路由算「搜索态」：进来时把地址栏里的关键词与范围回填到搜索框 */
@@ -23,8 +22,6 @@ const searchableRouteScope: Partial<Record<string, SearchScope>> = {
   'resource-catalog': 'resources',
   'resource-detail-direct': 'resources',
   'requirement-hall': 'requirements',
-  community: 'community',
-  'community-post': 'community',
 }
 
 /**
@@ -53,8 +50,7 @@ export function usePortalTopNavSearch(options: {
   )
   const searchPlaceholder = computed(() => {
     if (searchScope.value === 'requirements') return '搜索需求标题、编号...'
-    if (searchScope.value === 'community') return '搜索社区帖子...'
-    return '搜索资源、帖子、开发者...'
+    return '搜索资源、开发者...'
   })
   const activeSearchScopeLabel = computed(
     () => searchScopeOptions.find((option) => option.value === searchScope.value)?.label ?? '全部',
@@ -126,10 +122,6 @@ export function usePortalTopNavSearch(options: {
     void router.push({ name: 'search', query: { keyword, scope: 'requirements' } })
   }
 
-  function pushCommunitySearch(keyword: string) {
-    void router.push({ name: 'community', query: { keyword } })
-  }
-
   function pushScopedSearch(keyword: string) {
     if (searchScope.value === 'resources') {
       pushResourceSearch(keyword)
@@ -138,11 +130,6 @@ export function usePortalTopNavSearch(options: {
 
     if (searchScope.value === 'requirements') {
       pushRequirementSearch(keyword)
-      return true
-    }
-
-    if (searchScope.value === 'community') {
-      pushCommunitySearch(keyword)
       return true
     }
 
@@ -184,11 +171,6 @@ export function usePortalTopNavSearch(options: {
       return
     }
 
-    if (/(社区|动态|公告|帮助|帖子|评论|话题|讨论)/.test(keyword)) {
-      pushCommunitySearch(normalized)
-      return
-    }
-
     void router.push({ name: 'search', query: { keyword: normalized } })
   }
 
@@ -211,10 +193,7 @@ export function usePortalTopNavSearch(options: {
       return
     }
 
-    if (
-      ['resources', 'requirement-hall', 'community'].includes(currentName) &&
-      route.query.keyword
-    ) {
+    if (['resources', 'requirement-hall'].includes(currentName) && route.query.keyword) {
       const nextQuery = { ...route.query }
       delete nextQuery.keyword
       void router.replace({ query: nextQuery })

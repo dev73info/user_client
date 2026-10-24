@@ -18,11 +18,10 @@
  * 对外导出名与拆分前一致。变更操作与其他模块共用同一份数组引用，内存状态仍然只有一份。
  */
 
-export { communityPosts, coupons, points } from './db/accounts'
+export { coupons } from './db/accounts'
 export { contractOfRequirement, contracts } from './db/contracts'
 export {
   devDailyIncome,
-  devOrderDeposit,
   devWallet,
   devWithdrawalLimits,
   devWithdrawalSetting,

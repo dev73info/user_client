@@ -15,7 +15,7 @@ import {
 } from './helpers/invoiceApplyDialog'
 import type { InvoiceMocks } from './helpers/invoiceApplyDialog'
 
-/** 可开票金额口径：平台服务费 + 开发者票、退款诉求与售后赔付后按净额开、乙方只看自己那一侧。 */
+/** 可开票金额口径：平台服务费 + 开发者票、售后赔付后按净额开、乙方只看自己那一侧。 */
 
 const mocks = vi.hoisted(() => ({
   summary: vi.fn(),
@@ -48,33 +48,11 @@ describe('InvoiceApplyDialog', () => {
     wrapper.unmount()
   })
 
-  it('未结案的退款诉求只扣开发者票：可开票金额 ¥900.00', async () => {
-    mocks.summary.mockResolvedValue(
-      summary({
-        pendingRefundFen: 10000,
-        pendingRefundCny: '100.00',
-        developerInvoiceFen: 70000,
-        developerInvoiceCny: '700.00',
-        invoiceableTotalFen: 90000,
-        invoiceableTotalCny: '900.00',
-      }),
-    )
-    const wrapper = await renderInvoice('customer')
-
-    // 900 = 平台服务费 200 + 开发者净额 700（800 收入 − 100 未结案诉求）。
-    expect(wrapper.find('.invoice-amount__value').text()).toBe('¥900.00')
-    expect(wrapper.text()).toContain('本需求有未结案的退款诉求 ¥100.00')
-    expect(wrapper.text()).toContain('开发者票已按扣除这笔诉求后的净额 ¥700.00')
-    expect(wrapper.text()).toContain('平台服务费不随退款减免')
-
-    wrapper.unmount()
-  })
-
   it('售后已赔付客户时开发者票按净额开，平台服务费不减', async () => {
     mocks.summary.mockResolvedValue(
       summary({
-        developerPayoutFen: 50000,
-        developerPayoutCny: '500.00',
+        refundedFen: 50000,
+        refundedCny: '500.00',
         developerInvoiceFen: 30000,
         developerInvoiceCny: '300.00',
         invoiceableTotalFen: 50000,

@@ -4,7 +4,6 @@ import {
   getProfile,
   sendProfileEmailChangeCode,
   sendProfilePasswordCode,
-  updateProfile,
   updateProfileEmail,
   updateProfilePassword,
 } from '@/api/settings'
@@ -12,8 +11,11 @@ import { useAuthStore } from '@/stores/auth'
 import { TMessage } from 'ui_73info'
 
 /**
- * 安全设置域（「登录凭证」那三个弹窗）：用户名 / 邮箱 / 密码的草稿、验证码、可见性与提交，
+ * 安全设置域（「登录凭证」两个弹窗）：邮箱 / 密码的草稿、验证码、可见性与提交，
  * 外加 profile 那份初值的加载。
+ *
+ * **没有「改用户名」**：契约 `UpdateProfileRequest` 不接受自助改登录名（传与当前不同的值一律 400），
+ * 改登录名走管理端 `POST /auth/users/username`，所以那条弹窗与动作已删。
  *
  * 两步验证不在这里，见 `useAccountTwoFactorSettings`：它多一份「开关目标值」，拨动时要自动发码，
  * 两块放一个文件都会顶过 300 行预算。
@@ -21,15 +23,12 @@ import { TMessage } from 'ui_73info'
  * 弹窗组件（`components/account/*Dialog.vue`）只 emit：`update:*` 把值落到本域，`submit` /
  * `send-code` 调本域的动作，与拆分前视图里那套一一对应，文案与校验顺序逐字未改。
  *
- * 三件事**故意留在外面**：`onMounted` 第一步的 `newUsername.value = auth.username`（七步串行
- * 编排归视图）、`profileEmail` 的正本（两步验证域也要读，由调用方持有、本域只写）、
- * `wechatBound` 的落地（归第三方绑定域，这里读到只通过 `applyWechatBound` 交回去）。
+ * 两件事**故意留在外面**：`profileEmail` 的正本（两步验证域也要读，由调用方持有、本域只写）、
+ * `wechatBound` 的落地（归第三方绑定域，正本是 `GET /auth/providers`，档案里没有这个字段）。
  */
 export type AccountSecuritySettingsOptions = {
   /** 当前绑定邮箱的**正本**（两步验证域也要读，所以由调用方持有，本域只写）。 */
   profileEmail: Ref<string>
-  /** 把 profile 里带出来的微信绑定态交给第三方绑定域（本域不持有它）。 */
-  applyWechatBound: (bound: boolean) => void
   /** 把 profile 里带出来的两步验证初始开关交给两步验证域（两个开关位一起置）。 */
   applyTwoFactor: (enabled: boolean) => void
 }
@@ -38,12 +37,11 @@ export function useAccountSecuritySettings(options: AccountSecuritySettingsOptio
   const auth = useAuthStore()
   const { profileEmail } = options
 
-  const newUsername = ref('')
-  const usernameLoading = ref(false)
   const newEmail = ref('')
   const emailCode = ref('')
   const emailCodeSending = ref(false)
   const emailLoading = ref(false)
+  const oldPassword = ref('')
   const newPassword = ref('')
   const confirmPassword = ref('')
   const passwordCode = ref('')
@@ -53,7 +51,6 @@ export function useAccountSecuritySettings(options: AccountSecuritySettingsOptio
   // 三个弹窗的可见性由本域持有，视图只把 `v-model:visible` 接上
   const emailDialogVisible = ref(false)
   const passwordDialogVisible = ref(false)
-  const usernameDialogVisible = ref(false)
 
   /** 拉一次个人资料：三个弹窗的初值（用户名 / 邮箱）都从这里回填。 */
   async function loadProfile() {
@@ -63,9 +60,7 @@ export function useAccountSecuritySettings(options: AccountSecuritySettingsOptio
     }
     try {
       const profile = await getProfile(auth.token)
-      newUsername.value = profile.username
       profileEmail.value = profile.email ?? ''
-      options.applyWechatBound(profile.wechat_bound ?? false)
       options.applyTwoFactor(profile.two_factor_enabled)
       if (!newEmail.value) {
         newEmail.value = profile.email ?? ''
@@ -90,34 +85,6 @@ export function useAccountSecuritySettings(options: AccountSecuritySettingsOptio
       TMessage.error(err instanceof Error ? err.message : fallback)
     } finally {
       loading.value = false
-    }
-  }
-
-  /** 改用户名：保存成功后换掉本地 token（用户名同时是登录名，后端会重签）。 */
-  async function updateUsername() {
-    if (!auth.isAuthed) {
-      TMessage.error('请先登录后修改用户名')
-      return
-    }
-    const trimmed = newUsername.value.trim()
-    if (trimmed.length === 0) {
-      TMessage.error('请输入一个新的用户名')
-      return
-    }
-    if (trimmed === auth.username) {
-      TMessage.info('用户名未发生变化')
-      return
-    }
-    usernameLoading.value = true
-    try {
-      const payload = await updateProfile(auth.token, trimmed)
-      auth.setToken(payload.token)
-      newUsername.value = auth.username
-      TMessage.success('用户名已更新')
-    } catch (err) {
-      TMessage.error(err instanceof Error ? err.message : '修改用户名失败')
-    } finally {
-      usernameLoading.value = false
     }
   }
 
@@ -198,9 +165,14 @@ export function useAccountSecuritySettings(options: AccountSecuritySettingsOptio
       TMessage.error('请先登录后修改密码')
       return
     }
+    const trimmedOld = oldPassword.value.trim()
     const trimmedPassword = newPassword.value.trim()
     const trimmedConfirm = confirmPassword.value.trim()
     const trimmedCode = passwordCode.value.trim()
+    if (!trimmedOld) {
+      TMessage.error('请输入当前密码')
+      return
+    }
     if (trimmedPassword.length < 6) {
       TMessage.error('新密码至少 6 位')
       return
@@ -215,10 +187,14 @@ export function useAccountSecuritySettings(options: AccountSecuritySettingsOptio
     }
     passwordLoading.value = true
     try {
-      await updateProfilePassword(auth.token, trimmedPassword, trimmedCode)
+      // 契约 `UpdatePasswordRequest` 要三个字段：旧密码 + 新密码（都 md5）+ 邮箱验证码
+      await updateProfilePassword(auth.token, trimmedOld, trimmedPassword, trimmedCode)
+      oldPassword.value = ''
       newPassword.value = ''
       confirmPassword.value = ''
       passwordCode.value = ''
+      passwordDialogVisible.value = false
+      auth.logout()
       TMessage.success('密码已更新，请使用新密码登录')
     } catch (err) {
       TMessage.error(err instanceof Error ? err.message : '修改密码失败')
@@ -228,12 +204,11 @@ export function useAccountSecuritySettings(options: AccountSecuritySettingsOptio
   }
 
   return {
-    newUsername,
-    usernameLoading,
     newEmail,
     emailCode,
     emailCodeSending,
     emailLoading,
+    oldPassword,
     newPassword,
     confirmPassword,
     passwordCode,
@@ -241,9 +216,7 @@ export function useAccountSecuritySettings(options: AccountSecuritySettingsOptio
     passwordLoading,
     emailDialogVisible,
     passwordDialogVisible,
-    usernameDialogVisible,
     loadProfile,
-    updateUsername,
     sendEmailVerificationCode,
     submitEmailChange,
     sendPasswordVerificationCode,

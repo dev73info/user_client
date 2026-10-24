@@ -37,14 +37,19 @@ describe('resourceSale 售卖与退款口径', () => {
   })
 
   it('download gate branches for cash and points', () => {
-    expect(canDownloadResource({ price_fen: 0 })).toBe(true)
-    expect(canDownloadResource({ price_fen: 100, purchased_by_me: true })).toBe(true)
+    // 售卖判定只认买断价 `buyout_price_fen`；`price_fen` 是冻结的历史值，不参与判定
+    expect(canDownloadResource({ buyout_price_fen: 0 })).toBe(true)
+    expect(canDownloadResource({ buyout_price_fen: 100, purchased_by_me: true })).toBe(true)
     expect(
-      canDownloadResource({ price_fen: 100, purchased_by_me: false, creator: 'dev' }, 'dev'),
+      canDownloadResource({ buyout_price_fen: 100, purchased_by_me: false, creator: 'dev' }, 'dev'),
     ).toBe(true)
     expect(
-      canDownloadResource({ price_fen: 100, purchased_by_me: false, creator: 'dev' }, 'buyer'),
+      canDownloadResource(
+        { buyout_price_fen: 100, purchased_by_me: false, creator: 'dev' },
+        'buyer',
+      ),
     ).toBe(false)
+    expect(canDownloadResource({ price_fen: 100, purchased_by_me: false }, 'buyer')).toBe(true)
     expect(
       canDownloadResource({ price_points: 50, purchased_by_me: false, creator: 'dev' }, 'buyer'),
     ).toBe(false)

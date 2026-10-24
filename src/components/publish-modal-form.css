@@ -40,47 +40,6 @@
   line-height: 1.2;
 }
 
-/* 「跟 AI 聊着填」入口：沿用验收标准模板按钮的浅底描边口径 */
-.publish-agent__trigger {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  flex: 0 0 auto;
-  min-height: 30px;
-  padding: 4px 11px;
-  border: 1px solid color-mix(in srgb, var(--73-accent) 34%, transparent);
-  border-radius: 9px;
-  background: var(--73-accent-soft);
-  color: var(--73-accent);
-  font: inherit;
-  font-size: 12px;
-  font-weight: 800;
-  line-height: 1;
-  white-space: nowrap;
-  cursor: pointer;
-  transition:
-    border-color 160ms ease,
-    background-color 160ms ease,
-    color 160ms ease;
-}
-
-.publish-agent__trigger:hover,
-.publish-agent__trigger:focus-visible {
-  border-color: color-mix(in srgb, var(--73-accent) 70%, transparent);
-  background: var(--73-accent-soft);
-  color: var(--73-accent);
-  outline: none;
-  box-shadow: 0 0 0 2px color-mix(in srgb, var(--73-accent) 12%, transparent);
-}
-
-/* AI 对话二级层：占满弹窗剩余高度，滚动交给面板内部的对话区 / 草稿区 */
-.publish-modal__agent {
-  display: flex;
-  flex: 1 1 auto;
-  min-height: min(62vh, 560px);
-  overflow: hidden;
-}
-
 .publish-modal__body {
   display: grid;
   gap: 14px;

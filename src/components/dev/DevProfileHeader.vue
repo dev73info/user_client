@@ -1,14 +1,11 @@
 <script setup lang="ts">
 /**
- * 开发者公开主页的头部：背景（静态图 / 动图 / 视频）、头像、用户名与简介、佩戴徽章、
+ * 开发者公开主页的头部：背景（静态图 / 动图 / 视频）、头像、用户名与简介、
  * 本人 / 他人视角的操作按钮。
  *
  * 从 `DevProfileView` 抽出来。背景地址、焦点变换与操作权限都由页面算好，
  * 这里只画、只发动作（编辑简介 / 设置背景 / 打赏设置 / 打赏），不碰路由与接口。
  */
-import type { UserBadge } from '@/api/invite'
-import BadgeDisplay from '@/components/BadgeDisplay.vue'
-
 defineProps<{
   username: string
   avatarUrl: string
@@ -16,9 +13,6 @@ defineProps<{
   /** 用户名渐变：有自定义颜色时以颜色为准，渐变不再生效 */
   gradient: boolean
   color: string
-  wornBadges: UserBadge[]
-  /** 徽章总数：用来区分「还没获得」与「有但没佩戴」 */
-  badgeCount: number
   isSelf: boolean
   canTip: boolean
   videoUrl: string
@@ -76,12 +70,6 @@ const emit = defineEmits<{
         {{ username }}
       </h1>
       <p v-if="description" class="dev-profile__description">{{ description }}</p>
-      <p class="dev-profile__badge-line" v-if="wornBadges.length > 0">
-        <BadgeDisplay :badges="wornBadges" :limit="4" />
-      </p>
-      <p class="dev-profile__badge-line dev-profile__badge-line--empty" v-else>
-        {{ badgeCount > 0 ? '暂未佩戴徽章' : '暂未获得徽章' }}
-      </p>
     </div>
     <div v-if="isSelf || canTip" class="dev-profile__head-actions">
       <template v-if="isSelf">
@@ -264,15 +252,6 @@ const emit = defineEmits<{
   color: var(--dp-text-muted);
   font-size: 14px;
   line-height: 1.6;
-}
-
-.dev-profile__badge-line {
-  margin: 0;
-}
-
-.dev-profile__badge-line--empty {
-  color: var(--dp-text-faint);
-  font-size: 13px;
 }
 
 @media (max-width: 640px) {

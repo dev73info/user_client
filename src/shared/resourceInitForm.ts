@@ -29,7 +29,6 @@ export interface ResourceInitFormState {
   apiCallbackSecret: string
   /** 允许来源：多行文本，一行一个 */
   apiAllowedOrigins: string
-  apiRepeatPurchasable: boolean
 }
 
 /** 表单初值（页面加载与创建成功后复位都用它）。 */
@@ -52,6 +51,5 @@ export function createResourceInitFormState(): ResourceInitFormState {
     apiCallbackUrl: '',
     apiCallbackSecret: '',
     apiAllowedOrigins: '',
-    apiRepeatPurchasable: false,
   }
 }

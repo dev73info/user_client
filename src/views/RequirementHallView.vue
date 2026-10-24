@@ -122,7 +122,6 @@ const {
             v-for="card in filteredRequirements"
             :key="card.requirement_id"
             :card="card"
-            :authed="auth.isAuthed"
             @open="openRequirementDetail"
           />
         </div>

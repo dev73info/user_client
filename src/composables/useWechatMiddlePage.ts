@@ -1,19 +1,12 @@
 import { ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
-import { isWechatPaymentAuthorizationRequired } from '@/api/auth'
 import {
   completeResourceWechatJsapi,
   getResourceWechatAuthUrl,
   getResourceWechatStatus,
   type ResourcePurchaseOrder,
 } from '@/api/resourcePurchase'
-import {
-  completeTipWechatJsapi,
-  getTipWechatAuthUrl,
-  getTipWechatStatus,
-  type TipOrder,
-} from '@/api/tips'
 import { parseWechatPayInfo, type WechatJsapiPaymentInfo } from '@/utils/wechatPayment'
 import type { PaymentQueryContext } from '@/shared/paymentQuery'
 import type { MiddleOrder, MiddlePageApi, MiddlePageBackfill } from '@/shared/paymentMiddleOrder'
@@ -31,8 +24,7 @@ type MiddlePageCommon = {
 /**
  * 一个中间页的完整流程：OAuth（若需要）→ wx_pub 下单 → 自动调起 JSAPI。
  *
- * 资源购买（R008 / BUG-010）与打赏（R010）形态完全一致，只在订单域与接口上分叉，
- * 所以共用这一套引擎，接口按域注入：改动其中一条分支的行为不会再牵动另一条。
+ * 接口按域注入（`MiddlePageApi`），所以只留资源购买这一条：打赏在 2.0 没有中间页。
  */
 function createMiddlePageFlow<T extends MiddleOrder>(
   common: MiddlePageCommon,
@@ -151,13 +143,9 @@ function createMiddlePageFlow<T extends MiddleOrder>(
         common.launchPayment()
       }
     } catch (err) {
+      // 2.0 没有「缺 open_id → 先授权再重跑」这条路（授权端点不在契约里），
+      // 失败一律按真实错误展示，不自己重试一轮假装还能继续。
       attempted.value = false
-      if (isWechatPaymentAuthorizationRequired(err)) {
-        session.wechatAuthChecked.value = false
-        attempted.value = false
-        await run()
-        return
-      }
       session.wechatPayError.value =
         err instanceof Error ? err.message : '创建微信支付失败，请重试。'
     } finally {
@@ -184,7 +172,11 @@ function createMiddlePageFlow<T extends MiddleOrder>(
 }
 
 /**
- * 资源 / 打赏两个中间页（`resource_wechat=1` / `tip_wechat=1`）。
+ * 资源购买中间页（`resource_wechat=1`）。
+ *
+ * 打赏**没有**中间页：契约里 `POST /api/tips` 只回 `pay_url`（电脑端扫码收银台），没有任何
+ * 「打赏微信授权地址 / JSAPI 下单 / 授权状态」端点（1.x 的三支在 2.0 不存在，前端原来那三个
+ * 函数是恒抛错的桩）。所以这里只剩资源购买一条流程，URL 上出现 `tip_wechat=1` 时不做任何事。
  *
  * 对外只暴露「当前这条中间页该跑什么」：`runActive` / `pollActive` / `retryMiddlePageAuth`，
  * 页面级 composable 不需要知道现在是哪一条。
@@ -193,7 +185,6 @@ export function useWechatMiddlePage(
   common: MiddlePageCommon,
   backfill: {
     resource: MiddlePageBackfill<ResourcePurchaseOrder>
-    tip: MiddlePageBackfill<TipOrder>
   },
 ) {
   const route = useRoute()
@@ -220,24 +211,9 @@ export function useWechatMiddlePage(
     backfill.resource,
   )
 
-  const tip = createMiddlePageFlow<TipOrder>(
-    common,
-    {
-      active: () => common.ctx().isTipWechat,
-      orderNo: () => common.ctx().tipOrderNo,
-      token: () => common.ctx().tipToken,
-      getStatus: getTipWechatStatus,
-      getAuthUrl: getTipWechatAuthUrl,
-      completeJsapi: completeTipWechatJsapi,
-    },
-    backfill.tip,
-  )
-
-  /** 当前命中的那条中间页（未命中返回 null） */
+  /** 当前命中的那条中间页（未命中返回 null）：打赏没有中间页，只有资源购买这一条 */
   function activeFlow() {
-    const ctx = common.ctx()
-    if (ctx.isTipWechat) return tip
-    if (ctx.isResourceWechat) return resource
+    if (common.ctx().isResourceWechat) return resource
     return null
   }
 
@@ -262,7 +238,7 @@ export function useWechatMiddlePage(
     await flow.run()
   }
 
-  return { resource, tip, runActive, pollActive, retryMiddlePageAuth }
+  return { resource, runActive, pollActive, retryMiddlePageAuth }
 }
 
 export type WechatMiddlePage = ReturnType<typeof useWechatMiddlePage>

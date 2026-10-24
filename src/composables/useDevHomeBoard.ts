@@ -1,133 +1,64 @@
 import { computed, type Ref } from 'vue'
 
-import type { DevDashboardSnapshot, DevDashboardPipeline } from '@/api/devDashboard'
+import type { DevWalletOverview } from '@/api/devWallet'
 import type { useDevHomeDashboard } from './useDevHomeDashboard'
-import { buildFeedRows, buildResourceCells, type DevHomeStatCard } from '@/shared/devHomeDisplay'
-import { STATUS_TONES, type DevHomeTone } from '@/shared/devHomeDisplay'
-import { requirementStatusLabel } from '@/shared/requirementStatus'
-import { money } from '@/shared/devFundDisplay'
-import { dayKey, pad2, WEEKDAY_LABELS } from '@/shared/devHomeTime'
+import type { DevHomeIncomeRow, DevHomeStatCard } from '@/shared/devHomeDisplay'
+import { formatBackendDateTime } from '@/shared/datetime'
 
-/**
- * 在途五档：漏斗与读数条「进行中项目」共用，顺序即流程顺序。`completed_this_month` 不在这里，
- * 它是漏斗的最后一格（本月完成），不参与「进行中」的求和。
- */
-export const PIPELINE_STAGES: ReadonlyArray<
-  Exclude<keyof DevDashboardPipeline, 'completed_this_month'>
-> = ['pending_deposit', 'deposit_paid', 'in_development', 'pending_final', 'pending_settlement']
+/** 首页只报最近几笔到账，完整流水在收益钱包页。 */
+const RECENT_INCOME_LIMIT = 5
 
 type DashboardState = ReturnType<typeof useDevHomeDashboard>
 
 export type DevHomeBoardOptions = {
-  isFullscreen: Ref<boolean>
-  dashboard: DashboardState['dashboard']
   overview: DashboardState['overview']
+  loaded: Ref<boolean>
   activeProjectCount: DashboardState['activeProjectCount']
-  completedProjectCount: DashboardState['completedProjectCount']
   pendingDeliveryCount: DashboardState['pendingDeliveryCount']
-  /** 看板时钟（`useFullscreen` 每秒推进） */
-  now: Ref<number>
+  completedProjectCount: DashboardState['completedProjectCount']
 }
 
 /**
- * 开发者总览页**全屏看板**那一路的读数（R047 从 `views/DevHomeView.vue` 拆出）：
- * 快照与实时读数的取舍、四格统计卡、接单漏斗、动态流与资源概况的行、看板时钟。
+ * 开发者总览页**读数**那一路：顶部三格读数与「近期到账」的行。
  *
- * 口径与拆出前逐条一致：
- * - 全屏且已拿到快照（`liveBoard`）时，读数改走快照、跟着推送实时变化；非全屏仍是进页那一次拉取；
- * - 统计卡「累计收入」固定取后端给的累计到账金额（快照不参与）；
- * - 漏斗只在全屏有快照时出格；`deposit_paid` 拿不到单条支付模式，按统一口径两义并写；
- * - 动态流的「今天」由看板时钟决定，跨零点整列时间要跟着翻。
+ * 口径：
+ * - 三格读数全部来自 `GET /api/requirement/dev/mine` 这份列表按 `status` 现算（算在数据层），
+ *   这里只负责格式化成读数条要的「标签 + 字符串」；
+ * - 还没读到（`loaded` 为 false，含加载失败）时三格一律显示「—」——把「没拿到」写成 0
+ *   等于替后端回答「你一个单都没有」；
+ * - 近期到账直接来自钱包概览的 `recent_income`（契约里最多一屏的量），按到账时间倒序取前 5 笔。
  */
 export function useDevHomeBoard(options: DevHomeBoardOptions) {
-  /** 全屏且已拿到快照：看板上的读数改走快照，跟着推送实时变化；非全屏仍是进页那一次拉取。 */
-  const liveBoard = computed<DevDashboardSnapshot | null>(() =>
-    options.isFullscreen.value ? options.dashboard.value : null,
-  )
+  /** 读数条数值：没读到数据时是「—」，不是 0。 */
+  function reading(value: number): string {
+    return options.loaded.value ? String(value) : '—'
+  }
 
-  /** 四格统计卡读数：三格按接单状态分档，收入固定取后端给的累计到账金额。 */
-  const statCards = computed<DevHomeStatCard[]>(() => {
-    const board = liveBoard.value
-    const active = board
-      ? PIPELINE_STAGES.reduce((sum, stage) => sum + board.pipeline[stage], 0)
-      : options.activeProjectCount.value
-    const completed = board
-      ? board.wallet.total_completed_orders
-      : options.completedProjectCount.value
-    const pendingDelivery = board
-      ? board.pipeline.pending_final
-      : options.pendingDeliveryCount.value
-
-    return [
-      {
-        label: '进行中项目',
-        value: String(active),
-      },
-      {
-        label: '已完成项目',
-        value: String(completed),
-      },
-      {
-        label: '待交付',
-        value: String(pendingDelivery),
-      },
-      {
-        label: '累计收入',
-        value: money(options.overview.value?.total_income_cny),
-      },
-    ]
-  })
-
-  /** 接单漏斗：五个在途状态 + 本月完成。`deposit_paid` 拿不到单条的支付模式，按统一口径两义并写。 */
-  const funnelCells = computed(() => {
-    const board = liveBoard.value
-    if (!board) {
-      return []
-    }
-
-    const stages = PIPELINE_STAGES.map((stage) => ({
-      key: stage,
-      label: requirementStatusLabel(stage),
-      value: board.pipeline[stage],
-      tone: STATUS_TONES[stage] ?? 'blue',
-    }))
-    const peak = Math.max(1, ...stages.map((stage) => stage.value))
-
-    return [
-      ...stages.map((stage) => ({ ...stage, share: stage.value / peak, done: false })),
-      {
-        key: 'completed_this_month',
-        label: '本月完成',
-        value: board.pipeline.completed_this_month,
-        tone: 'cyan' as DevHomeTone,
-        share: 1,
-        done: true,
-      },
-    ]
-  })
+  const statCards = computed<DevHomeStatCard[]>(() => [
+    { label: '进行中项目', value: reading(options.activeProjectCount.value) },
+    { label: '待交付', value: reading(options.pendingDeliveryCount.value) },
+    { label: '已完成项目', value: reading(options.completedProjectCount.value) },
+  ])
 
   /**
-   * 动态流与资源概况的行：图标 / 色调 / 时间文案 / 键怎么拼在 `buildFeedRows`，
-   * 这里只把数据交给它，并给出「哪一天算今天」——那由看板时钟决定，跨零点时整列时间要跟着翻。
+   * 近期到账的行：`paid_at` 是东八区墙钟串，格式化走 `shared/datetime`；
+   * 排序用字符串比较（`YYYY-MM-DD HH:MM:SS` 定长，字典序即时间序），不解析成 `Date` 再比。
    */
-  const feedRows = computed(() =>
-    liveBoard.value ? buildFeedRows(liveBoard.value.feed, dayKey(new Date(options.now.value))) : [],
-  )
+  const incomeRows = computed<DevHomeIncomeRow[]>(() => {
+    const items = options.overview.value?.recent_income ?? []
 
-  const resourceCells = computed(() =>
-    liveBoard.value ? buildResourceCells(liveBoard.value.resources) : [],
-  )
-
-  /** 看板时钟的 `now` 由 `useFullscreen` 每秒推进；时间文案留在这里，与读数条同一种写法。 */
-  const clockTime = computed(() => {
-    const date = new Date(options.now.value)
-    return `${pad2(date.getHours())}:${pad2(date.getMinutes())}:${pad2(date.getSeconds())}`
+    return [...items]
+      .sort((left, right) => right.paid_at.localeCompare(left.paid_at))
+      .slice(0, RECENT_INCOME_LIMIT)
+      .map((item: DevWalletOverview['recent_income'][number]) => ({
+        key: item.payment_id,
+        title: item.title,
+        customer: item.customer,
+        requirementId: item.requirement_id,
+        amount: item.amount_cny,
+        timeText: formatBackendDateTime(item.paid_at),
+      }))
   })
 
-  const clockDate = computed(() => {
-    const date = new Date(options.now.value)
-    return `${date.getMonth() + 1}月${date.getDate()}日 周${WEEKDAY_LABELS[date.getDay()]}`
-  })
-
-  return { liveBoard, statCards, funnelCells, feedRows, resourceCells, clockTime, clockDate }
+  return { statCards, incomeRows }
 }

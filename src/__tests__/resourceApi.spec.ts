@@ -31,9 +31,9 @@ describe('resourceApi', () => {
     expect(resourceKindLabel(undefined)).toBe('普通资源')
   })
 
-  it('isResourceRowActionAvailable：接口资源藏掉版本 / 道具卡 / 过户，其余动作照常', () => {
-    // 接口资源没有可下载文件、不进公开面、渠道配置不随归属走
-    for (const action of ['publish', 'versions', 'use-promo', 'transfer'] as const) {
+  it('isResourceRowActionAvailable：接口资源藏掉版本 / 道具卡，其余动作照常', () => {
+    // 接口资源没有可下载文件、也不进任何公开面（过户已按契约整组移除，不再是动作码）
+    for (const action of ['publish', 'versions', 'use-promo'] as const) {
       expect(isResourceRowActionAvailable(action, 'api')).toBe(false)
     }
     // 仍成立的四项：审核、上下架、订单、删除
@@ -42,7 +42,7 @@ describe('resourceApi', () => {
     }
     // 普通资源（含缺省 / 脏值）一项都不藏
     for (const kind of ['normal', null, undefined, ''] as const) {
-      for (const action of ['publish', 'versions', 'use-promo', 'transfer'] as const) {
+      for (const action of ['publish', 'versions', 'use-promo', 'delete'] as const) {
         expect(isResourceRowActionAvailable(action, kind)).toBe(true)
       }
     }
@@ -201,7 +201,8 @@ describe('resourceApi', () => {
     // 2.0 的另外三个端点
     expect(prompt).toContain('/open/users/ensure')
     expect(prompt).toContain('/open/orders/{order_no}')
-    expect(prompt).toContain('/open/checkout/exchange')
+    // 票据换登录态在契约里的正式路径是 /api/resource/checkout/exchange（不带 /open 段）
+    expect(prompt).toContain('/api/resource/checkout/exchange')
     // 2.0 不再自动建号：未绑定返回 409
     expect(prompt).toContain('409')
     // 下单返回 checkout_url（票据 10 分钟一次性），不再有 pay_url

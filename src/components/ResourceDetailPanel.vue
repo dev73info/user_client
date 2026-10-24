@@ -13,7 +13,6 @@ import {
   API_RESOURCE_PURCHASE_HINT,
   canPurchaseOnPlatform,
   formatResourcePriceLabel,
-  isPointsResource,
 } from '@/shared/resourceSale'
 import { isApiResourceKind } from '@/shared/resourceApi'
 import { useAuthStore } from '@/stores/auth'
@@ -70,7 +69,7 @@ const resource = ref<PublicMcResourceItem | null>(null)
 const versions = ref<PublicMcResourceVersionItem[]>([])
 
 /**
- * 购买（下单 / 渠道 / 支付面与轮询 / 积分余额）全在 `useResourcePurchase` 里：
+ * 购买（下单 / 渠道 / 支付面与轮询）全在 `useResourcePurchase` 里：
  * 下单串行队列、支付面世代号、切渠道防抖都原样搬了过去，这里只接状态与动作。
  * `refreshDetail` 留在本组件——资源实体由这里持有，付完要重取一次详情（含 `purchased_by_me`）。
  */
@@ -79,7 +78,6 @@ const {
   submitting: purchaseSubmitting,
   channel: purchaseChannel,
   error: purchaseError,
-  buyerPointsBalance,
   order: purchaseOrder,
   qrDataUrl: purchaseQrDataUrl,
   showPromoHint,
@@ -89,7 +87,6 @@ const {
   submit: submitPurchase,
 } = useResourcePurchase({
   getResourceId: () => resource.value?.id ?? null,
-  isPointsListing: () => isPointsListing.value,
   getPromoShareBps: () => Number(resource.value?.promo_share_bps ?? 0),
   refreshDetail: refreshResourceDetail,
 })
@@ -108,9 +105,11 @@ const isOwner = computed(() => {
   return Boolean(creator && username && creator === username)
 })
 const priceLabel = computed(() =>
-  formatResourcePriceLabel(resource.value?.price_fen ?? 0, resource.value?.price_points ?? 0),
+  formatResourcePriceLabel(
+    resource.value?.buyout_price_fen ?? 0,
+    resource.value?.price_points ?? 0,
+  ),
 )
-const isPointsListing = computed(() => isPointsResource(resource.value?.price_points))
 /**
  * BUG-020：接口资源只在开发者自有站点的服务端下单，平台内没有购买入口。
  *
@@ -123,7 +122,7 @@ const needsPurchase = computed(() => {
     return false
   }
   return canPurchaseOnPlatform({
-    priceFen: resource.value.price_fen,
+    priceFen: resource.value.buyout_price_fen,
     pricePoints: resource.value.price_points,
     purchasedByMe: Boolean(resource.value.purchased_by_me),
     isOwner: isOwner.value,
@@ -319,8 +318,6 @@ watch(
     :open="purchasePanelOpen"
     :title="resource?.title ?? ''"
     :price-label="priceLabel"
-    :is-points-listing="isPointsListing"
-    :balance="buyerPointsBalance"
     :show-promo-hint="showPromoHint"
     :channel="purchaseChannel"
     :error="purchaseError"

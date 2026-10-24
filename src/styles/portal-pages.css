@@ -1,14 +1,8 @@
-/* 门户内页样式入口：整份按区块切成 8 个分片，@import 顺序 = 原 portal-pages.css 的书写顺序，
+/* 门户内页样式入口：整份按区块切成 3 个分片，@import 顺序 = 原 portal-pages.css 的书写顺序，
    级联顺序与原文件逐条一致（同名选择器的先后、@media 与它包着的规则都没动过）。
    分片只搬运不修改：声明、选择器、媒体查询一字未改，色值也没动；改顺序会让级联悄悄变样。
-   01 门户页主视觉 / 02 门户页内容与列表 / 03 骨架屏与页面走查断点 /
-   04 社区页外壳 / 05 社区搜索行 / 06 社区列表 / 07 社区详情与富文本 /
-   08 社区空态与窄屏 */
+   01 门户页主视觉 / 02 门户页内容与列表 / 03 骨架屏与页面走查断点。
+   原先的 04–08 是社区页样式，社区已随契约下线一并删除。 */
 @import './portal-pages/01-portal-page-hero.css';
 @import './portal-pages/02-portal-page-content.css';
 @import './portal-pages/03-portal-page-skeleton-responsive.css';
-@import './portal-pages/04-community-shell.css';
-@import './portal-pages/05-community-search.css';
-@import './portal-pages/06-community-list.css';
-@import './portal-pages/07-community-detail.css';
-@import './portal-pages/08-community-empty-responsive.css';

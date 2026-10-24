@@ -1,12 +1,8 @@
 import type { RouteLocationRaw } from 'vue-router'
-import type { CommunityPost } from '@/api/community'
-import type {
-  PublicRequirementSpotlightItem,
-  RequirementPaymentMode,
-  RequirementStatus,
-} from '@/api/requirements'
+import type { PublicRequirementSpotlightItem } from '@/api/requirements'
 import { normalizeTagName } from '@/api/resourceTags'
 import { requirementStatusLabel } from '@/shared/requirementStatus'
+import { parseBackendDateTime } from '@/shared/datetime'
 import { resourceDetailLocation, resourceListingSaleOf } from '@/shared/resourceNavigation'
 
 /**
@@ -15,7 +11,7 @@ import { resourceDetailLocation, resourceListingSaleOf } from '@/shared/resource
  *
  * 原先写死在 `views/HomeView.vue`（零单测覆盖），R047 拆分时收进来：
  * 只做「值 → 显示串」映射，不读 store、不发请求，便于单测。
- * 公告的取数顺序（公告 3 条 → 最新成交 → 公开资源 → 最新需求，整体截断到 4 条）与视图内联版一致。
+ * 公告的取数顺序（最新成交 → 公开资源 → 最新需求，整体截断到 4 条）与视图内联版一致。
  */
 
 export type PortalNotice = {
@@ -31,13 +27,12 @@ export type PortalNoticeResource = {
   title: string
   platform: string
   updated_at: string
+  buyout_price_fen: number
   price_fen: number
   price_points: number
 }
 
 export type PortalNoticeSources = {
-  /** 已发布的平台公告（视图已在取数后过滤 status === 'published'） */
-  posts: Array<Pick<CommunityPost, 'id' | 'title' | 'published_at'>>
   /** 最近一条成交（`at` 已是格式化后的时间文案） */
   latestDeal?: { title: string; at: string } | null
   /** 最近一条公开资源 */
@@ -52,20 +47,11 @@ export type PortalNoticeSources = {
 }
 
 /**
- * 平台公告列表：公告最多 3 条，之后依次追加最新成交 / 公开资源 / 最新需求，
+ * 平台公告列表：依次是最新成交 / 公开资源 / 最新需求，
  * 最后整体截断到 4 条（侧栏列表高度固定，第 5 条开始不展示）。
  */
 export function buildPortalNotices(sources: PortalNoticeSources): PortalNotice[] {
   const notices: PortalNotice[] = []
-
-  for (const post of sources.posts.slice(0, 3)) {
-    notices.push({
-      title: post.title,
-      date: formatTimeLabel(post.published_at),
-      tag: '公告',
-      to: { name: 'community-post', params: { postId: String(post.id) } },
-    })
-  }
 
   if (sources.latestDeal) {
     notices.push({
@@ -86,7 +72,7 @@ export function buildPortalNotices(sources: PortalNoticeSources): PortalNotice[]
             resourceId: resource.id,
             rootSlug: sources.resourceRoute.rootSlug,
             entrySlug: sources.resourceRoute.entrySlug,
-            sale: resourceListingSaleOf(resource.price_fen, resource.price_points),
+            sale: resourceListingSaleOf(resource.buyout_price_fen, resource.price_points),
           })
         : { name: 'resources', query: { sale: 'free' } },
     })
@@ -106,10 +92,7 @@ export function buildPortalNotices(sources: PortalNoticeSources): PortalNotice[]
 }
 
 /** 状态文案走全站统一口径；`deposit_paid` 一码两义，拿到支付模式就传进去（见 `requirementStatusLabel`）。 */
-export function statusToLabel(
-  status: RequirementStatus,
-  paymentMode?: RequirementPaymentMode,
-): string {
+export function statusToLabel(status: string, paymentMode?: string): string {
   return requirementStatusLabel(status, paymentMode)
 }
 
@@ -124,8 +107,8 @@ export function formatMoney(budget?: number | null): string {
 
 /** 时间文案：`3/5 14:30` 口径；无法解析的日期回落「刚刚更新」。 */
 export function formatTimeLabel(iso: string): string {
-  const date = new Date(iso)
-  if (Number.isNaN(date.getTime())) {
+  const date = parseBackendDateTime(iso)
+  if (!date) {
     return '刚刚更新'
   }
 

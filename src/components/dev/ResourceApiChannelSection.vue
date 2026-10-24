@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import { TAlert, TButton, TForm, TFormItem, TInput, TSwitch } from 'ui_73info'
+import { TAlert, TButton, TForm, TFormItem, TInput } from 'ui_73info'
 
 /**
- * R028「接口资源接入配置」整块：回调地址 / 回调密钥 / 购买限制 / 允许来源，
+ * R028「接口资源接入配置」整块：回调地址 / 回调密钥 / 允许来源，
  * 加一次性密钥面板与「接入提示词」样张。
  *
  * 两条提示是互斥的：渠道上一次保存失败（`channelRetryOnly`）优先于「还没配齐」，
@@ -29,13 +29,11 @@ defineProps<{
 const emit = defineEmits<{
   copySecret: []
   copyPrompt: []
-  repeatChange: [next: boolean]
 }>()
 
 const callbackUrl = defineModel<string>('callbackUrl', { required: true })
 const callbackSecret = defineModel<string>('callbackSecret', { required: true })
 const allowedOrigins = defineModel<string>('allowedOrigins', { required: true })
-const repeatPurchasable = defineModel<boolean>('repeatPurchasable', { required: true })
 </script>
 
 <template>
@@ -89,20 +87,7 @@ const repeatPurchasable = defineModel<boolean>('repeatPurchasable', { required: 
           <p class="dev-field-hint">当前：{{ secretMaskedLabel }}</p>
         </TFormItem>
 
-        <TFormItem label="购买限制" class="dev-form-item--switch">
-          <div class="dev-api-switch-row">
-            <label class="dev-api-switch">
-              <TSwitch
-                v-model="repeatPurchasable"
-                aria-label="允许重复购买"
-                @change="emit('repeatChange', $event)"
-              />
-            </label>
-          </div>
-        </TFormItem>
-
-        <!-- 顺序是有意的：可伸缩的多行清单放最后，行尾余量落在它身上，
-             最后一行不会被撑成半空；购买限制按内容取宽，和它并排成一行。 -->
+        <!-- 顺序是有意的：可伸缩的多行清单放最后，行尾余量落在它身上，最后一行不会被撑成半空。 -->
         <TFormItem label="允许的来源地址" class="dev-form-item--wide">
           <TInput
             v-model="allowedOrigins"

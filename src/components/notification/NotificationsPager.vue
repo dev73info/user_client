@@ -5,7 +5,7 @@ import { TOption, TPagination, TSelect } from 'ui_73info'
 /**
  * 「系统通知」的分页条：左边选每页条数，右边翻页。
  *
- * 口径与我的收藏、我的合同一致（客户端分页，`LIST_PAGE_SIZES` 三档）；
+ * 口径与我的合同一致（客户端分页，`LIST_PAGE_SIZES` 三档）；
  * 页码与每页条数都是双向绑定，越界收回由 `useClientPagination` 兜底，这里不重复判断。
  */
 defineProps<{

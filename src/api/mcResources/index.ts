@@ -28,6 +28,7 @@ export {
   getMcResource,
   listMcResources,
   listTeamResources,
+  submitMcResourceReview,
   updateMcResourceHomepage,
   uploadMcResourceCover,
 } from './resource'

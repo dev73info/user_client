@@ -15,11 +15,12 @@ function requirement(part: Partial<RequirementItem> = {}): RequirementItem {
   return {
     id: 1,
     requirement_id: '2026-1',
+    created_time: '2026-10-09 10:00:00',
+    creator: 'customer',
     subscribe_status_change: false,
     title: '需求单',
     payment_mode: 'platform_guarantee',
     status: 'completed',
-    updated_at: '2026-10-09 10:00:00',
     bound_resource_id: 48,
     resource_claimed_at: null,
     ...part,
@@ -99,7 +100,9 @@ describe('转为我的资源：失败分支文案', () => {
   })
 
   it('500 优先用后端文案，空 body 与非 HttpError 走兜底', () => {
-    expect(describeClaimResourceError(new HttpError(500, '数据库连接失败')).message).toBe('数据库连接失败')
+    expect(describeClaimResourceError(new HttpError(500, '数据库连接失败')).message).toBe(
+      '数据库连接失败',
+    )
     expect(describeClaimResourceError(new HttpError(500, '   ')).message).toBe('转为我的资源失败')
     expect(describeClaimResourceError(new Error('网络异常')).message).toBe('网络异常')
     expect(describeClaimResourceError('oops', '自定义兜底').message).toBe('自定义兜底')

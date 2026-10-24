@@ -7,7 +7,6 @@
  */
 import type { PublicRequirementSpotlightItem } from '@/api/requirements'
 import PaymentModeChip from '@/components/PaymentModeChip.vue'
-import ShareCardGenerator from '@/components/ShareCardGenerator.vue'
 import {
   formatCnDateTime as formatTimeLabel,
   formatCny as formatMoney,
@@ -17,8 +16,6 @@ import { requirementRichTextPreview } from '@/utils/requirementRichText'
 
 const props = defineProps<{
   card: PublicRequirementSpotlightItem
-  /** 未登录时卡片底部不给「分享」（分享卡要带身份信息） */
-  authed: boolean
 }>()
 
 const emit = defineEmits<{
@@ -54,12 +51,6 @@ function open(): void {
       <strong>{{ formatMoney(card.budget) }}</strong>
       <div class="requirement-hall__card-actions">
         <span>查看详情</span>
-        <ShareCardGenerator
-          v-if="authed"
-          share-type="requirement"
-          :target-id="card.requirement_id"
-          label="分享"
-        />
       </div>
     </div>
   </article>

@@ -103,7 +103,7 @@ function record(status: string) {
 async function renderAccountPage(): Promise<VueWrapper> {
   const wrapper = mount(AccountCouponsView, {
     global: {
-      stubs: { RealnameHero: true, WechatBindQrModal: true },
+      stubs: { RealnameHero: true },
       config: { warnHandler: () => {} },
     },
   })
@@ -123,7 +123,10 @@ beforeEach(() => {
     wechat_bound: false,
   })
   mocks.getBoundProviders.mockResolvedValue({ providers: [] })
-  mocks.getMyAdapayMember.mockResolvedValue({ onboardingStatus: 'active', settleAccountId: null })
+  mocks.getMyAdapayMember.mockResolvedValue({
+    onboardingStatus: 'active',
+    acceptsSettlement: false,
+  })
   mocks.completeAsignIdentify.mockResolvedValue({ status: 'none' })
   mocks.resumeAsignIdentify.mockRejectedValue(new Error('没有在跑的核身链接'))
 })
@@ -169,7 +172,10 @@ describe('账号与安全页入口行：收款账户走到哪一步了', () => {
   })
 
   it('渠道驳回不在入口行写「待认证」：那是去整改，不是等（BUG-013）', async () => {
-    mocks.getMyAdapayMember.mockResolvedValue({ onboardingStatus: 'failed', settleAccountId: null })
+    mocks.getMyAdapayMember.mockResolvedValue({
+      onboardingStatus: 'failed',
+      acceptsSettlement: false,
+    })
     const wrapper = await renderAccountPage()
     // 个人主体的标签口径是「开通被拒」（企业主体是「渠道审核未通过」），只要别落成「待认证」。
     expect(wrapper.text()).toContain('收款账户：开通被拒')
@@ -177,13 +183,20 @@ describe('账号与安全页入口行：收款账户走到哪一步了', () => {
   })
 
   it('渠道已通过、还没绑卡写「待绑卡」：差的是用户那一步，入口可点开（BUG-017）', async () => {
-    mocks.getMyAdapayMember.mockResolvedValue({ onboardingStatus: 'active', settleAccountId: null })
+    mocks.getMyAdapayMember.mockResolvedValue({
+      onboardingStatus: 'active',
+      acceptsSettlement: false,
+    })
     const wrapper = await renderAccountPage()
     expect(wrapper.text()).toContain('收款账户：待绑卡')
   })
 
-  it('渠道给的空白卡号不算已绑：不能写「已设置」', async () => {
-    mocks.getMyAdapayMember.mockResolvedValue({ onboardingStatus: 'active', settleAccountId: '  ' })
+  it('后端说不能收款就不算已绑：不能写「已设置」', async () => {
+    // `active` 但 `accepts_settlement = false`：号码不齐备，等于还不能收钱
+    mocks.getMyAdapayMember.mockResolvedValue({
+      onboardingStatus: 'active',
+      acceptsSettlement: false,
+    })
     const wrapper = await renderAccountPage()
     expect(wrapper.text()).not.toContain('结算账户：已设置')
     expect(wrapper.text()).toContain('收款账户：待绑卡')
@@ -194,7 +207,7 @@ describe('账号与安全页入口行：收款账户走到哪一步了', () => {
   it('渠道还在审写「渠道审核中」，且入口不放开', async () => {
     mocks.getMyAdapayMember.mockResolvedValue({
       onboardingStatus: 'under_review',
-      settleAccountId: null,
+      acceptsSettlement: false,
     })
     const wrapper = await renderAccountPage()
     expect(wrapper.text()).toContain('收款账户：渠道审核中')

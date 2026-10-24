@@ -1,25 +1,29 @@
 <script setup lang="ts">
 /**
- * 「收款银行卡」弹窗：渠道原话 / 主体变更与缺资料提示 + 银行卡表单（卡号、开户行、省市、账户类型）。
+ * 「收款银行卡」弹窗：渠道原话 / 主体变更与缺资料提示 + 银行卡表单（卡号后四位、开户行、账户类型）。
+ *
+ * 表单只收契约 `SettlementApplyRequest` / `SettlementAccountChangeRequest` 要的那几项：
+ * 户名取自实名主体、开户行由银行下拉映射成 `bank_name`、卡号**只收后四位**。
+ * 开户省份 / 城市不在这两条请求体里，所以没有这两格——收了也无处可发。
  *
  * 从 `AccountCouponsView` 抽出来的**纯展示**弹窗：请求、校验、toast 全在
  * `composables/useSettlementAccount.ts`（组件不碰 `@/api/*`、`TMessage`、`router`）。
  *
  * 状态归属：
  * - `visible` / `loading` / `saving`：弹窗开合与两个加载位由父级持有；
- * - 五个输入框的草稿 + 一组 `update:*`：父级那份 `settleForm` 是唯一草稿（提交处理器读它），
+ * - 三个输入框的草稿 + 一组 `update:*`：父级那份 `settleForm` 是唯一草稿（提交处理器读它），
  *   这里只做受控输入并回传，不在组件内另存一份；
  * - 其余 `providerError` / `rejected` / `corporateLocked` / `subjectMismatch` /
- *   `materialMissing*` / `subjectLabel` / `cardPlaceholder` / `cities`：父级算好传下来
+ *   `materialMissing*` / `subjectLabel` / `cardPlaceholder`：父级算好传下来
  *   （同一个判断不给两个文件各写一遍）；
  * - 「缺资料去补」与「取消」都是父级的动作（关本弹窗、开实名表单、清表单），这里只 emit。
  *
  * 样式：`.settle-*` 整组原来在视图的 scoped 块里，弹窗节点搬进来后父级 scoped 不再命中
- * （整块塌版），随组件搬走；那一档窄屏断点在 R047 里由 460px 收到 640px，不新增档位。
+ * （整块塌版），随组件搬走。
  */
 import { computed } from 'vue'
 
-import { settlementBanks, settlementProvinces } from '@/utils/settlementAccount'
+import { settlementBanks } from '@/utils/settlementAccount'
 import type { SelectModelValue } from 'ui_73info'
 import {
   TAlert,
@@ -32,9 +36,6 @@ import {
   TOption,
   TSelect,
 } from 'ui_73info'
-
-/** 省 / 市下拉的选项（父级用渠道字典算好的那一份）。 */
-type CityOption = { value: string; title: string }
 
 const props = defineProps<{
   /** 弹窗是否打开：父级持有。 */
@@ -59,16 +60,12 @@ const props = defineProps<{
   providerError: string
   /** 渠道已明确拒绝开通（决定告警配色与是否给「去补资料」的指路）。 */
   rejected: boolean
-  /** 卡号输入框的提示（已绑卡时带脱敏卡号）。 */
+  /** 卡号输入框的提示（已绑账户时带后四位）。 */
   cardPlaceholder: string
-  /** 五个草稿字段（父级那份 `settleForm`）。 */
+  /** 三份草稿字段（父级那份 `settleForm`）。 */
   cardId: string
   bankCode: string
-  provCode: string
-  areaCode: string
   bankAcctType: string
-  /** 当前省份下的城市选项。 */
-  cities: CityOption[]
 }>()
 
 const emit = defineEmits<{
@@ -78,8 +75,6 @@ const emit = defineEmits<{
   cancel: []
   'update:card-id': [cardId: string]
   'update:bank-code': [bankCode: string]
-  'update:prov-code': [provCode: string]
-  'update:area-code': [areaCode: string]
   'update:bank-acct-type': [bankAcctType: string]
   /** 点了主按钮：校验与请求都在父级。 */
   submit: []
@@ -103,16 +98,6 @@ const bankCode = computed<string>({
   set: (next: SelectModelValue) => emit('update:bank-code', selectText(next)),
 })
 
-const provinceCode = computed<string>({
-  get: () => props.provCode,
-  set: (next: SelectModelValue) => emit('update:prov-code', selectText(next)),
-})
-
-const areaCode = computed<string>({
-  get: () => props.areaCode,
-  set: (next: SelectModelValue) => emit('update:area-code', selectText(next)),
-})
-
 const bankAcctType = computed<string>({
   get: () => props.bankAcctType,
   set: (next: SelectModelValue) => emit('update:bank-acct-type', selectText(next)),
@@ -120,13 +105,13 @@ const bankAcctType = computed<string>({
 
 /**
  * 「渠道拒绝」之后用户该做什么：先回去核对资料重新提交认证（唯一自助路径）；资料无误
- * 还是不过就只能让人工介入——结论在渠道手里，但要让用户知道还能提工单。
+ * 还是不过就只能让人工介入——结论在渠道手里，但要让用户知道还能联系平台客服。
  */
 const rejectedGuide = computed(() => {
   const action = props.corporateLocked
     ? '请在「认证管理」→「变更认证类型」核对企业名称、统一社会信用代码、法人信息与对公账户户名，确认无误后重新提交企业认证，通过后再回来绑定对公账户'
     : '请核对实名信息与银行卡户名是否一致，确认无误后重新提交'
-  return `${action}；若资料核对无误仍未通过，可提交工单由客服协助核对渠道结论。`
+  return `${action}；若资料核对无误仍未通过，可联系平台客服协助核对渠道结论。`
 })
 </script>
 
@@ -240,8 +225,13 @@ const rejectedGuide = computed(() => {
         :disabled="props.saving || props.loading"
         @submit="emit('submit')"
       >
-        <TFormItem label="银行卡号" required>
-          <TInput v-model="cardId" inputmode="numeric" :placeholder="props.cardPlaceholder" />
+        <TFormItem label="卡号后四位" required>
+          <TInput
+            v-model="cardId"
+            inputmode="numeric"
+            :maxlength="4"
+            :placeholder="props.cardPlaceholder"
+          />
         </TFormItem>
         <TFormItem label="开户银行" required>
           <TSelect
@@ -254,41 +244,6 @@ const rejectedGuide = computed(() => {
             style="width: 100%"
           />
         </TFormItem>
-        <div class="settle-form__pair">
-          <TFormItem label="开户省份" required>
-            <TSelect
-              v-model="provinceCode"
-              filterable
-              clearable
-              placeholder="选择开户银行所在省份"
-              style="width: 100%"
-            >
-              <TOption
-                v-for="province in settlementProvinces"
-                :key="province.value"
-                :label="province.title"
-                :value="province.value"
-              />
-            </TSelect>
-          </TFormItem>
-          <TFormItem label="开户城市" required>
-            <TSelect
-              v-model="areaCode"
-              filterable
-              clearable
-              :disabled="!props.provCode"
-              :placeholder="props.provCode ? '选择开户银行所在城市' : '请先选择开户省份'"
-              style="width: 100%"
-            >
-              <TOption
-                v-for="city in props.cities"
-                :key="city.value"
-                :label="city.title"
-                :value="city.value"
-              />
-            </TSelect>
-          </TFormItem>
-        </div>
         <TFormItem label="账户类型">
           <TSelect v-model="bankAcctType" style="width: 100%">
             <TOption label="个人银行卡" value="2" />
@@ -339,29 +294,9 @@ const rejectedGuide = computed(() => {
   margin-top: 10px;
 }
 
-/* 开户省份 + 开户城市并成一行；窄屏（弹窗变全宽）时再拆回上下两行。
-   两列都用 minmax(0, 1fr) 且子项 min-width: 0 —— grid 子项默认 min-width: auto，
-   下拉框的最小宽度会把整张表单顶得比弹窗还宽，右侧（含按钮）被裁掉。 */
-.settle-form__pair {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  gap: 12px;
-}
-
-.settle-form__pair > * {
-  min-width: 0;
-}
-
 /* TForm 本身是弹窗 body 的 flex 子项，同样要允许收缩到比内容窄 */
 .settle-form {
   min-width: 0;
-}
-
-/* R047 断点收敛：原档位 460px → 640px */
-@media (max-width: 640px) {
-  .settle-form__pair {
-    grid-template-columns: minmax(0, 1fr);
-  }
 }
 
 /* 表单底部动作条：取消 + 确认（主操作）靠右，两者留 12px 间距 */

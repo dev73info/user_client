@@ -6,8 +6,8 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
  * 这里钉住的是一组实测踩过的行为：`PublishModal` 在首页就是挂载状态
  * （`visible` 只是内层 v-if），`onMounted` 那次请求往往赶在自动登录之前，
  * 拿到的是**匿名身份**的结果（灰度期间 `escrowAllowed` 恒为 false）。
- * 一旦这个答案被当成结论缓存下来，登录之后就再也不会重问，
- * 「电签担保」在整个页面会话里都不会出现——所以匿名答案不能落缓存。
+ * 未登录时**根本不问**（这条端点要鉴权，匿名打过去只会换一个 401），也不把「没问过」
+ * 当成「不可用」缓存下来——否则登录之后就再也不会重问，「电签担保」在整个页面会话里都不会出现。
  */
 
 const mocks = vi.hoisted(() => ({
@@ -36,8 +36,13 @@ async function freshModule(): Promise<AvailabilityModule> {
   return import('@/shared/adapayAvailability')
 }
 
-function availability(escrowAllowed: boolean) {
-  return { paymentReady: true, escrowBetaOnly: true, escrowAllowed }
+/** 契约 `AvailabilityResponse`：`available` + `status` + `status_label`，没有别的读数。 */
+function availability(available: boolean) {
+  return {
+    available,
+    status: available ? 'available' : 'unavailable',
+    status_label: available ? '可用' : '不可用',
+  }
 }
 
 describe('电签担保可用性的缓存', () => {
@@ -46,27 +51,24 @@ describe('电签担保可用性的缓存', () => {
     mocks.token.value = ''
   })
 
-  it('匿名拿到的「不可用」不算结论：不标记已加载，也不会挡住后面的重问', async () => {
+  it('未登录时不发请求，也不标记已加载（留给登录后那一问）', async () => {
     const mod = await freshModule()
-    mocks.availability.mockResolvedValueOnce(availability(false))
 
     await mod.loadAdapayAvailability()
 
-    expect(mocks.availability).toHaveBeenCalledWith(undefined)
-    expect(mod.platformGuaranteeReady.value, '匿名结果不应被当成就绪').toBe(false)
-    expect(mod.platformGuaranteeLoaded.value, '匿名结果不应标记为已加载').toBe(false)
+    expect(mocks.availability, '鉴权端点不该被匿名调用').not.toHaveBeenCalled()
+    expect(mod.platformGuaranteeReady.value, '没问过就不该当成就绪').toBe(false)
+    expect(mod.platformGuaranteeLoaded.value, '没问过就不该标记为已加载').toBe(false)
   })
 
-  it('登录后再问一次就能纠正：带上令牌重问并缓存「可用」', async () => {
+  it('登录后问一次就能拿到结论：带上令牌请求并缓存「可用」', async () => {
     const mod = await freshModule()
-    mocks.availability.mockResolvedValueOnce(availability(false))
-    await mod.loadAdapayAvailability()
-
     mocks.token.value = 'user-token'
     mocks.availability.mockResolvedValueOnce(availability(true))
+
     await mod.loadAdapayAvailability()
 
-    expect(mocks.availability).toHaveBeenLastCalledWith('user-token')
+    expect(mocks.availability).toHaveBeenCalledWith('user-token')
     expect(mod.platformGuaranteeLoaded.value).toBe(true)
     expect(mod.platformGuaranteeReady.value).toBe(true)
   })

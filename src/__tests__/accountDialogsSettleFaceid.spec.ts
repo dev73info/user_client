@@ -10,10 +10,11 @@ import SettlementDialog from '@/components/account/SettlementDialog.vue'
 /**
  * 「收款银行卡」「人脸核身」两个弹窗的父子接口。
  *
- * 盯的仍是**事件键名与次数**：`v-model:visible` 走 `update:visible`，五个表单字段各走自己的
+ * 盯的仍是**事件键名与次数**：`v-model:visible` 走 `update:visible`，三个表单字段各走自己的
  * `update:*`，写成驼峰或换一个名字都不会报错、只会让「点了没反应」。
- * 第四个用例是反证：把父级监听键写错，`settleForm` 不会动，提交时校验直接报「请选择开户银行」
- * ——接线断了在这个测试里必然红（见 `accountDialogsInViewSettleFaceid.spec.ts` 的端到端版本）。
+ * 收款银行卡表单只有契约要的三项（卡号后四位 / 开户行 / 账户类型）——开户省份与城市不在
+ * `SettlementApplyRequest` 里，收了也无处可发，所以这里不对应任何下拉。
+ * 接线断了在 `accountDialogsInViewSettleFaceid.spec.ts` 的端到端版本里必然红。
  */
 function mountDialog(component: Component, props: Record<string, unknown>): VueWrapper {
   return mount(component, {
@@ -32,7 +33,7 @@ function buttonByText(wrapper: VueWrapper, text: string) {
 }
 
 /**
- * 收款银行卡弹窗**不能** stub Teleport：它里面的四个 `TSelect` 在「stub 掉 Teleport」的测试替身下
+ * 收款银行卡弹窗**不能** stub Teleport：它里面的 `TSelect` 在「stub 掉 Teleport」的测试替身下
  * 会自我递归更新（`Maximum recursive updates exceeded`，真实 teleport 下不出现）。
  * 所以这里照真实行为挂到 body 上，再按 `document` 找节点。
  */
@@ -66,50 +67,44 @@ function mountSettle(overrides: Record<string, unknown> = {}) {
     materialMissingText: '',
     providerError: '',
     rejected: false,
-    cardPlaceholder: '请输入收款银行卡号',
+    cardPlaceholder: '请输入收款银行卡号后四位',
     cardId: '',
     bankCode: '',
-    provCode: '',
-    areaCode: '',
     bankAcctType: '2',
-    cities: [{ value: '330100', title: '杭州市' }],
     ...overrides,
   })
 }
 
 describe('SettlementDialog：收款银行卡弹窗', () => {
-  it('卡号与四个下拉各回各的键，一次输入只发一次', async () => {
+  it('卡号后四位与两个下拉各回各的键，一次输入只发一次', async () => {
     const wrapper = mountSettle()
 
     const input = document.querySelector('input') as HTMLInputElement
-    input.value = '6222021234567890123'
+    // 只收后四位：输入框的 maxlength 也是 4，多打的字符由浏览器截掉
+    input.value = '1234'
     input.dispatchEvent(new Event('input'))
     await nextTick()
-    expect(wrapper.emitted('update:card-id')).toEqual([['6222021234567890123']])
+    expect(wrapper.emitted('update:card-id')).toEqual([['1234']])
 
     const selects = wrapper.findAllComponents(TSelect)
-    expect(selects).toHaveLength(4) // 开户银行 / 开户省份 / 开户城市 / 账户类型
+    expect(selects).toHaveLength(2) // 开户银行 / 账户类型
 
-    selects[0]!.vm.$emit('update:modelValue', 'ALIPAY')
-    selects[1]!.vm.$emit('update:modelValue', '310000')
-    selects[2]!.vm.$emit('update:modelValue', '310100')
-    selects[3]!.vm.$emit('update:modelValue', '1')
+    selects[0]!.vm.$emit('update:modelValue', '01020000')
+    selects[1]!.vm.$emit('update:modelValue', '1')
     await nextTick()
 
-    expect(wrapper.emitted('update:bank-code')).toEqual([['ALIPAY']])
-    expect(wrapper.emitted('update:prov-code')).toEqual([['310000']])
-    expect(wrapper.emitted('update:area-code')).toEqual([['310100']])
+    expect(wrapper.emitted('update:bank-code')).toEqual([['01020000']])
     expect(wrapper.emitted('update:bank-acct-type')).toEqual([['1']])
     wrapper.unmount()
   })
 
   it('下拉清空回的是 null，草稿字段收到的是空串（字典里没有空键）', async () => {
-    const wrapper = mountSettle({ provCode: '310000' })
+    const wrapper = mountSettle({ bankCode: '01020000' })
 
-    wrapper.findAllComponents(TSelect)[1]!.vm.$emit('update:modelValue', null)
+    wrapper.findAllComponents(TSelect)[0]!.vm.$emit('update:modelValue', null)
     await nextTick()
 
-    expect(wrapper.emitted('update:prov-code')).toEqual([['']])
+    expect(wrapper.emitted('update:bank-code')).toEqual([['']])
     wrapper.unmount()
   })
 

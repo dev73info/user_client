@@ -20,14 +20,16 @@ import type { LoginResult } from '@/stores/auth/types'
 export function createAuthActions(session: AuthSession) {
   const {
     token,
-    role,
     loading,
     profileLoaded,
     isDev,
+    privilegesLoaded,
+    isSuperAdmin,
     devAccessError,
     developerAgreementSigned,
     apiUsageAgreementSigned,
     fetchProfile,
+    fetchPrivileges,
     initializeSession,
     applyAuthPayload,
   } = session
@@ -42,9 +44,11 @@ export function createAuthActions(session: AuthSession) {
 
     if (!profileLoaded.value) {
       await fetchProfile()
+    } else if (!privilegesLoaded.value) {
+      await fetchPrivileges()
     }
 
-    if (role.value === 'super_admin') {
+    if (isSuperAdmin.value) {
       return true
     }
 
@@ -105,6 +109,8 @@ export function createAuthActions(session: AuthSession) {
       applyAuthPayload(payload)
       if (!payload.username || !payload.role) {
         await initializeSession(true)
+      } else {
+        await fetchPrivileges()
       }
       return { requiresTwoFactor: false }
     } finally {
@@ -122,6 +128,8 @@ export function createAuthActions(session: AuthSession) {
       applyAuthPayload(payload)
       if (!payload.username || !payload.role) {
         await initializeSession(true)
+      } else {
+        await fetchPrivileges()
       }
     } finally {
       loading.value = false
@@ -148,6 +156,8 @@ export function createAuthActions(session: AuthSession) {
       applyAuthPayload(payload)
       if (!payload.username || !payload.role) {
         await initializeSession(true)
+      } else {
+        await fetchPrivileges()
       }
     } finally {
       loading.value = false
@@ -185,6 +195,8 @@ export function createAuthActions(session: AuthSession) {
       applyAuthPayload(payload)
       if (!payload.username || !payload.role) {
         await initializeSession(true)
+      } else {
+        await fetchPrivileges()
       }
     } finally {
       loading.value = false

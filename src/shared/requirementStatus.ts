@@ -42,12 +42,10 @@ const DEPOSIT_PAID_UNKNOWN_MODE_LABEL = '已付定金 / 待开发'
  * `paymentMode` 可选：只有 `deposit_paid` 需要它来消歧（见上），其余状态给了也不影响结果。
  * 传了未知 / 缺失的模式时按「未知模式回退」处理，不猜单边含义。状态码本身不在表里时原样返回。
  */
-export function requirementStatusLabel(
-  status: string,
-  paymentMode?: RequirementPaymentMode,
-): string {
+export function requirementStatusLabel(status: string, paymentMode?: string): string {
   if (status === 'deposit_paid') {
-    return (paymentMode && DEPOSIT_PAID_LABELS[paymentMode]) || DEPOSIT_PAID_UNKNOWN_MODE_LABEL
+    const labels = DEPOSIT_PAID_LABELS as Record<string, string>
+    return (paymentMode && labels[paymentMode]) || DEPOSIT_PAID_UNKNOWN_MODE_LABEL
   }
 
   return REQUIREMENT_STATUS_LABELS[status] ?? status

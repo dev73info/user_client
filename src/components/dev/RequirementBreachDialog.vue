@@ -1,72 +1,71 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 
-import type { AdapayBreachCase, AdapayBreachDecisionValue } from '@/api/adapay'
-import RequirementBreachCaseFacts from '@/components/dev/RequirementBreachCaseFacts.vue'
+import type {
+  AfterSalesCaseDetail,
+  AfterSalesRespondAction,
+  RequirementBreachCaseItem,
+} from '@/api/afterSales'
+import BreachCaseFacts from '@/components/aftersales/BreachCaseFacts.vue'
 import {
   breachDialogTitle,
   breachRoundHint,
   breachSubmitLabel,
-  canRequestPlatformReview,
-  isTerminationNegotiating,
+  isBreachCaseSettled,
 } from '@/shared/requirementBreach'
-import { formatCnDateTime } from '@/shared/requirementDisplay'
 import { TButton, TDialog, TForm, TFormItem, TInput } from 'ui_73info'
 
 /**
- * 开发者侧「解除合作」弹窗：案件进展、协商表态、AI 判定表态、撤回与重新申报。
+ * 开发者侧「解除合作」弹窗：案件进展、表态（同意 / 不同意）、撤回与重新申报。
  *
- * 这里只渲染、只 emit——案件加载 / 申报 / 撤回 / 表态的请求与 toast 在
- * `composables/useBreachCase`，视图把它的状态铺成 props、把它的动作接成 emits。
+ * 这里只渲染、只 emit——案件读取 / 申报 / 撤回 / 表态的请求与 toast 在
+ * `composables/useRequirementBreach`，视图把它的状态铺成 props、把它的动作接成 emits。
  * 「是不是我 / 能不能表态」这类判定由编排层算成布尔传进来，组件不自己去 store 取当前登录人。
  *
+ * 契约里没有「申请平台介入」与「AI 判定后接受 / 不接受」两段：转平台由客服在管理端开闸，
+ * 当事人这边只剩「同意 / 不同意」与「撤回」。所以这里既没有那枚按钮，也没有那段话术。
+ *
  * `canStartNewRound`（有生效担保合同才能再发起一轮）尤其要在外面算：它依赖列表一次取回的
- * `signingStatusMap`，在这里再查一次就是第二份口径，会与卡片上的入口判定打架。
+ * 签约状态，在这里再查一次就是第二份口径，会与卡片上的入口判定打架。
  */
 const props = defineProps<{
-  breachCase: AdapayBreachCase | null
+  breachCase: RequirementBreachCaseItem | null
+  /** 案件详情（诉求说明 / 表态流水 / 裁决）：拿不到就只显示摘要。 */
+  breachCaseDetail?: AfterSalesCaseDetail | null
   /** 正在加载已存在的案件（首次打开弹窗时的短请求）。 */
   caseLoading: boolean
-  /** 已结束的案件在填「新一轮」表单。 */
+  /** 已收口的案件在填「新一轮」表单。 */
   newRound: boolean
   /** 申报表单提交中。 */
   reportLoading: boolean
-  platformReviewLoading: boolean
   withdrawLoading: boolean
   withdrawConfirm: boolean
   decisionLoading: boolean
-  /** 「不接受判定」的原因输入框是否展开（纯 UI 态）。 */
-  rejectPanel: boolean
   /** 上一轮撤回人是不是本人（决定「重新发起」还是「提交解除合作申请」的措辞）。 */
   withdrawnByMe: boolean
   /** 有生效担保合同才能再发起一轮（结案会作废合同，见 BUG-038）。 */
   canStartNewRound: boolean
-  /** 当前登录人是不是「非发起人」（只有他能在协商阶段表态）。 */
+  /** 当前登录人是案件里的「对方当事人」，且还在表态窗口内。 */
   canRespond: boolean
-  /** 当前登录人能不能撤回自己提交的申请。 */
+  /** 当前登录人是立案人，且还在撤回窗口内。 */
   canWithdraw: boolean
-  /** AI 判定后我方（开发者）还没表态，才需要选接受 / 不接受。 */
-  canDecide: boolean
 }>()
 
 const emit = defineEmits<{
   close: []
   submitReport: []
-  submitPlatformReview: []
   openWithdrawConfirm: []
   cancelWithdrawConfirm: []
   submitWithdraw: []
   reopen: []
-  openRejectPanel: []
-  cancelRejectPanel: []
-  submitDecision: [decision: AdapayBreachDecisionValue]
+  submitDecision: [action: AfterSalesRespondAction]
 }>()
 
 /** 开关走 `v-model:visible`：与视图里 `v-model:open` 的 TDialog 旧的关闭口径一致。 */
 const visible = defineModel<boolean>('visible', { required: true })
 /** 申报理由（表单里的「事实与依据」）。 */
 const reason = defineModel<string>('reason', { required: true })
-/** 表态说明 / 不接受判定的原因，两个输入框共用一份草稿。 */
+/** 表态说明，与申报表单一同走草稿，提交后由编排层清空。 */
 const decisionNote = defineModel<string>('decisionNote', { required: true })
 
 const dialogTitle = computed(() =>
@@ -76,8 +75,8 @@ const submitLabel = computed(() =>
   breachSubmitLabel(props.breachCase, props.newRound, props.withdrawnByMe),
 )
 const roundHint = computed(() => breachRoundHint(props.breachCase, props.withdrawnByMe))
-const negotiating = computed(() => isTerminationNegotiating(props.breachCase))
-const canRequestReview = computed(() => canRequestPlatformReview(props.breachCase))
+const settled = computed(() => isBreachCaseSettled(props.breachCase))
+const busy = computed(() => props.reportLoading || props.decisionLoading || props.withdrawLoading)
 </script>
 
 <template>
@@ -93,108 +92,35 @@ const canRequestReview = computed(() => canRequestPlatformReview(props.breachCas
   >
     <div class="delivery-dialog-body">
       <p class="unbind-dialog-tip">
-        提交后案件进入「协商中」：双方先在案件内协商定金与尾款的退还额度，谈成即直接退款结案。
-        协商不成再由任一方申请平台介入，平台核对合同、支付、交付与沟通记录，由审核智能体判定责任方，客服人工复核。
+        解除合作由当事人发起：先立一个「协商解除」案件，对方在案件里表态——同意即按协商一致处理，
+        不同意或长时间不回应时由平台介入核对合同、支付与交付记录后裁决。
       </p>
       <p v-if="caseLoading" class="unbind-dialog-tip">正在加载解除合作案件…</p>
       <template v-else-if="breachCase && !newRound">
-        <RequirementBreachCaseFacts :breach-case="breachCase" :withdrawn-by-me="withdrawnByMe" />
+        <BreachCaseFacts :record="breachCase" :detail="breachCaseDetail" />
+
         <!-- 上一轮结案会把合同作废、需求退回大厅：这时没有生效合同可依，按钮不给，
              但必须把「为什么不能再发起、要做什么」写清楚（BUG-038）。 -->
-        <p
-          v-if="
-            (breachCase.status === 'succeeded' || breachCase.status === 'rejected') &&
-            !canStartNewRound
-          "
-          class="unbind-dialog-tip"
-        >
-          {{ roundHint }}
-        </p>
+        <p v-if="settled && !canStartNewRound" class="unbind-dialog-tip">{{ roundHint }}</p>
 
-        <!-- 协商阶段：对方同意即无责退出，不同意才申请平台介入。 -->
-        <template v-if="negotiating">
-          <p class="unbind-dialog-tip">
-            先协商：对方同意即按协商一致处理——无责退出，定金全额原路退还需求方、无违约金、不产生赔付。
-            对方不同意或超时未回应，任一方可申请平台介入。
-          </p>
+        <template v-if="canRespond">
           <TInput
-            v-if="canRespond"
             show-count
             v-model="decisionNote"
             type="textarea"
             :rows="3"
             :maxlength="1000"
-            placeholder="可选：说明你同意或不同意的立场，双方与客服都会看到"
+            placeholder="可选：说明你同意或不同意的立场，双方与平台都会看到"
           />
-          <p v-else class="unbind-dialog-tip">已提交申请，等待对方回应。</p>
         </template>
-        <p v-else-if="breachCase.mutualAgreedAt" class="unbind-dialog-line">
-          协商结果：双方协商一致（无责退出），{{ formatCnDateTime(breachCase.mutualAgreedAt) }}
-        </p>
-        <p v-else-if="breachCase.mutualRejectedAt" class="unbind-dialog-line">
-          协商结果：对方不同意解除合作（{{
-            formatCnDateTime(breachCase.mutualRejectedAt)
-          }}），任一方可申请平台介入
-        </p>
-
-        <div v-if="canDecide" class="breach-decision">
-          <p class="unbind-dialog-line">
-            请选择是否接受 AI
-            判定：双方都接受后平台才会执行退款／赔付；任一方不接受或逾期未全部表态，案件转客服人工判定。
-          </p>
-          <TInput
-            show-count
-            v-if="rejectPanel"
-            v-model="decisionNote"
-            type="textarea"
-            :rows="3"
-            :maxlength="1000"
-            placeholder="可选：说明不接受该判定的理由，便于客服人工复核"
-          />
-          <div class="breach-decision__actions">
-            <template v-if="rejectPanel">
-              <TButton :disabled="decisionLoading" @click="emit('cancelRejectPanel')">取消</TButton>
-              <TButton
-                variant="solid"
-                tone="danger"
-                :loading="decisionLoading"
-                @click="emit('submitDecision', 'rejected')"
-                >确认不接受</TButton
-              >
-            </template>
-            <template v-else>
-              <TButton
-                variant="outline"
-                tone="danger"
-                :disabled="decisionLoading"
-                @click="emit('openRejectPanel')"
-                >不接受</TButton
-              >
-              <TButton
-                variant="solid"
-                tone="accent"
-                :loading="decisionLoading"
-                @click="emit('submitDecision', 'accepted')"
-                >接受判定</TButton
-              >
-            </template>
-          </div>
-        </div>
-        <p
-          v-else-if="
-            !negotiating &&
-            !breachCase.mutualAgreedAt &&
-            !breachCase.mutualRejectedAt &&
-            (breachCase.status === 'submitted' || breachCase.status === 'ai_reviewing')
-          "
-          class="unbind-dialog-tip"
-        >
-          平台按 AI 判定 + 客服人工审核认定责任方，判定完成后由双方各自选择是否接受。
+        <p v-else-if="breachCase.is_open" class="unbind-dialog-tip">
+          当前进展：{{ breachCase.turn_label }}。
         </p>
 
         <div v-if="withdrawConfirm" class="breach-decision">
           <p class="unbind-dialog-line">
-            确认撤回本次解除合作申请？撤回后本次申请结束，如仍有争议可在同一需求上重新发起；撤回不会触发任何退款或赔付。
+            确认撤回本次解除合作申请？撤回后本次申请结束，如仍有争议可在同一需求上重新发起；
+            撤回不会触发任何退款或赔付。
           </p>
           <div class="breach-decision__actions">
             <TButton :disabled="withdrawLoading" @click="emit('cancelWithdrawConfirm')"
@@ -225,17 +151,14 @@ const canRequestReview = computed(() => canRequestPlatformReview(props.breachCas
       </TForm>
     </div>
     <template #footer>
-      <TButton
-        :disabled="platformReviewLoading || reportLoading || decisionLoading || withdrawLoading"
-        @click="emit('close')"
-      >
+      <TButton :disabled="busy" @click="emit('close')">
         {{ breachCase && !newRound ? '关闭' : '取消' }}
       </TButton>
       <TButton
         variant="outline"
         tone="danger"
         v-if="canWithdraw && !withdrawConfirm"
-        :disabled="platformReviewLoading || decisionLoading || withdrawLoading"
+        :disabled="busy"
         @click="emit('openWithdrawConfirm')"
         >撤回申请</TButton
       >
@@ -243,45 +166,33 @@ const canRequestReview = computed(() => canRequestPlatformReview(props.breachCas
         variant="solid"
         tone="accent"
         v-else-if="breachCase?.status === 'withdrawn' && !newRound"
-        :disabled="platformReviewLoading || decisionLoading || withdrawLoading"
+        :disabled="busy"
         @click="emit('reopen')"
         >{{ withdrawnByMe ? '重新发起' : '提交解除合作申请' }}</TButton
       >
       <TButton
         variant="solid"
         tone="accent"
-        v-else-if="
-          (breachCase?.status === 'rejected' || breachCase?.status === 'succeeded') &&
-          !newRound &&
-          canStartNewRound
-        "
-        :disabled="platformReviewLoading || decisionLoading || withdrawLoading"
+        v-else-if="settled && !newRound && canStartNewRound"
+        :disabled="busy"
         @click="emit('reopen')"
         >发起新的解除合作</TButton
-      >
-      <TButton
-        variant="outline"
-        tone="accent"
-        v-if="canRequestReview"
-        :loading="platformReviewLoading"
-        @click="emit('submitPlatformReview')"
-        >申请平台介入</TButton
       >
       <template v-if="canRespond">
         <TButton
           variant="outline"
           tone="danger"
           :loading="decisionLoading"
-          :disabled="platformReviewLoading || withdrawLoading"
-          @click="emit('submitDecision', 'rejected')"
+          :disabled="withdrawLoading"
+          @click="emit('submitDecision', 'reject')"
           >不同意</TButton
         >
         <TButton
           variant="solid"
           tone="accent"
           :loading="decisionLoading"
-          :disabled="platformReviewLoading || withdrawLoading"
-          @click="emit('submitDecision', 'accepted')"
+          :disabled="withdrawLoading"
+          @click="emit('submitDecision', 'approve')"
           >同意解除</TButton
         >
       </template>
@@ -332,7 +243,7 @@ const canRequestReview = computed(() => canRequestPlatformReview(props.breachCas
   overflow-wrap: anywhere;
 }
 
-/* 解除合作案件：双方表态（接受 / 不接受）区块 */
+/* 解除合作案件：撤回二次确认区块 */
 .breach-decision {
   display: grid;
   gap: 10px;

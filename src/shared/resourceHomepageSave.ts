@@ -187,7 +187,7 @@ export function buildHomepagePayload(input: HomepagePayloadInput): UpdateMcResou
     origin_url: form.originUrl.trim() || null,
     origin_org: form.originOrg.trim() || null,
     origin_note: form.originNote.trim() || null,
-    price_fen: input.priceFen,
+    buyout_price_fen: input.priceFen,
     price_points: input.isApiKind ? 0 : input.pricePoints,
     copyright_declared: form.copyrightDeclared,
     // R029：比例整体提交，0 也显式下发——清空回 0 这种操作不能靠省略字段变成静默失效

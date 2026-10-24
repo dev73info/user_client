@@ -1,6 +1,7 @@
 import { authHeader, requestJson, requestVoid } from '@/api/http'
+import { md5Hex } from '@/shared/auth/md5'
 
-import type { UserProfileResp } from './types'
+import type { ProfileResponse } from './types'
 
 export async function sendProfileEmailChangeCode(token: string, newEmail: string): Promise<void> {
   await requestVoid(
@@ -21,8 +22,8 @@ export async function updateProfileEmail(
   token: string,
   newEmail: string,
   emailCode: string,
-): Promise<UserProfileResp> {
-  return requestJson<UserProfileResp>(
+): Promise<ProfileResponse> {
+  return requestJson<ProfileResponse>(
     '/settings/profile/email',
     {
       method: 'PUT',
@@ -49,8 +50,17 @@ export async function sendProfilePasswordCode(token: string): Promise<void> {
   )
 }
 
+/**
+ * 登录态改密码（`PUT /system/settings/profile/password`）。
+ *
+ * 契约要求三个字段：`old_password` + `new_password` + `email_code`，两个密码都是
+ * **md5(明文) 的 32 位小写十六进制**——明文会被后端直接 400。旧密码是 2.0 比 1.x 多出来的
+ * 一道校验（1.x 只看验证码），旧密码错回 400 `INVALID_CURRENT_PASSWORD`；
+ * 改密成功后全部旧令牌立即失效，调用方要按「重新登录」处理。
+ */
 export async function updateProfilePassword(
   token: string,
+  oldPassword: string,
   newPassword: string,
   emailCode: string,
 ): Promise<void> {
@@ -62,7 +72,11 @@ export async function updateProfilePassword(
         'Content-Type': 'application/json',
         ...authHeader(token),
       },
-      body: JSON.stringify({ new_password: newPassword, email_code: emailCode }),
+      body: JSON.stringify({
+        old_password: md5Hex(oldPassword),
+        new_password: md5Hex(newPassword),
+        email_code: emailCode,
+      }),
     },
     '修改密码失败',
   )
@@ -85,8 +99,8 @@ export async function updateProfileTwoFactor(
   token: string,
   enabled: boolean,
   emailCode: string,
-): Promise<UserProfileResp> {
-  return requestJson<UserProfileResp>(
+): Promise<ProfileResponse> {
+  return requestJson<ProfileResponse>(
     '/settings/profile/two-factor',
     {
       method: 'PUT',

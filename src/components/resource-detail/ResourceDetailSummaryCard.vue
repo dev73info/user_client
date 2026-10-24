@@ -108,7 +108,10 @@ const resourceSummaryText = computed(() => {
         <span
           class="resource-detail-page__price-pill"
           :class="{
-            'is-paid': isPricedResource(props.resource.price_fen, props.resource.price_points),
+            'is-paid': isPricedResource(
+              props.resource.buyout_price_fen,
+              props.resource.price_points,
+            ),
           }"
           >{{ props.priceLabel }}</span
         >

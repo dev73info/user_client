@@ -25,8 +25,6 @@ const {
   profileDescription,
   profileGradient,
   profileColor,
-  wornBadges,
-  badgeCount,
   isSelf,
   canTip,
   videoBackgroundUrl,
@@ -39,7 +37,6 @@ const {
   stats,
   showReceivedTips,
   receivedCashText,
-  receivedPointsText,
   recentTipMessages,
   resourceCards,
   resourceCount,
@@ -79,8 +76,6 @@ const {
       :description="profileDescription"
       :gradient="profileGradient"
       :color="profileColor"
-      :worn-badges="wornBadges"
-      :badge-count="badgeCount"
       :is-self="isSelf"
       :can-tip="canTip"
       :video-url="videoBackgroundUrl"
@@ -99,7 +94,6 @@ const {
     <DevProfileTipsSection
       v-if="showReceivedTips"
       :cash-text="receivedCashText"
-      :points-text="receivedPointsText"
       :messages="recentTipMessages"
     />
 

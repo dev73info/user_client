@@ -1,7 +1,8 @@
 /**
  * 「编辑简介」弹窗：草稿、保存与保存后的整页重载。
  *
- * 简介走的是 `PUT /settings/profile`（用户名原样带回，只改 `profile_description`），
+ * 简介走的是 `PUT /settings/profile`：契约**不接受自助改登录名**（传与当前不同的
+ * `new_username` 直接 400），请求体里只有 `profile_description`。
  * 保存成功后重载公开档案，头部才会换成新简介。
  */
 import { ref } from 'vue'
@@ -28,7 +29,7 @@ export function useDevProfileEdit(options: { reload: () => Promise<void> }) {
     }
     saving.value = true
     try {
-      await updateProfile(auth.token, auth.username, descriptionDraft.value)
+      await updateProfile(auth.token, { profile_description: descriptionDraft.value })
       dialogVisible.value = false
       await options.reload()
       TMessage.success('个人简介已更新')

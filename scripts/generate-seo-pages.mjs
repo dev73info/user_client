@@ -5,9 +5,6 @@ import { fileURLToPath } from 'node:url'
 
 import {
   collectPublicProfiles,
-  fetchCommunityPostDetail,
-  fetchPublishedPosts,
-  fetchAgreementContent,
   fetchPublishedResources,
   fetchPublicRequirementSpotlights,
   fetchUserServiceAgreement,
@@ -38,7 +35,6 @@ const bodyLimit = positiveInteger(process.env.SEO_BODY_TEXT_LIMIT, 4000)
 // 详情页底部的横向内链条数（同标签资源 / 同作者资源 / 更多帖子）。
 const relatedLimit = positiveInteger(process.env.SEO_RELATED_LIMIT, 8)
 // 帖子正文需要逐条拉详情接口，限制并发避免把 API 打爆。
-const postDetailConcurrency = positiveInteger(process.env.SEO_POST_DETAIL_CONCURRENCY, 6)
 
 const navigationLinks = [
   {
@@ -50,11 +46,6 @@ const navigationLinks = [
     href: '/requirement-hall',
     title: '需求大厅',
     description: '发布需求、查看合作机会、对接开发者。',
-  },
-  {
-    href: '/community',
-    title: '社区交流',
-    description: '查看平台公告、经验分享和用户讨论。',
   },
   {
     href: '/about',
@@ -87,9 +78,9 @@ const pages = [
     kind: 'home',
     title: '73Info 柒叁信息 - 网站开发与小工具资源发现、需求协作平台',
     description:
-      '73Info 柒叁信息是内测中的资源与需求协作平台，面向网站开发和小工具场景，提供公开资源浏览、需求发布、开发者对接、沟通记录、工单跟进与合规说明；平台担保、资金托管、代收代付和自动分账等涉及许可的交易功能暂未开放。',
+      '73Info 柒叁信息是内测中的资源与需求协作平台，面向网站开发和小工具场景，提供公开资源浏览、需求发布、开发者对接、沟通记录与合规说明；平台担保、资金托管、代收代付和自动分账等涉及许可的交易功能暂未开放。',
     heading: '73Info 柒叁信息 - 资源与需求协作平台',
-    lead: '面向网站开发和小工具场景提供资源发现、需求发布、开发者协作、沟通记录、工单跟进与合规说明服务。',
+    lead: '面向网站开发和小工具场景提供资源发现、需求发布、开发者协作、沟通记录与合规说明服务。',
   },
   {
     // 「资源项目」：顶栏与首页 SEO 导航指向的一级入口，免费 / 付费在同一页内切换
@@ -139,15 +130,6 @@ const pages = [
     lead: '查看公开合作机会，发布需求，了解预算、交付方式和沟通记录，对接适合的开发者。',
   },
   {
-    path: '/community',
-    kind: 'posts',
-    title: '社区交流 - 平台公告、经验分享与用户讨论 - 73Info 柒叁信息',
-    description:
-      '73Info 社区用于发布平台公告、经验分享、资源反馈和用户讨论，帮助需求方与开发者建立公开沟通；帖子按时间与标签组织，可以按分类浏览历史内容，也可以在帖子下继续讨论，或把有价值的内容分享给协作方。',
-    heading: '社区交流',
-    lead: '查看平台公告、经验分享、资源反馈和用户讨论，了解 73Info 的最新动态。',
-  },
-  {
     path: '/about',
     kind: 'doc',
     docKey: 'about',
@@ -183,7 +165,7 @@ const pages = [
     docKey: 'payment-refund',
     title: '支付与退款说明 - 支付阶段、退款条件与处理流程 - 73Info 柒叁信息',
     description:
-      '查看 73Info 柒叁信息支付与退款说明，了解需求协作各阶段的支付方式与时间点、退款条件与处理流程，以及当前暂未开放的资金托管与自动分账功能；发生争议时可按说明中的渠道提交工单。',
+      '查看 73Info 柒叁信息支付与退款说明，了解需求协作各阶段的支付方式与时间点、退款条件与处理流程，以及当前暂未开放的资金托管与自动分账功能；发生争议时可按说明中的渠道联系平台客服。',
     heading: '支付与退款说明',
     lead: '了解需求协作中的支付阶段、退款条件和处理流程。',
   },
@@ -233,19 +215,19 @@ async function writeSpaFallbackShell(template) {
 
 // 公开接口的数据只取一次，入口页与详情页共用同一份快照，避免同一页里出现两份不一致的列表。
 async function loadDataset() {
-  const [resources, posts, requirements] = await Promise.all([
+  // 社区整块已随后端契约下线（`/community/**` 一条路径都没有），这里不再抓帖子：
+  // 保留空数组，帖子相关的渲染分支因「没有数据」自然不产出页面。
+  const posts = []
+  const [resources, requirements] = await Promise.all([
     fetchPublishedResources(apiBaseUrl).catch((error) => handleFetchFailure('resources', error)),
-    fetchPublishedPosts(apiBaseUrl, listLimit).catch((error) =>
-      handleFetchFailure('community posts', error),
-    ),
     fetchPublicRequirementSpotlights(apiBaseUrl, listLimit).catch((error) =>
       handleFetchFailure('requirement spotlight', error),
     ),
   ])
 
-  // 三份都取不到，说明构建期的 API 不可用。此时生成的入口页会是「一句话 + 菜单」的空快照，
+  // 两份都取不到，说明构建期的 API 不可用。此时生成的入口页会是「一句话 + 菜单」的空快照，
   // 正是本次要修的问题，宁可让构建失败，也不要悄悄把空页面发上线。
-  if (resources.length === 0 && posts.length === 0 && requirements.length === 0) {
+  if (resources.length === 0 && requirements.length === 0) {
     throw new Error(
       `[seo] ${apiBaseUrl} 上的公开接口全部取不到数据，拒绝生成空列表快照；请确认 API 可用后重新构建`,
     )
@@ -267,12 +249,10 @@ async function generateDetailPages(template, templatePath, dataset) {
     0,
     Math.max(maxDetailPages - selectedResources.length, 0),
   )
-  const postsWithContent = await fetchPostContents(selectedPosts)
   const selectedProfiles = dataset.profiles.slice(0, maxDetailPages)
 
   const pages = [
     ...selectedResources.map((resource) => renderResourceDetailPage(resource, dataset)),
-    ...postsWithContent.map((post) => renderPostDetailPage(post, dataset)),
     ...selectedProfiles.map((profile) => renderProfileDetailPage(profile, dataset)),
   ]
 
@@ -282,7 +262,7 @@ async function generateDetailPages(template, templatePath, dataset) {
 
   console.log(
     `[seo] generated ${pages.length} detail pages (${selectedResources.length} resources, ` +
-      `${postsWithContent.length} posts, ${selectedProfiles.length} profiles) -> ${distRoot}`,
+      `0 posts, ${selectedProfiles.length} profiles) -> ${distRoot}`,
   )
 
   const planned = selectedResources.length + selectedPosts.length + selectedProfiles.length
@@ -290,38 +270,6 @@ async function generateDetailPages(template, templatePath, dataset) {
   if (skipped > 0) {
     console.warn(`[seo] skipped ${skipped} detail pages (SEO_MAX_DETAIL_PAGES=${maxDetailPages})`)
   }
-}
-
-// 列表接口的帖子不带正文，这里按并发上限逐条拉详情；单条失败不影响整次构建。
-async function fetchPostContents(posts) {
-  const enriched = []
-
-  for (let index = 0; index < posts.length; index += postDetailConcurrency) {
-    const batch = posts.slice(index, index + postDetailConcurrency)
-    const results = await Promise.all(
-      batch.map(async (post) => {
-        try {
-          const detail = await fetchCommunityPostDetail(apiBaseUrl, post.id)
-          return {
-            ...post,
-            content_html: detail?.content_html || '',
-            comment_count: detail?.comment_count ?? post.comment_count,
-            like_count: detail?.like_count ?? post.like_count,
-          }
-        } catch (error) {
-          const message = error instanceof Error ? error.message : String(error)
-          console.warn(
-            `[seo] failed to fetch community post ${post.id}, using summary only: ${message}`,
-          )
-          return post
-        }
-      }),
-    )
-
-    enriched.push(...results)
-  }
-
-  return enriched
 }
 
 function handleFetchFailure(label, error) {
@@ -362,19 +310,9 @@ async function loadDocuments() {
     console.warn(`[seo] !! 用户服务协议正文取不到，/terms 静态页将只有一句话：${message}`)
   }
 
-  // 配套附件：能走接口就走接口（与 SPA 同源），取不到回落 JSON 兜底快照。
-  for (const [docKey, code] of [
-    ['privacy', 'privacy_policy'],
-    ['payment-refund', 'payment_refund_notice'],
-  ]) {
-    try {
-      const content = await fetchAgreementContent(apiBaseUrl, code)
-      documents[docKey] = agreementDocument(content)
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error)
-      console.warn(`[seo] !! ${code} 正文取不到，/${docKey} 静态页回落到 JSON 兜底快照：${message}`)
-    }
-  }
+  // 配套附件（隐私政策 / 支付与退款说明）：后端 2.0 **没有** `/api/auth/agreement-content`，
+  // 之前每跑一次构建都在打这个必然 404 的接口，再把失败当成「回落快照」吞掉。
+  // 现在与 SPA 一致：直接用 `legalContent.json` 这一份正文，不请求、不吞错。
 
   return documents
 }
@@ -986,7 +924,6 @@ function renderResourceDetailPage(resource, dataset) {
         title: '需求大厅',
         description: '发布需求、查看合作机会、对接开发者。',
       },
-      { href: '/community', title: '社区交流', description: '查看平台公告、经验分享和用户讨论。' },
       { href: '/', title: '返回首页', description: '回到 73Info 柒叁信息首页。' },
     ],
     jsonLd: {
@@ -1081,7 +1018,6 @@ function renderPostDetailPage(post, dataset) {
       },
     ],
     links: [
-      { href: '/community', title: '社区交流', description: '查看平台公告、经验分享和用户讨论。' },
       {
         href: '/requirement-hall',
         title: '需求大厅',
@@ -1170,7 +1106,6 @@ function renderProfileDetailPage(profile, dataset) {
         title: '需求大厅',
         description: '发布需求、查看合作机会、对接开发者。',
       },
-      { href: '/community', title: '社区交流', description: '查看平台公告、经验分享和用户讨论。' },
       { href: '/', title: '返回首页', description: '回到 73Info 柒叁信息首页。' },
     ],
     jsonLd: {

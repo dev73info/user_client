@@ -9,9 +9,7 @@
 import type { PaymentChannel, PaymentQueryContext } from './paymentQuery'
 
 export type PaymentFlags = {
-  /** 保证金 + 无单号 + query 微信 + 金额 > 0：还没下单，先在下单前授权 */
-  isDeveloperDepositIntentMode: boolean
-  /** 意图模式：adapay 微信单尚未创建，带 requirement_id + milestone 或保证金金额，微信内静默授权后自动下单 */
+  /** 意图模式：adapay 微信单尚未创建，带 requirement_id + milestone，微信内静默授权后自动下单 */
   isIntentMode: boolean
   /** 资源 / 打赏的本站微信中间页（两者形态一致，仅在订单域与接口上分叉） */
   isWechatMiddlePage: boolean
@@ -33,21 +31,13 @@ export function resolvePaymentFlags(
   ctx: PaymentQueryContext,
   resolvedChannel: PaymentChannel,
 ): PaymentFlags {
-  const isDeveloperDepositIntentMode =
-    ctx.isDeveloperDeposit &&
-    !ctx.paymentId &&
-    ctx.channel === 'wechat' &&
-    Number.isFinite(Number(ctx.amountCny)) &&
-    Number(ctx.amountCny) > 0
-
   const isIntentMode =
     ctx.isAdapay &&
-    (isDeveloperDepositIntentMode ||
-      (!ctx.paymentId &&
-        Boolean(ctx.requirementId && ctx.milestone) &&
-        resolvedChannel === 'wechat'))
+    !ctx.paymentId &&
+    Boolean(ctx.requirementId && ctx.milestone) &&
+    resolvedChannel === 'wechat'
 
-  // 中间页自带订单域，与需求定金 / 保证金两条主通道互斥。
+  // 中间页自带订单域，与需求定金这条主通道互斥。
   const isWechatMiddlePage = ctx.isResourceWechat || ctx.isTipWechat
 
   const isAlipayPage = resolvedChannel === 'alipay' && !ctx.isAdapay
@@ -63,7 +53,8 @@ export function resolvePaymentFlags(
       !ctx.isTipWechat &&
       ctx.clientPlatform === 'mobile')
 
-  const isWechatPcPayment = isWechatPayment && !isWechatMiddlePage && ctx.clientPlatform === 'pc'
+  const isWechatPcPayment =
+    isWechatPayment && !isWechatMiddlePage && ctx.clientPlatform === 'desktop'
 
   const isAlipayMobilePayment =
     ctx.isAdapay && resolvedChannel === 'alipay' && ctx.clientPlatform === 'mobile'
@@ -71,7 +62,6 @@ export function resolvePaymentFlags(
   const isUnionPayment = ctx.isAdapay && resolvedChannel === 'union'
 
   return {
-    isDeveloperDepositIntentMode,
     isIntentMode,
     isWechatMiddlePage,
     isAlipayPage,
@@ -81,7 +71,7 @@ export function resolvePaymentFlags(
     isAlipayMobilePayment,
     isUnionPayment,
     isUnionMobilePayment: isUnionPayment && ctx.clientPlatform === 'mobile',
-    isUnionPcPayment: isUnionPayment && ctx.clientPlatform === 'pc',
+    isUnionPcPayment: isUnionPayment && ctx.clientPlatform === 'desktop',
   }
 }
 

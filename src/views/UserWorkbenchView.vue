@@ -26,7 +26,6 @@ const {
   workbenchBrandTitle,
   messagesRouteName,
   isMessagesRoute,
-  ticketsMenuItem,
   notificationsMenuItem,
   modeSwitching,
   modeSwitchSpinning,
@@ -83,7 +82,6 @@ const {
       :messages-anchor-index="messagesAnchorIndex"
       :team-invitation-count="teamInvitationCount"
       :notifications-menu-item="notificationsMenuItem"
-      :tickets-menu-item="ticketsMenuItem"
       :messages-route-name="messagesRouteName"
       :conversations="conversations"
       :conversation-loading="conversationLoading"

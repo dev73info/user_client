@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { TSelect } from 'ui_73info'
 
 import { openEntry, stubMatchMedia } from '@/__tests__/accountViewHelpers'
+import { approvedRecord, pendingRecord } from '@/__tests__/helpers/realnameRecords'
 
 /**
  * 「收款银行卡」「人脸核身」两个弹窗**在视图里**的接线（第 2、3 步抽出来的两个域）。
@@ -95,17 +96,8 @@ vi.mock('@/api/realname', async (importOriginal) => ({
   withdrawMyRealnameVerification: mocks.withdrawRealname,
 }))
 
-import { settlementBanks, settlementProvinces } from '@/utils/settlementAccount'
+import { settlementBanks } from '@/utils/settlementAccount'
 import AccountCouponsView from '@/views/AccountCouponsView.vue'
-
-/** 一条「审核中」的实名记录：人脸核身域的所有分支都要它。 */
-const pendingRecord = {
-  status: 'pending',
-  auth_type: 'IDENTITY_CARD',
-  real_name: '张三',
-  id_card_no_masked: '110***********1234',
-  mobile_masked: '138****0000',
-}
 
 /**
  * 按可见文案找**弹窗里**的按钮：整页查找会把入口行也匹配进来
@@ -125,7 +117,7 @@ async function renderAccountPage(): Promise<VueWrapper> {
   const wrapper = mount(AccountCouponsView, {
     attachTo: document.body,
     global: {
-      stubs: { RealnameHero: true, WechatBindQrModal: true },
+      stubs: { RealnameHero: true },
       config: { warnHandler: () => {} },
     },
   })
@@ -145,11 +137,26 @@ beforeEach(() => {
     wechat_bound: false,
   })
   mocks.getBoundProviders.mockResolvedValue({ providers: [] })
-  mocks.getMyAdapayMember.mockResolvedValue({ onboardingStatus: 'active', settleAccountId: null })
+  // 收款户名取实名主体，所以结案这几条用例都先给一份已通过的实名记录
+  mocks.getMyRealnameVerification.mockResolvedValue(approvedRecord)
+  mocks.getMyAdapayMember.mockResolvedValue({
+    username: 'alice',
+    onboardingStatus: 'active',
+    acceptsSettlement: false,
+  })
   mocks.getMySettlementAccountSnapshot.mockResolvedValue({ bound: false })
-  mocks.createSettle.mockResolvedValue({ onboardingStatus: 'active', settleAccountId: 'sa_1' })
-  mocks.changeSettle.mockResolvedValue({ onboardingStatus: 'active', settleAccountId: 'sa_1' })
-  mocks.getMyRealnameVerification.mockResolvedValue(null)
+  mocks.createSettle.mockResolvedValue({
+    username: 'alice',
+    onboardingStatus: 'pending',
+    acceptsSettlement: false,
+    accountNoTail: '1234',
+  })
+  mocks.changeSettle.mockResolvedValue({
+    username: 'alice',
+    onboardingStatus: 'pending',
+    acceptsSettlement: false,
+    accountNoTail: '5678',
+  })
   mocks.completeAsignIdentify.mockResolvedValue({ status: 'none' })
   mocks.resumeAsignIdentify.mockResolvedValue({
     auth_url: 'https://faceid.test/x',
@@ -163,63 +170,61 @@ afterEach(() => {
 })
 
 describe('账号与安全页：收款银行卡弹窗的接线', () => {
-  it('点入口打开弹窗，五份草稿都经 update:* 回写，提交时按字典值拼出请求体', async () => {
+  it('点入口打开弹窗，三份草稿都经 update:* 回写，提交时拼出结算账户契约的请求体', async () => {
     const wrapper = await renderAccountPage()
     await openEntry(wrapper, 'settle')
     await flushPromises()
 
-    // 卡号走 input，开户行 / 省 / 市 / 账户类型走四个下拉
+    // 卡号后四位走 input，开户行 / 账户类型走两个下拉
     const input = document.querySelector('input[inputmode="numeric"]') as HTMLInputElement
-    input.value = '6222 0212 3456 7890 123'
+    input.value = '1234'
     input.dispatchEvent(new Event('input'))
 
-    const province = settlementProvinces[0]!
-    const city = province.cities[0]!
     const selects = wrapper.findAllComponents(TSelect)
-    expect(selects).toHaveLength(4)
+    expect(selects).toHaveLength(2)
     selects[0]!.vm.$emit('update:modelValue', settlementBanks[0]!.value)
     await nextTick()
-    selects[1]!.vm.$emit('update:modelValue', province.value)
-    await nextTick()
-    selects[2]!.vm.$emit('update:modelValue', city.value)
+    selects[1]!.vm.$emit('update:modelValue', '2')
     await nextTick()
 
     bodyButton('绑定银行卡').click()
     await flushPromises()
     expect(mocks.createSettle).toHaveBeenCalledTimes(1)
+    // SettlementApplyRequest：只收后四位，完整卡号不进请求体，也没有省市字段
     expect(mocks.createSettle).toHaveBeenCalledWith('test-token', {
-      card_id: '6222021234567890123',
-      bank_code: settlementBanks[0]!.value,
+      account_name: '张三',
       bank_name: settlementBanks[0]!.label,
-      prov_code: province.value,
-      area_code: city.value,
-      bank_acct_type: '2',
+      account_no_tail: '1234',
+      member_type: 'personal',
     })
     wrapper.unmount()
   })
 
-  it('已绑卡时主按钮是「确认更换」，提交走更换接口', async () => {
+  it('已绑账户时主按钮是「确认更换」，提交走更换接口', async () => {
     mocks.getMyAdapayMember.mockResolvedValue({
+      username: 'alice',
       onboardingStatus: 'active',
-      settleAccountId: 'sa_1',
+      acceptsSettlement: true,
+      accountNoTail: '1234',
+      memberType: 'personal',
+      accountName: '张三',
     })
     mocks.getMySettlementAccountSnapshot.mockResolvedValue({
       bound: true,
-      cardIdMasked: '6222****1234',
-      bankCode: settlementBanks[0]!.value,
-      provCode: settlementProvinces[0]!.value,
-      areaCode: settlementProvinces[0]!.cities[0]!.value,
-      bankAcctType: '2',
+      accountName: '张三',
+      bankName: settlementBanks[0]!.label,
+      accountNoTail: '1234',
+      memberType: 'personal',
     })
 
     const wrapper = await renderAccountPage()
     await openEntry(wrapper, 'settle')
     await flushPromises()
 
-    // 脱敏明细回填后，卡号输入框的提示换成「当前 6222****1234（更换请整卡重填）」
+    // 契约只回后四位，所以提示里也只有尾号，不会出现自己拼的完整卡号掩码
     const input = document.querySelector('input[inputmode="numeric"]') as HTMLInputElement
-    expect(input.placeholder).toContain('6222****1234')
-    input.value = '6222021234567890123'
+    expect(input.placeholder).toContain('当前尾号 1234')
+    input.value = '5678'
     input.dispatchEvent(new Event('input'))
     await nextTick()
 
@@ -228,6 +233,12 @@ describe('账号与安全页：收款银行卡弹窗的接线', () => {
 
     expect(mocks.changeSettle).toHaveBeenCalledTimes(1)
     expect(mocks.createSettle).not.toHaveBeenCalled()
+    expect(mocks.changeSettle).toHaveBeenCalledWith('test-token', {
+      account_name: '张三',
+      bank_name: settlementBanks[0]!.label,
+      account_no_tail: '5678',
+      member_type: 'personal',
+    })
     wrapper.unmount()
   })
 })

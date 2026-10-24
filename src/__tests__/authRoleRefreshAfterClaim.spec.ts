@@ -10,10 +10,12 @@ import { AUTH_TOKEN_STORAGE_KEY } from '@/shared/auth/storage'
 
 const mocks = vi.hoisted(() => ({
   refreshToken: vi.fn(),
+  getPrivileges: vi.fn(),
 }))
 vi.mock('@/api/auth', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/api/auth')>()),
   refreshToken: mocks.refreshToken,
+  getPrivileges: mocks.getPrivileges,
 }))
 
 const PROFILE_STORAGE_KEY = 'auth_profile_73hub'
@@ -24,6 +26,15 @@ describe('转换后刷新账号角色', () => {
     localStorage.removeItem(AUTH_TOKEN_STORAGE_KEY)
     localStorage.removeItem(PROFILE_STORAGE_KEY)
     mocks.refreshToken.mockReset()
+    mocks.getPrivileges.mockReset()
+    // 刷新会话时会顺带拉一次生效权限（契约 `PrivilegesResponse`）
+    mocks.getPrivileges.mockResolvedValue({
+      username: 'client_flow',
+      role: 'dev',
+      roles: ['dev', 'user'],
+      permissions: ['scope.dev.access'],
+      is_super_admin: false,
+    })
   })
 
   function clientWithoutDevRole() {

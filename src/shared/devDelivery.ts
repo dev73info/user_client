@@ -1,6 +1,7 @@
 import type { McResourcePayload, McResourceVersionPayload } from '@/api/mcResources'
 import type { RequirementItem } from '@/api/devRequirements'
 import type { DevWalletIncomeItem } from '@/api/devWallet'
+import { parseBackendDateTime } from '@/shared/datetime'
 
 /**
  * 交付与到账的归并行：开发者工作台「我的接单」一页要把两件事显示在同一行上——
@@ -77,24 +78,36 @@ export function rowCustomer(row: DevMyOrderRow): string | null {
   return row.item?.creator ?? row.customer
 }
 
-/** 最近更新：需求单行看需求的更新时间，补充行看最近一次到账或交付。 */
+/**
+ * 最近更新时间：需求单行取契约里那几个时刻中最晚的一个，补充行看最近一次到账或交付。
+ *
+ * 契约的 `RequirementResponse` **没有** `updated_at`（只有 `created_time` 与几个状态时刻），
+ * 所以这里在 `accepted_at` / `delivered_at` / `developer_bound_at` / `reviewed_at` / `created_time`
+ * 里取最晚值——它表达的是「这一单最近一次动过」，比直接退回创建时间更接近原义。
+ */
 export function rowUpdatedAt(row: DevMyOrderRow): string {
   if (row.item) {
-    return row.item.updated_at
+    const moments = [
+      row.item.accepted_at,
+      row.item.delivered_at,
+      row.item.developer_bound_at,
+      row.item.reviewed_at,
+      row.item.created_time,
+    ].filter((value): value is string => Boolean(value))
+    return moments.reduce<string>(
+      (latest, value) => (timeValue(value) > timeValue(latest) ? value : latest),
+      moments[0] ?? '—',
+    )
   }
 
   return latestReceiptAt(row.receipts) ?? row.delivery?.latestVersionAt ?? '—'
 }
 
-/* 时间串有 `YYYY-MM-DD HH:mm:ss` 与资源版本接口两种格式，解析不出来时按 0 处理：
-   排序退到末尾，而不是把整份列表打乱。 */
+/* 时间串是东八区墙钟串（`YYYY-MM-DD HH:mm:ss`），解析走 `parseBackendDateTime`；
+   解析不出来时按 0 处理：排序退到末尾，而不是把整份列表打乱。 */
 export function timeValue(value: string | null | undefined): number {
-  if (!value) {
-    return 0
-  }
-
-  const time = new Date(value).getTime()
-  return Number.isNaN(time) ? 0 : time
+  const parsed = parseBackendDateTime(value)
+  return parsed ? parsed.getTime() : 0
 }
 
 /** 版本摘要：最新版本按发布时间取，版本总数留在同一行上，不再一行一个版本。 */

@@ -50,31 +50,15 @@ export function usePortalTopNavNav() {
         to: { name: 'requirement-hall' },
         active: allowActive && (currentName === 'requirement-hall' || currentName === 'payment'),
       },
-      {
-        label: '社区',
-        to: { name: 'community' },
-        active: allowActive && currentName === 'community',
-      },
     ]
 
     if (auth.isAuthed) {
-      // 基础序：首页 / 资源项目 / 需求大厅 / 社区 → 在「社区」前插入工作台与积分商城
-      const communityIndex = links.findIndex((link) => link.label === '社区')
-      links.splice(
-        communityIndex,
-        0,
-        {
-          label: '工作台',
-          to: { name: 'workbench' },
-          active: allowActive && route.path.startsWith('/workbench'),
-        },
-        {
-          label: '积分商城',
-          to: { name: 'points-mall' },
-          active:
-            allowActive && (currentName === 'points-mall' || route.path.startsWith('/points-mall')),
-        },
-      )
+      // 登录后在工作台前追加一条「工作台」入口（原先插在「社区」之前，社区已撤）
+      links.push({
+        label: '工作台',
+        to: { name: 'workbench' },
+        active: allowActive && route.path.startsWith('/workbench'),
+      })
     }
 
     return links

@@ -132,10 +132,14 @@ function handleRowClick(event: MouseEvent) {
         <TTag
           variant="outline"
           :tone="
-            isPricedResource(scope.row.price_fen, scope.row.price_points) ? 'accent' : 'neutral'
+            isPricedResource(scope.row.buyout_price_fen, scope.row.price_points)
+              ? 'accent'
+              : 'neutral'
           "
         >
-          {{ formatResourcePriceLabel(scope.row.price_fen ?? 0, scope.row.price_points ?? 0) }}
+          {{
+            formatResourcePriceLabel(scope.row.buyout_price_fen ?? 0, scope.row.price_points ?? 0)
+          }}
         </TTag>
       </template>
     </TTableColumn>
@@ -183,8 +187,8 @@ function handleRowClick(event: MouseEvent) {
           </TButton>
           <template #dropdown>
             <TDropdownMenu>
-              <!-- 接口资源没有可下载文件、不进任何公开面、渠道配置也不随过户走，
-                   所以「发布版本 / 版本管理 / 使用道具 / 过户」对它不出现（判据见
+              <!-- 接口资源没有可下载文件、也不进任何公开面，
+                   所以「发布版本 / 版本管理」对它不出现（判据见
                    shared/resourceApi.ts 的 isResourceRowActionAvailable）。 -->
               <TDropdownItem
                 v-if="rowActionAvailable('publish', scope.row)"
@@ -212,27 +216,12 @@ function handleRowClick(event: MouseEvent) {
                 {{ settingPrivateId === scope.row.id ? '设置中...' : '设为私有' }}
               </TDropdownItem>
               <TDropdownItem
-                v-if="
-                  scope.row.visibility === 'published' && rowActionAvailable('use-promo', scope.row)
-                "
-                :disabled="isResourceArchiveLocked(scope.row)"
-                :command="{ action: 'use-promo', resource: scope.row }"
-              >
-                使用道具
-              </TDropdownItem>
-              <TDropdownItem
                 v-if="rowActionAvailable('versions', scope.row)"
                 :command="{ action: 'versions', resource: scope.row }"
                 >版本管理</TDropdownItem
               >
               <TDropdownItem :command="{ action: 'sold-orders', resource: scope.row }">
                 售出订单
-              </TDropdownItem>
-              <TDropdownItem
-                v-if="rowActionAvailable('transfer', scope.row)"
-                :command="{ action: 'transfer', resource: scope.row }"
-              >
-                过户
               </TDropdownItem>
               <TDropdownItem
                 :command="{ action: 'delete', resource: scope.row }"

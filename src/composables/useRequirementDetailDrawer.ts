@@ -24,7 +24,6 @@ export type DrawerRequirement = {
   status: string
   budget?: number | null
   created_time?: string
-  updated_at: string
   creator?: string
   developer?: string | null
   description?: string | null
@@ -94,11 +93,12 @@ export function useRequirementDetailDrawer(readSources: () => DetailDrawerSource
             status: found.status,
             budget: found.budget ?? null,
             created_time: found.created_time,
-            updated_at: found.updated_at,
             creator: found.creator,
             // 开发者侧那份 RequirementItem 没有 developer 字段（那侧自己就是开发者），退回当前登录名
             developer:
-              'developer' in found ? (found.developer ?? null) : currentUsername?.trim() || null,
+              'developer' in found && typeof found.developer === 'string'
+                ? found.developer
+                : currentUsername?.trim() || null,
             description: found.description ?? null,
             acceptance_criteria: found.acceptance_criteria ?? null,
           }

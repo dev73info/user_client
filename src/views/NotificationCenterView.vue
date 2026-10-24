@@ -7,21 +7,19 @@ import NotificationsToolbar from '@/components/notification/NotificationsToolbar
 import WorkbenchBarSlot from '@/components/WorkbenchBarSlot.vue'
 import { useNotificationCardActions } from '@/composables/useNotificationCardActions'
 import { useNotificationCenter } from '@/composables/useNotificationCenter'
-import { Bell, TButton, TIcon } from 'ui_73info'
+import { Bell, TIcon } from 'ui_73info'
 
-/* 「系统通知」：评论警告、历史沟通公开申请、资源过户、解除合作案件、平台公告统一成同一种消息卡片。
+/* 「系统通知」：历史沟通公开申请、解除合作案件统一成同一种消息卡片。
    数据、筛选与动作在 composables 里（useNotificationCenter / useNotificationCardActions），
    本文件只摆版面：读数条 → 卡头 → 提示条 → 工具栏 → 列表 / 空态 / 分页。
 
    两个工作台共用这一页（用户端 workbench-notifications / 开发者端 dev-notifications），
-   与消息中心、工单中心同一办法：页面根元素按 isDevWorkbench 在两套统一层之间切，
+   与消息中心同一办法：页面根元素按 isDevWorkbench 在两套统一层之间切，
    不写「近似」对方的覆盖样式；类别色由根元素上的 --nc-* 令牌下发，各构件只引用变量。 */
 const {
   isDevWorkbench,
   loading,
-  warningError,
   cards,
-  kindCounts,
   kindFilters,
   kindFilter,
   keyword,
@@ -36,15 +34,11 @@ const {
   resetFilters,
   loadNotifications,
   loadDisclosures,
-  loadTransfers,
-  openAnnouncement,
 } = useNotificationCenter()
 
-const { votingId, respondingTransferId, vote, respondTransfer, cancelTransfer } =
-  useNotificationCardActions({
-    refreshDisclosures: loadDisclosures,
-    refreshTransfers: loadTransfers,
-  })
+const { votingId, vote } = useNotificationCardActions({
+  refreshDisclosures: loadDisclosures,
+})
 </script>
 
 <template>
@@ -56,16 +50,12 @@ const { votingId, respondingTransferId, vote, respondTransfer, cancelTransfer } 
     "
     :aria-busy="loading"
   >
-    <!-- 顶部读数条：两端共用用户工作台这一层（.wb-strip），开发者侧第三格换成「资源过户」 -->
+    <!-- 顶部读数条：两端共用用户工作台这一层（.wb-strip） -->
     <WorkbenchBarSlot>
       <NotificationsOverviewStrip
-        :dev="isDevWorkbench"
         :loading="loading"
         :total="cards.length"
         :pending="pendingActions"
-        :transfer-count="kindCounts['resource-transfer']"
-        :warning-count="kindCounts['comment-warning']"
-        :announcement-count="kindCounts.announcement"
         @refresh="loadNotifications(true)"
       />
     </WorkbenchBarSlot>
@@ -81,11 +71,6 @@ const { votingId, respondingTransferId, vote, respondTransfer, cancelTransfer } 
             待我处理 {{ pendingActions }}
           </span>
         </div>
-      </div>
-
-      <div v-if="warningError" class="notifications-warning" role="alert">
-        <span>评论警告加载失败：{{ warningError }}</span>
-        <TButton variant="outline" @click="loadNotifications()">重试</TButton>
       </div>
 
       <NotificationsToolbar
@@ -113,11 +98,7 @@ const { votingId, respondingTransferId, vote, respondTransfer, cancelTransfer } 
             :key="card.key"
             :card="card"
             :voting-id="votingId"
-            :responding-transfer-id="respondingTransferId"
             @vote="vote(card, $event)"
-            @respond="respondTransfer(card, $event)"
-            @cancel="cancelTransfer(card)"
-            @open="openAnnouncement(card)"
           />
         </ul>
         <NotificationsPager
@@ -135,11 +116,8 @@ const { votingId, respondingTransferId, vote, respondTransfer, cancelTransfer } 
    变量值与原页面逐条一致（含 color-mix 的合成基色），换名不改色。 */
 .notifications-page {
   --nc-accent-default: var(--73-ink-muted);
-  --nc-accent-comment-warning: var(--73-warning);
   --nc-accent-history-disclosure: var(--73-accent);
-  --nc-accent-resource-transfer: var(--73-success);
   --nc-accent-after-sales: var(--73-danger);
-  --nc-accent-announcement: var(--73-accent);
   --nc-surface: var(--73-surface-strong);
   --nc-text-sub: var(--profile-text-sub, var(--73-ink-muted));
   --nc-text-muted: var(--profile-text-sub, var(--73-ink-placeholder));
@@ -148,7 +126,6 @@ const { votingId, respondingTransferId, vote, respondTransfer, cancelTransfer } 
   --nc-pending-text: var(--73-warning);
   --nc-empty-icon-bg: color-mix(in srgb, var(--73-ink-placeholder) 12%, transparent);
   --nc-empty-icon-text: var(--73-ink-placeholder);
-  --nc-warning-text: var(--profile-warning-text, var(--73-warning-text));
 
   align-content: start;
 }
@@ -167,22 +144,6 @@ const { votingId, respondingTransferId, vote, respondTransfer, cancelTransfer } 
   font-size: 12px;
   font-weight: 700;
   white-space: nowrap;
-}
-
-/* 评论警告拉取失败时的提示条：只提示这一类，其余通知照常显示 */
-.notifications-warning {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  flex-wrap: wrap;
-  gap: 10px;
-  margin-bottom: 12px;
-  padding: 12px 14px;
-  border: 1px solid color-mix(in srgb, var(--dev-gold) 32%, transparent);
-  border-radius: var(--wb-radius-item);
-  background: color-mix(in srgb, var(--dev-gold) 10%, transparent);
-  color: var(--nc-warning-text);
-  font-size: 13px;
 }
 
 /* 列表像会话一样贴底：面板撑满顶栏以下的一屏，搜索留在上方，通知压到底部，最新一条最靠近底边 */

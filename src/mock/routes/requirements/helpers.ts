@@ -1,27 +1,28 @@
 import type { RequirementItem, RequirementOverviewResp } from '@/api/requirements'
+import type { MockRequirementRow } from '@/mock/db/requirements'
 import { CLIENT_USERNAME, DEV_USERNAME, requirements, settledIncome } from '../../db'
 import { readString } from '../../response'
 
 /** 未接单、已过审核（待付定金）的需求才会出现在开发者需求大厅。 */
-export function hallRequirements(): RequirementItem[] {
+export function hallRequirements(): MockRequirementRow[] {
   return requirements.filter((item) => !item.developer && item.status === 'pending_deposit')
 }
 
-export function clientRequirements(): RequirementItem[] {
+export function clientRequirements(): MockRequirementRow[] {
   return requirements.filter((item) => item.creator === CLIENT_USERNAME)
 }
 
-export function devRequirements(): RequirementItem[] {
+export function devRequirements(): MockRequirementRow[] {
   return requirements.filter((item) => item.developer === DEV_USERNAME)
 }
 
 export function applyHallQuery(
-  items: RequirementItem[],
+  items: MockRequirementRow[],
   query: URLSearchParams,
-): RequirementItem[] {
+): MockRequirementRow[] {
   const keyword = readString(query, 'keyword').toLowerCase()
   const creator = readString(query, 'creator')
-  const sortBy = readString(query, 'sort_by') || 'updated_at'
+  const sortBy = readString(query, 'sort_by') || 'created_time'
   const sortOrder = readString(query, 'sort_order') || 'desc'
 
   let list = items
@@ -40,7 +41,7 @@ export function applyHallQuery(
   }
 
   const direction = sortOrder === 'asc' ? 1 : -1
-  const valueOf = (item: RequirementItem): number | string => {
+  const valueOf = (item: MockRequirementRow): number | string => {
     if (sortBy === 'budget') {
       return item.budget ?? 0
     }
@@ -60,7 +61,7 @@ export function applyHallQuery(
   })
 }
 
-export function toSpotlightItem(item: RequirementItem) {
+export function toSpotlightItem(item: MockRequirementRow) {
   return {
     requirement_id: item.requirement_id,
     creator: item.creator,
@@ -76,7 +77,7 @@ export function toSpotlightItem(item: RequirementItem) {
 }
 
 /** 概览口径：需求方看到的是「我发过多少单、成交多少」，与门户公开口径分开算。 */
-export function buildOverview(items: RequirementItem[]): RequirementOverviewResp {
+export function buildOverview(items: MockRequirementRow[]): RequirementOverviewResp {
   const turnOver = items.reduce((total, item) => {
     if (item.status !== 'completed') {
       return total

@@ -125,19 +125,10 @@ function getCommenterInitial(value: string): string {
         </div>
         <div class="resource-detail-page__comment-body">
           <div class="resource-detail-page__comment-meta">
-            <strong
-              :class="{
-                'username-gradient':
-                  comment.commenter_username_gradient && !comment.commenter_username_color,
-              }"
-              :style="
-                comment.commenter_username_color ? { color: comment.commenter_username_color } : {}
-              "
-              >{{ comment.commenter }}</strong
-            >
+            <strong>{{ comment.commenter }}</strong>
             <span>{{ formatResourceTime(comment.updated_at) }}</span>
           </div>
-          <p>{{ comment.comment_text }}</p>
+          <p>{{ comment.comment }}</p>
         </div>
       </article>
       <p v-if="!loading && comments.length === 0" class="resource-detail-page__paragraph">

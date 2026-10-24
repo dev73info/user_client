@@ -5,17 +5,18 @@ import { useRouter } from 'vue-router'
 import { TButton, TIcon, Refresh, TMessage } from 'ui_73info'
 
 import { listAvailableCoupons, type CouponItem } from '@/api/coupons'
+import { formatCouponDiscount, formatCouponRange } from '@/shared/couponDisplay'
+import { formatFenAsCny } from '@/shared/money'
 import { useAuthStore } from '@/stores/auth'
 
 /* 「我的背包 → 优惠券中心」：券包按满减 / 折扣分两组，点券卡复制券码。
-   券码是下单时手工填的（见结算页），所以这里不做「去使用」按钮，只把码放到剪贴板。
 
-   本页已迁到 ui_73info：那颗刷新按钮从 `el-button` + `.wb-toolbar__icon-btn`
-   （一串只对 el-button 生效的 `--el-button-*` 赋值）换成 `TButton icon-only`，
-   形状与颜色因此由库接管，不再吃 portal-workbench.css 里那段。
-   同时**去掉了 `ElConfigProvider` 包装**：本页模板里已经没有 Element 组件，
-   也没有依赖 Element 语言包的子组件（它不渲染任何子组件），留着只会多一条
-   `element-plus` 的 import。 */
+   字段按契约 `CouponResponse` 读：金额是整数分（`amount_off_fen` / `min_amount_fen` /
+   `max_discount_fen`，展示走 `@/shared/money`），优惠百分比是整数基点 `discount_bps`
+   （2000 = 优惠 20%），时间是东八区墙钟串（走 `@/shared/datetime`）。
+
+   **不提供「去使用」**：2.0 的支付链路（定金 / 尾款 / 资源购买 / 打赏）都不接优惠券，
+   后端也没有「用券抵扣」的下单入口，所以这一页只做查看与复制券码。 */
 
 const router = useRouter()
 const auth = useAuthStore()
@@ -31,28 +32,6 @@ const discountCoupons = computed(() =>
 )
 /** 读数条口径：可用券不含已核销的，与账户页「可用券」的说法一致。 */
 const usableCoupons = computed(() => coupons.value.filter((item) => item.status !== 'used'))
-
-function formatRange(item: CouponItem) {
-  if (!item.starts_at && !item.ends_at) {
-    return '永久有效'
-  }
-
-  const parts: string[] = []
-  if (item.starts_at) {
-    parts.push(`起始：${item.starts_at.replace('T', ' ')}`)
-  }
-  if (item.ends_at) {
-    parts.push(`截止：${item.ends_at.replace('T', ' ')}`)
-  }
-  return parts.join('，')
-}
-
-function formatDiscount(item: CouponItem) {
-  if (item.discount_type === 'amount') {
-    return `减免 ¥${item.discount_value.toFixed(2)}`
-  }
-  return `折扣 ${item.discount_value.toFixed(1)}%${item.max_discount_cny != null ? `，上限 ¥${item.max_discount_cny.toFixed(2)}` : ''}`
-}
 
 async function copyCouponCode(code: string) {
   const value = code.trim()
@@ -130,6 +109,11 @@ onMounted(() => {
         </div>
       </div>
 
+      <p class="coupon-hint" role="note">
+        券码可复制留存。当前的支付链路（定金、尾款、资源购买、打赏）都不支持优惠券抵扣，
+        页面不提供「去使用」入口。
+      </p>
+
       <p v-if="loading" class="wb-empty" role="status">正在加载券包…</p>
       <p v-else-if="!coupons.length" class="wb-empty" role="status">
         <span class="wb-empty__title">暂无优惠券</span>
@@ -142,8 +126,13 @@ onMounted(() => {
           </div>
           <p v-if="amountCoupons.length === 0" class="wb-empty" role="status">暂无满减优惠券</p>
           <div v-else class="coupon-items">
-            <button v-for="item in amountCoupons" :key="item.code" type="button" class="coupon-item"
-              @click="copyCouponCode(item.code)">
+            <button
+              v-for="item in amountCoupons"
+              :key="item.code"
+              type="button"
+              class="coupon-item"
+              @click="copyCouponCode(item.code)"
+            >
               <div class="coupon-item__head">
                 <strong>{{ item.code }}</strong>
                 <span class="wb-badge" :class="{ 'wb-badge--success': item.status !== 'used' }">
@@ -151,9 +140,9 @@ onMounted(() => {
                 </span>
               </div>
               <small>{{ item.name }}</small>
-              <p>{{ formatDiscount(item) }}</p>
+              <p>{{ formatCouponDiscount(item) }}</p>
               <p class="coupon-item__meta">
-                门槛 ¥{{ item.min_amount_cny.toFixed(2) }} · {{ formatRange(item) }}
+                门槛 ¥{{ formatFenAsCny(item.min_amount_fen) }} · {{ formatCouponRange(item) }}
               </p>
             </button>
           </div>
@@ -166,8 +155,13 @@ onMounted(() => {
           </div>
           <p v-if="discountCoupons.length === 0" class="wb-empty" role="status">暂无折扣优惠券</p>
           <div v-else class="coupon-items">
-            <button v-for="item in discountCoupons" :key="item.code" type="button" class="coupon-item"
-              @click="copyCouponCode(item.code)">
+            <button
+              v-for="item in discountCoupons"
+              :key="item.code"
+              type="button"
+              class="coupon-item"
+              @click="copyCouponCode(item.code)"
+            >
               <div class="coupon-item__head">
                 <strong>{{ item.code }}</strong>
                 <span class="wb-badge" :class="{ 'wb-badge--success': item.status !== 'used' }">
@@ -175,9 +169,9 @@ onMounted(() => {
                 </span>
               </div>
               <small>{{ item.name }}</small>
-              <p>{{ formatDiscount(item) }}</p>
+              <p>{{ formatCouponDiscount(item) }}</p>
               <p class="coupon-item__meta">
-                门槛 ¥{{ item.min_amount_cny.toFixed(2) }} · {{ formatRange(item) }}
+                门槛 ¥{{ formatFenAsCny(item.min_amount_fen) }} · {{ formatCouponRange(item) }}
               </p>
             </button>
           </div>
@@ -194,6 +188,13 @@ onMounted(() => {
    描边、圆角、悬停与状态标签都取统一层那一套。
    分组块（.coupon-group）与组名走统一层的 .wb-panel / .wb-subhead：
    它原先自带一份 12px 内边距 + 12px 圆角 + 13px 组名，与权益页的面板一格之差，两页各写一份。 */
+
+.coupon-hint {
+  margin: 0 0 12px;
+  color: var(--profile-text-sub);
+  font-size: 12px;
+  line-height: 1.6;
+}
 
 .coupon-groups {
   display: grid;
@@ -218,7 +219,9 @@ onMounted(() => {
   font: inherit;
   text-align: left;
   cursor: pointer;
-  transition: border-color 160ms ease, box-shadow 160ms ease;
+  transition:
+    border-color 160ms ease,
+    box-shadow 160ms ease;
 }
 
 .coupon-item:hover,

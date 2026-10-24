@@ -1,9 +1,17 @@
 import { authHeaders, requestJson } from '@/api/http'
 
-import type { DevAccessStatus } from './types'
+import type { DevAccessStatus, PrivilegesResponse } from './types'
 
-export async function requestDevRole(token: string): Promise<{ username: string; role: string }> {
-  return requestJson<{ username: string; role: string }>(
+export async function getPrivileges(token: string): Promise<PrivilegesResponse> {
+  return requestJson<PrivilegesResponse>(
+    '/auth/users/privileges',
+    { headers: authHeaders(token) },
+    '加载当前用户权限失败',
+  )
+}
+
+export async function requestDevRole(token: string): Promise<DevAccessStatus> {
+  return requestJson<DevAccessStatus>(
     '/auth/request-dev-role',
     {
       method: 'POST',

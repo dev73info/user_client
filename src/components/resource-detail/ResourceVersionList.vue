@@ -7,6 +7,7 @@ import {
   with73Extension,
   type PublicMcResourceVersionItem,
 } from '@/api/resources'
+import { fenToYuanText } from '@/shared/resourceSale'
 import { useDownloadStore } from '@/stores/download'
 import { formatHomepageContent } from '@/utils/resourceRichText'
 import { formatResourceTime } from '@/utils/resourceTime'
@@ -67,6 +68,17 @@ function versionFileName(version: PublicMcResourceVersionItem): string {
   )
 }
 
+/**
+ * 版本价标签：契约里 `purchasable` 是「单版本价大于 0」的判定结果，
+ * 两者都为真才展示金额；买断资源这里一律不出现价格。
+ */
+function versionPriceLabel(version: PublicMcResourceVersionItem): string {
+  if (!version.purchasable || version.price_fen <= 0) {
+    return ''
+  }
+  return `单版本 ¥${fenToYuanText(version.price_fen)}`
+}
+
 function downloadLabel(version: PublicMcResourceVersionItem): string {
   if (props.needsPurchase) {
     return '购买后下载'
@@ -94,6 +106,14 @@ function downloadLabel(version: PublicMcResourceVersionItem): string {
           <div class="resource-detail-page__version-meta">
             <strong>{{ version.version }}</strong>
             <span>{{ formatResourceTime(version.created_at) }}</span>
+          </div>
+          <div class="resource-detail-page__version-flags">
+            <span v-if="version.is_current" class="resource-detail-page__version-current"
+              >当前版本</span
+            >
+            <span v-if="versionPriceLabel(version)" class="resource-detail-page__version-price">{{
+              versionPriceLabel(version)
+            }}</span>
           </div>
         </div>
         <button
@@ -256,6 +276,26 @@ function downloadLabel(version: PublicMcResourceVersionItem): string {
 
 .resource-detail-page__version-meta strong {
   color: var(--rdp-ink);
+}
+
+.resource-detail-page__version-flags {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.resource-detail-page__version-current {
+  padding: 2px 10px;
+  border-radius: 999px;
+  background: var(--rdp-soft-surface);
+  color: var(--rdp-link);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.resource-detail-page__version-price {
+  color: var(--rdp-muted);
+  font-size: 12px;
 }
 
 /* 次要文本：原父级与 `__meta` / `__summary` 共用一条，落在本组件的是版本时间与空态提示 */

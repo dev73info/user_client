@@ -47,6 +47,7 @@ export const purchaseRoutes: MockRoute[] = [
       const order: ResourcePurchaseOrder = {
         order_no: orderNo,
         buyer,
+        source_kind: 'platform',
         resource_id: resource.id,
         resource_title: resource.title,
         seller: resource.creator,
@@ -76,13 +77,6 @@ export const purchaseRoutes: MockRoute[] = [
         refund_initiator: null,
         refund_operator: null,
         last_refund_at: null,
-        // R029：推广分成只在后端归因（mock 不模拟），这里只留痕下单带来的推广码
-        promoter: null,
-        promo_code: isPoints ? null : promoCode,
-        promo_share_bps: isPoints ? 0 : Number(resource.promo_share_bps ?? 0),
-        promoter_fee_fen: 0,
-        promoter_split_status: 'none',
-        promo_reject_reason: null,
       }
       mockPurchases.unshift(order)
       return jsonResponse(order)

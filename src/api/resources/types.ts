@@ -1,4 +1,7 @@
+import type { components } from '@/api/generated/schema'
 import type { McResourceKind } from '@/api/mcResources'
+
+type Schemas = components['schemas']
 
 /** 公开资源接口的统一前缀（子域文件共用，避免各写一份字面量）。 */
 export const PUBLIC_RESOURCE_API_PREFIX = '/resource/resources'
@@ -61,7 +64,9 @@ export type PublicMcResourceItem = {
   origin_url: string | null
   origin_org: string | null
   origin_note: string | null
-  /** 售价（分）；0=免费；与 price_points 互斥 */
+  /** 买断价（分）；0 = 不卖买断。 */
+  buyout_price_fen: number
+  /** 冻结的历史现金售价，不参与售卖判定。 */
   price_fen: number
   /** 积分售价；0=不走积分购；与 price_fen 互斥 */
   price_points: number
@@ -78,26 +83,11 @@ export type PublicMcResourceItem = {
   purchased_by_me: boolean
 }
 
-export type PublicMcResourceVersionItem = {
-  id: number
-  resource_id: number
-  version: string
-  resource: string
-  note: string | null
-  creator: string
-  created_at: string
-}
+/** 资源版本：直接取契约 `VersionResponse`（`is_current` / `purchasable` / `price_fen` 都在里面）。 */
+export type PublicMcResourceVersionItem = Schemas['VersionResponse']
 
-export type PublicMcResourceCommentItem = {
-  id: number
-  resource_id: number
-  commenter: string
-  comment_text: string
-  created_at: string
-  updated_at: string
-  commenter_username_gradient?: boolean
-  commenter_username_color?: string | null
-}
+/** 资源评论：直接取契约 `CommentResponse`（正文就是 `comment`，没有炫彩用户名字段）。 */
+export type PublicMcResourceCommentItem = Schemas['CommentResponse']
 
 export type CreatePublicMcResourceCommentPayload = {
   comment: string

@@ -6,7 +6,6 @@ import {
   Connection,
   DataAnalysis,
   Files,
-  Suitcase,
   Tickets,
   UserFilled,
   Wallet,
@@ -28,7 +27,7 @@ export type WorkbenchMenuItem = {
   name: WorkbenchRouteName
   hash?: string
   description: string
-  /** 停在子页面时也高亮这一条（如售出订单仍算「资源项目」，邀请排行榜仍算「勋章与邀请」）。 */
+  /** 停在子页面时也高亮这一条（如售出订单仍算「资源项目」，合同详情仍算「我的合同」）。 */
   activeNames?: WorkbenchRouteName[]
 }
 
@@ -61,17 +60,11 @@ export const overviewItem: WorkbenchMenuItem = {
   description: '账户、需求与优惠券概览',
 }
 
-export const ticketsItem: WorkbenchMenuItem = {
-  label: '工单中心',
-  name: 'workbench-tickets',
-  description: '提交问题与查看回复',
-}
-
-// 「系统通知」与工单中心同一档：夹在分组之外的底部一级条目里，两种工作台各有一条路由。
+// 「系统通知」夹在分组之外的底部一级条目里，两种工作台各有一条路由。
 export const notificationsItem: WorkbenchMenuItem = {
   label: '系统通知',
   name: 'workbench-notifications',
-  description: '平台公告、评论警告与待确认的公开申请',
+  description: '待确认的公开申请与系统消息',
 }
 
 // 开发者工作台菜单：侧边栏切到开发者模式时展示（此前是底部「开发者工作台」折叠组的内容）。
@@ -142,10 +135,10 @@ export const teamMenuGroup: WorkbenchMenuGroup = {
 }
 
 // 分组头已经写着组名，因此这几类分组不再额外顶一行灰色小标题：
-// 账户服务、我的背包、团队服务、财务中心都靠分组头识别，再加一行会把组名写成两遍。
-export const GROUPS_WITHOUT_SECTION_LABEL = ['account', 'inventory', 'team', 'finance']
+// 账户服务、团队服务、财务中心都靠分组头识别，再加一行会把组名写成两遍。
+export const GROUPS_WITHOUT_SECTION_LABEL = ['account', 'team', 'finance']
 
-/** 用户菜单的三个分组。`realnameApproved` 决定「我的合同」那一条在不在（实名通过后才出现）。 */
+/** 用户菜单的两个分组。`realnameApproved` 决定「我的合同」那一条在不在（实名通过后才出现）。 */
 export function buildMenuGroups(realnameApproved: boolean): WorkbenchMenuGroup[] {
   return [
     {
@@ -167,11 +160,6 @@ export function buildMenuGroups(realnameApproved: boolean): WorkbenchMenuGroup[]
       icon: Box,
       items: [
         { label: '账户详情', name: 'workbench-account', description: '管理账户' },
-        {
-          label: '已授权应用',
-          name: 'workbench-authorized-apps',
-          description: '管理接口资源站点的授权',
-        },
         ...(realnameApproved
           ? [
               {
@@ -183,38 +171,11 @@ export function buildMenuGroups(realnameApproved: boolean): WorkbenchMenuGroup[]
             ]
           : []),
         { label: '我的发票', name: 'workbench-invoices', description: '获取发票、查看与下载' },
-        { label: '我的收藏', name: 'workbench-favorites', description: '查看收藏的社区帖子' },
+        { label: '优惠券中心', name: 'workbench-coupons', description: '查看券包并复制券码' },
         {
           label: '我的已购',
           name: 'workbench-resource-purchases',
           description: '已购数字资源，退款由卖家或平台发起',
-        },
-        {
-          label: '使用权转移',
-          name: 'workbench-purchase-transfers',
-          description: '处理接口资源订单的转移申请',
-        },
-      ],
-    },
-    {
-      // 「我的背包」原先挂在「账户服务」下一条。积分、权益、券包、徽章是同一类东西
-      // （攒下来的、换回来的、戴在身上的），与账户资料、合同、发票这些「办事」的条目不是一回事，
-      // 四页也各是一页完整功能，收在一层折叠里会被当成账户设置的一部分。这里提出来单独成组。
-      key: 'inventory',
-      label: '我的背包',
-      icon: Suitcase,
-      items: [
-        { label: '积分中心', name: 'workbench-points', description: '查看积分余额、打赏与明细' },
-        { label: '权益中心', name: 'workbench-perks', description: '管理已解锁的权益与用户名颜色' },
-        { label: '优惠券中心', name: 'workbench-coupons', description: '查看券包并复制券码' },
-        {
-          // 「我的邀请」并进了这一页（原账户服务下的那一条已撤）：徽章墙与邀请共用一个入口，
-          // 名称要覆盖两边，只写「我的徽章墙」会让邀请记录在菜单上找不到；
-          // 邀请排行榜仍是单独一页，停在那页时高亮这一条（与原「我的邀请」的口径一致）。
-          label: '勋章与邀请',
-          name: 'workbench-badges',
-          description: '查看与佩戴徽章、邀请好友与邀请记录',
-          activeNames: ['workbench-invite-leaderboard'],
         },
       ],
     },

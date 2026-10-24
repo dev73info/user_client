@@ -1,5 +1,5 @@
 /**
- * 开发者工作台路由：团队、消息、工单、通知与权限兜底页（与用户工作台共用页面，靠 `devArea` 归属开发者侧）。
+ * 开发者工作台路由：团队、消息、通知与权限兜底页（与用户工作台共用页面，靠 `devArea` 归属开发者侧）。
  *
  * 路由表按域拆分（R047）后仍然只有这里新增条目；`path` / `name` / `meta` 与拆分前逐项一致，
  * 汇总顺序见同目录 `workbench.ts`（顺序影响 `getRoutes()` 的产出与匹配优先级，不能重排）。
@@ -50,19 +50,7 @@ export const devWorkbenchSharedRoutes: RouteRecordRaw[] = [
       devArea: true,
     },
   },
-  // 工单中心同理：开发者侧边栏也有这一条，带 devArea 才不会把侧边栏切回用户菜单，
-  // 页面自身也据此走开发者体系的读数条与卡片（见 TicketCenterView 的 isDevWorkbench）。
-  {
-    path: 'developer/tickets',
-    name: 'dev-tickets',
-    component: () => import('@/views/TicketCenterView.vue'),
-    meta: {
-      title: '工单中心',
-      description: '提交问题与查看客服回复。',
-      devArea: true,
-    },
-  },
-  // 系统通知与消息中心、工单中心同一办法：用户工作台与开发者工作台共用同一个页面，
+  // 系统通知与消息中心同一办法：用户工作台与开发者工作台共用同一个页面，
   // 各挂一条路由；开发者这条带 devArea，点进去侧边栏不会切回用户菜单。
   {
     path: 'developer/notifications',
@@ -70,7 +58,7 @@ export const devWorkbenchSharedRoutes: RouteRecordRaw[] = [
     component: () => import('@/views/NotificationCenterView.vue'),
     meta: {
       title: '系统通知',
-      description: '平台公告、评论警告与待确认事项。',
+      description: '待确认事项与系统消息。',
       devArea: true,
     },
   },

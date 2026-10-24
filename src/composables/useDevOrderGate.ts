@@ -4,79 +4,55 @@ import { useRoute, useRouter } from 'vue-router'
 import { TMessage } from 'ui_73info'
 
 import { getDevAccessStatus } from '@/api/auth'
-import { getDevCreditSelf, type DevCreditSelf } from '@/api/devCredit'
-import type { RequirementItem } from '@/api/devRequirements'
-import { getDevOrderDepositStatus, type DevOrderDepositStatus } from '@/api/devOrderDeposit'
 import { describeBackendError } from '@/shared/backendErrorText'
-import { requiresDepositGate, type RequirementBindGate } from '@/shared/devRequirementHall'
+import { requiresAgreementGate, type RequirementBindGate } from '@/shared/devRequirementHall'
+import type { RequirementItem } from '@/api/requirements/types'
 import { useAuthStore } from '@/stores/auth'
 
 /**
- * 开发者接单资格：保证金账单、信用额度、入驻协议签署状态，以及由它们派生出的
- * 接单资格读数（`bindGate`，决定每行「接单」按钮上写什么）与三处跳转
- * （需求详情 / 缴纳保证金 / 签署协议）。
+ * 开发者接单前的准入读数：只有**入驻协议签署状态**这一项，且来自契约端点。
  *
- * 从 `views/DevRequirementHallView.vue` 抽出，取数与文案逐段照搬：
- * 保证金是硬闸门（`can_bind_requirement`），信用额度只在上限强制时才参与判定。
+ * 为什么只剩这一项：预付保证金（`developer-order-deposit*`）与信用额度（`/credit/**`）
+ * 在当前后端契约里**一条路径都没有**，前端拿不到「保证金够不够」「信用额度多少」的真实读数。
+ * 硬要显示就只能编，编出来的读数会把「接不了单」写成「可接单」——所以这里不再读它们：
+ * 担保单接单时后端按开发者可提现收益冻结保证金，余额不够会回 409 中文说明，前端照实转达即可。
  */
 export function useDevOrderGate() {
   const auth = useAuthStore()
   const route = useRoute()
   const router = useRouter()
 
-  const depositStatus = ref<DevOrderDepositStatus | null>(null)
-  const creditInfo = ref<DevCreditSelf | null>(null)
   const developerAgreementSigned = ref(false)
-
-  const canTakeOrders = computed(() => depositStatus.value?.can_bind_requirement ?? false)
-  const availableDepositText = computed(
-    () => `¥${(depositStatus.value?.available_cny ?? 0).toFixed(2)}`,
-  )
-  const orderCreditCap = computed(() => {
-    if (!creditInfo.value || !creditInfo.value.enforce_order_limit) return Number.POSITIVE_INFINITY
-    return creditInfo.value.max_order_amount_cny
-  })
+  const loaded = ref(false)
 
   /** 列表里每一行的「接单」按钮要吃的那份资格读数（纯函数在 `@/shared/devRequirementHall`）。 */
   const bindGate = computed<RequirementBindGate>(() => ({
     agreementSigned: developerAgreementSigned.value,
-    canTakeOrders: canTakeOrders.value,
-    availableCny: depositStatus.value?.available_cny ?? 0,
-    orderCap: orderCreditCap.value,
   }))
 
-  async function loadDepositStatus() {
+  /** 取接单准入读数（目前只有入驻协议签署状态这一项）。 */
+  async function loadGateStatus() {
     if (!auth.token) {
       return
     }
 
     try {
-      const [status, credit, accessStatus] = await Promise.all([
-        getDevOrderDepositStatus(auth.token),
-        getDevCreditSelf(auth.token).catch(() => null),
-        getDevAccessStatus(auth.token).catch(() => null),
-      ])
-      depositStatus.value = status
-      creditInfo.value = credit
-      if (accessStatus) {
-        developerAgreementSigned.value = accessStatus.developer_agreement_signed
-      }
+      const accessStatus = await getDevAccessStatus(auth.token)
+      developerAgreementSigned.value = accessStatus.developer_agreement_signed
+      loaded.value = true
     } catch (error) {
-      const message = describeBackendError(error, '加载接单保证金状态失败')
+      const message = describeBackendError(error, '加载接单资格失败')
       TMessage.error(message)
-      depositStatus.value = null
+      developerAgreementSigned.value = false
+      loaded.value = false
     }
   }
 
   /**
-   * 点某一行的「接单」：没签协议先去签（签完靠 `redirect_to` 回到大厅），签了就直接进需求详情。
-   *
-   * 早先这里开的是本页那个「关联需求」弹窗，后来接单流程整个搬到需求详情页
-   * （`DevRequirementDetailView` 里既有绑定又有「初始化新资源项目」），
-   * 本页只留一个入口按钮；弹窗那套状态随之删除，见本页 `<script>` 顶部的说明。
+   * 点某一行的「接单」：担保单要过入驻协议，签完靠 `redirect_to` 回到大厅；其余直接进需求详情。
    */
-  function openRequirement(requirement: RequirementItem) {
-    if (requiresDepositGate(requirement) && !developerAgreementSigned.value) {
+  function openRequirement(requirement: Pick<RequirementItem, 'requirement_id' | 'payment_mode'>) {
+    if (requiresAgreementGate(requirement) && !developerAgreementSigned.value) {
       goSignDeveloperAgreement(requirement.requirement_id)
       return
     }
@@ -85,16 +61,6 @@ export function useDevOrderGate() {
       name: 'dev-requirement-detail',
       params: { requirementId: requirement.requirement_id },
     })
-  }
-
-  /** 去缴纳保证金：协议还没签就先签（没有协议签不了担保单）。 */
-  function goToOrderDeposit() {
-    if (!developerAgreementSigned.value) {
-      goSignDeveloperAgreement()
-      return
-    }
-
-    void router.push('/dev/wallet/order-deposit')
   }
 
   /** 去签入驻协议；带需求号时签完回到该需求在大厅里的地址，不带就回当前页。 */
@@ -110,11 +76,10 @@ export function useDevOrderGate() {
 
   return {
     developerAgreementSigned,
-    availableDepositText,
+    loaded,
     bindGate,
-    loadDepositStatus,
+    loadGateStatus,
     openRequirement,
-    goToOrderDeposit,
     goSignDeveloperAgreement,
   }
 }

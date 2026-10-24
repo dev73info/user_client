@@ -32,7 +32,6 @@ export function useWorkbenchShell() {
   const menu = useWorkbenchMenu({
     isDevWorkbenchMode: mode.isDevWorkbenchMode,
     isMessagesRoute: mode.isMessagesRoute,
-    ticketsMenuItem: mode.ticketsMenuItem,
     notificationsMenuItem: mode.notificationsMenuItem,
     closeMobileMenu: mobileMenu.closeMobileMenu,
     openMessagesCenter: () => {
@@ -102,7 +101,6 @@ export function useWorkbenchShell() {
     workbenchBrandTitle: mode.workbenchBrandTitle,
     messagesRouteName: mode.messagesRouteName,
     isMessagesRoute: mode.isMessagesRoute,
-    ticketsMenuItem: mode.ticketsMenuItem,
     notificationsMenuItem: mode.notificationsMenuItem,
     modeSwitching: mode.modeSwitching,
     modeSwitchSpinning: mode.modeSwitchSpinning,

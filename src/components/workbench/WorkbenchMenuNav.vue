@@ -35,7 +35,6 @@ const props = defineProps<{
   messagesAnchorIndex: number
   teamInvitationCount: number
   notificationsMenuItem: WorkbenchMenuItemModel
-  ticketsMenuItem: WorkbenchMenuItemModel
   /** 消息中心在当前工作台的那条路由名（用户端 / 开发者端各一条）。 */
   messagesRouteName: string
   conversations: RequirementConversation[]
@@ -127,7 +126,6 @@ function isGroupActive(group: WorkbenchMenuGroup) {
 
     <WorkbenchStandaloneSection
       :notifications-menu-item="props.notificationsMenuItem"
-      :tickets-menu-item="props.ticketsMenuItem"
       @navigate="emit('navigate')"
       @logout="emit('logout')"
     />

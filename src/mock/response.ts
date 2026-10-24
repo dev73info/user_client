@@ -81,7 +81,7 @@ export function readString(query: URLSearchParams | undefined, name: string): st
  * 未实现接口的兜底响应。
  *
  * GET 给空数组、其余给空对象。之所以 GET 默认返回数组：本项目的列表接口绝大多数是裸数组
- * （`/requirements/mine`、`/resource/resources`、`/community/posts`、`/conversations` …），
+ * （`/requirements/mine`、`/resource/resources`、`/notification`、`/conversations` …），
  * 分页对象（`{items,total}`）只有需求大厅与门户精选需求等少数几个、且都已单独实现。
  * 反过来给分页对象的话，页面里的 `.filter/.map` 会直接抛错把整页打断，
  * 而给数组对详情类接口只是渲染成空字段，代价小得多。

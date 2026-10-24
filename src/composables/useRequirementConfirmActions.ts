@@ -267,7 +267,6 @@ export function useRequirementConfirmActions(options: UseRequirementConfirmActio
     currentUsername: options.username(),
     requirementId: afterSalesTarget.value?.requirement_id ?? '',
     requirementTitle: afterSalesTarget.value?.title ?? '',
-    requirementBudget: afterSalesTarget.value?.budget ?? null,
     canOpenCase: true,
     onClose: closeAfterSalesModal,
   }))

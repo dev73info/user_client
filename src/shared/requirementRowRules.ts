@@ -1,3 +1,4 @@
+import { parseBackendDateTime } from '@/shared/datetime'
 import type {
   RequirementItem,
   RequirementPendingResourceVersionDeleteRequest,
@@ -65,8 +66,8 @@ export function formatRequirementStatus(status: RequirementStatus, mode?: Mode) 
 }
 
 export function formatRequirementTime(value: string) {
-  const date = new Date(value)
-  if (Number.isNaN(date.getTime())) {
+  const date = parseBackendDateTime(value)
+  if (!date) {
     return '刚刚更新'
   }
   return date.toLocaleString('zh-CN', {

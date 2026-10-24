@@ -58,19 +58,16 @@ describe('workbench mode switch', () => {
       wrapper
         .findAll('.user-workbench__menu .user-workbench__menu-link--root')
         .map((link) => link.text()),
-    ).toEqual(['工作台总览', '我的需求', '系统通知', '工单中心', '退出登录'])
+    ).toEqual(['工作台总览', '我的需求', '系统通知', '退出登录'])
     // 消息中心是一级条目：排在「我的需求」之后、「账户服务」之前，不再嵌在需求分组的子菜单里。
-    // 「我的背包」从「账户服务」里提出来，自己一个分组排在它后面。
     expect(wrapper.findAll('.user-workbench__menu-group-head').map((head) => head.text())).toEqual([
       '消息中心',
       '账户服务',
-      '我的背包',
     ])
     expect(wrapper.find('.user-workbench__submenu .user-workbench__menu-group-head').exists()).toBe(
       false,
     )
 
-    // 「我的背包」是独立分组：组内四页都在，账户服务里不再留这一条。
     // 只剩一个页面的分组（「我的需求」）没有分组头，先挑出有分组头的那些。
     const groups = wrapper
       .findAll('.user-workbench__menu-group')
@@ -78,29 +75,11 @@ describe('workbench mode switch', () => {
     const accountGroup = groups.find((group) =>
       group.find('.user-workbench__menu-group-head').text().includes('账户服务'),
     )!
-    const inventoryGroup = groups.find((group) =>
-      group.find('.user-workbench__menu-group-head').text().includes('我的背包'),
-    )!
-    // 「我的邀请」已并入「勋章与邀请」（原「我的徽章墙」那条），不再单列。
     expect(
       accountGroup.findAll('.user-workbench__submenu-link').map((link) => link.text()),
-    ).toEqual([
-      '账户详情',
-      '已授权应用',
-      '我的合同',
-      '我的发票',
-      '我的收藏',
-      '我的已购',
-      '使用权转移',
-    ])
-    expect(
-      inventoryGroup.findAll('.user-workbench__submenu-link').map((link) => link.text()),
-    ).toEqual(['积分中心', '权益中心', '优惠券中心', '勋章与邀请'])
-    expect(inventoryGroup.findAll('.user-workbench__submenu-link')[0]?.attributes('href')).toBe(
-      '/workbench/workbench-points',
-    )
-    expect(inventoryGroup.findAll('.user-workbench__submenu-link')[3]?.attributes('href')).toBe(
-      '/workbench/workbench-badges',
+    ).toEqual(['账户详情', '我的合同', '我的发票', '优惠券中心', '我的已购'])
+    expect(accountGroup.findAll('.user-workbench__submenu-link')[3]?.attributes('href')).toBe(
+      '/workbench/workbench-coupons',
     )
     wrapper.unmount()
   })
@@ -158,11 +137,10 @@ describe('workbench mode switch', () => {
     expect(text.match(/团队服务/g)).toHaveLength(1)
     expect(text).toContain('我的团队')
     expect(text).toContain('团队资源')
-    // 工单中心两种模式都保留：开发者工作台同样要能直接进工单
-    expect(text).toContain('工单中心')
-    // 系统通知与工单中心同一档，两种工作台都有这一条
+    // 系统通知两种工作台都有这一条
     expect(text).toContain('系统通知')
-    // 退出登录挂在工单中心下方，两种工作台共用
+    expect(text).not.toContain('工单中心')
+    // 退出登录挂在系统通知下方，两种工作台共用
     expect(text).toContain('退出登录')
     const modeSwitch = wrapper.find('.user-workbench__mode-switch')
     expect(modeSwitch.attributes('aria-label')).toBe('回到用户工作台')

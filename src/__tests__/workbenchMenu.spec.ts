@@ -20,12 +20,9 @@ const itemOf = (overrides: Partial<WorkbenchMenuItem> = {}): WorkbenchMenuItem =
   }) as WorkbenchMenuItem
 
 describe('buildMenuGroups', () => {
-  it('用户菜单三个分组，顺序是「我的需求 / 账户服务 / 我的背包」', () => {
-    expect(buildMenuGroups(false).map((group) => group.key)).toEqual([
-      'collaboration',
-      'account',
-      'inventory',
-    ])
+  it('用户菜单两个分组，顺序是「我的需求 / 账户服务」', () => {
+    // 「我的背包」（积分 / 商城 / 权益）整块下线：后端契约里没有积分与商城相关路径
+    expect(buildMenuGroups(false).map((group) => group.key)).toEqual(['collaboration', 'account'])
   })
 
   it('「我的需求」只剩一个页面：整组收成一条一级条目', () => {
@@ -35,13 +32,13 @@ describe('buildMenuGroups', () => {
     expect(collaboration?.items[0]?.name).toBe('workbench-requirements')
   })
 
-  it('实名未通过时没有「我的合同」，通过后出现在账户服务第 3 条', () => {
+  it('实名未通过时没有「我的合同」，通过后出现在账户服务里', () => {
     const before = buildMenuGroups(false)[1]?.items.map((item) => item.name) ?? []
     const after = buildMenuGroups(true)[1]?.items.map((item) => item.name) ?? []
 
     expect(before).not.toContain('workbench-signatures')
     expect(after).toContain('workbench-signatures')
-    expect(after.indexOf('workbench-signatures')).toBe(2)
+    expect(after.indexOf('workbench-signatures')).toBe(1)
     expect(after.length).toBe(before.length + 1)
   })
 
@@ -55,7 +52,6 @@ describe('buildMenuGroups', () => {
 
   it('不重复划分组小标题的组名集合', () => {
     expect(GROUPS_WITHOUT_SECTION_LABEL).toContain('account')
-    expect(GROUPS_WITHOUT_SECTION_LABEL).toContain('inventory')
     expect(GROUPS_WITHOUT_SECTION_LABEL).toContain('team')
     expect(GROUPS_WITHOUT_SECTION_LABEL).toContain('finance')
     expect(GROUPS_WITHOUT_SECTION_LABEL).not.toContain('collaboration')

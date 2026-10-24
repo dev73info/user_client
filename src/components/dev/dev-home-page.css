@@ -1,12 +1,9 @@
-/* 本页只用开发者体系令牌（--dev-*）：顶部读数条 → 左列表右资金卡。
+/* 本页只用开发者体系令牌（--dev-*）：顶部读数条 → 四个入口 → 左列表右资金卡。
    口径与颜色沿用收益钱包那一套，见 doc/设计规范.md 第一节。
-   注意：列表与资金卡的静态排布已经跟着 `DevProjectList` / `DevDeliveryList` / `DevFundPanel`
-   搬进各自的 scoped 样式；**跨到子组件内部的覆盖只能写在这里**，并带上 `:deep()`——
-   父层的 scoped 属性只落在子组件根节点上，打不进它的后代。 */
-/* 加载中压暗数据区，避免把「还没拿到数据」误读成真实的 0。
-   卡片分两种：`DevProjectList` / `DevDeliveryList` / `DevFundPanel` 的根节点（父层 scoped 属性
-   落得上去），以及 `DevLiveBoard` 内部的动态与资源卡（只有 `:deep()` 打得到）。一条 `:deep()`
-   同时覆盖两种，选中的元素与拆分前完全一致。 */
+   注意：列表与资金卡的静态排布在各子组件的 scoped 样式里；**跨到子组件内部的覆盖只能写在这里**，
+   并带上 `:deep()`——父层的 scoped 属性只落在子组件根节点上，打不进它的后代。 */
+
+/* 加载中压暗数据区，避免把「还没拿到数据」误读成真实的 0。 */
 .dev-home--loading :deep(.dev-home__panel) {
   opacity: 0.6;
 }
@@ -15,143 +12,77 @@
   transition: opacity 0.2s ease;
 }
 
-/* 全屏看板：铺满屏幕、内容区可滚，两栏撑满剩余高度。
-   提现 / 充值弹窗挂在 body 上、全屏里看不见，所以全屏时把这两个操作收起，只留读数。 */
-.dev-home.dev-home--fullscreen {
+/* 四个跳转入口：读数只报数，明细在各自菜单页，这里给一条最省的竖向空间 */
+.dev-home__entries {
   display: flex;
-  flex-direction: column;
-  gap: 16px;
-  width: 100%;
-  height: 100%;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.dev-home__entry {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 36px;
+  padding: 0 16px;
+  border: 1px solid var(--dev-line);
+  border-radius: 999px;
+  background: var(--dev-surface-strong);
+  color: var(--dev-ink);
+  font-size: 13px;
+  font-weight: 700;
+  text-decoration: none;
+  transition:
+    border-color 160ms ease,
+    color 160ms ease;
+}
+
+.dev-home__entry:hover {
+  border-color: var(--wb-accent-line);
+  color: var(--dev-blue);
+}
+
+.dev-home__entry:focus-visible {
+  outline: 2px solid var(--dev-blue);
+  outline-offset: 2px;
+}
+
+/* 加载失败：说清楚是「没加载出来」并给重试，不把失败画成「暂无数据」 */
+.dev-home__error {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px 16px;
   margin: 0;
-  padding: 20px 24px;
-  overflow-y: auto;
-  background: var(--dev-bg);
+  padding: 12px 16px;
+  border: 1px solid var(--dev-line);
+  border-radius: var(--dev-radius-inner);
+  background: color-mix(in srgb, var(--dev-gold) 10%, transparent);
 }
 
-/* 看板三栏：列表 | 资金 | 动态与资源。整块吃掉读数条与漏斗之下的剩余高度，
-   每张卡在自己的区域里滚动，整页不出现横向滚动（1280×800 平板横屏一屏看全）。 */
-.dev-home--fullscreen .dev-home__layout {
-  flex: 1 1 auto;
-  min-height: 0;
-  grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr) minmax(0, 0.95fr);
-  grid-template-rows: minmax(0, 1fr);
-  grid-template-areas: 'main aside live';
-}
-
-.dev-home--fullscreen .dev-home__main {
-  grid-area: main;
-  grid-template-rows: minmax(0, 1.25fr) minmax(0, 1fr);
-  min-height: 0;
-}
-
-.dev-home--fullscreen .dev-home__aside {
-  grid-area: aside;
-  grid-template-rows: minmax(0, 1fr);
-  min-height: 0;
-}
-
-.dev-home--fullscreen .dev-home__fund {
-  min-height: 0;
-  overflow-y: auto;
-}
-
-/* 列表卡：卡片头 + 工具栏固定，列表本体在卡内滚动。
-   `.dev-home__panel` 是子组件的根节点，父层的 scoped 属性会落上去。
-   动态卡的同一套（`display: flex` / `min-height: 0`）跟着 `DevLiveBoard` 搬走了。 */
-.dev-home--fullscreen .dev-home__main .dev-home__panel {
-  display: flex;
-  flex-direction: column;
-  min-height: 0;
-}
-
-/* 项目行 hover 底色靠负外边距伸出去，滚动容器会把它算成横向溢出：
-   容器自己先向两侧借 10px 内边距，行就落回容器内。
-   两个列表的本体在子组件里，`:deep()` 才打得到。 */
-.dev-home--fullscreen :deep(.dev-home__projects),
-.dev-home--fullscreen :deep(.dev-home__deliveries),
-.dev-home__live :deep(.dev-home__feed) {
-  flex: 1 1 auto;
-  min-height: 0;
-  margin: 0 -10px;
-  padding: 0 10px;
-  overflow-x: hidden;
-  overflow-y: auto;
-  overscroll-behavior: contain;
-}
-
-.dev-home--fullscreen :deep(.dev-home__deliveries) {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  align-content: start;
-  padding-bottom: 2px;
-}
-
-/* 读数条在看板里：读数改成「标签在上、数字在下」，数字放大一档，远处也看得清。
-   条子本体在 `DevHomeMetaStrip` 里，这几条要 `:deep()` 才打得到；`:deep()` 不吃 scoped 属性，
-   所以权重与拆分前一样是「两个类 + 一个属性」，仍然压得过 dev-base.css 里的单类规则。 */
-.dev-home--fullscreen :deep(.dev-meta-strip) {
-  gap: 14px 18px;
-}
-
-.dev-home--fullscreen :deep(.dev-meta-strip__item:not(.dev-meta-strip__action)) {
-  flex-direction: column;
-  align-items: flex-start;
+.dev-home__error-copy {
+  display: grid;
   gap: 2px;
+  min-width: 0;
 }
 
-.dev-home--fullscreen :deep(.dev-meta-strip__value) {
-  font-size: 20px;
+.dev-home__error-copy strong {
+  color: var(--dev-ink);
+  font-size: 13px;
   font-weight: 800;
 }
 
-/* 时钟与状态灯（`.dev-home__clock*` / `.dev-home__live-state` / `.dev-home__lamp*`）连同
-   两个 keyframes 一起搬进了 DevHomeMetaStrip.vue：它们只在那条读数条里出现，媒体覆盖也在那边。 */
-
-/* 漏斗的静态排布搬进了 DevFunnel.vue（scoped 样式跟着组件走）；这里只留 900 / 640 两档的窄屏覆盖，
-   见文件末尾的媒体块——`:deep()` 只能在「持有子组件的那一层」编译成后代选择器。 */
-
-/* 动态流与资源概况的静态排布（行网格、图标徽标、入场动画与 keyframes）已搬进 DevLiveBoard.vue；
-   这里只留 `.dev-home__live :deep(.dev-home__feed)` 那条滚动覆盖（见上方合并规则与 640 档）——
-   它作用在子组件内部，`:deep()` 只能在持有子组件的那一层写。 */
-
-/* 状态灯呼吸 / 闪烁与动态流入场动画的「减弱动效」开关，各自跟着元素搬进了
-   DevHomeMetaStrip.vue / DevLiveBoard.vue 的 scoped 样式（scoped 会给 keyframes 改名，
-   两半分开就配不上）。 */
-
-/* 提现 / 充值两个动作在资金卡里（子组件），全屏时收起：弹窗挂在 body 上，全屏里看不见。 */
-.dev-home--fullscreen :deep(.dev-home__money-action),
-.dev-home--fullscreen :deep(.dev-home__deposit-action),
-.dev-home--fullscreen .dev-notice__action,
-.dev-home--fullscreen .dev-home__mock-hint {
-  display: none;
-}
-
-/* 演示数据提示条：它是本地预览用的说明，比保证金警示条更轻，用虚线中性框 */
-.dev-home__mock-hint {
+.dev-home__error-copy p {
   margin: 0;
-  padding: 10px 16px;
-  border: 1px dashed var(--dev-line);
-  border-radius: var(--dev-radius-inner);
-  background: var(--dev-bg);
   color: var(--dev-muted);
-  font-size: 13px;
-  line-height: 1.6;
-}
-
-.dev-home__mock-hint code {
-  padding: 1px 6px;
-  border-radius: 8px;
-  background: var(--wb-accent-soft);
-  color: var(--dev-blue);
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
   font-size: 12px;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
 }
 
-/* 保证金不足的提示条改用统一层的 .dev-notice（金色 + 图标徽标 + 文案 + 右侧动作），
-   本页不再自带这一套。 */
-
-/* 两栏：左栏是两条列表，右栏是资金卡；窄屏并成一栏。
-   两栏等高、左栏最后一张卡吃掉剩余高度：总览是拿来「看」的，两栏底边不齐会在下方留出一块空洞 */
+/* 两栏：左栏是需求与资源两张卡，右栏是资金卡；窄屏并成一栏。
+   两栏等高、左栏最后一张卡吃掉剩余高度：总览是拿来「看」的，两栏底边不齐会在下方留出空洞 */
 .dev-home__layout {
   display: grid;
   grid-template-columns: minmax(0, 1.6fr) minmax(300px, 0.9fr);
@@ -173,6 +104,78 @@
 
 .dev-home__aside {
   align-content: stretch;
+}
+
+/* 我的资源：与项目行同一套排法——首行标题 + 状态胶囊，次行平台与更新时间 */
+.dev-home__resources {
+  display: grid;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.dev-home__resource {
+  display: grid;
+  gap: 5px;
+  padding: 11px 0;
+  border-bottom: 1px solid var(--dev-line);
+}
+
+.dev-home__resource:first-child {
+  padding-top: 6px;
+}
+
+.dev-home__resource:last-child {
+  padding-bottom: 6px;
+  border-bottom: 0;
+}
+
+.dev-home__resource-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.dev-home__resource-title {
+  min-width: 0;
+  color: var(--dev-ink);
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+/* 行内标签比 .dev-chip 默认形态矮一档，避免把行撑高（DevProjectList 里有一份同样的规则） */
+.dev-home__chip {
+  flex: 0 0 auto;
+  padding: 4px 10px;
+}
+
+.dev-home__resource-meta {
+  margin: 0;
+  color: var(--dev-muted);
+  font-size: 12px;
+  line-height: 1.6;
+  font-variant-numeric: tabular-nums;
+}
+
+/* 「查看全部」：与项目卡同一个写法（那一份在 DevProjectList 的 scoped 样式里，互不影响） */
+.dev-home__more {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  color: var(--dev-blue);
+  font-size: 13px;
+  font-weight: 700;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.dev-home__more:focus-visible {
+  outline: 2px solid var(--dev-blue);
+  outline-offset: 2px;
+  border-radius: 8px;
 }
 
 /* 卡片内边距由统一层给（桌面 24px、≤720px 20px、≤640px 16px），见 dev-base.css

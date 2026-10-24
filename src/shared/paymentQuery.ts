@@ -11,13 +11,13 @@
 import { isWechatPaymentHandoff } from '@/utils/wechatPayment'
 
 export type PaymentChannel = 'alipay' | 'wechat' | 'union'
-export type PaymentPlatform = 'mobile' | 'pc'
+/** 客户端形态：与契约 `CreateDepositPaymentRequest.client_platform` 同取值域（`mobile` / `desktop`）。 */
+export type PaymentPlatform = 'mobile' | 'desktop'
 
 export type PaymentQueryContext = {
   /** `adapay=1`：这笔单走 Adapay（扫码 / 微信 / 云闪付都算） */
   isAdapay: boolean
-  /** `developer_deposit=1`：开发者保证金充值，与需求定金是两套订单域 */
-  isDeveloperDeposit: boolean
+  /** 支付单号，等于契约的 `order_no`（查单走 `GET /api/payment/orders/{order_no}`） */
   paymentId: string
   requirementId: string
   milestone: string
@@ -83,13 +83,19 @@ export function normalizePaymentChannel(value: string): PaymentChannel | '' {
 /**
  * 客户端平台：query 显式指定时以 query 为准（PC 出码会给一个指向手机页的链接），
  * 否则按浏览器 UA 推断（`fallbackPlatform` 由调用方用 `getAdapayClientPlatform()` 算出）。
+ *
+ * `pc` 是历史写法（老链接与资源 / 打赏中间页仍在用），归一成契约的 `desktop`——
+ * 两种写法并存会让 `isWechatPcPayment` 这类判定漏掉一半入口。
  */
 export function readPaymentPlatform(
   raw: unknown,
   fallbackPlatform: PaymentPlatform,
 ): PaymentPlatform {
-  const value = trimmed(raw)
-  return value === 'mobile' || value === 'pc' ? value : fallbackPlatform
+  const value = trimmed(raw).toLowerCase()
+  if (value === 'mobile') {
+    return 'mobile'
+  }
+  return value === 'desktop' || value === 'pc' ? 'desktop' : fallbackPlatform
 }
 
 export function readPaymentQuery(
@@ -101,7 +107,6 @@ export function readPaymentQuery(
 
   return {
     isAdapay: isOn(query.adapay),
-    isDeveloperDeposit: isOn(query.developer_deposit),
     paymentId: text(query.payment_id),
     requirementId: text(query.requirement_id),
     milestone: text(query.milestone),

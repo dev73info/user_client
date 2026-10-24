@@ -68,10 +68,6 @@ export function useHomePortalActions(options: HomePortalActionsOptions) {
     void router.push({ name: 'resources', query: { sale: 'free' } })
   }
 
-  function openCommunity() {
-    void router.push({ name: 'community' })
-  }
-
   async function openDevWorkbench() {
     if (options.isDeveloperAccount.value) {
       void router.push({ name: 'dev-requirement-hall' })
@@ -96,8 +92,7 @@ export function useHomePortalActions(options: HomePortalActionsOptions) {
       return
     }
 
-    // briefcase（社区交流）：跳转到社区页面。
-    void router.push({ name: 'community' })
+    void router.push({ name: 'requirement-hall' })
   }
 
   function openWorkflowStep(step: PortalWorkflowStep) {
@@ -147,7 +142,7 @@ export function useHomePortalActions(options: HomePortalActionsOptions) {
           resourceId: target.id,
           rootSlug: routeParams.rootSlug,
           entrySlug: routeParams.entrySlug,
-          sale: resourceListingSaleOf(target.price_fen, target.price_points),
+          sale: resourceListingSaleOf(target.buyout_price_fen, target.price_points),
         }),
       )
       return
@@ -222,7 +217,6 @@ export function useHomePortalActions(options: HomePortalActionsOptions) {
     openDeveloperProfile,
     openTeamProfile,
     openFreeResources,
-    openCommunity,
     openDevWorkbench,
     openResourceInit,
     openQuickPanel,

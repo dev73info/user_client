@@ -14,7 +14,8 @@ const props = defineProps<{
   verification?: UserRealnameVerification | null
   adapayMember?: {
     onboardingStatus: string
-    settleAccountId?: string | null
+    /** 能不能收分账款：契约 `SettlementAccountResponse.accepts_settlement`。 */
+    acceptsSettlement?: boolean
     providerError?: string | null
   } | null
 }>()
@@ -22,7 +23,7 @@ const props = defineProps<{
 const localVerification = ref<UserRealnameVerification | null>(null)
 const localAdapayMember = ref<{
   onboardingStatus: string
-  settleAccountId?: string | null
+  acceptsSettlement?: boolean
   providerError?: string | null
 } | null>(null)
 const current = computed(() =>
@@ -81,10 +82,11 @@ const asignAuthText = computed(() => {
  * `active`→已认证，会误导成「已能收款」）；口径与账号页那个标签保持一致。
  */
 const settleAccountText = computed(() => {
-  // 这一格只回答**事实**：卡绑没绑。渠道审核中不等于已绑卡，也不等于"未设置"里有别的含义，
-  // 所以没卡就写「未绑卡」；审核状态由旁边的标签与描述承担。
-  const id = adapayMember.value?.settleAccountId
-  return id && id.trim() ? '已设置' : '未绑卡'
+  // 这一格只回答**事实**：能不能收分账款。渠道审核中不等于已绑账户，也不等于「未设置」里有别的含义，
+  // 所以不能收款就写「未绑卡」；审核状态由旁边的标签与描述承担。
+  // 判定用契约的 `accepts_settlement`（后端给「状态可用且号码齐备」的结论），
+  // 不再拿卡号尾数当结算账户号来判断。
+  return adapayMember.value?.acceptsSettlement === true ? '已设置' : '未绑卡'
 })
 
 /**

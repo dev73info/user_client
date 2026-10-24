@@ -1,14 +1,11 @@
 import { flushPromises, mount, type VueWrapper } from '@vue/test-utils'
 import type { Mock } from 'vitest'
-import type { AfterSalesCase, AfterSalesCaseDetail, AfterSalesCaseList } from '@/api/afterSales'
+import type { AfterSalesCaseDetail, AfterSalesCaseSummary } from '@/api/afterSales'
 import AfterSalesModal from '@/components/AfterSalesModal.vue'
 
 /**
- * 解除合作弹窗（AfterSalesModal）的共享夹具。
- *
- * `vi.mock` 是文件级注册，拆分后的每份 spec 各自 `vi.hoisted` 建一份 mocks 再登记；
- * 这里只放与 mock 实例无关的夹具和「基于某个 wrapper 的操作」，
- * 各 spec 仍各自持有 `let wrapper` 与 `open()`，这样用例正文（含断言）可以逐字不动。
+ * 解除合作弹窗的测试夹具：字段全部照契约（`CaseSummaryResponse` / `CaseDetailResponse`），
+ * 金额只写 `*_fen`，时间写后端已排好的东八区串。
  */
 export type AfterSalesMocks = {
   list: Mock
@@ -24,89 +21,51 @@ export const baseProps = {
   currentUsername: 'client_flow',
   requirementId: '2026-900000000105',
   requirementTitle: '主流程验证',
-  /** 需求预算（元）：主张金额的上限；默认给 null（不限制），上限用例各自覆盖。 */
-  requirementBudget: null as number | null,
   canOpenCase: true,
 }
 
-export const openCase: AfterSalesCase = {
-  id: 1,
-  caseNo: 'AFTERSALES_1',
-  requirementId: baseProps.requirementId,
-  requirementTitle: baseProps.requirementTitle,
-  requirementStatus: 'completed',
-  openedBy: 'client_flow',
-  openerRole: 'customer',
-  expectsMoney: true,
-  expectsRework: false,
-  requiresRework: false,
-  description: '交付的首页在手机上仍然错位',
-  status: 'submitted',
-  liableParty: null,
-  claimAmountFen: 1000,
-  claimAmountCny: '10.00',
-  refundAmountFen: 0,
-  refundAmountCny: '0.00',
-  compensationAmountFen: 0,
-  compensationAmountCny: '0.00',
-  shortfallFen: 0,
-  shortfallCny: '0.00',
-  providerRefundId: null,
-  providerDepositConfirmId: null,
-  resolutionNote: null,
-  resolvedBy: null,
-  resolvedAt: null,
-  decisionDeadlineAt: null,
-  customerDecision: null,
-  customerDecidedAt: null,
-  developerDecision: null,
-  developerDecidedAt: null,
-  createdAt: '2026-09-19 00:13:14',
-  updatedAt: '2026-09-19 00:13:14',
-  windowClosesAt: '2026-09-18 00:13:13',
-  viewerRole: 'customer',
+export const openCase: AfterSalesCaseSummary = {
+  case_no: 'AFTERSALES_1',
+  requirement_id: baseProps.requirementId,
+  filed_by: 'client_flow',
+  respondent: 'dev_flow',
+  kind: 'mutual_unbind',
+  kind_label: '协商解除',
+  status: 'negotiating',
+  status_label: '协商中',
+  open: true,
+  claim_amount_fen: 1000,
+  claim_amount: 10,
+  created_time: '2026-09-19 00:13:14',
+  updated_time: '2026-09-19 00:13:14',
 }
 
-/** 详情接口的默认返回：已缴尾款 30 元、仍冻结接单保证金 200 元、需求预算 200 元（赔付上限取其小）。 */
 export const detailBase: AfterSalesCaseDetail = {
   ...openCase,
-  customerUsername: 'client_flow',
-  developerUsername: 'dev_flow',
-  frozenDepositFen: 20000,
-  frozenDepositCny: '200.00',
-  budgetFen: 20000,
-  budgetCny: '200.00',
-  compensationCapFen: 20000,
-  compensationCapCny: '200.00',
-  finalPaidFen: 3000,
-  finalPaidCny: '30.00',
-  refundablePaidFen: 3000,
-  refundablePaidCny: '30.00',
+  claim_note: '交付的首页在手机上仍然错位',
+  statements: [],
+  verdict: null,
+  closed_time: null,
+  handled_by: null,
+  handled_time: null,
+  mutual_agreed_time: null,
 }
 
-/** 按状态造一个案件：默认的 `openCase` 是需求方发起的待表态案件。 */
 export function caseWith(
-  status: AfterSalesCase['status'],
-  overrides: Partial<AfterSalesCase> = {},
-) {
-  return { ...openCase, status, ...overrides } satisfies AfterSalesCase
+  status: string,
+  overrides: Partial<AfterSalesCaseSummary> = {},
+): AfterSalesCaseSummary {
+  return { ...openCase, status, status_label: status, ...overrides }
 }
 
-/** 把列表与详情接口的返回值铺好，再按 `visible: false → true` 的顺序挂载（触发一次完整的打开链路）。 */
 export async function mountAfterSales(
   mocks: AfterSalesMocks,
-  payload: Partial<AfterSalesCaseList> = {},
+  payload: AfterSalesCaseSummary[] = [],
   propOverrides: Partial<typeof baseProps> = {},
   detail: Partial<AfterSalesCaseDetail> = {},
 ): Promise<VueWrapper> {
-  mocks.list.mockResolvedValue({
-    items: [],
-    windowOpen: true,
-    windowClosesAt: '2026-10-04 00:13:13',
-    ...payload,
-  } satisfies AfterSalesCaseList)
-  // 详情接口只在有在办案件时被调用；默认给一份完整的详情，各用例只覆盖需要的字段。
-  mocks.detail.mockResolvedValue({ ...detailBase, ...detail } satisfies AfterSalesCaseDetail)
+  mocks.list.mockResolvedValue(payload)
+  mocks.detail.mockResolvedValue({ ...detailBase, ...detail })
   const wrapper = mount(AfterSalesModal, {
     props: { ...baseProps, ...propOverrides, visible: false },
   })
@@ -117,6 +76,3 @@ export async function mountAfterSales(
 
 export const findButton = (wrapper: VueWrapper, text: string) =>
   wrapper.findAll('button').find((item) => item.text().includes(text))
-
-export const hasFormOn = (wrapper: VueWrapper) =>
-  wrapper.find('.after-sales-modal textarea').exists()

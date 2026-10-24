@@ -3,8 +3,6 @@ import { flushPromises, mount, type VueWrapper } from '@vue/test-utils'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   createDetailRouter,
-  creditSelf,
-  depositStatus,
   draftResource,
   requirementItem,
   TAG_TREE,
@@ -26,8 +24,6 @@ const mocks = vi.hoisted(() => ({
   bindProject: vi.fn(),
   listResources: vi.fn(),
   createResource: vi.fn(),
-  depositStatus: vi.fn(),
-  creditSelf: vi.fn(),
   accessStatus: vi.fn(),
   tagTree: vi.fn(),
 }))
@@ -41,14 +37,6 @@ vi.mock('@/api/mcResources', async (orig) => ({
   ...(await orig<typeof import('@/api/mcResources')>()),
   listMcResources: mocks.listResources,
   createMcResource: mocks.createResource,
-}))
-vi.mock('@/api/devOrderDeposit', async (orig) => ({
-  ...(await orig<typeof import('@/api/devOrderDeposit')>()),
-  getDevOrderDepositStatus: mocks.depositStatus,
-}))
-vi.mock('@/api/devCredit', async (orig) => ({
-  ...(await orig<typeof import('@/api/devCredit')>()),
-  getDevCreditSelf: mocks.creditSelf,
 }))
 vi.mock('@/api/auth', async (orig) => ({
   ...(await orig<typeof import('@/api/auth')>()),
@@ -85,8 +73,6 @@ beforeEach(() => {
   mocks.bindProject.mockResolvedValue(requirementItem({ status: 'in_development' }))
   mocks.listResources.mockResolvedValue([draftResource()])
   mocks.createResource.mockResolvedValue(draftResource({ id: 99, title: '清洗能力包' }))
-  mocks.depositStatus.mockResolvedValue(depositStatus())
-  mocks.creditSelf.mockResolvedValue(creditSelf())
   mocks.accessStatus.mockResolvedValue({
     is_dev: true,
     is_super_admin: false,

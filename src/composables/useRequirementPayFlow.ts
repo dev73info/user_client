@@ -7,45 +7,45 @@ import {
   type AdapayBusinessPayChannel,
   type AdapayPaymentResponse,
 } from '@/api/adapay'
-import {
-  getUnionPaymentAuthorizeUrl,
-  isUnionPaymentAuthorizationRequired,
-  isWechatPaymentAuthorizationRequired,
-} from '@/api/auth'
 import type { RequirementItem } from '@/api/requirements'
+import { formatFenAsCny } from '@/shared/money'
 import { buildAdapayPaymentQuery } from '@/shared/paymentRoute'
 import {
   isRequirementFinalPayment,
-  requirementPayAmount,
+  requirementPayFen,
   requirementPayStageLabel,
 } from '@/shared/requirementPayment'
 import { isAdapayRequirement } from '@/shared/requirementRowRules'
 import { TMessage } from 'ui_73info'
 
-/** 已经建过的那张 Adapay 订单（原样保留视图里那份形状，查单时只认 `payment_id` 与 `adapay`）。 */
+/**
+ * 已经建过的那张支付单（字段取自契约：单号是 `order_no`，金额只有整数分）。
+ *
+ * 查单只认 `order_no`——它就是下单回执里的 `payment_id`，也是支付页 query 上的 `payment_id`。
+ */
 export type RequirementPayOrder = {
-  payment_id: string
+  order_no: string
   requirement_id: string
   channel: string
-  amount_cny: number
+  amount_fen: number
   status: string
-  alipay_order_string?: string
-  expires_at: string
-  adapay?: boolean
+  pay_url?: string | null
 }
 
 /**
  * 一次「点支付」的结果。
  *
- * 这个 composable **不做任何跳转**：建单后要去支付页、云闪支付授权后要去授权地址，
- * 都只把「去哪儿」返回给视图，由视图决定 `router.push` 还是 `window.location.assign`
- * （与主页 / 个人中心两处支付入口的分工一致，也方便单测直接断结果）。
+ * 这个 composable **不做任何跳转**：建单后要去支付页，只把「去哪儿」返回给视图，
+ * 由视图决定 `router.push`（与主页 / 个人中心两处支付入口的分工一致，也方便单测直接断结果）。
+ *
+ * 契约里没有微信 / 云闪付的「授权地址」端点（`/auth/wechat/payment/url`、`/adapay/union/payment/url`
+ * 都不在 `openapi.json` 里），所以这里不再有「未授权 → 改走授权链路」的兜底：
+ * 下单失败就是失败，原话交给用户看。
  */
 export type RequirementPayOutcome =
   | { kind: 'none' }
   | { kind: 'paid' }
   | { kind: 'redirect-page'; query: Record<string, string> }
-  | { kind: 'external'; url: string }
 
 type UseRequirementPayFlowOptions = {
   /** 当前登录 token：视图持有 `auth`，这里只按需取值，不把 pinia 拖进来。 */
@@ -64,6 +64,11 @@ type UseRequirementPayFlowOptions = {
   onPaid?: () => void | Promise<void>
 }
 
+/** 单子已经被渠道作废：这张单不能再查下去，只能丢掉重下。 */
+function isDeadOrder(status: string): boolean {
+  return status === 'failed' || status === 'canceled'
+}
+
 /**
  * 「我的需求」页的支付流程：开弹窗、切通道、算这次应付多少、Adapay 下单与查单。
  *
@@ -80,12 +85,18 @@ export function useRequirementPayFlow(options: UseRequirementPayFlowOptions) {
   const isFinalPayment = computed(() => isRequirementFinalPayment(requirement.value))
   const stageLabel = computed(() => requirementPayStageLabel(requirement.value))
 
-  /** 本次应付：没有需求时保持原来的 0.01 兜底（弹窗渲染期间值为 0 会显示「¥0.00」）。 */
-  const amount = computed(() =>
-    requirement.value
-      ? requirementPayAmount(requirement.value, options.depositRatioPercent())
-      : 0.01,
+  /** 本次应付（**整数分**）：比例由视图注入，见 `shared/requirementPayment`。 */
+  const payFen = computed(() =>
+    requirement.value ? requirementPayFen(requirement.value, options.depositRatioPercent()) : 1,
   )
+
+  /**
+   * 给 `RequirementPayModal` 的「本次应付」文本用的元值。
+   *
+   * 弹窗（不在本次改动范围）的 `amount` prop 是 `number` 并自己 `toFixed(2)`，
+   * 所以这里只在最后一步把分换成元做展示，计算全程在整数分上。
+   */
+  const amount = computed(() => Number(formatFenAsCny(payFen.value)))
 
   function open(item: RequirementItem) {
     if (!options.canPayRequirement(item)) {
@@ -113,8 +124,7 @@ export function useRequirementPayFlow(options: UseRequirementPayFlowOptions) {
   /**
    * 建单 / 查单。分三段，与原来视图里的顺序一一对应：
    * 1. 还没有订单 → 下单，成功即返回「去支付页」；
-   * 2. 已有订单 → 查状态，`paid`/`confirmed` 才算完成，`failed` 丢掉重下；
-   * 3. 下单被后端以「未授权」挡回 → 微信走支付页意图模式、云闪付走授权地址。
+   * 2. 已有订单 → 查状态，`paid` 才算完成，`failed` / `canceled` 丢掉重下。
    */
   async function submit(): Promise<RequirementPayOutcome> {
     if (!requirement.value) {
@@ -132,7 +142,7 @@ export function useRequirementPayFlow(options: UseRequirementPayFlowOptions) {
     loading.value = true
     try {
       if (!order.value) {
-        const adapayPayment: AdapayPaymentResponse = await createAdapayPayment(
+        const payment: AdapayPaymentResponse = await createAdapayPayment(
           options.token(),
           target.requirement_id,
           isFinalPayment.value ? 'final' : 'deposit',
@@ -140,89 +150,45 @@ export function useRequirementPayFlow(options: UseRequirementPayFlowOptions) {
           clientPlatform,
         )
         order.value = {
-          payment_id: adapayPayment.paymentId,
-          requirement_id: adapayPayment.requirementId,
-          channel: payChannelValue,
-          amount_cny: Number(adapayPayment.amountCny),
-          status: adapayPayment.status,
-          alipay_order_string: adapayPayment.payUrl ?? '',
-          expires_at: '',
-          adapay: true,
+          order_no: payment.payment_id,
+          requirement_id: payment.requirement_id,
+          channel: payment.pay_channel,
+          amount_fen: payment.amount_fen,
+          status: payment.status,
+          pay_url: payment.pay_url,
         }
         TMessage.success(`${stageLabel.value}支付订单已生成，正在跳转支付页`)
         return {
           kind: 'redirect-page',
           query: buildAdapayPaymentQuery({
-            paymentId: order.value.payment_id,
-            requirementId: adapayPayment.requirementId,
+            paymentId: payment.payment_id,
+            requirementId: payment.requirement_id,
             channel: payChannelValue,
             clientPlatform,
-            amountCny: adapayPayment.amountCny,
-            qrContent: adapayPayment.payUrl,
+            amountCny: payment.amount_cny,
+            qrContent: payment.pay_url,
           }),
         }
       }
 
-      if (order.value.adapay) {
-        const adapayPayment = await getAdapayPayment(options.token(), order.value.payment_id)
-        if (adapayPayment.status !== 'paid' && adapayPayment.status !== 'confirmed') {
-          if (adapayPayment.status === 'failed') {
-            order.value = null
-            TMessage.warning('上次支付订单已失效，重新发起支付')
-            // 递归要 `return await`：重下之后同样会得到「去支付页」，吞掉结果就不会跳转了。
-            return await submit()
-          }
-          TMessage.warning('支付尚未完成，请先完成 Adapay 支付')
-          return { kind: 'none' }
-        }
+      const current = await getAdapayPayment(options.token(), order.value.order_no)
+      if (current.status === 'paid') {
         TMessage.success(`${stageLabel.value}支付确认成功`)
         order.value = null
         visible.value = false
         await options.onPaid?.()
         return { kind: 'paid' }
       }
-
-      throw new Error('支付订单状态无效，请重新发起 Adapay 支付')
+      if (isDeadOrder(current.status)) {
+        order.value = null
+        TMessage.warning('上次支付订单已失效，重新发起支付')
+        // 递归要 `return await`：重下之后同样会得到「去支付页」，吞掉结果就不会跳转了。
+        return await submit()
+      }
+      order.value = { ...order.value, status: current.status }
+      TMessage.warning('支付尚未完成，请先完成 Adapay 支付')
+      return { kind: 'none' }
     } catch (err) {
-      if (isWechatPaymentAuthorizationRequired(err)) {
-        // 尚未绑定 open_id：直接跳转到支付页（意图模式），由支付页在微信内自动静默授权并下单。
-        if (!requirement.value) {
-          return { kind: 'none' }
-        }
-        return {
-          kind: 'redirect-page',
-          query: buildAdapayPaymentQuery({
-            requirementId: requirement.value.requirement_id,
-            milestone: isFinalPayment.value ? 'final' : 'deposit',
-            channel: 'wechat',
-            clientPlatform,
-            amountCny: amount.value,
-            intent: true,
-          }),
-        }
-      }
-      if (isUnionPaymentAuthorizationRequired(err)) {
-        if (clientPlatform !== 'mobile') {
-          TMessage.warning('云闪付授权仅适用于移动端，请重新选择支付方式')
-          return { kind: 'none' }
-        }
-        try {
-          const authorization = await getUnionPaymentAuthorizeUrl(
-            options.token(),
-            window.location.href,
-          )
-          if (!authorization.url.trim()) {
-            throw new Error('云闪付授权地址为空')
-          }
-          return { kind: 'external', url: authorization.url }
-        } catch (authorizationError) {
-          TMessage.error(
-            authorizationError instanceof Error ? authorizationError.message : '发起云闪付授权失败',
-          )
-          return { kind: 'none' }
-        }
-      }
-
       TMessage.error(err instanceof Error ? err.message : '支付失败')
       return { kind: 'none' }
     } finally {
@@ -258,6 +224,8 @@ export function useRequirementPayFlow(options: UseRequirementPayFlowOptions) {
     isFinalPayment,
     payStageLabel: stageLabel,
     payAmount: amount,
+    /** 本次应付的整数分（视图要给接口或日志时用它，不要用 `payAmount` 那个展示值） */
+    payFen,
     openPayModal: open,
     closePayModal: close,
     updatePayChannel: setChannel,

@@ -16,6 +16,7 @@ const mocks = vi.hoisted(() => ({
   create: vi.fn(),
   get: vi.fn(),
   updateHomepage: vi.fn(),
+  submitReview: vi.fn(),
   updateChannel: vi.fn(),
   uploadCover: vi.fn(),
   tagTree: vi.fn(),
@@ -55,6 +56,7 @@ vi.mock('@/api/mcResources', () => ({
   createMcResource: mocks.create,
   getMcResource: mocks.get,
   updateMcResourceHomepage: mocks.updateHomepage,
+  submitMcResourceReview: mocks.submitReview,
   updateResourceApiChannel: mocks.updateChannel,
   getResourceApiChannel: vi.fn(),
   uploadMcResourceCover: mocks.uploadCover,
@@ -116,6 +118,7 @@ describe('DevResourceInitView：区块渲染与提交载荷', () => {
     mocks.get.mockResolvedValue(resourceFixture({ id: 33 }))
     mocks.uploadCover.mockResolvedValue(resourceFixture({ id: 33 }))
     mocks.updateHomepage.mockResolvedValue(resourceFixture({ id: 33, visibility: 'review' }))
+    mocks.submitReview.mockResolvedValue(resourceFixture({ id: 33, visibility: 'review' }))
     mocks.updateChannel.mockResolvedValue(channelFixture({ resource_id: 33 }))
   })
 
@@ -184,7 +187,8 @@ describe('DevResourceInitView：区块渲染与提交载荷', () => {
       origin_url: 'https://example.com/source',
       origin_org: null,
       origin_note: null,
-      price_fen: 990,
+      // 契约的写入口是买断价 `buyout_price_fen`（`price_fen` 只是后端兼容的旧名）
+      buyout_price_fen: 990,
       price_points: 0,
       copyright_declared: true,
       resource_kind: 'normal',
@@ -193,6 +197,26 @@ describe('DevResourceInitView：区块渲染与提交载荷', () => {
     // 私有项目不动主页；创建成功后回资源列表
     expect(mocks.updateHomepage).not.toHaveBeenCalled()
     expect(mocks.push).toHaveBeenLastCalledWith({ name: 'dev-resource-list' })
+    wrapper.unmount()
+  })
+
+  it('公开申请：提交审核走契约的 submit-review 端点，不再用 PATCH 重发整页字段', async () => {
+    const wrapper = mountInit()
+    await flushPromises()
+    const view = state<InitState>(wrapper)
+
+    view.form.title = '示例资源'
+    view.form.author = '开发者'
+    view.form.priceYuan = '9.90'
+    view.form.copyrightDeclared = true
+    view.selectedTagIdsByGroup[28] = [210]
+    await flushPromises()
+
+    await view.submitResource('public')
+    await flushPromises()
+
+    expect(mocks.submitReview).toHaveBeenCalledWith('test-token', 33)
+    expect(mocks.updateHomepage).not.toHaveBeenCalled()
     wrapper.unmount()
   })
 
@@ -223,9 +247,8 @@ describe('DevResourceInitView：区块渲染与提交载荷', () => {
         price_points: 0,
       }),
     )
+    // 契约的渠道 PUT 只收三项：回调地址 / 密钥 / 允许来源
     expect(mocks.updateChannel).toHaveBeenCalledWith('test-token', 33, {
-      resource_kind: 'api',
-      repeat_purchasable: false,
       callback_url: 'https://shop.example.com/cb',
       callback_secret: null,
       allowed_origins: ['https://shop.example.com'],

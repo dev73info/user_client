@@ -4,9 +4,9 @@ import type { ResourcePayChannelUi } from '@/shared/resourceSale'
 /**
  * 购买确认弹窗（Teleport 到 body）。
  *
- * 纯展示 + 三个动作出口：`close`（点遮罩或 ×）、`select-channel`（支付宝 / 微信）、
- * `confirm`（积分单的「确认兑换」）。下单、串行队列、支付面世代号、轮询都在
- * `useResourcePurchase` 里，这一层不碰 router / TMessage / api。
+ * 纯展示 + 两个动作出口：`close`（点遮罩或 ×）与 `select-channel`（支付宝 / 微信）。
+ * 下单、串行队列、支付面世代号、轮询都在 `useResourcePurchase` 里，
+ * 这一层不碰 router / TMessage / api。
  *
  * ⚠️ 层级：`.resource-purchase-modal .actions`（0,2,0）压的是全站 `modal.css` 的
  * `.pay-modal .actions`（0,2,0）/ `.modal-wrap .pay-modal .actions`（0,3,0）这一组；
@@ -19,10 +19,6 @@ const props = defineProps<{
   /** 资源标题；资源还没取到时传空串，整块标题行不渲染 */
   title: string
   priceLabel: string
-  /** 积分单：没有渠道选择与二维码，底部换成「确认兑换」 */
-  isPointsListing: boolean
-  /** 买家积分余额（积分单才展示，null 表示还在拉） */
-  balance: number | null
   /** 推广归因轻提示（比例 > 0 且本次带推广码时才为 true） */
   showPromoHint: boolean
   channel: ResourcePayChannelUi
@@ -38,7 +34,6 @@ const props = defineProps<{
 const emit = defineEmits<{
   close: []
   'select-channel': [channel: ResourcePayChannelUi]
-  confirm: []
 }>()
 </script>
 
@@ -75,20 +70,12 @@ const emit = defineEmits<{
         </p>
 
         <div class="resource-purchase-modal__amount" aria-live="polite">
-          <span>{{ isPointsListing ? '应付积分' : '应付金额' }}</span>
+          <span>应付金额</span>
           <strong>{{ priceLabel }}</strong>
         </div>
 
-        <p v-if="isPointsListing" class="resource-purchase-modal__balance">
-          当前积分余额：
-          <strong>{{ balance == null ? '加载中…' : balance }}</strong>
-        </p>
-
         <ul class="resource-purchase-modal__notes">
           <li>本商品为数字化资源（虚拟商品），支付成功后获得下载权。</li>
-          <li v-if="isPointsListing">
-            确认后立即扣积分并解锁下载；平台抽成后净额计入卖家积分账户。
-          </li>
           <li>尚未产生成功下载前可申请退款；下载成功后不支持自助退款。</li>
         </ul>
 
@@ -97,12 +84,7 @@ const emit = defineEmits<{
           本单由推广者带来，卖家将从净收中支付约定分成。
         </p>
 
-        <div
-          v-if="!isPointsListing"
-          class="payment-options"
-          role="radiogroup"
-          aria-label="支付方式选择"
-        >
+        <div class="payment-options" role="radiogroup" aria-label="支付方式选择">
           <button
             type="button"
             class="payment-option"
@@ -135,26 +117,12 @@ const emit = defineEmits<{
           {{ error }}
         </p>
 
-        <div
-          v-if="!isPointsListing && (qrDataUrl || submitting || orderNo)"
-          class="resource-purchase-modal__qr"
-        >
+        <div v-if="qrDataUrl || submitting || orderNo" class="resource-purchase-modal__qr">
           <img v-if="qrDataUrl" :src="qrDataUrl" alt="支付二维码" width="220" height="220" />
           <p v-else-if="submitting" class="resource-purchase-modal__order">正在获取支付码…</p>
           <p v-else-if="orderNo" class="resource-purchase-modal__order">
             订单号 {{ orderNo }} · {{ orderStatus }}
           </p>
-        </div>
-
-        <div v-if="isPointsListing" class="actions">
-          <button
-            class="ghost primary"
-            type="button"
-            :disabled="submitting"
-            @click="emit('confirm')"
-          >
-            {{ submitting ? '兑换中...' : `确认兑换 ${priceLabel}` }}
-          </button>
         </div>
       </section>
     </div>
@@ -283,18 +251,6 @@ const emit = defineEmits<{
   font-weight: 800;
   letter-spacing: -0.02em;
   line-height: 1;
-}
-
-.resource-purchase-modal__balance {
-  margin: 0;
-  color: var(--rdp-purchase-soft-ink);
-  font-size: 13px;
-  line-height: 1.5;
-}
-
-.resource-purchase-modal__balance strong {
-  color: var(--rdp-purchase-ink);
-  font-weight: 700;
 }
 
 .resource-purchase-modal__notes {

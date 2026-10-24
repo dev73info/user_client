@@ -91,7 +91,7 @@ const {
   depositPolicyAccepted,
   payChannel,
   payStage,
-  payAmount,
+  payFen,
   openPayDialog,
   updatePayChannel,
   submitPayment,
@@ -230,10 +230,6 @@ watch(
   { immediate: true },
 )
 
-function onBreachCaseChanged(value: NonNullable<typeof breachCase.value>) {
-  breachCase.value = value
-}
-
 function chipClass(chip: ActionChip) {
   return `conversation-actions__chip--${chip.tone}`
 }
@@ -305,7 +301,7 @@ defineExpose({
     :is-final-payment="payStage === 'final'"
     :is-escrow-payment="true"
     :deposit-ratio-percent="depositRatioPercent"
-    :coupon-final-amount="payAmount"
+    :payable-fen="payFen"
     :deposit-loading="payLoading"
     :deposit-policy-accepted="depositPolicyAccepted"
     :contract-signing-status="signing"
@@ -318,6 +314,7 @@ defineExpose({
   <DeliverySubmitDialog
     v-model:visible="deliveryVisible"
     :token="token"
+    :requirement-id="requirement?.requirement_id ?? ''"
     :bound-resource-id="requirement?.bound_resource_id ?? null"
     @submitted="handleDeliverySubmitted"
   />
@@ -337,11 +334,9 @@ defineExpose({
     :token="token"
     :requirement-id="requirementId"
     :case="breachCase"
-    :is-developer="isDeveloper"
     :requirement-title="requirement?.title"
     :has-contract="hasContract"
     @changed="emit('changed')"
-    @case-changed="onBreachCaseChanged"
     @refresh="refreshBreachCase"
   />
 </template>

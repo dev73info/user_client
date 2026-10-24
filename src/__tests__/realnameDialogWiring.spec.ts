@@ -58,7 +58,7 @@ vi.mock('@/api/auth', async (importOriginal) => ({
 
 vi.mock('@/api/adapay', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/api/adapay')>()),
-  getMyAdapayMember: vi.fn(async () => ({ onboardingStatus: 'active', settleAccountId: null })),
+  getMyAdapayMember: vi.fn(async () => ({ onboardingStatus: 'active', acceptsSettlement: false })),
   getMySettlementAccountSnapshot: vi.fn(async () => ({ bound: false })),
 }))
 
@@ -114,7 +114,7 @@ function bodyButton(text: string): HTMLElement {
 async function renderAccountPage(): Promise<VueWrapper> {
   const wrapper = mount(AccountCouponsView, {
     attachTo: document.body,
-    global: { stubs: { RealnameHero: true, WechatBindQrModal: true } },
+    global: { stubs: { RealnameHero: true } },
   })
   await flushPromises()
   return wrapper

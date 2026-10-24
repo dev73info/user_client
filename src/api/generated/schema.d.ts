@@ -388,6 +388,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/admin/dispute/cases/{case_no}/reject": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 驳回诉求
+         * @description 客服认定诉求不成立、关案，需要 `dispute.case.decide.post`。与「裁决」的区别是**不动钱**：不产生处置方案、不执行退款或扣划。可从已立案 / 协商中 / 平台介入中三个状态驳回；已裁决 / 协商一致 / 已结案的案件回 409。
+         */
+        post: operations["dispute_admin_reject"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/admin/dispute/cases/{case_no}/reopen": {
         parameters: {
             query?: never;
@@ -1160,6 +1180,66 @@ export interface paths {
         patch: operations["team_admin_update_member_role"];
         trace?: never;
     };
+    "/api/admin/tips/{order_no}/refund": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 退款（管理端）
+         * @description **需要登录 + `tip.refund.post`**。只允许对 `paid` 的单发起，其余状态回 409 `TIP_REFUND_NOT_ALLOWED` 并带上当前状态（让客服知道「该先做什么」）。退款走渠道退款接口，成功后单据落 `refunded`，这笔打赏不再计入开发者收益。写操作是原子的：「推进到 refunding」的判定写在 UPDATE 的 WHERE 里，并发下只有一次能成功。
+         */
+        post: operations["tip_admin_refund"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/user-providers/accounts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 查看全站三方登录绑定（管理端）
+         * @description **需要登录 + `identity.provider_account.list.get`**（1.x 用的是 `system.config.manage`，2.0 另开一码：解绑别人的登录方式属于账号安全动作，不该混在配置管理里）。返回平台账号与第三方账号的绑定关系，可按渠道（`provider`）与关键字（`keyword`，同时匹配平台用户名与渠道内登录名）过滤。2.0 只有 `github` / `gitee` 两个渠道，传其它渠道回 400 `PROVIDER_UNSUPPORTED`。`total` 是命中总数，与 `page_size` 无关——翻到空页时它仍然给出真实条数。
+         */
+        get: operations["identity_admin_list_provider_accounts"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/user-providers/{username}/{provider}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * 解绑指定账号的三方登录渠道（管理端）
+         * @description **需要登录 + `identity.provider_account.unbind.delete`**。解除 `{username}` 与`{provider}`（`github` / `gitee`）的绑定。解绑后该账号不能用这个渠道登录，密码登录不受影响——所以这是「删掉一种登录方式」，不是「封号」。账号不存在回 404 `USER_NOT_FOUND`（路径写错）；账号存在但本来就没绑该渠道回 200且 `unbound = false`（幂等，不是失败）。未知渠道回 400 `PROVIDER_UNSUPPORTED`。每次解绑都记一条 info 日志（谁被解绑、哪个渠道、是否真的删掉了）。
+         */
+        delete: operations["identity_admin_unbind_provider_account"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/api_key/api_keys": {
         parameters: {
             query?: never;
@@ -1243,6 +1323,46 @@ export interface paths {
          * @description **需要登录**（`Authorization: Bearer <平台会话令牌>`），但**不挂端点权限码**——只能注销当前登录的这个账号，归属即权限。注销是**不可逆**的：账号随即进入关闭状态，已签发的全部令牌当场失效，之后用这个账号登录回 403 `ACCOUNT_CLOSED`。唯一的超级管理员不允许注销（否则平台会失去最后一个能管配置的账号），回回 400`CANNOT_DELETE_SUPER_ADMIN`——只有一位超管时这条会命中，有多位时不影响。用户记录不存在（例如令牌指向的账号已被删）回 404 `USER_NOT_FOUND`。
          */
         delete: operations["auth_close_account"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/auth/agreement-acceptances": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 记录一次协议同意留痕
+         * @description **需要登录**：留痕的主体就是令牌里的那个人，请求体没有「给谁记」的字段。这是合规留痕，**只增不改**——没有修改与删除端点，同一个人在不同时间同意同一个版本是两条独立的事实，所以重复调用不会报冲突，每次都追加一条。`agreement_code` 必须是已配置的协议（`contract_template.name`），未知代号回 400，避免留痕表被塞进查不到正文的「协议」。`agreement_version` 可留空，留空按模板当前版本落库；本端点不校验「是否同意过旧版」，协议修订后是否强制重新同意由调用方决定。注册成功时服务端会自动补一条 `source = 'register'` 的留痕，不依赖前端调用。
+         */
+        post: operations["auth_record_agreement_acceptance"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/auth/dev-access-status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 查询自己的开发者准入状态
+         * @description **需要登录**，不挂权限码（只能看自己的）。这是**只读**接口：不授予任何权限，也不会因为前提不满足而报错——前端正是靠它画「还差哪一步」。`is_dev` 取的是**生效**权限（用户级覆盖优先于角色），与 `/api/auth/users/privileges` 同一套合成规则。
+         */
+        get: operations["auth_dev_access_status"];
+        put?: never;
+        post?: never;
+        delete?: never;
         options?: never;
         head?: never;
         patch?: never;
@@ -1468,6 +1588,108 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/auth/qq/bind/url": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 取 QQ 绑定授权地址
+         * @description **需要登录**，不挂端点权限码（只作用于当前登录人自己的绑定）。
+         *                        回调回到 `/api/auth/qq/callback`，结果带在跳转参数里。
+         */
+        get: operations["auth_qq_bind_url"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/auth/qq/callback": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * QQ 登录 / 绑定回调
+         * @description **免登录**：与微信 / GitHub 回调同一套判定，**响应一律 302**，结果带在跳转参数里。
+         */
+        get: operations["auth_qq_callback"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/auth/qq/login/qr/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 轮询 QQ 扫码登录状态
+         * @description **免登录**：与微信版同构。轮询凭据不对一律回 `expired`。
+         */
+        get: operations["auth_qq_login_qr_status"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/auth/qq/login/qr/url": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 取 QQ 扫码登录二维码地址
+         * @description **免登录**：与微信版同构，渠道换成 QQ。会话 5 分钟过期。
+         */
+        get: operations["auth_qq_login_qr_url"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/auth/qq/login/url": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 取 QQ 登录授权地址
+         * @description **免登录**：与 `/api/auth/github/url` 同构，渠道换成 QQ 互联。
+         *                        同一 IP 5 分钟 120 次，超限 429。
+         */
+        get: operations["auth_qq_authorize_url"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/auth/refresh": {
         parameters: {
             query?: never;
@@ -1502,6 +1724,26 @@ export interface paths {
          * @description **免登录**：注册成功当场下发会话令牌，响应体与登录完全相同（`AuthResponse`）。**`password` 必须是 `md5(明文密码)`：32 位小写十六进制。** 客户端自己做一次 md5、取小写 hex，把结果放进 `password`；服务端只接受这个格式，直接传明文、大写 hex 或位数不对一律回 400`INVALID_ARGUMENT`，文案是「密码需为 32 位小写十六进制字符串（md5 后的密码）」。服务端不会再对收到的串做一次 md5，而是立刻用 Argon2id 加盐再哈希落库，所以入库的哈希既不等于明文也不等于客户端发来的 md5 串。用户名与邮箱都要过格式校验；用户名已占用回 409 `USERNAME_TAKEN`，邮箱已被注册回 409 `EMAIL_TAKEN`。两个占用判定都排在消费验证码之前，所以一次因重名 / 邮箱冲突失败的注册不会把验证码烧掉。`email_code` 必填，是 `/api/auth/send-register-email-code` 发出的那一封；验证码不存在 / 已使用 / 不匹配 / 已过期回 400，尝试次数超限回 429。`invite_code`、`share_type`、`share_target_id`、`request_dev_role` 当前只做兼容接收，不影响结果。同一邮箱每 15 分钟 12 次，超限 429。
          */
         post: operations["auth_register"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/auth/request-dev-role": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 申请开发者角色
+         * @description **需要登录 + `auth.request_dev_role.post`**（1.x 同名码，已授给 `user` 角色，所以任何登录用户都能申请）。按顺序校验三道前提，任何一条不满足就拒绝并给出可分支的错误码：未实名 `DEVELOPER_REALNAME_REQUIRED`、未成年 `DEVELOPER_UNDERAGE`、未签入驻协议 `DEVELOPER_AGREEMENT_UNSIGNED`（三者都回 403）。通过后把 `scope.dev.access` 写进**用户级权限覆盖**（不是角色），已经具备该 scope 时直接返回当前状态，不重复写。成功回 200，响应体与 `/api/auth/dev-access-status` 相同，前端不必再查一次。
+         */
+        post: operations["auth_request_dev_role"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1616,6 +1858,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/auth/user-service-agreement": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 取《用户服务协议》正文
+         * @description **免登录**：注册页在登录之前就要展示协议，所以这条走公开前缀。正文来自 `contract_template`（`name = 'user_service_agreement'`），运营改协议只改这一处。协议没配置时回 404 `AGREEMENT_NOT_CONFIGURED`，不会返回空正文——前端据此提示「协议未配置」而不是渲染一片空白。`version` 是自增整数（1.x 这里是日期串），正文修订后必须递增，`agreement_version` 就是按它判定「同意的是不是当前版」。
+         */
+        get: operations["auth_get_user_service_agreement"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/auth/users": {
         parameters: {
             query?: never;
@@ -1657,7 +1919,7 @@ export interface paths {
         };
         /**
          * 当前登录人的角色与权限码
-         * @description **需要登录**（`Authorization: Bearer <平台会话令牌>`），但**不挂端点权限码**——任何登录用户都只能读自己的这一份，归属即权限。返回主角色、全部角色、权限码全集，以及是否拥有超管 scope。前端用它决定菜单可见性与按钮显隐：权限码取值沿用 1.x 口径（如 `resource.purchase_create.post`），平台侧改名即破坏前端契约。令牌缺失 / 无效 / 已吊销回 401；权限查询本身失败回 500，不会当成「有权限」放行。
+         * @description **需要登录**（`Authorization: Bearer <平台会话令牌>`），但**不挂端点权限码**——任何登录用户都只能读自己的这一份，归属即权限。返回主角色、全部角色、**生效权限码**全集，以及是否拥有超管 scope。前端用它决定菜单可见性与按钮显隐：权限码取值沿用 1.x 口径（如 `resource.purchase_create.post`），平台侧改名即破坏前端契约。`permissions` 是**生效**权限（用户级覆盖优先于角色：显式授予的码角色没给也给，显式回收的码角色给了也不给），与 `GET /api/auth/users/{username}/permissions`里的 `effective_permissions` 同一套合成规则——只给角色那一半会出现「按钮露着但点下去 403」或「授了却不显示」。令牌缺失 / 无效 / 已吊销回 401；权限查询本身失败回 500，不会当成「有权限」放行。
          */
         get: operations["auth_privileges"];
         put?: never;
@@ -1702,6 +1964,202 @@ export interface paths {
          * @description **需要登录 + `user.username.post`**。只改登录名，邮箱与角色不动，成功回 200 与空响应体。新旧同名时直接回 200、不做任何写入。新用户名要过格式校验，不合法回 400。新用户名与别人重名时落到 500（唯一约束冲突没有单独映射成 409）。账号不存在回 404 `USER_NOT_FOUND`。
          */
         post: operations["identity_admin_update_username"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/auth/users/{username}/permissions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 用户权限总览（管理端）
+         * @description **需要登录 + `user.permission.get`**。返回某个账号的权限全貌：`roles` 是它的全部角色，`role_permissions` 是这些角色**合起来**给的权限，`overrides` 是**用户级覆盖**（单独给这个人加的 / 收掉的），`effective_permissions` 是两者合成后的**最终生效**权限（覆盖优先于角色）。管理端真正要回答的问题是「这个人现在到底能调哪些接口」，看的是最后一份。账号不存在回 404 `USER_NOT_FOUND`；没有权限回 403 `FORBIDDEN`；权限查询失败回 500，不会当有权限放行。
+         */
+        get: operations["identity_admin_list_user_permissions"];
+        put?: never;
+        /**
+         * 授予 / 回收单个用户的权限码（管理端）
+         * @description **需要登录 + `user.permission.post`**。给单个账号**单独**授予或回收一个权限码，这是「改角色」和「整体替换角色权限」之外的那条路：`granted = true` 是显式授予（角色没给也给），`granted = false` 是显式回收（角色给了也不给）。覆盖**优先于角色**，且会一直压着角色，直到被取消覆盖。同一个 (账号, 权限码) 只有一行，反复设置就是改那一行。`permission_code` 必须是平台已登记的权限码，否则回 400 `INVALID_ARGUMENT`。**两条护栏**：① **只能授予或回收自己已持有的权限码**——`user.permission.post` 一旦被下放，持有者给自己授一个 `role.upsert.put` 就等于直接变超管；② **不能对自己回收 `user.permission.*` 这三个管理权限码**——收走之后没人能再把权限授回来，只能直接改库。账号不存在回 404 `USER_NOT_FOUND`；没有权限回 403 `FORBIDDEN`；权限查询失败回 500。
+         */
+        post: operations["identity_admin_set_user_permission"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/auth/users/{username}/permissions/{permission_code}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * 取消用户级权限覆盖（管理端）
+         * @description **需要登录 + `user.permission.delete`**。删掉这个账号对某个权限码的**用户级覆盖**，回到「由角色决定」——与「回收」（`granted = false`）不是一回事：回收是留一行永远压过角色，取消是把这行删掉。目标本来就没有覆盖时也算成功（幂等，**未知权限码同样回 200**：没有覆盖行可删，状态不变）；响应里的 `overrides` 与 `effective_permissions` 直接反映当前状态。**两条护栏**：① **只能取消自己已持有的权限码**（与授予侧同一条规则）；② **不能让自己失去管理权限码**——DELETE 只能删不能授，删了就再也拿不回来（角色里本来就有这个码的话不算）。账号不存在回 404 `USER_NOT_FOUND`；没有权限回 403 `FORBIDDEN`；权限查询失败回 500。
+         */
+        delete: operations["identity_admin_clear_user_permission"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/auth/wechat-miniprogram/login": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 微信小程序登录
+         * @description **免登录**：客户端用 `wx.login` 拿到 code 发过来，服务端调 `jscode2session`
+         *                        换 openid，然后登录或建号。与网页授权共用同一段「登录或建号」逻辑，
+         *                        所以同一个人先用网页登录、再用小程序登录，落的是**同一个平台账号**。
+         *                        小程序不回昵称与邮箱：新建的账号没有邮箱，用户中心会提示去绑定。
+         *                        小程序登录未启用回 404 `OAUTH_DISABLED`；code 无效或过期回 400
+         *                        `OAUTH_TOKEN_EXCHANGE_FAILED`。
+         */
+        post: operations["auth_wechat_miniprogram_login"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/auth/wechat/bind/url": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 取微信绑定授权地址
+         * @description **需要登录**，不挂端点权限码（只作用于当前登录人自己的绑定）。
+         *                        回调回到 `/api/auth/wechat/callback`，结果带在跳转参数里。
+         */
+        get: operations["auth_wechat_bind_url"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/auth/wechat/callback": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 微信登录 / 绑定回调
+         * @description **免登录**：第三方跳回来的地址。与 GitHub 回调同一套判定，**响应一律 302**，
+         *                        结果带在跳转参数里（`oauth_token` / `oauth_error` / `bind=success` / `bind_error`）。
+         *                        微信不返回邮箱，所以走微信登录新建的账号没有邮箱，用户中心会提示去绑定。
+         */
+        get: operations["auth_wechat_callback"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/auth/wechat/login/qr/confirm": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 手机侧确认扫码登录
+         * @description **需要登录**（扫码的那台手机上刚完成网页授权）。这是防「二维码被转发」的关键一步：PC 拿不到令牌，除非有**已登录的人**拿着这个 state 确认。失效 / 已确认 / 过期一律回 400 `INVALID_ARGUMENT`，不区分具体原因——否则这个接口就成了会话状态的探测器。
+         */
+        post: operations["auth_wechat_login_qr_confirm"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/auth/wechat/login/qr/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 轮询微信扫码登录状态
+         * @description **免登录**：PC 侧轮询。`pending` 等待确认 → `confirmed` 返回令牌 → 取走后 `expired`。**轮询凭据不对一律回 `expired`**：错的凭据不该得到任何信息。令牌一次性，重复轮询拿不到第二个。
+         */
+        get: operations["auth_wechat_login_qr_status"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/auth/wechat/login/qr/url": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 取微信扫码登录二维码地址
+         * @description **免登录**：PC 侧调用。返回渠道授权地址（前端画成二维码）、一次性 `state` 与轮询凭据。二维码里只有 `state`，不带任何令牌；会话 5 分钟过期。未启用回 404 `OAUTH_DISABLED`，凭据或回调配置不全回 400。
+         */
+        get: operations["auth_wechat_login_qr_url"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/auth/wechat/login/url": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 取微信登录授权地址
+         * @description **免登录**：与 `/api/auth/github/url` 同构，渠道换成微信（开放平台网站应用，
+         *                        PC 扫码授权页）。`redirect_to` 只接受与落地页同源的地址；
+         *                        渠道未启用回 404 `OAUTH_DISABLED`；凭据不全回 400 `OAUTH_CONFIG_INCOMPLETE`；
+         *                        回调地址与落地页没配回 400 `OAUTH_REDIRECT_CONFIG_INCOMPLETE`。
+         *                        同一 IP 5 分钟 120 次，超限 429。
+         */
+        get: operations["auth_wechat_authorize_url"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -2163,7 +2621,7 @@ export interface paths {
         put?: never;
         /**
          * 发起电子签署
-         * @description 当事人主动发起电子签署，返回这一侧要打开的签署链接，需要 `contract.my_requirement.get`。只有当事人能发起——**管理端不能替当事人签**，非当事人 403。并发起前有两道闸：带自定义附件的合同要求「当前这一版附件已放行」（换过文件就失效，得重审，409）；合同状态必须能发起签署（等待签约 0、过期、拒签、作废、撤销都不行，409）。签署人姓名与手机号只能取自**实名资料**：渠道建签约用户时手机号必填，取不到就明确失败（400）让人先去实名，而不是把空值丢给渠道。**发起后本地状态不变**：「签约中 1」由渠道回执写入，平台不能凭「点了发起」就说合同已在签，否则渠道侧失败的合同会永远卡在签约中。`notice = true` 让渠道给签署人发短信。成功会写一条 `sign_initiated` 签署日志并记下渠道合同号。
+         * @description 当事人主动发起电子签署，返回这一侧要打开的签署链接，需要 `contract.my_requirement.get`。只有当事人能发起——**管理端不能替当事人签**，非当事人 403。并发起前有两道闸：带自定义附件的合同要求「当前这一版附件已放行」（换过文件就失效，得重审，409）；合同状态必须能发起签署（过期 / 拒签 / 作废 / 撤销都是 409；**等待签约 0 放行**——发起签署就是合同的第一个签署动作）。签署人姓名与手机号只能取自**实名资料**：渠道建签约用户时手机号必填，取不到就明确失败（400）让人先去实名，而不是把空值丢给渠道。**发起成功后**：本地停在「等待签约 0」的合同被推成「签约中 1」；已经是「签约中 1」的不动状态；「已签约 2」只能由渠道回执写入，平台不能凭「点了发起」就把合同说成已生效。`notice = true` 让渠道给签署人发短信。成功会写一条 `sign_initiated` 签署日志并记下渠道合同号。
          */
         post: operations["contract_initiate_signing"];
         delete?: never;
@@ -2327,7 +2785,7 @@ export interface paths {
         put?: never;
         /**
          * 平台内手写签署
-         * @description 当事人在平台内签这份合同（不经过电子签渠道），需要 `contract.my_requirement.get`。与 legacy `sign_contract_by_user` 同口径：**后台账号一律 403**（后台不许替当事人签，按权限码 `contract.detail.get` 判身份而不是按角色名）；**带附件的合同不许平台内签**——附件要随渠道卷进存证，手写签名留不下这份证据；已有渠道合同号的同样不许（409）；未发起（等待签约 0）与终态（过期 / 拒签 / 作废 / 撤销）不能签（409）；自己已经签过则**幂等返回当前合同、不报错**（重复点一下不该变成错误）。双方都签完才推成「已签约 2」，否则保持「签约中 1」；丙方（平台）为空时不影响判定。签名数据可留空，留空时日志里不落签名指纹；非空会记 SHA-256。
+         * @description 当事人在平台内签这份合同（不经过电子签渠道），需要 `contract.my_requirement.get`。与 legacy `sign_contract_by_user` 同口径：**后台账号一律 403**（后台不许替当事人签，按权限码 `contract.detail.get` 判身份而不是按角色名）；**带附件的合同不许平台内签**——附件要随渠道卷进存证，手写签名留不下这份证据；已有渠道合同号的同样不许（409）；终态（过期 / 拒签 / 作废 / 撤销）不能签（409）；**等待签约 0 能签**——这一下就是合同的第一个签署动作，签完落到「签约中 1」；自己已经签过则**幂等返回当前合同、不报错**（重复点一下不该变成错误）。双方都签完才推成「已签约 2」，否则保持「签约中 1」；丙方（平台）为空时不影响判定。签名数据可留空，留空时日志里不落签名指纹；非空会记 SHA-256。
          */
         post: operations["contract_sign_in_platform"];
         delete?: never;
@@ -2551,6 +3009,182 @@ export interface paths {
          */
         post: operations["conversation_mark_read"];
         delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/coupon/available": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["coupon_available_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/coupon/coupon-packs/from-selection": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["coupon_admin_pack_from_selection"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/coupon/coupons": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["coupon_admin_amount_list"];
+        put?: never;
+        post: operations["coupon_admin_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/coupon/coupons/assignable": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["coupon_admin_assignable_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/coupon/coupons/batch": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["coupon_admin_batch_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/coupon/coupons/{code}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete: operations["coupon_admin_delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/coupon/discount-coupons": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["coupon_admin_percent_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/coupon/users/{username}/coupons": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["coupon_admin_user_amount_list"];
+        put?: never;
+        post: operations["coupon_admin_user_amount_assign"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/coupon/users/{username}/coupons/{code}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete: operations["coupon_admin_user_amount_remove"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/coupon/users/{username}/discount-coupons": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["coupon_admin_user_percent_list"];
+        put?: never;
+        post: operations["coupon_admin_user_percent_assign"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/coupon/users/{username}/discount-coupons/{code}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete: operations["coupon_admin_user_percent_remove"];
         options?: never;
         head?: never;
         patch?: never;
@@ -2973,6 +3607,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/payment/auto-withdrawals/run": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 跑一轮自动出款
+         * @description 手动跑一轮自动出款，需要 `payment.auto_withdrawal_run.post`。只扫「待出款」的单，并逐笔过自动出款的门禁：开发者的自动提现开关要开着、金额不能超过自动出款上限。**不自动重试出款失败的单**——渠道报失败不等于钱没出去，那类单只能人工核对渠道流水后走「重试」或「确认未出款」。一笔失败不影响其余。
+         */
+        post: operations["payment_admin_run_auto_withdrawals"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/payment/availability": {
         parameters: {
             query?: never;
@@ -3091,7 +3745,11 @@ export interface paths {
         get: operations["payment_get_order"];
         put?: never;
         post?: never;
-        delete?: never;
+        /**
+         * 删除支付单记录
+         * @description 管理端硬删一张支付单记录（非退款语义），需要 `payment.order_delete.delete`。**只允许删没收到过钱的单**：已支付的支付单下面挂着退款单与分账单，删掉之后对账就答不出「这笔钱收在哪一单上」，这种单回 409。删记录会留审计（谁在什么时候删的）。
+         */
+        delete: operations["payment_admin_delete_order"];
         options?: never;
         head?: never;
         patch?: never;
@@ -3328,6 +3986,26 @@ export interface paths {
         put?: never;
         post?: never;
         delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/payment/withdrawals/{withdrawal_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * 删除提现单记录
+         * @description 管理端硬删一张提现单记录，需要 `payment.admin_withdrawal_delete.delete`。**只允许删钱还没出过平台的单**（待审核 / 已驳回）：额度是按提现单汇总算的，删掉一张在途单等于凭空多出一笔可提现额度。其余状态回 409，并在文案里说明该先做什么（对账 / 确认未出款）。
+         */
+        delete: operations["payment_admin_delete_withdrawal"];
         options?: never;
         head?: never;
         patch?: never;
@@ -4044,7 +4722,7 @@ export interface paths {
         put?: never;
         /**
          * 需求方验收交付（可通过 / 可打回）
-         * @description 需求方验收交付，需要 `requirement.request_final_payment.post`。请求体沿用 1.x `AcceptDeliveryRequest` 的形状：`{ "result": "passed" | "rejected", "note": "..." }`（`result` 缺省按通过）。**通过**：与 `POST /{id}/request-final-payment` 同一份实现——自管模式验收即结单，担保模式验收通过进待付尾款（合同未签署回 400）。**打回**：**必须写理由**（空理由 400），状态退回 `in_development` 挡住尾款，起算限期补救期限（`[breach] remediation_hours`，默认 72 小时），通知开发者整改；打回会把「验收通过」那一面整体撤下，全部结论（含每一次打回）落在追加流水里。打回**不回滚已经发生的资金动作**：真要追回走违约或售后。**自管模式没有打回这一支**（那边验收即结单，没有「待付尾款」可退），返回 409。只有需求方本人能调，其余 403。
+         * @description 需求方验收交付，需要 `requirement.request_final_payment.post`。请求体沿用 1.x `AcceptDeliveryRequest` 的形状：`{ "result": "passed" | "rejected", "note": "..." }`（`result` 缺省按通过）。**通过**：与 `POST /{id}/request-final-payment` 同一份实现——自管模式验收即结单，担保模式验收通过进待付尾款（合同未签署回 400）。**打回**：**必须写理由**（空理由 400），状态退回 `in_development` 挡住尾款，起算限期补救期限（`[breach] remediation_hours`，默认 72 小时），通知开发者整改；打回会把「验收通过」那一面整体撤下，全部结论（含每一次打回）落在追加流水里。担保模式下「已付定金 + 已交付」与「待付尾款 + 已交付」都能打回——前一档正是线上常态（接单只占位、定金到账才推状态、交付不改状态）。打回**不回滚已经发生的资金动作**：真要追回走违约或售后。**自管模式没有打回这一支**（那边验收即结单，没有「待付尾款」可退），返回 409。只有需求方本人能调，其余 403。
          */
         post: operations["requirement_acceptance"];
         delete?: never;
@@ -4200,13 +4878,37 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get?: never;
+        /**
+         * 读待处理的期限变更申请（客服）
+         * @description 客服读这条需求当前待处理的期限变更申请，需要 `requirement.deadline_change_request.get`。返回申请人、事由、时长、说明与提交时间——批不批要看这些，只给「有一条申请」等于让客服盲批。**没有待处理申请时回 200 + `request = null`**，不是 404。同时只有一条：申请入口对同一需求只允许一条待处理记录。
+         */
+        get: operations["requirement_get_deadline_change_request"];
         put?: never;
         /**
          * 当事人申请变更期限
          * @description 需求方或已接单的开发者申请顺延 / 中止期限，需要 `requirement.deadline_change_request.post`。**申请不改期限**：只落一条待处理记录 + 让客服队列看到，等客服处理。`kind` 取 `extend` / `suspend`，`reason` 与客服那三个事由同一套，`hours` 取值 1~8760，`note` 是申请说明、**至少 5 个字**（它是客服判断批不批的唯一依据，「顺延一下」四个字批不了）。同一需求同时只允许一条待处理申请，再申请回 409。成功返回 204，无响应体。
          */
         post: operations["requirement_request_deadline_change"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/requirement/{requirement_id}/deadline-change-request/reject": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 驳回期限变更申请（客服）
+         * @description 客服驳回当事人的顺延 / 中止申请，需要 `requirement.deadline_request_reject.post`。**期限一点不动**：驳回只把申请结为 `rejected` 并记下理由与处理人。驳回理由建议写清楚（申请人会看到），为空也能结（兼容旧前端）。这条需求没有待处理申请回 404；并发下已被别人处理回 409。
+         */
+        post: operations["requirement_reject_deadline_change_request"];
         delete?: never;
         options?: never;
         head?: never;
@@ -4267,6 +4969,26 @@ export interface paths {
          * @description 开发者催告需求方支付尾款，需要 `requirement.final_pay_cure.post`。前置：承接该需求的开发者本人、状态 `pending_final`、且是担保模式（自管模式没有平台代收尾款，催告没有对象）。**只记次数、不改状态、不动钱**：同一个尾款周期内最多 3 次，超出按状态冲突（409）拒绝。成功返回 204 且无响应体（legacy 同口径）；前端不要指望从这里读到次数。
          */
         post: operations["requirement_final_pay_cure"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/requirement/{requirement_id}/late-penalty": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 读迟延履行违约金（客服）
+         * @description 按 1.x 的口径算这条需求的迟延履行违约金：**合同总价 × 日费率 × 逾期天数**，受累计上限兜底，逾期不足一天按一天算。需要 `requirement.late_penalty.get`。日费率、上限、交付期限都取 `[breach]` 的配置；`delivery_deadline_hours = 0`表示没设交付期限，一律返回 0——**默认就是关的**，打开等于开始对存量需求计罚。**只算不动钱**：1.x 也是在争议裁决那一刻按人认定的天数算一次，并进从接单保证金扣划的总额；2.0 的裁决额度同样由客服填，这个端点只把数摆出来。还没交付的按「仍在迟延」算到此刻，金额会随时间继续涨；交付后金额定格。
+         */
+        get: operations["requirement_get_late_penalty"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -5765,6 +6487,54 @@ export interface paths {
         patch: operations["resource_admin_version_update_legacy_plural"];
         trace?: never;
     };
+    "/api/system/activity-campaigns": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["system_activity_campaign_list"];
+        put?: never;
+        post: operations["system_activity_campaign_publish"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/system/activity-campaigns/{activity_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put: operations["system_activity_campaign_update"];
+        post?: never;
+        delete: operations["system_activity_campaign_delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/system/activity-coupon-packs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["system_activity_coupon_pack_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/system/data-encryption-key": {
         parameters: {
             query?: never;
@@ -5881,6 +6651,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/system/official-activities": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["system_official_activity_list"];
+        put?: never;
+        post: operations["system_official_activity_publish"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/system/rate-limit": {
         parameters: {
             query?: never;
@@ -5929,6 +6715,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/system/settings/activity-campaigns/claim": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["system_activity_campaign_claim"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/system/settings/profile": {
         parameters: {
             query?: never;
@@ -5938,7 +6740,7 @@ export interface paths {
         };
         /**
          * 我的档案
-         * @description **需要登录 + `system.profile.get`**。返回本人档案：登录名、简介、主邮箱、头像与主页背景地址、两因素开关、两个订阅开关。归属即权限——只能读自己的，接口没有「读谁」的参数。1.x 响应里的 `wechat_bound` 在 2.0 没有对应能力（微信登录尚未接入），因此不返回。令牌缺失 / 无效 / 已吊销回 401；账号不存在回 404 `USER_NOT_FOUND`。
+         * @description **需要登录 + `system.profile.get`**。返回本人档案：登录名、简介、主邮箱、头像与主页背景地址、两因素开关、两个订阅开关。归属即权限——只能读自己的，接口没有「读谁」的参数。1.x 响应里的 `wechat_bound` 不在档案里重复返回，绑定状态走 `/api/auth/providers`。令牌缺失 / 无效 / 已吊销回 401；账号不存在回 404 `USER_NOT_FOUND`。
          */
         get: operations["profile_get"];
         /**
@@ -6545,6 +7347,90 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/tips": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 发起一笔打赏
+         * @description **需要登录**，不挂权限码。打赏人永远是令牌里的那个人，请求体里没有「谁打赏」。校验顺序固定：不能自赏 → 开发者开着打赏 → 金额命中档位或落在自填区间 → 留言 ≤ 200 字。平台抽成比例在**下单时快照**，之后改配置不影响这一单。建单成功后会向支付渠道建一笔支付，响应里带 `pay_url`（电脑端扫码）；渠道建单失败时订单仍留在 `pending`，重试不会重复收钱。
+         */
+        post: operations["tip_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tips/received": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 我收到的打赏
+         * @description **需要登录**，不挂权限码（查的是自己收到的）。只列**已收款**的单，按收款时间倒序，最多 200 条。匿名单不会把打赏人带出来（`tipper` 为空串）——但开发者本人需要知道「谁给我打赏了」吗？口径与 1.x 一致：**匿名对所有人匿名**，包括开发者本人。
+         */
+        get: operations["tip_received"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tips/settings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 读自己的打赏设置
+         * @description **需要登录**，不挂权限码（只能读自己的）。没配置过时返回默认值，其中 `enabled = false`——打赏默认关闭，开发者主动开了才会在主页出现入口。
+         */
+        get: operations["tip_get_settings"];
+        /**
+         * 更新自己的打赏设置
+         * @description **需要登录**，不挂权限码（只能改自己的）。校验与归一化在服务层：档位最多 6 个、每个金额 > 0、去重后升序；自填区间必须 `下限 > 0` 且 `上限 >= 下限`；感谢语最多 100 字。任何一条不满足回 400 `TIP_CONFIG_INVALID`，文案就是给用户看的那句。
+         */
+        put: operations["tip_update_settings"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tips/{order_no}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 查一张打赏单
+         * @description **需要登录**，不挂权限码。**只有打赏人与被打赏的开发者能看**，其他人一律 404 `TIP_ORDER_NOT_FOUND`——403 会泄漏「这个单号真实存在」。若单据仍是 `pending`，本接口会顺手向渠道回查一次并推进状态（惰性回查，替代 1.x 的渠道回调；查到了 `paid` 会顺带发起分账）。
+         */
+        get: operations["tip_get_order"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/user/oauth/{provider}/system": {
         parameters: {
             query?: never;
@@ -6653,6 +7539,47 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/auth/qq/callback": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * QQ 登录 / 绑定回调（旧根前缀）
+         * @description **免登录**：同 `/auth/wechat/callback`，渠道路换成 QQ。**响应一律 302**。
+         */
+        get: operations["auth_qq_callback_legacy"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/auth/wechat/callback": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 微信登录 / 绑定回调（旧根前缀）
+         * @description **免登录**：1.x 时代的回调前缀，为不打断已在微信后台登记的地址而保留；
+         *                        与 `/api/auth/wechat/callback` 是同一个处理函数、同一套判定。**响应一律 302**。
+         */
+        get: operations["auth_wechat_callback_legacy"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -6747,6 +7674,40 @@ export interface components {
             status: string;
             /** @description 状态的中文说明。 */
             status_label: string;
+        };
+        ActivityCampaignClaimRequest: {
+            code: string;
+        };
+        ActivityCampaignClaimResponse: {
+            /** Format: int64 */
+            activity_id: number;
+            already_claimed: boolean;
+            assigned_coupon_code: string;
+            claimed_at: string;
+            coupon_name: string;
+            coupon_type: string;
+            title: string;
+        };
+        ActivityCouponPackResponse: {
+            /** Format: int64 */
+            amount_off_fen?: number | null;
+            /** Format: int64 */
+            available_count: number;
+            coupon_type: string;
+            created_at: string;
+            created_by: string;
+            /** Format: int32 */
+            discount_bps?: number | null;
+            ends_at?: string | null;
+            /** Format: int64 */
+            max_discount_fen?: number | null;
+            /** Format: int64 */
+            min_amount_fen: number;
+            name: string;
+            pack_id: string;
+            starts_at: string;
+            /** Format: int64 */
+            total_count: number;
         };
         /** @description 添加企业签署人请求。 */
         AddEnterpriseUserRequest: {
@@ -7054,6 +8015,55 @@ export interface components {
             /** @description 用户名。 */
             username: string;
         };
+        /** @description 同意记录请求体。字段与 1.x 一致（`agreement_version` 缺省时按模板当前版本落库）。 */
+        AgreementAcceptanceRequest: {
+            /** @description 协议代号，如 `user_service_agreement`。未知代号回 400。 */
+            agreement_code: string;
+            /** @description 协议版本；留空表示「按模板当前版本」。 */
+            agreement_version?: string;
+            /** @description 客户端形态（`web` / `app` / `miniprogram`）。 */
+            client_platform?: string;
+            /** @description 来源，缺省 `user`；注册时服务端自动留痕的来源是 `register`。 */
+            source?: string;
+        };
+        /** @description 同意记录响应。 */
+        AgreementAcceptanceResponse: {
+            /** @description 同意时间（东八区 `YYYY-MM-DD HH:MM:SS`）。 */
+            agreed_at: string;
+            /** @description 协议代号。 */
+            agreement_code: string;
+            /**
+             * Format: int32
+             * @description 协议版本。
+             */
+            agreement_version: number;
+            /** @description 客户端形态。 */
+            client_platform: string;
+            /** @description 同意时的主角色快照。 */
+            role: string;
+            /** @description 来源。 */
+            source: string;
+            /** @description 同意人。 */
+            username: string;
+        };
+        /** @description 协议正文响应。 */
+        AgreementContentResponse: {
+            /** @description 协议代号。 */
+            code: string;
+            /** @description 正文（纯文本，段落用换行分隔）。 */
+            content: string;
+            /** @description 生效时间（东八区 `YYYY-MM-DD HH:MM:SS`），模板未配置时为空串。 */
+            effective_at: string;
+            /** @description 标题。 */
+            title: string;
+            /** @description 模板更新时间（东八区）。 */
+            updated_at: string;
+            /**
+             * Format: int32
+             * @description 当前版本号（自增整数；1.x 这里是日期串，见模块注释）。
+             */
+            version: number;
+        };
         /** @description 回调投递记录的查询参数。 */
         ApiCallbackLogQueryParams: {
             /**
@@ -7199,6 +8209,9 @@ export interface components {
             /** @description 申请说明。 */
             note?: string | null;
         };
+        AssignCouponRequest: {
+            coupon_code: string;
+        };
         /** @description 附件审核请求体（管理端 `POST /api/contract/{id}/attachment/review`）。 */
         AttachmentReviewRequest: {
             /** @description `approved` 放行 / `rejected` 驳回。 */
@@ -7274,6 +8287,62 @@ export interface components {
         AuthorizeUrlResponse: {
             /** @description 第三方授权地址。 */
             url: string;
+        };
+        /** @description 跑一轮自动出款的结果（一笔一行）。 */
+        AutoPayoutRunItemResponse: {
+            /**
+             * Format: int64
+             * @description 金额（分）。
+             */
+            amount_fen: number;
+            /** @description 申请人。 */
+            creator: string;
+            /** @description 处理结果：`submitted` / `skipped` / `failed`。 */
+            outcome: string;
+            /** @description 处理结果中文说明。 */
+            outcome_label: string;
+            /** @description 这一笔处理完时的状态（认领不到时读回来的真实状态）。 */
+            status: string;
+            /** @description 提现单号。 */
+            withdrawal_id: string;
+        };
+        /** @description 跑一轮自动出款的查询参数。 */
+        AutoPayoutRunQuery: {
+            /**
+             * Format: int64
+             * @description 本轮最多处理多少笔。缺省 200，上限 500。
+             */
+            limit?: number | null;
+        };
+        /** @description 跑一轮自动出款的汇总。 */
+        AutoPayoutRunResponse: {
+            /** @description 逐笔明细。 */
+            details: components["schemas"]["AutoPayoutRunItemResponse"][];
+            /**
+             * Format: int64
+             * @description 发起失败的笔数。
+             */
+            failed: number;
+            /**
+             * Format: int64
+             * @description 被门禁挡住（开关没开 / 超上限）、这一轮没轮到的笔数。
+             */
+            ineligible: number;
+            /**
+             * Format: int64
+             * @description 扫了多少笔待出款单。
+             */
+            scanned: number;
+            /**
+             * Format: int64
+             * @description 跳过的笔数（认领不到：正在出款 / 已被别处推进）。
+             */
+            skipped: number;
+            /**
+             * Format: int64
+             * @description 发起出款的笔数。
+             */
+            submitted: number;
         };
         /** @description 支付通道可用性。 */
         AvailabilityResponse: {
@@ -7373,6 +8442,24 @@ export interface components {
             acceptance_cure_hours: number;
             /**
              * Format: int64
+             * @description 催告提前量（小时，0 = 不做提前催告）。
+             *
+             *     到点前多少小时提醒一次（整条需求只提醒一次）。1.x 默认 12。
+             * @default 12
+             */
+            cure_notice_lead_hours: number;
+            /**
+             * Format: int64
+             * @description 交付期限（小时，0 = 不设交付期限）。
+             *
+             *     从合同签署时刻起算。**默认 0 = 关**，与 1.x 同口径（`[breach] delivery_deadline_hours`
+             *     默认 0）：不设期限就没有交付逾期，也就没有迟延履行违约金——1.x 上线时是关着的，
+             *     打开等于给存量需求追溯计罚，所以只能由运营显式开。
+             * @default 0
+             */
+            delivery_deadline_hours: number;
+            /**
+             * Format: int64
              * @description 合同签好后甲方缴付定金的期限（小时）。
              *
              *     逾期视为甲方根本违约：解除绑定、作废合同、需求回到大厅。
@@ -7380,6 +8467,39 @@ export interface components {
              * @default 48
              */
             deposit_pay_hours: number;
+            /**
+             * Format: int64
+             * @description 同一尾款周期内开发者最多能催告几次（0 = 禁止催告）。
+             *
+             *     1.x `developer_final_cure_max` 默认 3。
+             * @default 3
+             */
+            developer_final_cure_max: number;
+            /**
+             * Format: int64
+             * @description 尾款缴付期限（小时，0 = 不做尾款逾期判定）。
+             *
+             *     从验收通过、进入待付尾款起算。**到期不清空**：它是迟延履行天数的基准，
+             *     清掉就再也没法回答「拖了几天」。1.x 同口径（默认 72）。
+             * @default 72
+             */
+            final_pay_cure_hours: number;
+            /**
+             * Format: int32
+             * @description 迟延履行违约金的日费率（万分之几 / 日，0 = 不计违约金）。
+             *
+             *     按**合同总价**（本合同的需求预算快照）计，口径照 1.x `late_penalty_bps_per_day`（默认 5）。
+             * @default 5
+             */
+            late_penalty_bps_per_day: number;
+            /**
+             * Format: int32
+             * @description 违约金的累计上限（万分之几 / 合同总价，0 = 不封顶）。
+             *
+             *     1.x `late_penalty_cap_bps` 默认 1000，即最多罚到合同总价的 10%。
+             * @default 1000
+             */
+            late_penalty_cap_bps: number;
             /**
              * Format: int64
              * @description 验收被打回后，开发者整改并重新交付的期限（小时）。
@@ -7446,6 +8566,14 @@ export interface components {
             claim_note: string;
             /** @description 结案时间。 */
             closed_time?: string | null;
+            /**
+             * @description 平台处置人（裁决 / 驳回的处理人）。未处置为 `null`。
+             *
+             *     驳回没有裁决内容，但「谁在什么时候驳回的」要能查到——那是问责的依据。
+             */
+            handled_by?: string | null;
+            /** @description 平台处置时间。 */
+            handled_time?: string | null;
             /** @description 协商一致的时刻。 */
             mutual_agreed_time?: string | null;
             /** @description 表态流水（按时间正序）。 */
@@ -7865,6 +8993,31 @@ export interface components {
             /** @description 更新时间。 */
             updated_at: string;
         };
+        CouponPackResponse: {
+            coupon_type: string;
+            name: string;
+            pack_id: string;
+            /** Format: int64 */
+            total_count: number;
+        };
+        CouponResponse: {
+            active: boolean;
+            /** Format: int64 */
+            amount_off_fen?: number | null;
+            code: string;
+            coupon_pack_id?: string | null;
+            /** Format: int32 */
+            discount_bps?: number | null;
+            discount_type: string;
+            ends_at?: string | null;
+            /** Format: int64 */
+            max_discount_fen?: number | null;
+            /** Format: int64 */
+            min_amount_fen: number;
+            name: string;
+            starts_at?: string | null;
+            status: string;
+        };
         /** @description 创建密钥请求体。 */
         CreateApiKeyRequest: {
             /** @description 过期时间，`YYYY-MM-DD` 或 `YYYY-MM-DD HH:MM:SS`。 */
@@ -7918,6 +9071,34 @@ export interface components {
              * @description 模板主键（必填）。
              */
             template_id: number;
+        };
+        CreateCouponPackFromSelectionRequest: {
+            coupon_codes: string[];
+            coupon_type: string;
+            pack_name?: string | null;
+        };
+        CreateCouponRequest: {
+            /**
+             * Format: int64
+             * @description 满减金额（分），discount_type=amount 时必填。
+             */
+            amount_off_fen?: number | null;
+            code?: string | null;
+            create_pack?: boolean | null;
+            /**
+             * Format: int32
+             * @description 优惠百分比基点，2000 表示优惠 20%，discount_type=percent 时必填。
+             */
+            discount_bps?: number | null;
+            discount_type: string;
+            ends_at?: string | null;
+            /** Format: int64 */
+            max_discount_fen?: number | null;
+            /** Format: int64 */
+            min_amount_fen?: number;
+            name: string;
+            /** @description 东八区 YYYY-MM-DD HH:MM:SS。 */
+            starts_at?: string | null;
         };
         /** @description 发起定金支付的请求体（字段名与 legacy 一致）。 */
         CreateDepositPaymentRequest: {
@@ -8040,6 +9221,20 @@ export interface components {
             /** @description 默认标题；留空时建单用模板名。 */
             title?: string;
         };
+        /** @description 发起打赏的请求体。 */
+        CreateTipRequest: {
+            /**
+             * Format: int64
+             * @description 金额（分）。
+             */
+            amount_fen: number;
+            /** @description 是否匿名。 */
+            anonymous?: boolean;
+            /** @description 被打赏的开发者。 */
+            developer: string;
+            /** @description 留言，最多 200 字。 */
+            message?: string;
+        };
         /** @description 创建用户请求体。 */
         CreateUserRequest: {
             /** @description 邮箱。 */
@@ -8161,6 +9356,29 @@ export interface components {
             note?: string;
             /** @description 事由。 */
             reason: string;
+        };
+        /** @description 待处理申请的响应体（客服工作台用）。 */
+        DeadlineChangeRequestView: {
+            /**
+             * Format: int64
+             * @description 申请时长（小时）。
+             */
+            hours: number;
+            /**
+             * Format: int64
+             * @description 申请编号。
+             */
+            id: number;
+            /** @description `extend` / `suspend`。 */
+            kind: string;
+            /** @description 申请说明。 */
+            note: string;
+            /** @description 事由：`force_majeure` / `requirement_change` / `third_party`。 */
+            reason: string;
+            /** @description 提交时间（东八区 `YYYY-MM-DD HH:MM:SS`）。 */
+            requested_at: string;
+            /** @description 申请人。 */
+            requested_by: string;
         };
         /** @description 裁决请求体。 */
         DecideCaseRequest: {
@@ -8390,6 +9608,21 @@ export interface components {
             requirement_id: string;
             /** @description 支付单状态。 */
             status: string;
+        };
+        /** @description 开发者准入状态。 */
+        DevAccessStatusResponse: {
+            /** @description 是否已签《接口使用协议》。 */
+            api_usage_agreement_signed: boolean;
+            /** @description 是否已签《开发者入驻协议》。 */
+            developer_agreement_signed: boolean;
+            /** @description 是否已成年。 */
+            is_adult: boolean;
+            /** @description 是否已具备开发者 scope（生效权限里有 `scope.dev.access`）。 */
+            is_dev: boolean;
+            /** @description 是否是超管。 */
+            is_super_admin: boolean;
+            /** @description 实名是否已通过。 */
+            realname_approved: boolean;
         };
         /** @description 一条收入明细。 */
         DevIncomeResponse: {
@@ -8983,6 +10216,44 @@ export interface components {
             /** @description 签名密钥（回显为 `***`；PUT 时传 `***` 或空串表示保持原值）。 */
             jwt_secret: string;
         };
+        /** @description 迟延履行违约金的响应体（客服在争议裁决时作依据）。 */
+        LatePenaltyResponse: {
+            /**
+             * Format: int64
+             * @description 违约金金额（分）。
+             */
+            amount_fen: number;
+            /** @description 违约金金额（元，两位小数的展示口径）。 */
+            amount_yuan: string;
+            /**
+             * Format: int32
+             * @description 累计上限（万分之几 / 合同总价，0 = 不封顶）。
+             */
+            cap_bps: number;
+            /** @description 实际交付时间；`null` 表示还没交付（金额会继续随天数上涨）。 */
+            delivered_at?: string | null;
+            /** @description 交付期限（东八区）；`null` 表示没设交付期限。 */
+            delivery_due_at?: string | null;
+            /**
+             * Format: int64
+             * @description 逾期天数（未逾期为 0）。
+             */
+            overdue_days: number;
+            /**
+             * Format: int32
+             * @description 日费率（万分之几 / 日）。
+             */
+            per_day_bps: number;
+            /** @description 需求编号。 */
+            requirement_id: string;
+            /** @description 是否已交付（交付后金额定格）。 */
+            settled: boolean;
+            /**
+             * Format: int64
+             * @description 计算基数：本合同的需求预算快照（分）。
+             */
+            total_fen: number;
+        };
         /** @description 身份证 OCR 请求体。 */
         LegalCertOcrRequest: {
             /** @description `front`（缺省）/ `back`。 */
@@ -9251,6 +10522,23 @@ export interface components {
             qq: boolean;
             /** @description 微信是否可用（暂未接管，固定 false）。 */
             wechat: boolean;
+        };
+        OfficialActivityResponse: {
+            activity_kind: string;
+            content: string;
+            coupon_code?: string | null;
+            coupon_name?: string | null;
+            /** Format: int64 */
+            coupon_pack_available_count?: number | null;
+            coupon_pack_id?: string | null;
+            coupon_pack_name?: string | null;
+            coupon_type?: string | null;
+            created_at: string;
+            /** Format: int64 */
+            id: number;
+            published_at: string;
+            published_by: string;
+            title: string;
         };
         /** @description 开发者站点下单请求体。 */
         OpenPurchaseRequest: {
@@ -9577,9 +10865,8 @@ export interface components {
         /**
          * @description 个人的档案响应。字段名与 1.x 一致，前端共用同一份类型定义。
          *
-         *     **没有** `wechat_bound`：1.x 那个字段来自微信登录绑定，2.0 还没有微信登录
-         *     （见 `AGENTS.md` 的 identity 缺口清单），恒为 `false` 的字段只会让前端渲染出
-         *     一个点了没反应的「去绑定」按钮，所以不返回。
+         *     **没有** `wechat_bound`：微信绑定状态统一走 `/api/auth/providers`，
+         *     不在档案响应里重复返回。
          */
         ProfileResponse: {
             /** @description 头像地址。 */
@@ -9649,6 +10936,56 @@ export interface components {
             status: string;
             /** @description 更新时间。 */
             updated_at: string;
+        };
+        /** @description 一条绑定关系。 */
+        ProviderAccountResponse: {
+            /** @description 绑定时间（东八区 `YYYY-MM-DD HH:MM:SS`）。 */
+            bound_at: string;
+            /** @description 渠道内的账号 ID。 */
+            external_id: string;
+            /** @description 渠道内的登录名。 */
+            external_login: string;
+            /** @description 渠道（`github` / `gitee`）。 */
+            provider: string;
+            /** @description 平台用户名。 */
+            username: string;
+        };
+        /** @description 绑定列表查询参数。 */
+        ProviderAccountsQuery: {
+            /** @description 关键字：同时匹配平台用户名与渠道内登录名（不区分大小写）。 */
+            keyword?: string | null;
+            /**
+             * Format: int64
+             * @description 页码，从 1 起。
+             */
+            page?: number | null;
+            /**
+             * Format: int64
+             * @description 每页条数，默认 20，上限 200。
+             */
+            page_size?: number | null;
+            /** @description 只列某个渠道：`github` / `gitee`；留空表示全部。 */
+            provider?: string | null;
+        };
+        /** @description 绑定列表响应。 */
+        ProviderAccountsResponse: {
+            /** @description 绑定关系。 */
+            items: components["schemas"]["ProviderAccountResponse"][];
+            /**
+             * Format: int64
+             * @description 当前页。
+             */
+            page: number;
+            /**
+             * Format: int64
+             * @description 每页条数。
+             */
+            page_size: number;
+            /**
+             * Format: int64
+             * @description 命中条件的总条数（不受分页影响）。
+             */
+            total: number;
         };
         /**
          * @description 公开档案响应。
@@ -9740,6 +11077,21 @@ export interface components {
              */
             total: number;
         };
+        PublishActivityCampaignRequest: {
+            content: string;
+            coupon_pack_id: string;
+            coupon_type: string;
+            title: string;
+        };
+        PublishOfficialActivityRequest: {
+            content: string;
+            title: string;
+        };
+        PublishOfficialActivityResponse: {
+            activity: components["schemas"]["OfficialActivityResponse"];
+            /** @description 实际生成的订阅通知任务数；未配置邮件端口时也按任务数返回。 */
+            notified_subscriber_count: number;
+        };
         /** @description 资源售卖口径。 */
         PurchaseConfig: {
             /**
@@ -9791,6 +11143,41 @@ export interface components {
              * @default
              */
             wechat_oauth_redirect_url: string;
+        };
+        /** @description 确认请求体。 */
+        QrConfirmRequest: {
+            /** @description 二维码上的 state。 */
+            state: string;
+        };
+        /** @description 轮询查询参数。 */
+        QrStatusQuery: {
+            /** @description 建码时拿到的轮询凭据。 */
+            poll_secret: string;
+            /** @description 二维码上的 state。 */
+            state: string;
+        };
+        /** @description 轮询响应。 */
+        QrStatusResponse: {
+            /** @description `pending` / `confirmed` / `expired`。 */
+            status: string;
+            /** @description 已确认时返回令牌（取走即作废）。 */
+            token?: string | null;
+            /** @description 已确认时返回账号。 */
+            username?: string | null;
+        };
+        /** @description 二维码地址查询参数。 */
+        QrUrlQuery: {
+            /** @description 登录成功后跳回的前端地址；留空用渠道落地页。 */
+            redirect_to?: string | null;
+        };
+        /** @description 二维码地址响应。 */
+        QrUrlResponse: {
+            /** @description 轮询凭据：只在这时返回一次。 */
+            poll_secret: string;
+            /** @description 一次性标识。 */
+            state: string;
+            /** @description 授权地址（前端画成二维码）。 */
+            url: string;
         };
         /**
          * @description 限流配置（进程内滑动窗口）。
@@ -10028,6 +11415,11 @@ export interface components {
             turnstile_token?: string | null;
             /** @description 登录名。 */
             username: string;
+        };
+        /** @description 驳回请求体。 */
+        RejectDeadlineRequest: {
+            /** @description 驳回理由（写进申请记录，申请人看得到）。 */
+            note?: string;
         };
         /**
          * @description 人工解冻请求体。
@@ -10707,6 +12099,24 @@ export interface components {
                 acceptance_cure_hours: number;
                 /**
                  * Format: int64
+                 * @description 催告提前量（小时，0 = 不做提前催告）。
+                 *
+                 *     到点前多少小时提醒一次（整条需求只提醒一次）。1.x 默认 12。
+                 * @default 12
+                 */
+                cure_notice_lead_hours: number;
+                /**
+                 * Format: int64
+                 * @description 交付期限（小时，0 = 不设交付期限）。
+                 *
+                 *     从合同签署时刻起算。**默认 0 = 关**，与 1.x 同口径（`[breach] delivery_deadline_hours`
+                 *     默认 0）：不设期限就没有交付逾期，也就没有迟延履行违约金——1.x 上线时是关着的，
+                 *     打开等于给存量需求追溯计罚，所以只能由运营显式开。
+                 * @default 0
+                 */
+                delivery_deadline_hours: number;
+                /**
+                 * Format: int64
                  * @description 合同签好后甲方缴付定金的期限（小时）。
                  *
                  *     逾期视为甲方根本违约：解除绑定、作废合同、需求回到大厅。
@@ -10714,6 +12124,39 @@ export interface components {
                  * @default 48
                  */
                 deposit_pay_hours: number;
+                /**
+                 * Format: int64
+                 * @description 同一尾款周期内开发者最多能催告几次（0 = 禁止催告）。
+                 *
+                 *     1.x `developer_final_cure_max` 默认 3。
+                 * @default 3
+                 */
+                developer_final_cure_max: number;
+                /**
+                 * Format: int64
+                 * @description 尾款缴付期限（小时，0 = 不做尾款逾期判定）。
+                 *
+                 *     从验收通过、进入待付尾款起算。**到期不清空**：它是迟延履行天数的基准，
+                 *     清掉就再也没法回答「拖了几天」。1.x 同口径（默认 72）。
+                 * @default 72
+                 */
+                final_pay_cure_hours: number;
+                /**
+                 * Format: int32
+                 * @description 迟延履行违约金的日费率（万分之几 / 日，0 = 不计违约金）。
+                 *
+                 *     按**合同总价**（本合同的需求预算快照）计，口径照 1.x `late_penalty_bps_per_day`（默认 5）。
+                 * @default 5
+                 */
+                late_penalty_bps_per_day: number;
+                /**
+                 * Format: int32
+                 * @description 违约金的累计上限（万分之几 / 合同总价，0 = 不封顶）。
+                 *
+                 *     1.x `late_penalty_cap_bps` 默认 1000，即最多罚到合同总价的 10%。
+                 * @default 1000
+                 */
+                late_penalty_cap_bps: number;
                 /**
                  * Format: int64
                  * @description 验收被打回后，开发者整改并重新交付的期限（小时）。
@@ -11040,6 +12483,13 @@ export interface components {
         SetFeaturedRequest: {
             /** @description 是否精选。 */
             featured: boolean;
+        };
+        /** @description 设置用户级权限覆盖的请求体。 */
+        SetUserPermissionRequest: {
+            /** @description 是否授予：`true` = 显式授予，`false` = 显式回收。 */
+            granted: boolean;
+            /** @description 权限码。 */
+            permission_code: string;
         };
         /**
          * @description 改绑结算账户（已开通状态下换卡 / 换户）。
@@ -11724,6 +13174,64 @@ export interface components {
             /** @description 案件当前状态（机器码由争议线定义，如 `negotiating`）。 */
             status: string;
         };
+        /** @description 打赏设置响应。 */
+        TipConfigResponse: {
+            /** @description 是否允许自填金额。 */
+            allow_custom_cash: boolean;
+            /** @description 固定档位（分）。 */
+            cash_tiers_fen: number[];
+            /**
+             * Format: int64
+             * @description 自填上限（分）。
+             */
+            custom_cash_max_fen: number;
+            /**
+             * Format: int64
+             * @description 自填下限（分）。
+             */
+            custom_cash_min_fen: number;
+            /** @description 总开关。 */
+            enabled: boolean;
+            /** @description 是否公开打赏记录。 */
+            public_records: boolean;
+            /** @description 感谢语。 */
+            thanks_message: string;
+            /** @description 最后修改时间（东八区）。 */
+            updated_at: string;
+        };
+        /** @description 打赏单响应。 */
+        TipOrderResponse: {
+            /**
+             * Format: int64
+             * @description 金额（分）。
+             */
+            amount_fen: number;
+            /** @description 是否匿名。 */
+            anonymous: boolean;
+            /** @description 创建时间（东八区）。 */
+            created_at: string;
+            /** @description 被打赏的开发者。 */
+            developer: string;
+            /**
+             * Format: int64
+             * @description 开发者净额（分）。
+             */
+            developer_net_fen: number;
+            /** @description 留言。 */
+            message: string;
+            /** @description 单号。 */
+            order_no: string;
+            /** @description 收款时间（东八区）。 */
+            paid_at?: string | null;
+            /** @description 收银台地址（电脑端扫码）。 */
+            pay_url?: string | null;
+            /** @description 分账状态：`none` / `pending` / `succeeded` / `failed`。 */
+            split_status: string;
+            /** @description 状态：`pending` / `paid` / `failed` / `closed` / `refunding` / `refunded`。 */
+            status: string;
+            /** @description 打赏人（匿名单对开发者之外的人隐藏，见 handler 注释）。 */
+            tipper: string;
+        };
         /** @description token 端点请求（form）。 */
         TokenRequest: {
             /** @description 客户端编号。 */
@@ -11854,6 +13362,15 @@ export interface components {
             /** @description 用户名。 */
             username: string;
         };
+        /** @description 解绑响应。 */
+        UnbindProviderResponse: {
+            /** @description 渠道。 */
+            provider: string;
+            /** @description 是否真的删掉了一条绑定；`false` 表示本来就没绑（幂等成功）。 */
+            unbound: boolean;
+            /** @description 平台用户名。 */
+            username: string;
+        };
         /** @description 未读数响应。 */
         UnreadCountResponse: {
             /**
@@ -11861,6 +13378,10 @@ export interface components {
              * @description 未读条数。
              */
             unread: number;
+        };
+        UpdateActivityCampaignRequest: {
+            content: string;
+            title: string;
         };
         /** @description 写入渠道配置请求体。 */
         UpdateApiChannelRequest: {
@@ -12095,6 +13616,29 @@ export interface components {
             /** @description 标题。 */
             title?: string | null;
         };
+        /** @description 写打赏设置的请求体（字段与响应一致，`updated_at` 忽略）。 */
+        UpdateTipConfigRequest: {
+            /** @description 是否允许自填金额。 */
+            allow_custom_cash?: boolean;
+            /** @description 固定档位（分），最多 6 个。 */
+            cash_tiers_fen?: number[];
+            /**
+             * Format: int64
+             * @description 自填上限（分）。
+             */
+            custom_cash_max_fen?: number;
+            /**
+             * Format: int64
+             * @description 自填下限（分）。
+             */
+            custom_cash_min_fen?: number;
+            /** @description 总开关。 */
+            enabled: boolean;
+            /** @description 是否公开打赏记录。 */
+            public_records?: boolean;
+            /** @description 感谢语，最多 100 字。 */
+            thanks_message?: string;
+        };
         /** @description 两因素开关请求体。 */
         UpdateTwoFactorRequest: {
             /** @description 发到当前主邮箱的 6 位验证码；状态没变化时可以留空。 */
@@ -12194,6 +13738,32 @@ export interface components {
             name: string;
             /** @description 权限码列表。 */
             permission_codes?: string[];
+        };
+        /** @description 用户级权限覆盖条目响应。 */
+        UserPermissionOverrideResponse: {
+            /** @description 权限码。 */
+            code: string;
+            /** @description 描述。 */
+            description?: string | null;
+            /** @description 是否显式授予（`false` = 显式回收）。 */
+            granted: boolean;
+            /** @description 权限名。 */
+            name: string;
+            /** @description 覆盖写入时间（东八区）。 */
+            updated_at: string;
+        };
+        /** @description 用户权限总览响应。 */
+        UserPermissionsResponse: {
+            /** @description 生效权限（用户级覆盖优先于角色合成出来的，已排序）。 */
+            effective_permissions: string[];
+            /** @description 用户级显式覆盖。 */
+            overrides: components["schemas"]["UserPermissionOverrideResponse"][];
+            /** @description 角色授予的权限。 */
+            role_permissions: components["schemas"]["PermissionResponse"][];
+            /** @description 全部角色。 */
+            roles: string[];
+            /** @description 用户名。 */
+            username: string;
         };
         /** @description 角色变更响应。 */
         UserRoleResponse: {
@@ -12345,6 +13915,11 @@ export interface components {
         WechatJsapiResponse: {
             /** @description 微信 JSAPI 唤起参数（渠道原样透传）。 */
             pay_info?: unknown;
+        };
+        /** @description 小程序登录请求体。 */
+        WechatMiniprogramLoginRequest: {
+            /** @description `wx.login` 拿到的 code（一次性，5 分钟有效）。 */
+            code: string;
         };
         /** @description 微信中间页状态响应（对应 legacy `ResourceWechatStatusResponse`）。 */
         WechatStatusResponse: {
@@ -13527,6 +15102,60 @@ export interface operations {
                 content?: never;
             };
             /** @description 案件不在协商阶段 */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    dispute_admin_reject: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                case_no: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CaseNoteRequest"];
+            };
+        };
+        responses: {
+            /** @description 驳回后的案件详情 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CaseDetailResponse"];
+                };
+            };
+            /** @description 说明过长 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 没有该接口权限 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 案件不存在 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 案件当前状态不能驳回 */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -15644,6 +17273,178 @@ export interface operations {
             };
         };
     };
+    tip_admin_refund: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                order_no: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 退款后的单据 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TipOrderResponse"];
+                };
+            };
+            /** @description 未认证 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 没有 `tip.refund.post` */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 打赏单不存在（`TIP_ORDER_NOT_FOUND`） */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 当前状态不允许退款（`TIP_REFUND_NOT_ALLOWED`） */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 内部错误 */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    identity_admin_list_provider_accounts: {
+        parameters: {
+            query?: {
+                /** @description 只列某个渠道：`github` / `gitee`；留空表示全部。 */
+                provider?: string;
+                /** @description 关键字：同时匹配平台用户名与渠道内登录名（不区分大小写）。 */
+                keyword?: string;
+                /** @description 页码，从 1 起。 */
+                page?: number;
+                /** @description 每页条数，默认 20，上限 200。 */
+                page_size?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 绑定列表 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProviderAccountsResponse"];
+                };
+            };
+            /** @description 不支持的渠道（`PROVIDER_UNSUPPORTED`） */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 未登录，或令牌无效 / 已吊销 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 没有 `identity.provider_account.list.get` */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 权限查询失败，或读库失败 */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    identity_admin_unbind_provider_account: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                username: string;
+                provider: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 解绑结果 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnbindProviderResponse"];
+                };
+            };
+            /** @description 不支持的渠道（`PROVIDER_UNSUPPORTED`） */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 未登录，或令牌无效 / 已吊销 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 没有 `identity.provider_account.unbind.delete` */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 账号不存在（`USER_NOT_FOUND`） */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 权限查询失败，或写库失败 */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     api_key_list: {
         parameters: {
             query?: never;
@@ -15928,6 +17729,92 @@ export interface operations {
                 content?: never;
             };
             /** @description 账号不存在（`USER_NOT_FOUND`） */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 内部错误 */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    auth_record_agreement_acceptance: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AgreementAcceptanceRequest"];
+            };
+        };
+        responses: {
+            /** @description 已记录 */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AgreementAcceptanceResponse"];
+                };
+            };
+            /** @description 协议代号为空 / 未知，或版本号不合法 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 未认证 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 内部错误 */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    auth_dev_access_status: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 准入状态 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DevAccessStatusResponse"];
+                };
+            };
+            /** @description 未认证 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 用户不存在（`USER_NOT_FOUND`） */
             404: {
                 headers: {
                     [name: string]: unknown;
@@ -16446,6 +18333,222 @@ export interface operations {
             };
         };
     };
+    auth_qq_bind_url: {
+        parameters: {
+            query?: {
+                /** @description 成功后跳回的地址；必须与落地页同源，否则回落到落地页。 */
+                redirect_to?: string;
+                /** @description 是否同时申请开发者角色。 */
+                request_dev_role?: boolean;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description QQ 授权地址 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AuthorizeUrlResponse"];
+                };
+            };
+            /** @description 凭据不全或回调 / 落地页没配 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 未登录，或令牌无效 / 已吊销 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 该渠道未启用（`OAUTH_DISABLED`） */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 触发限流 */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 内部错误 */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    auth_qq_callback: {
+        parameters: {
+            query?: {
+                /** @description 授权码。 */
+                code?: string;
+                /** @description 防 CSRF 的签名 state。 */
+                state?: string;
+                /** @description 第三方返回的错误码。 */
+                error?: string;
+                /** @description 第三方返回的错误描述。 */
+                error_description?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 跳回前端落地页，结果见 description */
+            302: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 触发限流：同样以 302 跳回 */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    auth_qq_login_qr_status: {
+        parameters: {
+            query: {
+                /** @description 二维码上的 state。 */
+                state: string;
+                /** @description 建码时拿到的轮询凭据。 */
+                poll_secret: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 扫码状态 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["QrStatusResponse"];
+                };
+            };
+        };
+    };
+    auth_qq_login_qr_url: {
+        parameters: {
+            query?: {
+                /** @description 登录成功后跳回的前端地址；留空用渠道落地页。 */
+                redirect_to?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 二维码地址与轮询凭据 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["QrUrlResponse"];
+                };
+            };
+            /** @description 渠道凭据或回调配置不全 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 该渠道未启用（`OAUTH_DISABLED`） */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 内部错误 */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    auth_qq_authorize_url: {
+        parameters: {
+            query?: {
+                /** @description 成功后跳回的地址；必须与落地页同源，否则回落到落地页。 */
+                redirect_to?: string;
+                /** @description 是否同时申请开发者角色。 */
+                request_dev_role?: boolean;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description QQ 授权地址 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AuthorizeUrlResponse"];
+                };
+            };
+            /** @description 凭据不全或回调 / 落地页没配 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 该渠道未启用（`OAUTH_DISABLED`） */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 触发限流 */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 内部错误 */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     auth_refresh: {
         parameters: {
             query?: never;
@@ -16538,6 +18641,54 @@ export interface operations {
                 content?: never;
             };
             /** @description 验证码服务未配置或内部错误 */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    auth_request_dev_role: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 已具备开发者 scope */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DevAccessStatusResponse"];
+                };
+            };
+            /** @description 未认证 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 没有权限码，或前提不满足（`DEVELOPER_*` 三码） */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 用户不存在（`USER_NOT_FOUND`） */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 内部错误 */
             500: {
                 headers: {
                     [name: string]: unknown;
@@ -16919,6 +19070,40 @@ export interface operations {
             };
         };
     };
+    auth_get_user_service_agreement: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 协议正文 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AgreementContentResponse"];
+                };
+            };
+            /** @description 协议未配置（`AGREEMENT_NOT_CONFIGURED`） */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 内部错误 */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     identity_admin_list_users: {
         parameters: {
             query?: {
@@ -17271,6 +19456,483 @@ export interface operations {
                 content?: never;
             };
             /** @description 权限查询失败、新用户名冲突，或内部错误 */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    identity_admin_list_user_permissions: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description 用户名 */
+                username: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 权限总览 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UserPermissionsResponse"];
+                };
+            };
+            /** @description 未登录，或令牌无效 / 已吊销 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 没有 `user.permission.get` */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 账号不存在（`USER_NOT_FOUND`） */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 权限查询失败，或读库失败 */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    identity_admin_set_user_permission: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description 用户名 */
+                username: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SetUserPermissionRequest"];
+            };
+        };
+        responses: {
+            /** @description 设置后的权限总览 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UserPermissionsResponse"];
+                };
+            };
+            /** @description 权限码为空、未知权限码、操作者自己没有这个码，或试图回收自己的管理权限码 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 未登录，或令牌无效 / 已吊销 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 没有 `user.permission.post` */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 账号不存在（`USER_NOT_FOUND`） */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 权限查询失败，或内部错误 */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    identity_admin_clear_user_permission: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description 用户名 */
+                username: string;
+                /** @description 权限码 */
+                permission_code: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 取消后的权限总览 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UserPermissionsResponse"];
+                };
+            };
+            /** @description 权限码为空 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 未登录，或令牌无效 / 已吊销 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 没有 `user.permission.delete` */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 账号不存在（`USER_NOT_FOUND`） */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 权限查询失败，或内部错误 */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    auth_wechat_miniprogram_login: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["WechatMiniprogramLoginRequest"];
+            };
+        };
+        responses: {
+            /** @description 登录成功，返回会话令牌与角色快照 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AuthResponse"];
+                };
+            };
+            /** @description code 无效或已过期 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 小程序登录未启用（`OAUTH_DISABLED`） */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 内部错误 */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    auth_wechat_bind_url: {
+        parameters: {
+            query?: {
+                /** @description 成功后跳回的地址；必须与落地页同源，否则回落到落地页。 */
+                redirect_to?: string;
+                /** @description 是否同时申请开发者角色。 */
+                request_dev_role?: boolean;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 微信授权地址 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AuthorizeUrlResponse"];
+                };
+            };
+            /** @description 凭据不全或回调 / 落地页没配 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 未登录，或令牌无效 / 已吊销 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 该渠道未启用（`OAUTH_DISABLED`） */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 触发限流 */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 内部错误 */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    auth_wechat_callback: {
+        parameters: {
+            query?: {
+                /** @description 授权码。 */
+                code?: string;
+                /** @description 防 CSRF 的签名 state。 */
+                state?: string;
+                /** @description 第三方返回的错误码。 */
+                error?: string;
+                /** @description 第三方返回的错误描述。 */
+                error_description?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 跳回前端落地页，结果见 description */
+            302: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 触发限流：同样以 302 跳回 */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    auth_wechat_login_qr_confirm: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["QrConfirmRequest"];
+            };
+        };
+        responses: {
+            /** @description 已确认，PC 侧下次轮询即可拿到令牌 */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 二维码已失效或已确认过 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 未认证 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 内部错误 */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    auth_wechat_login_qr_status: {
+        parameters: {
+            query: {
+                /** @description 二维码上的 state。 */
+                state: string;
+                /** @description 建码时拿到的轮询凭据。 */
+                poll_secret: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 扫码状态 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["QrStatusResponse"];
+                };
+            };
+        };
+    };
+    auth_wechat_login_qr_url: {
+        parameters: {
+            query?: {
+                /** @description 登录成功后跳回的前端地址；留空用渠道落地页。 */
+                redirect_to?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 二维码地址与轮询凭据 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["QrUrlResponse"];
+                };
+            };
+            /** @description 渠道凭据或回调配置不全 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 该渠道未启用（`OAUTH_DISABLED`） */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 内部错误 */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    auth_wechat_authorize_url: {
+        parameters: {
+            query?: {
+                /** @description 成功后跳回的地址；必须与落地页同源，否则回落到落地页。 */
+                redirect_to?: string;
+                /** @description 是否同时申请开发者角色。 */
+                request_dev_role?: boolean;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 微信授权地址 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AuthorizeUrlResponse"];
+                };
+            };
+            /** @description 凭据不全或回调 / 落地页没配 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 该渠道未启用（`OAUTH_DISABLED`） */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 触发限流 */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 内部错误 */
             500: {
                 headers: {
                     [name: string]: unknown;
@@ -19369,6 +22031,670 @@ export interface operations {
             };
         };
     };
+    coupon_available_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CouponResponse"][];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    coupon_admin_pack_from_selection: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateCouponPackFromSelectionRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CouponPackResponse"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    coupon_admin_amount_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CouponResponse"][];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    coupon_admin_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateCouponRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CouponResponse"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    coupon_admin_assignable_list: {
+        parameters: {
+            query: {
+                /** @description amount 或 percent。 */
+                discount_type: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CouponResponse"][];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    coupon_admin_batch_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateCouponRequest"][];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CouponResponse"][];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    coupon_admin_delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description 优惠券编码 */
+                code: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    coupon_admin_percent_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CouponResponse"][];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    coupon_admin_user_amount_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description 用户名 */
+                username: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CouponResponse"][];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    coupon_admin_user_amount_assign: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description 用户名 */
+                username: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AssignCouponRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    coupon_admin_user_amount_remove: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description 用户名 */
+                username: string;
+                /** @description 优惠券编码 */
+                code: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    coupon_admin_user_percent_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description 用户名 */
+                username: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CouponResponse"][];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    coupon_admin_user_percent_assign: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description 用户名 */
+                username: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AssignCouponRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    coupon_admin_user_percent_remove: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description 用户名 */
+                username: string;
+                /** @description 优惠券编码 */
+                code: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     dispute_list_mine: {
         parameters: {
             query?: {
@@ -20405,6 +23731,43 @@ export interface operations {
             };
         };
     };
+    payment_admin_run_auto_withdrawals: {
+        parameters: {
+            query?: {
+                /** @description 本轮最多处理多少笔（默认 200，上限 500） */
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 本轮汇总与逐笔明细 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AutoPayoutRunResponse"];
+                };
+            };
+            /** @description 没有该接口权限 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 出款通道未就绪 */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     payment_availability: {
         parameters: {
             query?: never;
@@ -20690,6 +24053,48 @@ export interface operations {
             };
             /** @description 支付单不存在，或不属于当前登录人 */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    payment_admin_delete_order: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description 支付单号 */
+                order_no: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 已删除 */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 没有该接口权限 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 支付单不存在（含并发下已被别人先删） */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 这张单已支付或底下还挂着退款单 / 分账单 */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -21366,6 +24771,48 @@ export interface operations {
             };
             /** @description 没有该接口权限 */
             403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    payment_admin_delete_withdrawal: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description 提现单号 */
+                withdrawal_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 已删除 */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 没有该接口权限 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 提现单不存在（含并发下已被别人先删） */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 这张单已经出过款或正在出款，不能删 */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -23624,6 +27071,42 @@ export interface operations {
             };
         };
     };
+    requirement_get_deadline_change_request: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                requirement_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 当前待处理的申请（可能为 null） */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DeadlineChangeRequestView"];
+                };
+            };
+            /** @description 没有该接口权限 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 需求不存在 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     requirement_request_deadline_change: {
         parameters: {
             query?: never;
@@ -23668,6 +27151,51 @@ export interface operations {
                 content?: never;
             };
             /** @description 已有待处理的申请，或需求已结单 / 已取消 */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    requirement_reject_deadline_change_request: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                requirement_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RejectDeadlineRequest"];
+            };
+        };
+        responses: {
+            /** @description 已驳回，无响应体 */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 没有该接口权限 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 需求不存在，或这条需求没有待处理申请 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 申请已被其他请求处理 */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -23805,6 +27333,42 @@ export interface operations {
             };
             /** @description 状态不是待付尾款、不是担保模式，或本周期催告次数已用完 */
             409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    requirement_get_late_penalty: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                requirement_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 违约金明细 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LatePenaltyResponse"];
+                };
+            };
+            /** @description 没有该接口权限 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 需求不存在 */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -28687,6 +32251,248 @@ export interface operations {
             };
         };
     };
+    system_activity_campaign_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OfficialActivityResponse"][];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    system_activity_campaign_publish: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PublishActivityCampaignRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PublishOfficialActivityResponse"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    system_activity_campaign_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description 活动编号 */
+                activity_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateActivityCampaignRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OfficialActivityResponse"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    system_activity_campaign_delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description 活动编号 */
+                activity_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    system_activity_coupon_pack_list: {
+        parameters: {
+            query: {
+                /** @description amount 或 percent。 */
+                coupon_type: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ActivityCouponPackResponse"][];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     system_get_encryption_key: {
         parameters: {
             query?: never;
@@ -29046,6 +32852,90 @@ export interface operations {
             };
         };
     };
+    system_official_activity_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OfficialActivityResponse"][];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    system_official_activity_publish: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PublishOfficialActivityRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PublishOfficialActivityResponse"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     system_get_rate_limit: {
         parameters: {
             query?: never;
@@ -29182,6 +33072,65 @@ export interface operations {
                 content?: never;
             };
             /** @description 权限查询失败，或配置写盘失败 */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    system_activity_campaign_claim: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ActivityCampaignClaimRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ActivityCampaignClaimResponse"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
             500: {
                 headers: {
                     [name: string]: unknown;
@@ -30947,6 +34896,207 @@ export interface operations {
             };
         };
     };
+    tip_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateTipRequest"];
+            };
+        };
+        responses: {
+            /** @description 打赏单（等待付款） */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TipOrderResponse"];
+                };
+            };
+            /** @description 自赏 / 未开放 / 金额不合法 / 留言过长 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 未认证 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 内部错误或渠道失败 */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    tip_received: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 打赏列表 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TipOrderResponse"][];
+                };
+            };
+            /** @description 未认证 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 内部错误 */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    tip_get_settings: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 打赏设置 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TipConfigResponse"];
+                };
+            };
+            /** @description 未认证 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 内部错误 */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    tip_update_settings: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateTipConfigRequest"];
+            };
+        };
+        responses: {
+            /** @description 写入后的设置 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TipConfigResponse"];
+                };
+            };
+            /** @description 配置不合法（`TIP_CONFIG_INVALID`） */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 未认证 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 内部错误 */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    tip_get_order: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                order_no: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 打赏单 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TipOrderResponse"];
+                };
+            };
+            /** @description 未认证 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 单号不存在，或你不是这笔单的当事人 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 内部错误 */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     identity_config_get_oauth: {
         parameters: {
             query?: never;
@@ -31244,6 +35394,60 @@ export interface operations {
             };
             /** @description 触发限流：同样以 302 跳回，提示走跳转参数 */
             429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    auth_qq_callback_legacy: {
+        parameters: {
+            query?: {
+                /** @description 授权码。 */
+                code?: string;
+                /** @description 防 CSRF 的签名 state。 */
+                state?: string;
+                /** @description 第三方返回的错误码。 */
+                error?: string;
+                /** @description 第三方返回的错误描述。 */
+                error_description?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 跳回前端落地页，结果见跳转参数 */
+            302: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    auth_wechat_callback_legacy: {
+        parameters: {
+            query?: {
+                /** @description 授权码。 */
+                code?: string;
+                /** @description 防 CSRF 的签名 state。 */
+                state?: string;
+                /** @description 第三方返回的错误码。 */
+                error?: string;
+                /** @description 第三方返回的错误描述。 */
+                error_description?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 跳回前端落地页，结果见跳转参数 */
+            302: {
                 headers: {
                     [name: string]: unknown;
                 };

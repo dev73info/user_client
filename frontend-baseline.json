@@ -10,12 +10,6 @@
     },
     {
       "rule": "raw-color",
-      "file": "src/components/ShareCardGenerator.vue",
-      "detail": "19 处裸色值",
-      "since": "2026-10-22"
-    },
-    {
-      "rule": "raw-color",
       "file": "src/composables/useFaceidChallenge.ts",
       "detail": "2 处裸色值",
       "since": "2026-10-22"

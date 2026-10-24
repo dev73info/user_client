@@ -1,20 +1,17 @@
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
-import { getWechatBindAuthorizeUrl, getWechatBindQrUrl } from '@/api/auth'
 import { getAdapayClientPlatform } from '@/api/adapay'
 import {
   exchangeCheckoutTicket,
   getMyResourcePurchase,
   type ResourcePurchaseOrder,
 } from '@/api/resourcePurchase'
-import WechatBindQrModal from '@/components/WechatBindQrModal.vue'
 import { useResourcePayment } from '@/composables/useResourcePayment'
-import { isWechatBrowser } from '@/shared/auth/browser'
 import { formatPurchaseAmountLabel, resourcePurchaseStatusLabel } from '@/shared/resourceSale'
 import { useAuthStore } from '@/stores/auth'
-import { TButton, TMessage } from 'ui_73info'
+import { TButton } from 'ui_73info'
 
 /**
  * R034 接口资源收银台。
@@ -32,8 +29,6 @@ type CheckoutPhase = 'exchanging' | 'loading' | 'ready' | 'paid' | 'error'
 const phase = ref<CheckoutPhase>('exchanging')
 const errorMessage = ref('')
 const order = ref<ResourcePurchaseOrder | null>(null)
-const wechatBind = reactive({ visible: false, url: '', state: '' })
-const wechatBinding = ref(false)
 
 function readQueryString(value: unknown): string {
   if (Array.isArray(value)) {
@@ -112,8 +107,8 @@ async function bootstrap() {
     try {
       const session = await exchangeCheckoutTicket(ticket)
       await auth.applyExternalSession({ token: session.token, username: session.username })
-      const orderNo = session.order_no?.trim() || readQueryString(route.query.order_no)
-      // 票据用掉即从地址栏移除：刷新 / 前进后退都不会再拿它换一次（第二次必 410）。
+      const orderNo = readQueryString(route.query.order_no)
+      // 票据用掉即从地址栏移除：刷新 / 前进后退都不会再拿它换一次（第二次返回 403）。
       await router.replace({
         name: 'api-resource-checkout',
         query: orderNo ? { order_no: orderNo } : {},
@@ -133,50 +128,6 @@ async function bootstrap() {
   }
 
   await loadOrder(readQueryString(route.query.order_no))
-}
-
-async function bindWechat() {
-  if (!auth.token.trim() || wechatBinding.value) {
-    return
-  }
-
-  wechatBinding.value = true
-  try {
-    // 微信内跳服务号网页授权；桌面端展示扫码绑定的二维码。
-    if (isWechatBrowser()) {
-      const { url } = await getWechatBindAuthorizeUrl(auth.token, window.location.href)
-      if (!url.trim()) {
-        throw new Error('微信授权地址为空')
-      }
-      window.location.assign(url)
-      return
-    }
-
-    const qr = await getWechatBindQrUrl(auth.token, window.location.href)
-    if (!qr.url.trim() || !qr.state.trim()) {
-      throw new Error('微信绑定二维码地址为空')
-    }
-    wechatBind.url = qr.url
-    wechatBind.state = qr.state
-    wechatBind.visible = true
-  } catch (error) {
-    TMessage.error(error instanceof Error ? error.message : '发起微信绑定失败')
-  } finally {
-    wechatBinding.value = false
-  }
-}
-
-function closeWechatBind() {
-  wechatBind.visible = false
-  wechatBind.url = ''
-  wechatBind.state = ''
-}
-
-function handleWechatBound(result: { success: boolean }) {
-  closeWechatBind()
-  if (result.success) {
-    TMessage.success('微信绑定成功')
-  }
 }
 
 function goPurchases() {
@@ -237,7 +188,6 @@ onMounted(() => {
           </p>
           <p class="checkout-paid__line">订单号 {{ order.order_no }}</p>
           <div class="checkout-actions">
-            <TButton :loading="wechatBinding" @click="bindWechat">绑定微信，下次直接登录</TButton>
             <TButton variant="outline" @click="goPurchases">查看我的已购</TButton>
           </div>
         </div>
@@ -252,14 +202,6 @@ onMounted(() => {
         </div>
       </template>
     </section>
-
-    <WechatBindQrModal
-      :visible="wechatBind.visible"
-      :url="wechatBind.url"
-      :state="wechatBind.state"
-      @close="closeWechatBind"
-      @bound="handleWechatBound"
-    />
   </main>
 </template>
 

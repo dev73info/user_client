@@ -22,7 +22,7 @@ vi.mock('@/api/adapay', async (importOriginal) => {
   return {
     ...actual,
     createAdapayPayment: mocks.createPayment,
-    getAdapayClientPlatform: () => 'pc',
+    getAdapayClientPlatform: () => 'desktop',
   }
 })
 
@@ -47,15 +47,18 @@ function requirement(): RequirementItem {
   } as RequirementItem
 }
 
-/** Adapay 下单返回体（只列流程读得到的字段）。 */
+/** Adapay 下单返回体（契约 `DepositPaymentResponse`，只列流程读得到的字段）。 */
 function adapayPayment() {
   return {
-    paymentId: 'pay_301',
-    requirementId: '2026-900000000301',
+    payment_id: 'pay_301',
+    requirement_id: '2026-900000000301',
     milestone: 'deposit',
-    amountCny: '2000.00',
-    status: 'pending',
-    payUrl: 'https://pay.example.com/301',
+    pay_channel: 'alipay',
+    pay_mode: 'escrow',
+    amount_fen: 200000,
+    amount_cny: '2000.00',
+    status: 'created',
+    pay_url: 'https://pay.example.com/301',
   }
 }
 
@@ -118,7 +121,7 @@ describe('支付通道切换：从弹窗按键到下单参数', () => {
       '2026-900000000301',
       'deposit',
       'wechat',
-      'pc',
+      'desktop',
     )
     expect(outcome).toMatchObject({ kind: 'redirect-page', query: { channel: 'wechat' } })
     wrapper.unmount()
@@ -135,20 +138,6 @@ describe('支付通道切换：从弹窗按键到下单参数', () => {
 
     await flow.submitPayment()
     expect(mocks.createPayment.mock.calls[0]?.[3]).toBe('alipay')
-    wrapper.unmount()
-  })
-
-  it('云闪付回跳把通道设成 union 后，点「微信」仍能改回来并按 wechat 下单', async () => {
-    const wrapper = mountHost()
-    // 云闪付授权成功回跳时，视图会把通道设成 union（`useMyRequirementsPage` 里那一步）
-    flow.updatePayChannel('union')
-    expect(flow.payChannel.value).toBe('union')
-
-    await clickChannel(wrapper, '微信')
-    expect(flow.payChannel.value).toBe('wechat')
-
-    await flow.submitPayment()
-    expect(mocks.createPayment.mock.calls[0]?.[3]).toBe('wechat')
     wrapper.unmount()
   })
 })

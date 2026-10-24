@@ -2,8 +2,6 @@ import { ref } from 'vue'
 
 import { TMessage } from 'ui_73info'
 
-import { listCommunityPosts, type CommunityPost } from '@/api/community'
-import { getResourcePromoMeta } from '@/api/points'
 import {
   getPublicRequirementOverview,
   listPublicRequirementSpotlights,
@@ -27,7 +25,7 @@ export type PendingRequirementView = {
   title: string
   status: RequirementStatus
   statusLabel: string
-  updatedAtLabel: string
+  publishedAtLabel: string
   description?: string | null
   acceptanceCriteria?: string | null
   budget?: number | null
@@ -46,11 +44,10 @@ export type HomePortalLoaderOptions = {
   /** 标签树懒加载与资源列表回写都在 `usePublicResources`（资源只有那一份状态）。 */
   ensureTagTree: () => void
   applyResourceList: (list: readonly PublicMcResourceItem[] | null) => void
-  applyHighLikeThreshold: (threshold: number) => void
 }
 
 /**
- * 首页首屏与轮询要拉的四批数据里，本视图自己那三批（待办需求、平台概览、公开资源 / 公告 / 精选需求）。
+ * 首页首屏与轮询要拉的四批数据里，本视图自己那三批（待办需求、平台概览、公开资源 / 精选需求）。
  * 第四批押金比例在支付域（`useDepositPayment.loadDepositRatio`），它只服务支付卡片。
  *
  * 请求本身、字段映射、失败提示都留在这里：视图只决定「什么时候拉」（`onMounted` 首屏、
@@ -68,7 +65,6 @@ export function useHomePortalLoaders(options: HomePortalLoaderOptions) {
   const publicDeveloperCount = ref(0)
   const pendingRequirements = ref<PendingRequirementView[]>([])
   const publicRequirementSpotlights = ref<PublicRequirementSpotlightItem[]>([])
-  const announcementPosts = ref<CommunityPost[]>([])
 
   async function loadPendingRequirements(silent = false) {
     if (!auth.isAuthed) {
@@ -89,7 +85,7 @@ export function useHomePortalLoaders(options: HomePortalLoaderOptions) {
           title: item.title,
           status: item.status,
           statusLabel: statusToLabel(item.status, item.payment_mode),
-          updatedAtLabel: formatTimeLabel(item.updated_at),
+          publishedAtLabel: formatTimeLabel(item.created_time),
           description: item.description,
           acceptanceCriteria: item.acceptance_criteria,
           budget: item.budget,
@@ -135,22 +131,15 @@ export function useHomePortalLoaders(options: HomePortalLoaderOptions) {
 
   async function loadPublicPortalData(silent = false) {
     const resourceToken = auth.isAuthed && auth.token.trim() ? auth.token : null
-    const [resourcesResult, requirementsResult, announcementsResult, promoMetaResult] =
-      await Promise.allSettled([
-        listAllPublicMcResources(resourceToken),
-        // 首页只用最新一条需求做公告，取 1 条即可。
-        listPublicRequirementSpotlights(1, 1),
-        listCommunityPosts({ tag: '公告', limit: 5, offset: 0 }),
-        getResourcePromoMeta(resourceToken ?? undefined),
-      ])
+    const [resourcesResult, requirementsResult] = await Promise.allSettled([
+      listAllPublicMcResources(resourceToken),
+      // 首页只用最新一条需求做公告，取 1 条即可。
+      listPublicRequirementSpotlights(1, 1),
+    ])
     options.ensureTagTree()
 
     if (!options.isMounted()) {
       return
-    }
-
-    if (promoMetaResult.status === 'fulfilled') {
-      options.applyHighLikeThreshold(promoMetaResult.value.high_like_threshold)
     }
 
     // 去到重 / 排序 / 清空都在 `usePublicResources` 里，视图只负责「哪一批请求成功了」。
@@ -162,14 +151,6 @@ export function useHomePortalLoaders(options: HomePortalLoaderOptions) {
       publicRequirementSpotlights.value = []
     }
 
-    if (announcementsResult.status === 'fulfilled') {
-      announcementPosts.value = announcementsResult.value.filter(
-        (post) => post.status === 'published',
-      )
-    } else {
-      announcementPosts.value = []
-    }
-
     const failedResults = [resourcesResult, requirementsResult].filter(
       (result) => result.status === 'rejected',
     )
@@ -178,7 +159,6 @@ export function useHomePortalLoaders(options: HomePortalLoaderOptions) {
     } else if (failedResults.length === 2 && !silent) {
       TMessage.warning('加载首页公开数据失败')
     }
-    // 榜单成员的徽章不在这里取：`usePortalRanks` 按入榜用户名指纹自己触发，资源没变就不重复请求。
   }
 
   return {
@@ -187,7 +167,6 @@ export function useHomePortalLoaders(options: HomePortalLoaderOptions) {
     publicDeveloperCount,
     pendingRequirements,
     publicRequirementSpotlights,
-    announcementPosts,
     loadPendingRequirements,
     loadRequirementOverview,
     loadPublicPortalData,

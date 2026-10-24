@@ -44,7 +44,6 @@ function buildInvoice(
   return {
     id,
     invoiceNo: `INV-MOCK-${String(id).padStart(4, '0')}`,
-    paymentId: null,
     contractId,
     requirementId,
     invoiceRole: role,
@@ -53,6 +52,7 @@ function buildInvoice(
     developerUsername: DEV_USERNAME,
     issuerName: role === 'platform' ? MOCK_ISSUER : MOCK_ISSUER,
     developerType: 'individual',
+    titleType: 'personal',
     invoiceTitle: `${CLIENT_NICKNAME}（演示）`,
     taxNumber: '',
     recipientEmail: 'client@example.com',
@@ -75,9 +75,6 @@ function buildInvoice(
     reversalReason: null,
     reversedAt: null,
     reversedBy: null,
-    currentInvoiceableFen: fenOf(amountCny),
-    reversalSuggestionFen: 0,
-    reversalRequired: false,
   }
 }
 
@@ -91,9 +88,7 @@ const invoices: InvoiceRecord[] = requirements
     const list: InvoiceRecord[] = []
 
     if (item.payment_mode === 'platform_guarantee') {
-      list.push(
-        buildInvoice(index * 2 + 1, item.requirement_id, 'platform', depositAmountOf(item)),
-      )
+      list.push(buildInvoice(index * 2 + 1, item.requirement_id, 'platform', depositAmountOf(item)))
     }
 
     list.push(
@@ -101,17 +96,21 @@ const invoices: InvoiceRecord[] = requirements
         index * 2 + 2,
         item.requirement_id,
         'developer',
-        item.payment_mode === 'platform_guarantee'
-          ? finalAmountOf(item)
-          : (item.budget ?? 0),
+        item.payment_mode === 'platform_guarantee' ? finalAmountOf(item) : (item.budget ?? 0),
       ),
     )
 
     return list
   })
 
-function invoiceFor(requirementId: string, role: InvoiceRecord['invoiceRole']): InvoiceRecord | null {
-  return invoices.find((item) => item.requirementId === requirementId && item.invoiceRole === role) ?? null
+function invoiceFor(
+  requirementId: string,
+  role: InvoiceRecord['invoiceRole'],
+): InvoiceRecord | null {
+  return (
+    invoices.find((item) => item.requirementId === requirementId && item.invoiceRole === role) ??
+    null
+  )
 }
 
 function buildSummary(requirementId: string): InvoiceableSummary | null {
@@ -152,16 +151,14 @@ function buildSummary(requirementId: string): InvoiceableSummary | null {
     platformFeeCny: platformFee.toFixed(2),
     developerGrossAmountFen: fenOf(developerGross),
     developerGrossAmountCny: developerGross.toFixed(2),
-    developerPayoutFen: 0,
-    developerPayoutCny: '0.00',
+    refundedFen: 0,
+    refundedCny: '0.00',
     developerInvoiceFen: fenOf(developerGross),
     developerInvoiceCny: developerGross.toFixed(2),
     invoiceableTotalFen: fenOf(pendingTotal),
     invoiceableTotalCny: pendingTotal.toFixed(2),
     invoiceAvailable,
     requirementStatus: requirement.status,
-    pendingRefundFen: 0,
-    pendingRefundCny: '0.00',
     platformInvoice: platformInvoice ?? null,
     developerInvoice: developerInvoice ?? null,
   }
@@ -206,8 +203,16 @@ const routes: MockRoute[] = [
 
       const created: InvoiceRecord[] = []
 
-      if (requirement.payment_mode === 'platform_guarantee' && !invoiceFor(requirementId, 'platform')) {
-        const record = buildInvoice(invoices.length + 1, requirementId, 'platform', depositAmountOf(requirement))
+      if (
+        requirement.payment_mode === 'platform_guarantee' &&
+        !invoiceFor(requirementId, 'platform')
+      ) {
+        const record = buildInvoice(
+          invoices.length + 1,
+          requirementId,
+          'platform',
+          depositAmountOf(requirement),
+        )
         invoices.push(record)
         created.push(record)
       }

@@ -5,12 +5,12 @@
  * 这一页只负责排版与组合：
  * - 数据、筛选、客户端分页与顶栏读数 → `useDevResourceList`；
  * - 「更多」菜单的动作（导航 / 申请公开 / 设为私有 / 删除）→ `useDevResourceRowActions`；
- * - 「发布版本」弹窗 → `useDevResourcePublishVersion`；「使用道具」弹窗 → `useDevResourcePromo`；
+ * - 「发布版本」弹窗 → `useDevResourcePublishVersion`；
  * - 筛选、读数、空态、状态列文案等纯口径 → `@/shared/devResourceList`；
  * - 顶栏读数条 → `DevResourceListMetaStrip`；六列表格 → `DevResourceTable`；
- *   两个弹窗 → `DevResourcePublishVersionDialog` / `DevResourcePromoDialog`。
+ *   弹窗 → `DevResourcePublishVersionDialog`。
  *
- * 拆分前这里是 1,017 行：脚本里混着列表、四个动作、两个弹窗与过户，模板里挂着整张表格。
+ * 拆分前这里是 1,017 行：脚本里混着列表、四个动作与弹窗，模板里挂着整张表格。
  * 逻辑、请求实参与提示文案逐段照搬，页面可见行为不变（含 R014 的锁定拦截与 R028 的两条发布入口）。
  */
 import { onMounted } from 'vue'
@@ -33,13 +33,10 @@ import {
 import { apiUrl } from '@/api/http'
 import type { McResourcePayload } from '@/api/mcResources'
 import DevResourceListMetaStrip from '@/components/dev/DevResourceListMetaStrip.vue'
-import DevResourcePromoDialog from '@/components/dev/DevResourcePromoDialog.vue'
 import DevResourcePublishVersionDialog from '@/components/dev/DevResourcePublishVersionDialog.vue'
 import DevResourceTable from '@/components/dev/DevResourceTable.vue'
-import ResourceTransferDialog from '@/components/ResourceTransferDialog.vue'
 import { LIST_PAGE_SIZES } from '@/composables/useClientPagination'
 import { useDevResourceList } from '@/composables/useDevResourceList'
-import { useDevResourcePromo } from '@/composables/useDevResourcePromo'
 import { useDevResourcePublishVersion } from '@/composables/useDevResourcePublishVersion'
 import { useDevResourceRowActions } from '@/composables/useDevResourceRowActions'
 import { DEV_RESOURCE_VISIBILITY_OPTIONS } from '@/shared/devResourceList'
@@ -80,29 +77,15 @@ const {
 } = useDevResourcePublishVersion()
 
 const {
-  promoDialogVisible,
-  promoTarget,
-  selectedPromoCardId,
-  applyingPromo,
-  highLikeThreshold,
-  promoCardOptions,
-  openPromoDialog,
-  confirmApplyPromoCard,
-} = useDevResourcePromo({ resources })
-
-const {
   requestingReviewResourceId,
   settingPrivateResourceId,
   deletingResourceId,
-  transferDialogVisible,
-  transferTarget,
   openEditHomepagePage,
   goCreateResource,
   handleResourceCommand,
 } = useDevResourceRowActions({
   resources,
   reload: loadResources,
-  openPromo: (resource) => void openPromoDialog(resource),
   openPublish: openPublishVersionDialog,
 })
 
@@ -239,19 +222,6 @@ onMounted(async () => {
       :submitting="publishingResourceId === selectedResource?.id"
       @submit="submitVersion"
     />
-
-    <DevResourcePromoDialog
-      v-model:open="promoDialogVisible"
-      v-model:selected-id="selectedPromoCardId"
-      :resource-title="promoTarget?.title ?? null"
-      :like-count="promoTarget?.like_count ?? 0"
-      :threshold="highLikeThreshold"
-      :options="promoCardOptions"
-      :applying="applyingPromo"
-      @confirm="confirmApplyPromoCard"
-    />
-
-    <ResourceTransferDialog v-model:open="transferDialogVisible" :resource="transferTarget" />
   </div>
 </template>
 

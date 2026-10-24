@@ -35,7 +35,6 @@ export interface ResourceHomepageFormState {
   apiCallbackSecret: string
   /** 允许来源：多行文本，一行一个 */
   apiAllowedOrigins: string
-  apiRepeatPurchasable: boolean
 }
 
 /** 表单初值（新建与换资源复位都用它）。 */
@@ -62,6 +61,5 @@ export function createResourceHomepageFormState(): ResourceHomepageFormState {
     apiCallbackUrl: '',
     apiCallbackSecret: '',
     apiAllowedOrigins: '',
-    apiRepeatPurchasable: false,
   }
 }

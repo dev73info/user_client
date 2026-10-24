@@ -167,18 +167,6 @@
   opacity: 0.72;
 }
 
-.resource-detail-page__primary-actions :deep(.share-card-generator__start) {
-  min-height: 44px;
-  border-radius: 12px;
-  background: color-mix(in srgb, var(--73-accent-soft) 90%, transparent);
-  box-shadow: none;
-}
-
-.resource-detail-page__primary-actions :deep(.share-card-generator__start:hover:not(:disabled)) {
-  background: var(--73-surface-strong);
-  box-shadow: 0 10px 22px color-mix(in srgb, var(--73-accent) 12%, transparent);
-}
-
 @media (max-width: 640px) {
   .resource-detail-page__cta-row,
   .resource-detail-page__primary-actions {
@@ -186,9 +174,7 @@
     flex-direction: column;
   }
 
-  .resource-detail-page__primary-btn,
-  .resource-detail-page__primary-actions :deep(.share-card-generator),
-  .resource-detail-page__primary-actions :deep(.share-card-generator__start) {
+  .resource-detail-page__primary-btn {
     width: 100%;
   }
 }

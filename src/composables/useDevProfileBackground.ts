@@ -32,8 +32,6 @@ const STATIC_ALLOWED_TYPES = ['image/png', 'image/jpeg', 'image/webp', 'image/gi
 export function useDevProfileBackground(options: {
   /** 公开档案（地址与焦点都从这里取） */
   profile: Ref<PublicUserProfile | null>
-  canCustomizeStatic: Ref<boolean>
-  canCustomizeDynamic: Ref<boolean>
   /** 上传 / 移除成功后的整页重载 */
   reload: () => Promise<void>
 }) {
@@ -142,18 +140,9 @@ export function useDevProfileBackground(options: {
     }
   }
 
-  /** 本人点「设置静态 / 动态背景」：没兑换权益先去积分商城。 */
+  /** 本人点「设置静态 / 动态背景」：打开对应档位的上传弹窗。 */
   function openBackground(nextMode: 'static' | 'dynamic') {
     if (!auth.token) {
-      return
-    }
-    const canCustomize =
-      nextMode === 'dynamic' ? options.canCustomizeDynamic.value : options.canCustomizeStatic.value
-    if (!canCustomize) {
-      TMessage.warning(
-        `请先在积分商城兑换“主页${nextMode === 'dynamic' ? '动态' : '静态'}背景自定义”权益`,
-      )
-      void router.push({ name: 'points-mall' })
       return
     }
     mode.value = nextMode

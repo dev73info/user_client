@@ -3,7 +3,16 @@ import type { RequirementItem } from '@/api/requirements'
 import { REQUIREMENT_SEEDS, type RequirementSeed } from './requirementSeeds'
 import { CLIENT_USERNAME, datetime } from './shared'
 
-function buildRequirement(seed: RequirementSeed): RequirementItem {
+/**
+ * mock 内部记账用的需求行：在契约 `RequirementItem` 之上多一个 `updated_at`。
+ *
+ * mock 的种子数据要按「最近动过」排序、会话要按「需求最近活跃」兜底，这些都需要一个本地时间戳；
+ * 但契约 `RequirementResponse` **没有** `updated_at`（后端 DTO 就没有这一列），
+ * 所以它只活在 mock 内部，不随任何响应下发——下发出去就成了假字段。
+ */
+export type MockRequirementRow = RequirementItem & { updated_at: string }
+
+function buildRequirement(seed: RequirementSeed): MockRequirementRow {
   return {
     id: seed.id,
     requirement_id: seed.code,
@@ -36,13 +45,13 @@ function buildRequirement(seed: RequirementSeed): RequirementItem {
   }
 }
 
-export const requirements: RequirementItem[] = REQUIREMENT_SEEDS.map(buildRequirement)
+export const requirements: MockRequirementRow[] = REQUIREMENT_SEEDS.map(buildRequirement)
 
 export function seedOf(code: string): RequirementSeed | undefined {
   return REQUIREMENT_SEEDS.find((item) => item.code === code)
 }
 
-export function findRequirement(code: string): RequirementItem | undefined {
+export function findRequirement(code: string): MockRequirementRow | undefined {
   return requirements.find((item) => item.requirement_id === code)
 }
 

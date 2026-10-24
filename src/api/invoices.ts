@@ -1,21 +1,25 @@
-import { apiUrl, authHeader, requestJson } from '@/api/http'
+import type { components } from '@/api/generated/schema'
+import { authHeader, requestBlob, requestJson } from '@/api/http'
+
+type Schemas = components['schemas']
+type InvoiceResponse = Schemas['InvoiceResponse']
+type SummaryResponse = Schemas['InvoiceableSummaryResponse']
 
 export type InvoiceRole = 'platform' | 'developer'
 export type InvoiceStatus = 'requested' | 'under_review' | 'approved' | 'rejected' | 'reversed'
-/** `blue` 蓝票（正常开具）/ `red` 红票（红冲生成，金额存正数，负数语义由本字段表达）。 */
 export type InvoiceDocumentKind = 'blue' | 'red'
-/**
- * 票种：`ordinary` 普通发票（默认，个人 / 个体户 / 企业都适用）、
- * `special` 专用发票（只对企业主体开具，且开票资料必须齐全）。
- */
 export type InvoiceKind = 'ordinary' | 'special'
 
+/**
+ * 发票视图模型：契约只给 snake_case，界面与组件按 camelCase 读写。
+ *
+ * 每个字段都必须能对上 `InvoiceResponse` 的某个属性——这个仓里有十几处按名字读它，
+ * 凭空造的字段（恒为 null、永远 undefined 的标记）只会让「有提示但后端从没给过」的假分支留在页面上。
+ */
 export type InvoiceRecord = {
   id: number
   invoiceNo: string
-  /** 合并开票后一张票覆盖整个需求，新票为 null；历史按支付单开具的旧票才有值。 */
-  paymentId: string | null
-  contractId: number
+  contractId: number | null
   requirementId: string
   invoiceRole: InvoiceRole
   applicantUsername: string
@@ -23,12 +27,11 @@ export type InvoiceRecord = {
   developerUsername: string
   issuerName: string
   developerType: string
+  titleType: string
   invoiceTitle: string
   taxNumber: string
   recipientEmail: string
-  /** 票种：`ordinary` 普通发票 / `special` 专用发票。 */
   invoiceKind: InvoiceKind
-  /** 专票的购买方开票资料（普票为空串）：地址、电话、开户行、银行账号。 */
   buyerAddress: string
   buyerPhone: string
   buyerBankName: string
@@ -36,6 +39,8 @@ export type InvoiceRecord = {
   amountFen: number
   amountCny: string
   documentUrl?: string | null
+  documentName?: string | null
+  documentMime?: string | null
   status: InvoiceStatus
   reviewNote?: string | null
   reviewedBy?: string | null
@@ -43,166 +48,169 @@ export type InvoiceRecord = {
   createdAt: string
   updatedAt: string
   documentKind: InvoiceDocumentKind
-  /** 红票指向被它冲销的原蓝票 id；蓝票恒为 null。 */
   reversalOfId?: number | null
-  /** 红冲原因：红票上必填，原蓝票上回写同一份便于按原票查因。 */
   reversalReason?: string | null
-  /** 原蓝票被红冲的时间与操作人；红票恒为 null。 */
   reversedAt?: string | null
   reversedBy?: string | null
-  /**
-   * 该需求、该开票主体的**当前应开票金额**（分），即下一张票该开多少钱。
-   * 退款 / 合同作废 / 售后赔付 / 未结案的退款诉求都会让它变小。
-   */
-  currentInvoiceableFen: number
-  /**
-   * 建议冲减额度（分）= 票面金额 − **已实际发生的净额**，可为负（表示少开、需补开而非红冲）。
-   * 基准不含未结案的诉求：钱还没退出去就不动已经开出去的票，所以这一项可能小于
-   * 「票面金额 − 当前应开票金额」。
-   */
-  reversalSuggestionFen: number
-  /** 需要红冲：蓝票、已审核通过，且票面金额与已实际发生的净额不一致。 */
-  reversalRequired: boolean
 }
 
-/**
- * 发票**买方**（需求方 / 甲方）的开票主体资料，由后端按实名主体折算好。
- *
- * 两张票（平台服务费票、开发者收入票）都是开给同一个需求方的，所以乙方申请时拿到的也是这份
- * 需求方资料——「发票开给谁」不因为谁来申请而改变。弹窗据此自动带出抬头 / 税号 / 接收邮箱。
- */
+function mapInvoice(invoice: InvoiceResponse): InvoiceRecord {
+  return {
+    id: invoice.id,
+    invoiceNo: invoice.invoice_no,
+    contractId: invoice.contract_id ?? null,
+    requirementId: invoice.requirement_id,
+    invoiceRole: invoice.invoice_role as InvoiceRole,
+    applicantUsername: invoice.applicant_username,
+    customerUsername: invoice.customer_username,
+    developerUsername: invoice.developer_username,
+    issuerName: invoice.issuer_name,
+    developerType: invoice.developer_type,
+    titleType: invoice.title_type,
+    invoiceTitle: invoice.invoice_title,
+    taxNumber: invoice.tax_number,
+    recipientEmail: invoice.recipient_email,
+    invoiceKind: invoice.invoice_kind as InvoiceKind,
+    buyerAddress: invoice.buyer_address,
+    buyerPhone: invoice.buyer_phone,
+    buyerBankName: invoice.buyer_bank_name,
+    buyerBankAccount: invoice.buyer_bank_account,
+    amountFen: invoice.amount_fen,
+    amountCny: invoice.amount_cny,
+    documentUrl: invoice.document_url,
+    documentName: invoice.document_name,
+    documentMime: invoice.document_mime,
+    status: invoice.status as InvoiceStatus,
+    reviewNote: invoice.review_note,
+    reviewedBy: invoice.reviewed_by,
+    reviewedAt: invoice.reviewed_at,
+    createdAt: invoice.created_at,
+    updatedAt: invoice.updated_at,
+    documentKind: invoice.document_kind as InvoiceDocumentKind,
+    reversalOfId: invoice.reversal_of_id,
+    reversalReason: invoice.reversal_reason,
+    reversedAt: invoice.reversed_at,
+    reversedBy: invoice.reversed_by,
+  }
+}
+
 export type InvoiceBuyerSubject = {
-  /** 买方用户名（需求方 / 甲方）。 */
   username: string
-  /** 实名类型：`IDENTITY_CARD` / `ENTERPRISE` / `SOLE_PROPRIETOR` / `RESIDENCE_HK_MC` / `RESIDENCE_TAIWAN`；未实名时为空串。 */
   authType: string
-  /** 实名状态：`approved` / `pending` / `rejected`；未提交过实名时为空串。 */
   realnameStatus: string
-  /** 是否企业 / 个体工商户：决定抬头取公司全称还是实名姓名、以及税号是否必填。 */
   isOrganization: boolean
-  /** 可按主体自动填的抬头；实名未通过时为空串，留给用户手填。 */
   title: string
-  /** 企业 / 个体户的统一社会信用代码；个人为空串。 */
   taxNumber: string
-  /** 买方的账户主邮箱，作为「接收邮箱」的默认值。 */
   email: string
 }
 
-/**
- * 一个需求的可开票汇总。
- *
- * 开票按需求合并：一张票覆盖整个需求，金额由后端按该需求已成功分账的结算单算出——平台票取
- * 服务费、开发者票取开发者税前收入扣掉售后退还/赔付客户、以及尚未结案的退款诉求之后的净额，
- * 两张票加起来就是客户为这个需求实际支付的净额。申请也合并成一次动作（`applyInvoices`）。
- */
 export type InvoiceableSummary = {
   requirementId: string
   customer: string
   developer: string
-  /** 买方的开票主体资料：抬头 / 税号 / 接收邮箱按它自动带出，两个视角共用一份。 */
   buyer: InvoiceBuyerSubject
-  /** 已成功分账的实付合计（平台服务费 + 开发者税前收入，未扣售后赔付）。 */
   settledAmountFen: number
   settledAmountCny: string
   platformFeeFen: number
   platformFeeCny: string
   developerGrossAmountFen: number
   developerGrossAmountCny: string
-  /** 开发者从接单保证金里已退还 / 赔付给客户、并从开发者票面扣除的金额。 */
-  developerPayoutFen: number
-  developerPayoutCny: string
-  /** 开发者票面 = 开发者税前收入 − 已退还 / 赔付客户的金额 − 未结案的退款诉求。 */
+  /** 已成功退款合计（不是「开发者已赔付」，也不是「未结案的退款诉求」）。 */
+  refundedFen: number
+  refundedCny: string
   developerInvoiceFen: number
   developerInvoiceCny: string
-  /**
-   * 本次申请能开出的**合计**票面：尚未申请的各开票主体应开票金额之和。
-   *
-   * 需求方（付款方）两侧都拿得到，所以是「平台服务费票 + 开发者收入票」之和；乙方只有自己那一
-   * 侧，合计就是开发者票面。已申请（含审核中、已通过）的一侧不计入——那一侧已经开过了；被红冲
-   * 的一侧会重新计入，因为它可以重开。这就是弹窗上「可开票金额」显示的那个数。
-   */
   invoiceableTotalFen: number
   invoiceableTotalCny: string
-  /**
-   * **开票闸门**：需求已结单（`completed`）才为 true。
-   *
-   * 未结单时分账还没走完，后端会把 `invoiceableTotalFen` 一并置 0——所以「可开票金额」显示 ¥0.00、
-   * 提交按钮也被 `amountFen <= 0` 挡住。这个字段只是让前端把原因说清楚：入口置灰 + 提示当前状态，
-   * 而不是让用户点开弹窗对着 ¥0.00 猜。
-   */
   invoiceAvailable: boolean
-  /** 该需求当前状态码（`RequirementStatus`），用于拼「需求结单后才能申请开票（当前：…）」的提示。 */
   requirementStatus: string
-  /**
-   * 该需求尚未结案的退款诉求金额。
-   *
-   * 这笔钱**已经**从上面的 `developerInvoiceFen` 里扣掉：退还 / 分账还没走完，钱还在平台兜着，
-   * 不能算进已经发生的销售额；诉求判不成立或撤回时，差额再补开。
-   *
-   * 它不参与红冲判定：钱还没退出去，不动已经开出去的票，等退还真正成立再红冲。
-   */
-  pendingRefundFen: number
-  pendingRefundCny: string
-  /** 该需求当前有效的平台票（蓝票且未红冲），用于显示进度并挡住重复提交；已红冲后为 null。 */
   platformInvoice: InvoiceRecord | null
-  /** 该需求当前有效的开发者票（蓝票且未红冲）；已红冲后为 null，此时可重新申请。 */
   developerInvoice: InvoiceRecord | null
+}
+
+function mapSummary(summary: SummaryResponse): InvoiceableSummary {
+  return {
+    requirementId: summary.requirement_id,
+    customer: summary.customer,
+    developer: summary.developer ?? '',
+    buyer: {
+      username: summary.buyer.username,
+      authType: summary.buyer.auth_type,
+      realnameStatus: summary.buyer.realname_status,
+      isOrganization: summary.buyer.is_organization,
+      title: summary.buyer.title,
+      taxNumber: summary.buyer.tax_number,
+      email: summary.buyer.email,
+    },
+    settledAmountFen: summary.paid_fen,
+    settledAmountCny: summary.paid_cny,
+    platformFeeFen: summary.platform_fee_fen,
+    platformFeeCny: summary.platform_fee_cny,
+    developerGrossAmountFen: summary.developer_gross_fen,
+    developerGrossAmountCny: summary.developer_gross_cny,
+    /** 语义是「已成功退款合计」，不是「开发者已赔付出款」——老名字叫 developerPayout 是错的。 */
+    refundedFen: summary.refunded_fen,
+    refundedCny: summary.refunded_cny,
+    developerInvoiceFen: summary.developer_invoice_fen,
+    developerInvoiceCny: summary.developer_invoice_cny,
+    invoiceableTotalFen: summary.invoiceable_total_fen,
+    invoiceableTotalCny: summary.invoiceable_total_cny,
+    invoiceAvailable: summary.invoice_available,
+    requirementStatus: summary.requirement_status,
+    platformInvoice: summary.platform_invoice ? mapInvoice(summary.platform_invoice) : null,
+    developerInvoice: summary.developer_invoice ? mapInvoice(summary.developer_invoice) : null,
+  }
 }
 
 export async function listMyInvoices(token: string): Promise<InvoiceRecord[]> {
-  return requestJson<InvoiceRecord[]>('/invoices/mine', {
-    headers: authHeader(token),
-  }, '加载发票记录失败')
+  const invoices = await requestJson<InvoiceResponse[]>(
+    '/invoices/mine',
+    { headers: authHeader(token) },
+    '加载发票记录失败',
+  )
+  return invoices.map(mapInvoice)
 }
 
-export async function getInvoiceSummary(token: string, requirementId: string): Promise<InvoiceableSummary> {
+export async function getInvoiceSummary(
+  token: string,
+  requirementId: string,
+): Promise<InvoiceableSummary> {
   const query = new URLSearchParams({ requirement_id: requirementId })
-  return requestJson<InvoiceableSummary>(`/invoices/summary?${query.toString()}`, {
-    headers: authHeader(token),
-  }, '加载可开票金额失败')
+  const summary = await requestJson<SummaryResponse>(
+    `/invoices/summary?${query.toString()}`,
+    { headers: authHeader(token) },
+    '加载可开票金额失败',
+  )
+  return mapSummary(summary)
 }
 
-export type InvoiceRequestPayload = {
-  requirement_id: string
-  invoice_title: string
-  tax_number?: string
-  recipient_email?: string
-  /** 票种；不传按普票处理。 */
-  invoice_kind?: InvoiceKind
-  /** 专票的购买方开票资料；普票留空即可。 */
-  buyer_address?: string
-  buyer_phone?: string
-  buyer_bank_name?: string
-  buyer_bank_account?: string
-}
+export type InvoiceRequestPayload = Schemas['ApplyInvoiceRequest']
 
-/** 一次开票申请的结果：两侧各自的发票记录，某一侧不可开或无需再开时为 `null`。 */
 export type AppliedInvoices = {
-  /** 平台服务费票。乙方申请时恒为 `null`——这张票只有付款方（需求方）能申请。 */
   platformInvoice: InvoiceRecord | null
-  /** 开发者收入票。需求方索取、乙方自行开具都在这一次申请里落地。 */
   developerInvoice: InvoiceRecord | null
 }
 
-/**
- * 提交开票申请：一次动作把该需求能开的票都开出来。
- *
- * 需求方拿「平台服务费票 + 开发者收入票」两张，乙方只拿自己那张开发者收入票；两张共用同一份
- * 抬头 / 税号 / 邮箱。某一侧没有可开金额或已经开过时后端会跳过它（已开过的原票照样回放），
- * 两侧都没有可开的记录才报错。
- */
 export async function applyInvoices(
   token: string,
   payload: InvoiceRequestPayload,
 ): Promise<AppliedInvoices> {
-  return requestJson<AppliedInvoices>('/invoices/apply', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      ...authHeader(token),
+  const applied = await requestJson<Schemas['AppliedInvoicesResponse']>(
+    '/invoices/apply',
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...authHeader(token),
+      },
+      body: JSON.stringify(payload),
     },
-    body: JSON.stringify(payload),
-  }, '提交开票申请失败')
+    '提交开票申请失败',
+  )
+  return {
+    platformInvoice: applied.platform_invoice ? mapInvoice(applied.platform_invoice) : null,
+    developerInvoice: applied.developer_invoice ? mapInvoice(applied.developer_invoice) : null,
+  }
 }
 
 export async function uploadInvoiceDocument(
@@ -212,21 +220,28 @@ export async function uploadInvoiceDocument(
 ): Promise<InvoiceRecord> {
   const formData = new FormData()
   formData.append('file', file)
-  return requestJson<InvoiceRecord>(`/invoices/${invoiceId}/document`, {
-    method: 'POST',
-    headers: authHeader(token),
-    body: formData,
-  }, '上传发票文件失败')
+  const invoice = await requestJson<InvoiceResponse>(
+    `/invoices/${invoiceId}/document`,
+    {
+      method: 'POST',
+      headers: authHeader(token),
+      body: formData,
+    },
+    '上传发票文件失败',
+  )
+  return mapInvoice(invoice)
 }
 
+/**
+ * 下载发票文件。
+ *
+ * 走统一请求层（`requestBlob`）：401 分流、错误体解析与「未登录」事件都在那一层，裸 `fetch` 会把
+ * 401 变成一条看不懂的文本错误，也不会派发重新登录。
+ */
 export async function downloadInvoiceDocument(token: string, invoiceId: number): Promise<Blob> {
-  const response = await fetch(apiUrl(`/invoices/${invoiceId}/document`), {
-    headers: authHeader(token),
-    credentials: 'omit',
-  })
-  if (!response.ok) {
-    const message = (await response.text()).trim()
-    throw new Error(message || '下载发票文件失败')
-  }
-  return response.blob()
+  return requestBlob(
+    `/invoices/${invoiceId}/document`,
+    { headers: authHeader(token) },
+    '下载发票文件失败',
+  )
 }

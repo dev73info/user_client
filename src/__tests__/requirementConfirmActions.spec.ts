@@ -60,6 +60,9 @@ function version(id: number): PublicMcResourceVersionItem {
     note: null,
     creator: 'dev_view',
     created_at: '2026-10-01 10:00:00',
+    is_current: true,
+    price_fen: 0,
+    purchasable: false,
   }
 }
 

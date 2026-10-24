@@ -5,16 +5,12 @@ import { TMessage } from 'ui_73info'
 
 import { type AdapayBusinessPayChannel } from '@/api/adapay'
 import { fetchContractSigningStatus, type ContractSigningStatus } from '@/api/contracts'
+import { getPaymentLimits } from '@/api/payments'
 import type { RequirementPaymentMode, RequirementStatus } from '@/api/requirements'
-import { getDepositRatio } from '@/api/settings'
-import {
-  calculateFinalDepositAmount,
-  calculateFinalPaymentAmount,
-} from '@/shared/requirementPayment'
+import { requirementPayFen } from '@/shared/requirementPayment'
 import { useAuthStore } from '@/stores/auth'
 
 import { useDepositCheckout, type PaymentState } from './useDepositCheckout'
-import { useDepositCoupons } from './useDepositCoupons'
 
 /** 首页待办需求（视图侧 `PendingRequirementView` 的子集）：支付域只读这几项。 */
 export type DepositRequirement = {
@@ -35,8 +31,8 @@ export type DepositPaymentOptions = {
 }
 
 /**
- * 首页「定金 / 尾款」支付域：卡片状态、支付方式、押金比例、券（转 `useDepositCoupons`）、
- * 拉起 Adapay 与回跳后的确认。
+ * 首页「定金 / 尾款」支付域：卡片状态、支付方式、定金比例、应付金额预估、拉起 Adapay
+ * 与回跳后的确认。
  *
  * 视图那边只在顶层留着 `openDepositCard`（用例直接调它），垫付/驳回分流后把
  * 待付款这一支交给本 composable 的 `openDepositPayment`。
@@ -61,37 +57,23 @@ export function useDepositPayment(options: DepositPaymentOptions) {
   const isFinalPayment = computed(() => depositRequirement.value?.status === 'pending_final')
   const paymentStageLabel = computed(() => (isFinalPayment.value ? '尾款' : '定金'))
 
-  const {
-    availableCoupons,
-    amountCouponCode,
-    discountCouponCode,
-    couponLoading,
-    activeCouponCode,
-    selectedCoupon,
-    couponBaseAmount,
-    couponDiscount,
-    couponFinalAmount,
-    couponSummary,
-    selectCoupon,
-    resetCoupons,
-    loadAvailableCoupons,
-  } = useDepositCoupons({
-    isMounted: options.isMounted,
-    depositRequirement,
-    depositRatioPercent,
-    isFinalPayment,
-  })
+  /**
+   * 本次应付金额（整数分）：定金按比例、尾款按「预算 − 定金」，口径统一走
+   * `@/shared/requirementPayment`。这只是一个**预估**，真正的应付以
+   * `POST /api/adapay/requirements/{id}/deposit|final-payment` 回执里的 `amount_fen` 为准。
+   *
+   * 优惠券**不参与**这块：契约里这两个下单接口的请求体只有 `client_platform` / `pay_channel`，
+   * 没有券字段，后端也没有「用券抵扣定金」的口径。所以这里不列券、不算券抵扣，
+   * 页面上也不再出现「当前可抵扣 / 实付」这类会让人以为能抵扣的文案。
+   */
+  const payableFen = computed(() =>
+    depositRequirement.value
+      ? requirementPayFen(depositRequirement.value, depositRatioPercent.value)
+      : 0,
+  )
 
   function isAdapayRequirement(item: DepositRequirement) {
     return item.paymentMode === 'platform_guarantee'
-  }
-
-  function finalDepositAmount(item: DepositRequirement) {
-    return calculateFinalDepositAmount(item, depositRatioPercent.value)
-  }
-
-  function finalPaymentAmount(item: DepositRequirement) {
-    return calculateFinalPaymentAmount(item, depositRatioPercent.value)
   }
 
   /** 侧栏 / 精选卡片上「这张需求点得开支付卡片吗」。 */
@@ -103,7 +85,7 @@ export function useDepositPayment(options: DepositPaymentOptions) {
 
   /** 云闪付授权回跳成功后把支付方式切回去（`useHomeAuthQuery` 的回调落到这里）。 */
   function markUnionAuthorized() {
-    depositChannel.value = 'union'
+    depositChannel.value = 'alipay'
   }
 
   /**
@@ -121,11 +103,9 @@ export function useDepositPayment(options: DepositPaymentOptions) {
 
     depositPayment.value = null
     depositChannel.value = 'alipay'
-    resetCoupons()
     depositPolicyAccepted.value = false
     contractSigningStatus.value = null
     router.push({ name: 'home', query: { modal: 'deposit', requirement_id: item.id } })
-    void loadAvailableCoupons()
     void fetchContractSigningStatus(auth.token, item.id)
       .then((s) => {
         contractSigningStatus.value = s
@@ -148,22 +128,29 @@ export function useDepositPayment(options: DepositPaymentOptions) {
     router.replace({ name: 'home' })
   }
 
+  /**
+   * 定金比例：契约字段是 `deposit_ratio_bps`（万分之几），这里换成百分比给弹窗展示。
+   *
+   * 取不到时保留默认比例——它只用于「本次应付」的**预估**，真正扣多少由服务端按合同快照算，
+   * 回执里的 `amount_fen` 才是准数。
+   */
   async function loadDepositRatio() {
     if (!auth.isAuthed) {
       return
     }
 
     try {
-      const payload = await getDepositRatio(auth.token)
-      if (!payload || !options.isMounted()) {
+      const payload = await getPaymentLimits(auth.token)
+      if (!options.isMounted()) {
         return
       }
 
-      if (Number.isFinite(payload.deposit_ratio_percent)) {
-        depositRatioPercent.value = payload.deposit_ratio_percent
+      const bps = payload.deposit_ratio_bps
+      if (typeof bps === 'number' && Number.isInteger(bps) && bps > 0) {
+        depositRatioPercent.value = bps / 100
       }
     } catch {
-      // Keep default ratio when settings API is unavailable.
+      /* 比例取不到时保留默认值，页面上展示的是预估金额 */
     }
   }
 
@@ -173,9 +160,6 @@ export function useDepositPayment(options: DepositPaymentOptions) {
     depositPayment,
     depositLoading,
     depositPolicyAccepted,
-    amountCouponCode,
-    discountCouponCode,
-    depositRatioPercent,
     loadPendingRequirements: options.loadPendingRequirements,
   })
 
@@ -189,25 +173,14 @@ export function useDepositPayment(options: DepositPaymentOptions) {
     depositRequirement,
     isFinalPayment,
     paymentStageLabel,
-    availableCoupons,
-    amountCouponCode,
-    discountCouponCode,
-    couponLoading,
-    activeCouponCode,
-    selectedCoupon,
-    couponBaseAmount,
-    couponDiscount,
-    couponFinalAmount,
-    couponSummary,
+    payableFen,
     isAdapayRequirement,
     canOpenPayment,
-    selectCoupon,
     updateDepositChannel,
     markUnionAuthorized,
     openDepositPayment,
     closeDepositCard,
     loadDepositRatio,
-    loadAvailableCoupons,
     submitDepositPayment,
   }
 }

@@ -124,7 +124,6 @@ async function renderProfile() {
         RichTextEditor: RichTextEditorStub,
         RequirementConversationModal: true,
         RequirementProgressGuide: true,
-        RequirementAgentPanel: true,
       },
     },
   })

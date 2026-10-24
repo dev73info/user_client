@@ -21,7 +21,6 @@ export type ResourceRowAction =
   | 'use-promo'
   | 'versions'
   | 'sold-orders'
-  | 'transfer'
   | 'delete'
 
 /**
@@ -29,9 +28,7 @@ export type ResourceRowAction =
  * - `publish` / `versions`：接口资源没有可下载文件（`source_url` 是 `pending://resource/api/...` 占位），
  *   版本发布与版本管理对它是一步死操作；
  * - `use-promo`：精选 / 置顶卡只作用于大厅与首页精选，而接口资源不进任何公开面，
- *   用下去卡会被标记已使用、资源却哪都不出现；
- * - `transfer`：渠道配置（回调地址 / 密钥 / 允许来源）按 resource_id 存放、不随归属变化，
- *   过户等于把「回调打到旧开发者服务器」的配置一并交给新主人。
+ *   用下去卡会被标记已使用、资源却哪都不出现。
  *
  * 「申请公开」「设为私有」「售出订单」「删除」对接口资源照常成立，不在此列。
  */
@@ -39,7 +36,6 @@ export const API_RESOURCE_UNAVAILABLE_ACTIONS: readonly ResourceRowAction[] = [
   'publish',
   'versions',
   'use-promo',
-  'transfer',
 ]
 
 /** 列表「更多」菜单里这个动作对当前资源是否可用：普通资源全开，接口资源藏掉上面那几项。 */

@@ -13,7 +13,6 @@ import { buttonByText, openEntry, renderView, stubMatchMedia } from '@/__tests__
  */
 const mocks = vi.hoisted(() => ({
   getProfile: vi.fn(),
-  updateProfile: vi.fn(),
   sendProfileEmailChangeCode: vi.fn(),
   updateProfileEmail: vi.fn(),
   getBoundProviders: vi.fn(),
@@ -59,7 +58,6 @@ vi.mock('ui_73info', async (importOriginal) => {
 
 vi.mock('@/api/settings', () => ({
   getProfile: mocks.getProfile,
-  updateProfile: mocks.updateProfile,
   sendProfileEmailChangeCode: mocks.sendProfileEmailChangeCode,
   updateProfileEmail: mocks.updateProfileEmail,
   // 本文件用不到，但模块是整体 mock 的，视图 import 的名字都得在
@@ -99,48 +97,15 @@ beforeEach(() => {
     username: 'alice',
     email: 'old@example.com',
     two_factor_enabled: false,
-    wechat_bound: false,
   })
   mocks.getBoundProviders.mockResolvedValue({ providers: [] })
-  mocks.updateProfile.mockResolvedValue({ token: 'next-token' })
   mocks.sendProfileEmailChangeCode.mockResolvedValue({})
   mocks.updateProfileEmail.mockResolvedValue({ email: 'new@example.com' })
   mocks.closeAccount.mockResolvedValue({})
   mocks.closeSettle.mockResolvedValue({})
 })
 
-describe('账号与安全页：改用户名 / 改邮箱 / 两个注销弹窗的父子接线', () => {
-  it('点入口行真的能打开对应的弹窗（入口行组件的 emit 与视图监听逐字对上）', async () => {
-    // 别的用例直接调 `openAccountEntry`，绕过了模板；这条从点按钮开始，
-    // 组件 emit 名或模板里的 `@open` 写错一个字，这里就红。
-    const wrapper = await renderView(AccountCouponsView)
-    const row = wrapper.findAll('.entry-row').find((node) => node.text().includes('修改用户名'))
-    expect(row).toBeTruthy()
-
-    await row!.trigger('click')
-    await flushPromises()
-
-    expect(wrapper.find('input[placeholder="请输入新的用户名"]').exists()).toBe(true)
-    wrapper.unmount()
-  })
-
-  it('改用户名：输入回写父级草稿，点保存把新值提交上去', async () => {
-    const wrapper = await renderView(AccountCouponsView)
-    await openEntry(wrapper, 'username')
-
-    const input = wrapper.find('input[placeholder="请输入新的用户名"]')
-    expect(input.exists()).toBe(true)
-    // 初值来自 loadProfile 回填的那份
-    expect((input.element as HTMLInputElement).value).toBe('alice')
-
-    await input.setValue('alice_new')
-    await buttonByText(wrapper, '保存用户名').trigger('click')
-    await flushPromises()
-
-    expect(mocks.updateProfile).toHaveBeenCalledWith('test-token', 'alice_new')
-    wrapper.unmount()
-  })
-
+describe('账号与安全页：改邮箱 / 两个注销弹窗的父子接线', () => {
   it('改邮箱：发码用新邮箱，保存带新邮箱 + 验证码', async () => {
     const wrapper = await renderView(AccountCouponsView)
     await openEntry(wrapper, 'email')
@@ -190,13 +155,13 @@ describe('账号与安全页：改用户名 / 改邮箱 / 两个注销弹窗的�
 
   it('点弹窗右上角关闭按钮，父级可见性跟着回写（update:visible 生效）', async () => {
     const wrapper = await renderView(AccountCouponsView)
-    await openEntry(wrapper, 'username')
-    expect(wrapper.find('input[placeholder="请输入新的用户名"]').exists()).toBe(true)
+    await openEntry(wrapper, 'email')
+    expect(wrapper.find('input[type="email"]').exists()).toBe(true)
 
     await wrapper.find('.t73-dialog__close').trigger('click')
     await nextTick()
 
-    expect(wrapper.find('input[placeholder="请输入新的用户名"]').exists()).toBe(false)
+    expect(wrapper.find('input[type="email"]').exists()).toBe(false)
     wrapper.unmount()
   })
 })

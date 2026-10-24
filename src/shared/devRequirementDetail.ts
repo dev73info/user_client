@@ -1,5 +1,6 @@
 import type { RequirementPaymentMode, RequirementStatus } from '@/api/devRequirements'
 import { requirementStatusLabel } from '@/shared/requirementStatus'
+import { parseBackendDateTime } from '@/shared/datetime'
 import {
   developmentCycleLabel,
   isRequirementArchived,
@@ -21,7 +22,7 @@ export type RequirementDetailFacts = {
   requirement_id: string
   title: string
   creator: string
-  updated_at: string
+  created_time: string
   budget?: number | null
   description?: string | null
   acceptance_criteria?: string | null
@@ -112,8 +113,8 @@ export function requirementTimeText(value?: string | null): string {
     return '时间未知'
   }
 
-  const date = new Date(value)
-  if (Number.isNaN(date.getTime())) {
+  const date = parseBackendDateTime(value)
+  if (!date) {
     return '时间未知'
   }
 

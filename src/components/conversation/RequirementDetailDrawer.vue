@@ -46,7 +46,6 @@ const fields = computed(() => {
     { label: '状态', value: requirementStatusLabel(item.status, item.payment_mode) },
     { label: '预算', value: formatCny(item.budget) },
     { label: '创建', value: item.created_time ? formatCnDateTime(item.created_time) : '时间未知' },
-    { label: '更新', value: formatCnDateTime(item.updated_at) },
     { label: '需求方', value: item.creator ?? '—' },
     { label: '开发者', value: item.developer ?? '待接单' },
   ]

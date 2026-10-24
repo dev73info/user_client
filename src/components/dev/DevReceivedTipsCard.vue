@@ -3,13 +3,15 @@ import { computed } from 'vue'
 
 import type { TipOrder } from '@/api/tips'
 import { LIST_PAGE_SIZES, useClientPagination } from '@/composables/useClientPagination'
+import { formatBackendDateTime } from '@/shared/datetime'
 import { tipOrderAmountLabel, tipStatusLabel } from '@/shared/devTip'
 
 import { TPagination, TOption, TSelect, TTable, TTableColumn, TTag } from 'ui_73info'
 
 /**
  * R010「收到打赏」只读列表：本人收到的打赏（含未公开），前端分页。
- * 行数据由页面一次取回（后端单页上限 100 条），这里只负责分页与渲染。
+ * 行数据由页面一次取回（`GET /api/tips/received` 不分页），这里只负责分页与渲染。
+ * 打赏只有现金一种形态，金额是整数分（`amount_fen`），展示时统一走 `tipOrderAmountLabel`。
  */
 const props = defineProps<{
   received: TipOrder[]
@@ -37,12 +39,7 @@ const {
     </template>
     <TTableColumn label="时间" min-width="160">
       <template #default="scope">
-        <span>{{ scope.row.created_at }}</span>
-      </template>
-    </TTableColumn>
-    <TTableColumn label="类型" min-width="90">
-      <template #default="scope">
-        <span>{{ scope.row.amount_points > 0 ? '积分' : '现金' }}</span>
+        <span>{{ formatBackendDateTime(scope.row.created_at) }}</span>
       </template>
     </TTableColumn>
     <TTableColumn label="金额" min-width="120">

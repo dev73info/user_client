@@ -80,9 +80,17 @@ export const accountRoutes: MockRoute[] = [
   },
   {
     method: 'GET',
-    path: '/settings/deposit-ratio',
-    note: '平台分成比例（发布需求页要显示定金比例）',
-    handler: () => jsonResponse({ deposit_ratio_percent: 20, min_percent: 5, max_percent: 50 }),
+    path: '/payment/limits/system',
+    note: '定金比例与平台费率（发布需求页要显示定金比例；契约只有基点口径）',
+    handler: () =>
+      jsonResponse({
+        deposit_ratio_bps: 2000,
+        platform_fee_bps: 1500,
+        personal_income_tax_bps: 0,
+        customer_breach_tax_bps: 0,
+        customer_breach_platform_fee_bps: 0,
+        platform_settle_account_id: null,
+      }),
   },
   {
     method: 'PUT',

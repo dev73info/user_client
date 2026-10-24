@@ -15,7 +15,7 @@ import {
 } from './helpers/invoiceApplyDialog'
 import type { InvoiceMocks } from './helpers/invoiceApplyDialog'
 
-/** 已开票进度与红冲：一侧开过只显示进度、两侧都开过挡住提交、净额变小要红冲重开。 */
+/** 已开票进度：一侧开过只显示进度、两侧都开过挡住提交。 */
 
 const mocks = vi.hoisted(() => ({
   summary: vi.fn(),
@@ -73,62 +73,6 @@ describe('InvoiceApplyDialog', () => {
     expect(wrapper.text()).toContain('平台服务费发票已提交（审核中 · 票面 ¥200.00）')
     expect(wrapper.text()).toContain('开发者服务收入发票已提交（已开具 · 票面 ¥700.00）')
     expect(wrapper.text()).toContain('本需求暂无可开票金额')
-
-    wrapper.unmount()
-  })
-
-  it('原票开具后净额又变小，提示需红冲后按新净额重开', async () => {
-    mocks.summary.mockResolvedValue(
-      summary({
-        developerPayoutFen: 50000,
-        developerPayoutCny: '500.00',
-        developerInvoiceFen: 30000,
-        developerInvoiceCny: '300.00',
-        invoiceableTotalFen: 50000,
-        invoiceableTotalCny: '500.00',
-        developerInvoice: invoiceRecord({
-          id: 2,
-          invoiceRole: 'developer',
-          amountFen: 80000,
-          amountCny: '800.00',
-          status: 'approved',
-          reversalRequired: true,
-          reversalSuggestionFen: 50000,
-        }),
-      }),
-    )
-    const wrapper = await renderInvoice('customer')
-
-    expect(wrapper.text()).toContain('原票开具后本需求实际发生的净额变了（售后退款 / 赔付已成立）')
-    expect(wrapper.text()).toContain('需要红冲后重开')
-
-    wrapper.unmount()
-  })
-
-  it('未结案的退款诉求不触发红冲：钱没退出去就不动已开的票', async () => {
-    mocks.summary.mockResolvedValue(
-      summary({
-        pendingRefundFen: 50000,
-        pendingRefundCny: '500.00',
-        developerInvoiceFen: 30000,
-        developerInvoiceCny: '300.00',
-        invoiceableTotalFen: 50000,
-        invoiceableTotalCny: '500.00',
-        developerInvoice: invoiceRecord({
-          id: 2,
-          invoiceRole: 'developer',
-          amountFen: 80000,
-          amountCny: '800.00',
-          status: 'approved',
-          reversalRequired: false,
-          reversalSuggestionFen: 0,
-        }),
-      }),
-    )
-    const wrapper = await renderInvoice('customer')
-
-    expect(wrapper.text()).toContain('本需求有未结案的退款诉求 ¥500.00')
-    expect(wrapper.text()).not.toContain('需要红冲后重开')
 
     wrapper.unmount()
   })

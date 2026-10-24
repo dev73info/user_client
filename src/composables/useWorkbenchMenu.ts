@@ -26,7 +26,6 @@ import type { ComputedRef } from 'vue'
 export function useWorkbenchMenu(options: {
   isDevWorkbenchMode: ComputedRef<boolean>
   isMessagesRoute: ComputedRef<boolean>
-  ticketsMenuItem: ComputedRef<WorkbenchMenuItem>
   notificationsMenuItem: ComputedRef<WorkbenchMenuItem>
   closeMobileMenu: () => void
   /** 跳消息中心（含关抽屉）：消息中心是「组头 + 会话列表」，点开时两件事一起做。 */
@@ -118,7 +117,6 @@ export function useWorkbenchMenu(options: {
       [
         ...allMenuGroups.value.flatMap((group) => group.items),
         options.notificationsMenuItem.value,
-        options.ticketsMenuItem.value,
       ].find((item) => isMenuItemActive(item)) ?? null
     )
   }

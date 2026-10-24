@@ -113,7 +113,7 @@ describe('ResourceDetailRedirectView', () => {
         tag_selections: [
           tagSelection({ root: '矿物', entry: '矿石', aliases: ['mineral', 'ore'] }),
         ],
-        price_fen: 1200,
+        buyout_price_fen: 1200,
       }),
     )
 

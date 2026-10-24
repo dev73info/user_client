@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { ActivityCampaignClaimResp } from '@/api/settings'
+import { formatBackendDateTime } from '@/shared/datetime'
 
 /**
  * 活动福利领取页的「结果 / 空态 / 加载中」三态展示。
@@ -41,10 +42,7 @@ function openAuth(mode: 'login' | 'register') {
     <p>券类型：{{ result.coupon_type === 'amount' ? '优惠券' : '折扣券' }}</p>
     <p>券名称：{{ result.coupon_name }}</p>
     <p>券码：{{ result.assigned_coupon_code }}</p>
-    <p>领取时间：{{ result.claimed_at }}</p>
-    <p v-if="!result.already_claimed && result.points_awarded">
-      参与活动获得 <strong class="claim-outcome__points">+{{ result.points_awarded }}</strong> 积分
-    </p>
+    <p>领取时间：{{ formatBackendDateTime(result.claimed_at) }}</p>
     <div class="claim-outcome__actions">
       <button class="claim-outcome__primary" type="button" @click="emit('workbench')">
         前往工作台查看
@@ -99,10 +97,6 @@ function openAuth(mode: 'login' | 'register') {
 .claim-outcome p {
   margin: 8px 0;
   color: color-mix(in srgb, var(--73-accent-soft) 82%, transparent);
-}
-
-.claim-outcome__points {
-  color: var(--73-warning);
 }
 
 .claim-outcome__actions {

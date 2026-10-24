@@ -1,26 +1,13 @@
+import type { components } from '@/api/generated/schema'
 import type { McResourcePlatform, McResourceTagSelectionPayload } from '@/api/resources'
 
-export type RecentDeal = {
-  payment_id: string
-  requirement_id: string
-  title: string
-  amount_cny: number
-  paid_at: string
-  comment_rating?: number | null
-  comment_text?: string | null
-  commented_at?: string | null
-}
+type Schemas = components['schemas']
 
-export type RequirementOverviewResp = {
-  developer_count?: number
-  total_orders: number
-  total_orders_change_rate: number
-  positive_rate: number
-  positive_rate_change_rate: number
-  total_turnover_cny: number
-  total_turnover_change_rate: number
-  recent_deals: RecentDeal[]
-}
+/** 概览里的「近期成交」一行，字段与契约 `RecentDealResponse` 逐字对应。 */
+export type RecentDeal = Schemas['RecentDealResponse']
+
+/** 工作台首页 / 公开首页的概览，字段与契约 `DashboardResponse` 逐字对应。 */
+export type RequirementOverviewResp = Schemas['DashboardResponse']
 
 export type RequirementStatus =
   | 'pending_review'
@@ -36,25 +23,10 @@ export type RequirementStatus =
 
 export type RequirementPaymentMode = 'platform_guarantee' | 'self_managed'
 
-export type PublicRequirementSpotlightItem = {
-  requirement_id: string
-  creator?: string
-  title: string
-  description?: string | null
-  acceptance_criteria?: string | null
-  budget?: number | null
-  payment_mode: RequirementPaymentMode
-  status: RequirementStatus
-  created_at: string
-  updated_at: string
-}
+/** 公开精选的一条，字段与契约 `PublicRequirementResponse` 逐字对应。 */
+export type PublicRequirementSpotlightItem = Schemas['PublicRequirementResponse']
 
-export type PublicRequirementSpotlightPage = {
-  total: number
-  page: number
-  page_size: number
-  items: PublicRequirementSpotlightItem[]
-}
+export type PublicRequirementSpotlightPage = Schemas['PublicSpotlightResponse']
 
 export type RequirementPendingResourceVersionDeleteRequest = {
   version_id: number
@@ -62,13 +34,23 @@ export type RequirementPendingResourceVersionDeleteRequest = {
   requested_at?: string | null
 }
 
-export type RequirementItem = {
-  id: number
-  requirement_id: string
-  subscribe_status_change: boolean
-  bound_resource_id?: number | null
-  bound_resource_version_count?: number | null
+/**
+ * 需求行：契约 `RequirementResponse` 打底，再叠一层「后端实现里有、契约里没登记」的扩展字段。
+ *
+ * 分成两段写是有意的：
+ * - 契约段（`Schemas['RequirementResponse']`）由后端 `openapi.json` 生成，字段加减跟着契约走；
+ *   其中 `status` / `payment_mode` 收窄成字面量联合，UI 的穷举分支才有类型保障。
+ * - 扩展段全部是**可选**字段：契约没声明，读不到就是 `undefined`，调用方必须按「未知」处理，
+ *   不许用默认值把它填成看起来正常的样子（例如归档时间缺失时不能当成「未锁定」以外的结论）。
+ *   这一段每少一条，就说明后端把字段补进 DTO 了——届时顺手删掉对应的扩展声明。
+ */
+export type RequirementItem = Omit<Schemas['RequirementResponse'], 'status' | 'payment_mode'> & {
+  /** 契约里是裸 `string`，前端收窄成状态机取值，UI 的穷举分支才有类型保障。 */
+  status: RequirementStatus
+  payment_mode: RequirementPaymentMode
+  /** 私有 / 审核可见：与 `PATCH /resource-visibility` 的取值一致。 */
   resource_visibility?: 'public' | 'review' | 'private' | null
+  /** 交付关联资源的删除申请（审核流水），契约未登记。 */
   resource_version_delete_request_id?: number | null
   resource_version_delete_request_version?: string | null
   resource_version_delete_request_status?: 'pending' | 'rejected' | null
@@ -76,6 +58,9 @@ export type RequirementItem = {
   resource_version_delete_reviewed_at?: string | null
   resource_version_delete_review_note?: string | null
   pending_resource_version_delete_requests?: RequirementPendingResourceVersionDeleteRequest[] | null
+  /** 交付关联资源的展示字段（需求详情里那张资源卡）。 */
+  bound_resource_id?: number | null
+  bound_resource_version_count?: number | null
   bound_resource_platform?: McResourcePlatform | null
   bound_resource_title?: string | null
   bound_resource_author?: string | null
@@ -85,25 +70,14 @@ export type RequirementItem = {
   bound_resource_cover_url?: string | null
   bound_resource_docs_url?: string | null
   bound_resource_updated_at?: string | null
-  created_time?: string
-  creator?: string
-  title: string
-  description?: string | null
-  acceptance_criteria?: string | null
-  review_note?: string | null
-  /** 客户侧评价（需求创建者提交） */
+  /** 客户侧评价（需求创建者提交）。 */
   comment_rating?: number | null
   comment_text?: string | null
   commented_at?: string | null
-  /** 开发者侧评价（绑定开发者提交） */
+  /** 开发者侧评价（绑定开发者提交）。 */
   developer_comment_rating?: number | null
   developer_comment_text?: string | null
   developer_commented_at?: string | null
-  status: RequirementStatus
-  budget?: number | null
-  payment_mode: RequirementPaymentMode
-  updated_at: string
-  developer?: string | null
   /** 排队中分账里最晚的计划分账时间（东八区），没有排队分账时为空；前端据此算结算倒计时。 */
   settlement_available_at?: string | null
   /**
@@ -112,57 +86,37 @@ export type RequirementItem = {
    */
   resource_claimed_at?: string | null
   /**
-   * 开发周期（天，R014）：担保需求（`payment_mode = platform_guarantee`）创建 / 编辑时必填，
-   * 等于合同自双方签署完成到截止的有效期天数；无担保需求或未填时为 `null`。
-   * 下限以平台配置为准，前端只做「正整数」的粗校验，最终以后端返回的中文提示为准。
-   */
-  development_cycle_days?: number | null
-  /**
    * 进入「超期锁定」（合同有效期届满后的 30 天资料保留期）的时间（东八区）；从未锁定为 `null`。
-   * 见 `shared/requirementArchive.ts`，页面上据此给锁定横幅、只保留下载入口、置灰写操作。
+   * 见 `shared/requirementArchive.ts`。
    */
   archive_locked_at?: string | null
   /** 锁定到期时间 = `archive_locked_at` + 平台配置的锁定期天数；未锁定为 `null`。 */
   archive_lock_expires_at?: string | null
   /** 内容被清除的时间（东八区）；非空即「已清除」终态：资料下载不可用、写操作一律拒绝。 */
   archive_cleared_at?: string | null
-  /**
-   * 锁定期内「把交付资源转为我的资源」引导标记：已锁定且未清除、需求已结单、尚未转换、
-   * 有交付资源时为 `true`。转换能力复用 R006 的既有接口，前端据此展示引导入口。
-   */
+  /** 锁定期内「把交付资源转为我的资源」引导标记，由后端判定。 */
   archive_can_claim_resource?: boolean | null
 }
 
-export type CreateRequirementPayload = {
-  title: string
-  description: string
-  budget: number
-  acceptance_criteria: string
+/** 发布需求：字段与契约 `CreateRequirementRequest` 一致（`budget` 按契约是**元**）。 */
+export type CreateRequirementPayload = Schemas['CreateRequirementRequest'] & {
   payment_mode: RequirementPaymentMode
-  /**
-   * 开发周期（天，R014）：`platform_guarantee` 时必填且不得低于平台配置的最短下限
-   * （下限由后端校验并返回中文提示）；`self_managed` 时忽略。不传 / 传 null 表示未填。
-   */
-  development_cycle_days?: number | null
 }
 
-export type CommentRequirementPayload = {
-  rating: number
-  comment?: string
-}
+/** 需求评价：字段与契约 `CommentRequirementRequest` 一致。 */
+export type CommentRequirementPayload = Schemas['CommentRequirementRequest']
 
 export type RequirementResourceVisibility = 'public' | 'private'
 
-export type UpdateRequirementResourceVisibilityPayload = {
+/** 交付资源可见性：字段与契约 `VisibilityRequest` 一致。 */
+export type UpdateRequirementResourceVisibilityPayload = Schemas['VisibilityRequest'] & {
   visibility: RequirementResourceVisibility
 }
 
-export type ReviewRequirementResourceDeletePayload = {
-  version_id: number
+/** 交付资源删除审核：字段与契约 `DeleteReviewRequest` 一致。 */
+export type ReviewRequirementResourceDeletePayload = Schemas['DeleteReviewRequest'] & {
   action: 'approve' | 'reject'
-  note?: string
 }
 
-export type UpdateRequirementSubscriptionPayload = {
-  subscribe_status_change: boolean
-}
+/** 状态变更订阅：字段与契约 `UpdateSubscriptionRequest` 一致。 */
+export type UpdateRequirementSubscriptionPayload = Schemas['UpdateSubscriptionRequest']

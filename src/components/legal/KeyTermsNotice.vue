@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
-import { fetchAgreementContent } from '@/api/auth'
+import { fetchUserServiceAgreement } from '@/api/auth'
 import { LEGAL_NOTICE_VERSION } from './legalNotice'
 import { findLegalSectionTitle, legalSectionAnchor } from './legalText'
 
@@ -50,16 +50,13 @@ const KEY_TERM_ITEMS: KeyTermItem[] = [
 
 const props = withDefaults(
   defineProps<{
-    /** 要提示的协议 code（对应后端 contract_template.name） */
+    /** 要提示的协议 code（页面据此决定跳到哪份协议，本组件不再自己取正文） */
     code?: string
     /** 页面里已渲染的章节标题；给了才能跳到正文对应位置 */
     headings?: { id: string; title: string }[]
     /** 没有正文可跳时的兜底链接（例如登录弹窗里跳到 /terms） */
     fallbackHref?: string
-    /**
-     * 协议版本号。**页面已经取到协议正文时直接传进来**，
-     * 组件就不再发一次请求（同一个协议没必要取两遍）。
-     */
+    /** 协议版本号。由页面取到正文后传进来——组件自己**不再发请求**（见下方说明）。 */
     version?: string
     /** 协议生效日期，同上：给了就不重复取。 */
     effectiveAt?: string
@@ -77,9 +74,47 @@ const emit = defineEmits<{
   (e: 'loaded', payload: { version: string; effective_at: string }): void
 }>()
 
-/** 页面给了版本 / 生效日期就用页面的，没给才自己去取。 */
+/**
+ * 版本号 / 生效日期：优先用页面传进来的；页面没给时**按协议 code 走契约里真实存在的端点**。
+ *
+ * 这里原先统一去取 `/api/auth/agreement-content?code=...`，而那个端点在当前后端契约里
+ * **不存在**（只有 `/api/auth/user-service-agreement` 与 `/api/contract/**`），
+ * 每次都是 404 再被 catch 吞掉，等于白打一次请求还假装拿到了数据。
+ *
+ * 现在只有《用户服务协议》能取到整数 `version`（`AgreementContentResponse`）；
+ * 开发者入驻协议与接口使用协议在契约里只有合同详情（`ContractResponse` 没有版本号），
+ * 所以那两档不发请求、也不显示版本——留痕时 `agreement_version` 传空串，
+ * 后端按「留空取模板当前版本」落库（见 `crates/identity/src/api/application/agreement.rs`）。
+ */
 const version = ref(props.version)
 const effectiveAt = ref(props.effectiveAt)
+
+/** 只有《用户服务协议》有「正文 + 版本 + 生效日期」的公开端点。 */
+const AGREEMENT_CONTENT_SOURCES: Record<
+  string,
+  () => Promise<{ version: number; effective_at: string }>
+> = {
+  user_service_agreement: fetchUserServiceAgreement,
+}
+
+async function loadAgreementMeta() {
+  const fetcher = AGREEMENT_CONTENT_SOURCES[props.code]
+  if (!fetcher) {
+    return
+  }
+
+  try {
+    const content = await fetcher()
+    const nextVersion = String(content.version)
+    version.value = nextVersion
+    effectiveAt.value = content.effective_at
+    emit('loaded', { version: nextVersion, effective_at: content.effective_at })
+  } catch {
+    // 取不到就不显示版本：不编一个出来，也不把失败当成「已确认当前版本」。
+    version.value = props.version
+    effectiveAt.value = props.effectiveAt
+  }
+}
 
 /** 每个条目的跳转地址：能定位到正文章节就跳章节，否则走兜底链接。 */
 const items = computed(() =>
@@ -92,32 +127,18 @@ const items = computed(() =>
   }),
 )
 
-async function loadAgreement() {
-  try {
-    const content = await fetchAgreementContent(props.code)
-    version.value = content.version
-    effectiveAt.value = content.effective_at
-    emit('loaded', { version: content.version, effective_at: content.effective_at })
-  } catch {
-    version.value = props.version
-    effectiveAt.value = props.effectiveAt
-  }
-}
-
 onMounted(() => {
-  // 页面已经给出版本 / 生效日期就不必再取一遍正文。
+  // 页面已经给出版本 / 生效日期就不必再取一遍。
   if (!props.version && !props.effectiveAt) {
-    void loadAgreement()
+    void loadAgreementMeta()
   }
 })
 
 watch(
   () => [props.version, props.effectiveAt] as const,
   ([nextVersion, nextEffectiveAt]) => {
-    if (nextVersion || nextEffectiveAt) {
-      version.value = nextVersion
-      effectiveAt.value = nextEffectiveAt
-    }
+    version.value = nextVersion
+    effectiveAt.value = nextEffectiveAt
   },
 )
 

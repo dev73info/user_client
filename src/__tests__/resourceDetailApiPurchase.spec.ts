@@ -88,15 +88,6 @@ vi.mock('@/api/adapay', () => ({
   getAdapayClientPlatform: () => 'pc',
 }))
 
-vi.mock('@/api/auth', () => ({
-  getWechatPaymentAuthorizationStatus: vi.fn(),
-  getWechatPaymentAuthorizeUrl: vi.fn(),
-}))
-
-vi.mock('@/api/points', () => ({
-  getMyPoints: vi.fn(),
-}))
-
 vi.mock('ui_73info', async (importOriginal) => {
   const actual = await importOriginal<typeof import('ui_73info')>()
   const toast =
@@ -156,6 +147,8 @@ function resourceFixture(part: Record<string, unknown> = {}): PublicMcResourceIt
     origin_url: null,
     origin_org: null,
     origin_note: null,
+    // 售卖判定只认买断价 `buyout_price_fen`（`price_fen` 是冻结的历史值）
+    buyout_price_fen: 9900,
     price_fen: 9900,
     price_points: 0,
     copyright_declared: true,
@@ -189,7 +182,7 @@ describe('ResourceDetailPanel · 接口资源的平台内购买入口', () => {
   it('接口资源不给平台内购买入口，只留到开发者站点下单的引导', async () => {
     const wrapper = await mountPanel(resourceFixture({ resource_kind: 'api' }))
 
-    // 平台内购买按钮（现金购 / 积分购都走它）不渲染
+    // 平台内购买按钮不渲染
     expect(wrapper.find('.resource-detail-page__primary-btn').exists()).toBe(false)
     // 改成一句引导
     expect(wrapper.find('.resource-detail-page__api-hint').text()).toBe(

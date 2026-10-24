@@ -6,7 +6,7 @@ import { CONTRACT_STATUS } from '@/shared/contracts'
 import { buildContract, contractOfRequirement, contracts } from './contracts'
 import type { MockPayment } from './payments'
 import { REQUIREMENT_SEEDS } from './requirementSeeds'
-import { findRequirement, requirements, seedOf } from './requirements'
+import { findRequirement, requirements, seedOf, type MockRequirementRow } from './requirements'
 import { mcResourceVersions, mcResources, versionsOf } from './resources'
 import { devWithdrawals } from './devWallet'
 import { CLIENT_USERNAME, DEV_USERNAME, datetime, iso } from './shared'
@@ -24,11 +24,11 @@ export function createRequirementRecord(payload: {
   budget: number
   acceptance_criteria: string
   payment_mode: RequirementPaymentMode
-}): RequirementItem {
+}): MockRequirementRow {
   nextRequirementId += 1
   const code = `REQ-MOCK-${nextRequirementId}`
 
-  const item: RequirementItem = {
+  const item: MockRequirementRow = {
     id: nextRequirementId,
     requirement_id: code,
     subscribe_status_change: false,
@@ -71,7 +71,7 @@ export function createRequirementRecord(payload: {
 }
 
 /** 开发者接单：绑定资源后需求进入待付定金，并自动生成一份待签合同。 */
-export function bindRequirementRecord(code: string, resourceId: number): RequirementItem | null {
+export function bindRequirementRecord(code: string, resourceId: number): MockRequirementRow | null {
   const requirement = findRequirement(code)
   if (!requirement) {
     return null
@@ -134,6 +134,7 @@ export function createResourceRecord(payload: {
     origin_url: null,
     origin_org: null,
     origin_note: null,
+    buyout_price_fen: 0,
     price_fen: 0,
     price_points: 0,
     copyright_declared: false,
@@ -169,6 +170,9 @@ export function createVersionRecord(
     note,
     creator: DEV_USERNAME,
     created_at: datetime(0, 11, 0),
+    is_current: true,
+    price_fen: 0,
+    purchasable: false,
   }
 
   mcResourceVersions.push(record)

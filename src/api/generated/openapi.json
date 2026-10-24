@@ -981,6 +981,60 @@
         }
       }
     },
+    "/api/admin/dispute/cases/{case_no}/reject": {
+      "post": {
+        "tags": [
+          "dispute-admin"
+        ],
+        "summary": "驳回诉求",
+        "description": "客服认定诉求不成立、关案，需要 `dispute.case.decide.post`。与「裁决」的区别是**不动钱**：不产生处置方案、不执行退款或扣划。可从已立案 / 协商中 / 平台介入中三个状态驳回；已裁决 / 协商一致 / 已结案的案件回 409。",
+        "operationId": "dispute_admin_reject",
+        "parameters": [
+          {
+            "name": "case_no",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CaseNoteRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "驳回后的案件详情",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CaseDetailResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "说明过长"
+          },
+          "403": {
+            "description": "没有该接口权限"
+          },
+          "404": {
+            "description": "案件不存在"
+          },
+          "409": {
+            "description": "案件当前状态不能驳回"
+          }
+        }
+      }
+    },
     "/api/admin/dispute/cases/{case_no}/reopen": {
       "post": {
         "tags": [
@@ -3260,6 +3314,182 @@
         }
       }
     },
+    "/api/admin/tips/{order_no}/refund": {
+      "post": {
+        "tags": [
+          "tip-admin"
+        ],
+        "summary": "退款（管理端）",
+        "description": "**需要登录 + `tip.refund.post`**。只允许对 `paid` 的单发起，其余状态回 409 `TIP_REFUND_NOT_ALLOWED` 并带上当前状态（让客服知道「该先做什么」）。退款走渠道退款接口，成功后单据落 `refunded`，这笔打赏不再计入开发者收益。写操作是原子的：「推进到 refunding」的判定写在 UPDATE 的 WHERE 里，并发下只有一次能成功。",
+        "operationId": "tip_admin_refund",
+        "parameters": [
+          {
+            "name": "order_no",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "退款后的单据",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TipOrderResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "未认证"
+          },
+          "403": {
+            "description": "没有 `tip.refund.post`"
+          },
+          "404": {
+            "description": "打赏单不存在（`TIP_ORDER_NOT_FOUND`）"
+          },
+          "409": {
+            "description": "当前状态不允许退款（`TIP_REFUND_NOT_ALLOWED`）"
+          },
+          "500": {
+            "description": "内部错误"
+          }
+        }
+      }
+    },
+    "/api/admin/user-providers/accounts": {
+      "get": {
+        "tags": [
+          "identity-admin"
+        ],
+        "summary": "查看全站三方登录绑定（管理端）",
+        "description": "**需要登录 + `identity.provider_account.list.get`**（1.x 用的是 `system.config.manage`，2.0 另开一码：解绑别人的登录方式属于账号安全动作，不该混在配置管理里）。返回平台账号与第三方账号的绑定关系，可按渠道（`provider`）与关键字（`keyword`，同时匹配平台用户名与渠道内登录名）过滤。2.0 只有 `github` / `gitee` 两个渠道，传其它渠道回 400 `PROVIDER_UNSUPPORTED`。`total` 是命中总数，与 `page_size` 无关——翻到空页时它仍然给出真实条数。",
+        "operationId": "identity_admin_list_provider_accounts",
+        "parameters": [
+          {
+            "name": "provider",
+            "in": "query",
+            "description": "只列某个渠道：`github` / `gitee`；留空表示全部。",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "keyword",
+            "in": "query",
+            "description": "关键字：同时匹配平台用户名与渠道内登录名（不区分大小写）。",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "description": "页码，从 1 起。",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "page_size",
+            "in": "query",
+            "description": "每页条数，默认 20，上限 200。",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "绑定列表",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProviderAccountsResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "不支持的渠道（`PROVIDER_UNSUPPORTED`）"
+          },
+          "401": {
+            "description": "未登录，或令牌无效 / 已吊销"
+          },
+          "403": {
+            "description": "没有 `identity.provider_account.list.get`"
+          },
+          "500": {
+            "description": "权限查询失败，或读库失败"
+          }
+        }
+      }
+    },
+    "/api/admin/user-providers/{username}/{provider}": {
+      "delete": {
+        "tags": [
+          "identity-admin"
+        ],
+        "summary": "解绑指定账号的三方登录渠道（管理端）",
+        "description": "**需要登录 + `identity.provider_account.unbind.delete`**。解除 `{username}` 与`{provider}`（`github` / `gitee`）的绑定。解绑后该账号不能用这个渠道登录，密码登录不受影响——所以这是「删掉一种登录方式」，不是「封号」。账号不存在回 404 `USER_NOT_FOUND`（路径写错）；账号存在但本来就没绑该渠道回 200且 `unbound = false`（幂等，不是失败）。未知渠道回 400 `PROVIDER_UNSUPPORTED`。每次解绑都记一条 info 日志（谁被解绑、哪个渠道、是否真的删掉了）。",
+        "operationId": "identity_admin_unbind_provider_account",
+        "parameters": [
+          {
+            "name": "username",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "provider",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "解绑结果",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UnbindProviderResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "不支持的渠道（`PROVIDER_UNSUPPORTED`）"
+          },
+          "401": {
+            "description": "未登录，或令牌无效 / 已吊销"
+          },
+          "403": {
+            "description": "没有 `identity.provider_account.unbind.delete`"
+          },
+          "404": {
+            "description": "账号不存在（`USER_NOT_FOUND`）"
+          },
+          "500": {
+            "description": "权限查询失败，或写库失败"
+          }
+        }
+      }
+    },
     "/api/api_key/api_keys": {
       "get": {
         "tags": [
@@ -3491,6 +3721,78 @@
           },
           "404": {
             "description": "账号不存在（`USER_NOT_FOUND`）"
+          },
+          "500": {
+            "description": "内部错误"
+          }
+        }
+      }
+    },
+    "/api/auth/agreement-acceptances": {
+      "post": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "记录一次协议同意留痕",
+        "description": "**需要登录**：留痕的主体就是令牌里的那个人，请求体没有「给谁记」的字段。这是合规留痕，**只增不改**——没有修改与删除端点，同一个人在不同时间同意同一个版本是两条独立的事实，所以重复调用不会报冲突，每次都追加一条。`agreement_code` 必须是已配置的协议（`contract_template.name`），未知代号回 400，避免留痕表被塞进查不到正文的「协议」。`agreement_version` 可留空，留空按模板当前版本落库；本端点不校验「是否同意过旧版」，协议修订后是否强制重新同意由调用方决定。注册成功时服务端会自动补一条 `source = 'register'` 的留痕，不依赖前端调用。",
+        "operationId": "auth_record_agreement_acceptance",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AgreementAcceptanceRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "已记录",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AgreementAcceptanceResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "协议代号为空 / 未知，或版本号不合法"
+          },
+          "401": {
+            "description": "未认证"
+          },
+          "500": {
+            "description": "内部错误"
+          }
+        }
+      }
+    },
+    "/api/auth/dev-access-status": {
+      "get": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "查询自己的开发者准入状态",
+        "description": "**需要登录**，不挂权限码（只能看自己的）。这是**只读**接口：不授予任何权限，也不会因为前提不满足而报错——前端正是靠它画「还差哪一步」。`is_dev` 取的是**生效**权限（用户级覆盖优先于角色），与 `/api/auth/users/privileges` 同一套合成规则。",
+        "operationId": "auth_dev_access_status",
+        "responses": {
+          "200": {
+            "description": "准入状态",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DevAccessStatusResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "未认证"
+          },
+          "404": {
+            "description": "用户不存在（`USER_NOT_FOUND`）"
           },
           "500": {
             "description": "内部错误"
@@ -4000,6 +4302,257 @@
         }
       }
     },
+    "/api/auth/qq/bind/url": {
+      "get": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "取 QQ 绑定授权地址",
+        "description": "**需要登录**，不挂端点权限码（只作用于当前登录人自己的绑定）。\n                   回调回到 `/api/auth/qq/callback`，结果带在跳转参数里。",
+        "operationId": "auth_qq_bind_url",
+        "parameters": [
+          {
+            "name": "redirect_to",
+            "in": "query",
+            "description": "成功后跳回的地址；必须与落地页同源，否则回落到落地页。",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "request_dev_role",
+            "in": "query",
+            "description": "是否同时申请开发者角色。",
+            "required": false,
+            "schema": {
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "QQ 授权地址",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthorizeUrlResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "凭据不全或回调 / 落地页没配"
+          },
+          "401": {
+            "description": "未登录，或令牌无效 / 已吊销"
+          },
+          "404": {
+            "description": "该渠道未启用（`OAUTH_DISABLED`）"
+          },
+          "429": {
+            "description": "触发限流"
+          },
+          "500": {
+            "description": "内部错误"
+          }
+        }
+      }
+    },
+    "/api/auth/qq/callback": {
+      "get": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "QQ 登录 / 绑定回调",
+        "description": "**免登录**：与微信 / GitHub 回调同一套判定，**响应一律 302**，结果带在跳转参数里。",
+        "operationId": "auth_qq_callback",
+        "parameters": [
+          {
+            "name": "code",
+            "in": "query",
+            "description": "授权码。",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "state",
+            "in": "query",
+            "description": "防 CSRF 的签名 state。",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "error",
+            "in": "query",
+            "description": "第三方返回的错误码。",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "error_description",
+            "in": "query",
+            "description": "第三方返回的错误描述。",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "302": {
+            "description": "跳回前端落地页，结果见 description"
+          },
+          "429": {
+            "description": "触发限流：同样以 302 跳回"
+          }
+        }
+      }
+    },
+    "/api/auth/qq/login/qr/status": {
+      "get": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "轮询 QQ 扫码登录状态",
+        "description": "**免登录**：与微信版同构。轮询凭据不对一律回 `expired`。",
+        "operationId": "auth_qq_login_qr_status",
+        "parameters": [
+          {
+            "name": "state",
+            "in": "query",
+            "description": "二维码上的 state。",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "poll_secret",
+            "in": "query",
+            "description": "建码时拿到的轮询凭据。",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "扫码状态",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QrStatusResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/qq/login/qr/url": {
+      "get": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "取 QQ 扫码登录二维码地址",
+        "description": "**免登录**：与微信版同构，渠道换成 QQ。会话 5 分钟过期。",
+        "operationId": "auth_qq_login_qr_url",
+        "parameters": [
+          {
+            "name": "redirect_to",
+            "in": "query",
+            "description": "登录成功后跳回的前端地址；留空用渠道落地页。",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "二维码地址与轮询凭据",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QrUrlResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "渠道凭据或回调配置不全"
+          },
+          "404": {
+            "description": "该渠道未启用（`OAUTH_DISABLED`）"
+          },
+          "500": {
+            "description": "内部错误"
+          }
+        }
+      }
+    },
+    "/api/auth/qq/login/url": {
+      "get": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "取 QQ 登录授权地址",
+        "description": "**免登录**：与 `/api/auth/github/url` 同构，渠道换成 QQ 互联。\n                   同一 IP 5 分钟 120 次，超限 429。",
+        "operationId": "auth_qq_authorize_url",
+        "parameters": [
+          {
+            "name": "redirect_to",
+            "in": "query",
+            "description": "成功后跳回的地址；必须与落地页同源，否则回落到落地页。",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "request_dev_role",
+            "in": "query",
+            "description": "是否同时申请开发者角色。",
+            "required": false,
+            "schema": {
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "QQ 授权地址",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthorizeUrlResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "凭据不全或回调 / 落地页没配"
+          },
+          "404": {
+            "description": "该渠道未启用（`OAUTH_DISABLED`）"
+          },
+          "429": {
+            "description": "触发限流"
+          },
+          "500": {
+            "description": "内部错误"
+          }
+        }
+      }
+    },
     "/api/auth/refresh": {
       "post": {
         "tags": [
@@ -4074,6 +4627,40 @@
           },
           "500": {
             "description": "验证码服务未配置或内部错误"
+          }
+        }
+      }
+    },
+    "/api/auth/request-dev-role": {
+      "post": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "申请开发者角色",
+        "description": "**需要登录 + `auth.request_dev_role.post`**（1.x 同名码，已授给 `user` 角色，所以任何登录用户都能申请）。按顺序校验三道前提，任何一条不满足就拒绝并给出可分支的错误码：未实名 `DEVELOPER_REALNAME_REQUIRED`、未成年 `DEVELOPER_UNDERAGE`、未签入驻协议 `DEVELOPER_AGREEMENT_UNSIGNED`（三者都回 403）。通过后把 `scope.dev.access` 写进**用户级权限覆盖**（不是角色），已经具备该 scope 时直接返回当前状态，不重复写。成功回 200，响应体与 `/api/auth/dev-access-status` 相同，前端不必再查一次。",
+        "operationId": "auth_request_dev_role",
+        "responses": {
+          "200": {
+            "description": "已具备开发者 scope",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DevAccessStatusResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "未认证"
+          },
+          "403": {
+            "description": "没有权限码，或前提不满足（`DEVELOPER_*` 三码）"
+          },
+          "404": {
+            "description": "用户不存在（`USER_NOT_FOUND`）"
+          },
+          "500": {
+            "description": "内部错误"
           }
         }
       }
@@ -4365,6 +4952,34 @@
         }
       }
     },
+    "/api/auth/user-service-agreement": {
+      "get": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "取《用户服务协议》正文",
+        "description": "**免登录**：注册页在登录之前就要展示协议，所以这条走公开前缀。正文来自 `contract_template`（`name = 'user_service_agreement'`），运营改协议只改这一处。协议没配置时回 404 `AGREEMENT_NOT_CONFIGURED`，不会返回空正文——前端据此提示「协议未配置」而不是渲染一片空白。`version` 是自增整数（1.x 这里是日期串），正文修订后必须递增，`agreement_version` 就是按它判定「同意的是不是当前版」。",
+        "operationId": "auth_get_user_service_agreement",
+        "responses": {
+          "200": {
+            "description": "协议正文",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AgreementContentResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "协议未配置（`AGREEMENT_NOT_CONFIGURED`）"
+          },
+          "500": {
+            "description": "内部错误"
+          }
+        }
+      }
+    },
     "/api/auth/users": {
       "get": {
         "tags": [
@@ -4534,7 +5149,7 @@
           "auth"
         ],
         "summary": "当前登录人的角色与权限码",
-        "description": "**需要登录**（`Authorization: Bearer <平台会话令牌>`），但**不挂端点权限码**——任何登录用户都只能读自己的这一份，归属即权限。返回主角色、全部角色、权限码全集，以及是否拥有超管 scope。前端用它决定菜单可见性与按钮显隐：权限码取值沿用 1.x 口径（如 `resource.purchase_create.post`），平台侧改名即破坏前端契约。令牌缺失 / 无效 / 已吊销回 401；权限查询本身失败回 500，不会当成「有权限」放行。",
+        "description": "**需要登录**（`Authorization: Bearer <平台会话令牌>`），但**不挂端点权限码**——任何登录用户都只能读自己的这一份，归属即权限。返回主角色、全部角色、**生效权限码**全集，以及是否拥有超管 scope。前端用它决定菜单可见性与按钮显隐：权限码取值沿用 1.x 口径（如 `resource.purchase_create.post`），平台侧改名即破坏前端契约。`permissions` 是**生效**权限（用户级覆盖优先于角色：显式授予的码角色没给也给，显式回收的码角色给了也不给），与 `GET /api/auth/users/{username}/permissions`里的 `effective_permissions` 同一套合成规则——只给角色那一半会出现「按钮露着但点下去 403」或「授了却不显示」。令牌缺失 / 无效 / 已吊销回 401；权限查询本身失败回 500，不会当成「有权限」放行。",
         "operationId": "auth_privileges",
         "responses": {
           "200": {
@@ -4639,6 +5254,490 @@
           },
           "500": {
             "description": "权限查询失败、新用户名冲突，或内部错误"
+          }
+        }
+      }
+    },
+    "/api/auth/users/{username}/permissions": {
+      "get": {
+        "tags": [
+          "identity-admin"
+        ],
+        "summary": "用户权限总览（管理端）",
+        "description": "**需要登录 + `user.permission.get`**。返回某个账号的权限全貌：`roles` 是它的全部角色，`role_permissions` 是这些角色**合起来**给的权限，`overrides` 是**用户级覆盖**（单独给这个人加的 / 收掉的），`effective_permissions` 是两者合成后的**最终生效**权限（覆盖优先于角色）。管理端真正要回答的问题是「这个人现在到底能调哪些接口」，看的是最后一份。账号不存在回 404 `USER_NOT_FOUND`；没有权限回 403 `FORBIDDEN`；权限查询失败回 500，不会当有权限放行。",
+        "operationId": "identity_admin_list_user_permissions",
+        "parameters": [
+          {
+            "name": "username",
+            "in": "path",
+            "description": "用户名",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "权限总览",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserPermissionsResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "未登录，或令牌无效 / 已吊销"
+          },
+          "403": {
+            "description": "没有 `user.permission.get`"
+          },
+          "404": {
+            "description": "账号不存在（`USER_NOT_FOUND`）"
+          },
+          "500": {
+            "description": "权限查询失败，或读库失败"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "identity-admin"
+        ],
+        "summary": "授予 / 回收单个用户的权限码（管理端）",
+        "description": "**需要登录 + `user.permission.post`**。给单个账号**单独**授予或回收一个权限码，这是「改角色」和「整体替换角色权限」之外的那条路：`granted = true` 是显式授予（角色没给也给），`granted = false` 是显式回收（角色给了也不给）。覆盖**优先于角色**，且会一直压着角色，直到被取消覆盖。同一个 (账号, 权限码) 只有一行，反复设置就是改那一行。`permission_code` 必须是平台已登记的权限码，否则回 400 `INVALID_ARGUMENT`。**两条护栏**：① **只能授予或回收自己已持有的权限码**——`user.permission.post` 一旦被下放，持有者给自己授一个 `role.upsert.put` 就等于直接变超管；② **不能对自己回收 `user.permission.*` 这三个管理权限码**——收走之后没人能再把权限授回来，只能直接改库。账号不存在回 404 `USER_NOT_FOUND`；没有权限回 403 `FORBIDDEN`；权限查询失败回 500。",
+        "operationId": "identity_admin_set_user_permission",
+        "parameters": [
+          {
+            "name": "username",
+            "in": "path",
+            "description": "用户名",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetUserPermissionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "设置后的权限总览",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserPermissionsResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "权限码为空、未知权限码、操作者自己没有这个码，或试图回收自己的管理权限码"
+          },
+          "401": {
+            "description": "未登录，或令牌无效 / 已吊销"
+          },
+          "403": {
+            "description": "没有 `user.permission.post`"
+          },
+          "404": {
+            "description": "账号不存在（`USER_NOT_FOUND`）"
+          },
+          "500": {
+            "description": "权限查询失败，或内部错误"
+          }
+        }
+      }
+    },
+    "/api/auth/users/{username}/permissions/{permission_code}": {
+      "delete": {
+        "tags": [
+          "identity-admin"
+        ],
+        "summary": "取消用户级权限覆盖（管理端）",
+        "description": "**需要登录 + `user.permission.delete`**。删掉这个账号对某个权限码的**用户级覆盖**，回到「由角色决定」——与「回收」（`granted = false`）不是一回事：回收是留一行永远压过角色，取消是把这行删掉。目标本来就没有覆盖时也算成功（幂等，**未知权限码同样回 200**：没有覆盖行可删，状态不变）；响应里的 `overrides` 与 `effective_permissions` 直接反映当前状态。**两条护栏**：① **只能取消自己已持有的权限码**（与授予侧同一条规则）；② **不能让自己失去管理权限码**——DELETE 只能删不能授，删了就再也拿不回来（角色里本来就有这个码的话不算）。账号不存在回 404 `USER_NOT_FOUND`；没有权限回 403 `FORBIDDEN`；权限查询失败回 500。",
+        "operationId": "identity_admin_clear_user_permission",
+        "parameters": [
+          {
+            "name": "username",
+            "in": "path",
+            "description": "用户名",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "permission_code",
+            "in": "path",
+            "description": "权限码",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "取消后的权限总览",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserPermissionsResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "权限码为空"
+          },
+          "401": {
+            "description": "未登录，或令牌无效 / 已吊销"
+          },
+          "403": {
+            "description": "没有 `user.permission.delete`"
+          },
+          "404": {
+            "description": "账号不存在（`USER_NOT_FOUND`）"
+          },
+          "500": {
+            "description": "权限查询失败，或内部错误"
+          }
+        }
+      }
+    },
+    "/api/auth/wechat-miniprogram/login": {
+      "post": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "微信小程序登录",
+        "description": "**免登录**：客户端用 `wx.login` 拿到 code 发过来，服务端调 `jscode2session` \n                   换 openid，然后登录或建号。与网页授权共用同一段「登录或建号」逻辑，\n                   所以同一个人先用网页登录、再用小程序登录，落的是**同一个平台账号**。\n                   小程序不回昵称与邮箱：新建的账号没有邮箱，用户中心会提示去绑定。\n                   小程序登录未启用回 404 `OAUTH_DISABLED`；code 无效或过期回 400 \n                   `OAUTH_TOKEN_EXCHANGE_FAILED`。",
+        "operationId": "auth_wechat_miniprogram_login",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WechatMiniprogramLoginRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "登录成功，返回会话令牌与角色快照",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "code 无效或已过期"
+          },
+          "404": {
+            "description": "小程序登录未启用（`OAUTH_DISABLED`）"
+          },
+          "500": {
+            "description": "内部错误"
+          }
+        }
+      }
+    },
+    "/api/auth/wechat/bind/url": {
+      "get": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "取微信绑定授权地址",
+        "description": "**需要登录**，不挂端点权限码（只作用于当前登录人自己的绑定）。\n                   回调回到 `/api/auth/wechat/callback`，结果带在跳转参数里。",
+        "operationId": "auth_wechat_bind_url",
+        "parameters": [
+          {
+            "name": "redirect_to",
+            "in": "query",
+            "description": "成功后跳回的地址；必须与落地页同源，否则回落到落地页。",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "request_dev_role",
+            "in": "query",
+            "description": "是否同时申请开发者角色。",
+            "required": false,
+            "schema": {
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "微信授权地址",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthorizeUrlResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "凭据不全或回调 / 落地页没配"
+          },
+          "401": {
+            "description": "未登录，或令牌无效 / 已吊销"
+          },
+          "404": {
+            "description": "该渠道未启用（`OAUTH_DISABLED`）"
+          },
+          "429": {
+            "description": "触发限流"
+          },
+          "500": {
+            "description": "内部错误"
+          }
+        }
+      }
+    },
+    "/api/auth/wechat/callback": {
+      "get": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "微信登录 / 绑定回调",
+        "description": "**免登录**：第三方跳回来的地址。与 GitHub 回调同一套判定，**响应一律 302**，\n                   结果带在跳转参数里（`oauth_token` / `oauth_error` / `bind=success` / `bind_error`）。\n                   微信不返回邮箱，所以走微信登录新建的账号没有邮箱，用户中心会提示去绑定。",
+        "operationId": "auth_wechat_callback",
+        "parameters": [
+          {
+            "name": "code",
+            "in": "query",
+            "description": "授权码。",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "state",
+            "in": "query",
+            "description": "防 CSRF 的签名 state。",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "error",
+            "in": "query",
+            "description": "第三方返回的错误码。",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "error_description",
+            "in": "query",
+            "description": "第三方返回的错误描述。",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "302": {
+            "description": "跳回前端落地页，结果见 description"
+          },
+          "429": {
+            "description": "触发限流：同样以 302 跳回"
+          }
+        }
+      }
+    },
+    "/api/auth/wechat/login/qr/confirm": {
+      "post": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "手机侧确认扫码登录",
+        "description": "**需要登录**（扫码的那台手机上刚完成网页授权）。这是防「二维码被转发」的关键一步：PC 拿不到令牌，除非有**已登录的人**拿着这个 state 确认。失效 / 已确认 / 过期一律回 400 `INVALID_ARGUMENT`，不区分具体原因——否则这个接口就成了会话状态的探测器。",
+        "operationId": "auth_wechat_login_qr_confirm",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/QrConfirmRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "已确认，PC 侧下次轮询即可拿到令牌"
+          },
+          "400": {
+            "description": "二维码已失效或已确认过"
+          },
+          "401": {
+            "description": "未认证"
+          },
+          "500": {
+            "description": "内部错误"
+          }
+        }
+      }
+    },
+    "/api/auth/wechat/login/qr/status": {
+      "get": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "轮询微信扫码登录状态",
+        "description": "**免登录**：PC 侧轮询。`pending` 等待确认 → `confirmed` 返回令牌 → 取走后 `expired`。**轮询凭据不对一律回 `expired`**：错的凭据不该得到任何信息。令牌一次性，重复轮询拿不到第二个。",
+        "operationId": "auth_wechat_login_qr_status",
+        "parameters": [
+          {
+            "name": "state",
+            "in": "query",
+            "description": "二维码上的 state。",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "poll_secret",
+            "in": "query",
+            "description": "建码时拿到的轮询凭据。",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "扫码状态",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QrStatusResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/wechat/login/qr/url": {
+      "get": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "取微信扫码登录二维码地址",
+        "description": "**免登录**：PC 侧调用。返回渠道授权地址（前端画成二维码）、一次性 `state` 与轮询凭据。二维码里只有 `state`，不带任何令牌；会话 5 分钟过期。未启用回 404 `OAUTH_DISABLED`，凭据或回调配置不全回 400。",
+        "operationId": "auth_wechat_login_qr_url",
+        "parameters": [
+          {
+            "name": "redirect_to",
+            "in": "query",
+            "description": "登录成功后跳回的前端地址；留空用渠道落地页。",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "二维码地址与轮询凭据",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QrUrlResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "渠道凭据或回调配置不全"
+          },
+          "404": {
+            "description": "该渠道未启用（`OAUTH_DISABLED`）"
+          },
+          "500": {
+            "description": "内部错误"
+          }
+        }
+      }
+    },
+    "/api/auth/wechat/login/url": {
+      "get": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "取微信登录授权地址",
+        "description": "**免登录**：与 `/api/auth/github/url` 同构，渠道换成微信（开放平台网站应用，\n                   PC 扫码授权页）。`redirect_to` 只接受与落地页同源的地址；\n                   渠道未启用回 404 `OAUTH_DISABLED`；凭据不全回 400 `OAUTH_CONFIG_INCOMPLETE`；\n                   回调地址与落地页没配回 400 `OAUTH_REDIRECT_CONFIG_INCOMPLETE`。\n                   同一 IP 5 分钟 120 次，超限 429。",
+        "operationId": "auth_wechat_authorize_url",
+        "parameters": [
+          {
+            "name": "redirect_to",
+            "in": "query",
+            "description": "成功后跳回的地址；必须与落地页同源，否则回落到落地页。",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "request_dev_role",
+            "in": "query",
+            "description": "是否同时申请开发者角色。",
+            "required": false,
+            "schema": {
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "微信授权地址",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthorizeUrlResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "凭据不全或回调 / 落地页没配"
+          },
+          "404": {
+            "description": "该渠道未启用（`OAUTH_DISABLED`）"
+          },
+          "429": {
+            "description": "触发限流"
+          },
+          "500": {
+            "description": "内部错误"
           }
         }
       }
@@ -5767,7 +6866,7 @@
           "contract"
         ],
         "summary": "发起电子签署",
-        "description": "当事人主动发起电子签署，返回这一侧要打开的签署链接，需要 `contract.my_requirement.get`。只有当事人能发起——**管理端不能替当事人签**，非当事人 403。并发起前有两道闸：带自定义附件的合同要求「当前这一版附件已放行」（换过文件就失效，得重审，409）；合同状态必须能发起签署（等待签约 0、过期、拒签、作废、撤销都不行，409）。签署人姓名与手机号只能取自**实名资料**：渠道建签约用户时手机号必填，取不到就明确失败（400）让人先去实名，而不是把空值丢给渠道。**发起后本地状态不变**：「签约中 1」由渠道回执写入，平台不能凭「点了发起」就说合同已在签，否则渠道侧失败的合同会永远卡在签约中。`notice = true` 让渠道给签署人发短信。成功会写一条 `sign_initiated` 签署日志并记下渠道合同号。",
+        "description": "当事人主动发起电子签署，返回这一侧要打开的签署链接，需要 `contract.my_requirement.get`。只有当事人能发起——**管理端不能替当事人签**，非当事人 403。并发起前有两道闸：带自定义附件的合同要求「当前这一版附件已放行」（换过文件就失效，得重审，409）；合同状态必须能发起签署（过期 / 拒签 / 作废 / 撤销都是 409；**等待签约 0 放行**——发起签署就是合同的第一个签署动作）。签署人姓名与手机号只能取自**实名资料**：渠道建签约用户时手机号必填，取不到就明确失败（400）让人先去实名，而不是把空值丢给渠道。**发起成功后**：本地停在「等待签约 0」的合同被推成「签约中 1」；已经是「签约中 1」的不动状态；「已签约 2」只能由渠道回执写入，平台不能凭「点了发起」就把合同说成已生效。`notice = true` 让渠道给签署人发短信。成功会写一条 `sign_initiated` 签署日志并记下渠道合同号。",
         "operationId": "contract_initiate_signing",
         "parameters": [
           {
@@ -6176,7 +7275,7 @@
           "contract"
         ],
         "summary": "平台内手写签署",
-        "description": "当事人在平台内签这份合同（不经过电子签渠道），需要 `contract.my_requirement.get`。与 legacy `sign_contract_by_user` 同口径：**后台账号一律 403**（后台不许替当事人签，按权限码 `contract.detail.get` 判身份而不是按角色名）；**带附件的合同不许平台内签**——附件要随渠道卷进存证，手写签名留不下这份证据；已有渠道合同号的同样不许（409）；未发起（等待签约 0）与终态（过期 / 拒签 / 作废 / 撤销）不能签（409）；自己已经签过则**幂等返回当前合同、不报错**（重复点一下不该变成错误）。双方都签完才推成「已签约 2」，否则保持「签约中 1」；丙方（平台）为空时不影响判定。签名数据可留空，留空时日志里不落签名指纹；非空会记 SHA-256。",
+        "description": "当事人在平台内签这份合同（不经过电子签渠道），需要 `contract.my_requirement.get`。与 legacy `sign_contract_by_user` 同口径：**后台账号一律 403**（后台不许替当事人签，按权限码 `contract.detail.get` 判身份而不是按角色名）；**带附件的合同不许平台内签**——附件要随渠道卷进存证，手写签名留不下这份证据；已有渠道合同号的同样不许（409）；终态（过期 / 拒签 / 作废 / 撤销）不能签（409）；**等待签约 0 能签**——这一下就是合同的第一个签署动作，签完落到「签约中 1」；自己已经签过则**幂等返回当前合同、不报错**（重复点一下不该变成错误）。双方都签完才推成「已签约 2」，否则保持「签约中 1」；丙方（平台）为空时不影响判定。签名数据可留空，留空时日志里不落签名指纹；非空会记 SHA-256。",
         "operationId": "contract_sign_in_platform",
         "parameters": [
           {
@@ -6738,6 +7837,605 @@
           },
           "404": {
             "description": "会话不存在"
+          }
+        }
+      }
+    },
+    "/api/coupon/available": {
+      "get": {
+        "tags": [
+          "coupon"
+        ],
+        "operationId": "coupon_available_list",
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/CouponResponse"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": ""
+          },
+          "403": {
+            "description": ""
+          },
+          "500": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/coupon/coupon-packs/from-selection": {
+      "post": {
+        "tags": [
+          "coupon-admin"
+        ],
+        "operationId": "coupon_admin_pack_from_selection",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateCouponPackFromSelectionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CouponPackResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": ""
+          },
+          "401": {
+            "description": ""
+          },
+          "403": {
+            "description": ""
+          },
+          "404": {
+            "description": ""
+          },
+          "409": {
+            "description": ""
+          },
+          "500": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/coupon/coupons": {
+      "get": {
+        "tags": [
+          "coupon-admin"
+        ],
+        "operationId": "coupon_admin_amount_list",
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/CouponResponse"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": ""
+          },
+          "403": {
+            "description": ""
+          },
+          "500": {
+            "description": ""
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "coupon-admin"
+        ],
+        "operationId": "coupon_admin_create",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateCouponRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CouponResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": ""
+          },
+          "401": {
+            "description": ""
+          },
+          "403": {
+            "description": ""
+          },
+          "409": {
+            "description": ""
+          },
+          "500": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/coupon/coupons/assignable": {
+      "get": {
+        "tags": [
+          "coupon-admin"
+        ],
+        "operationId": "coupon_admin_assignable_list",
+        "parameters": [
+          {
+            "name": "discount_type",
+            "in": "query",
+            "description": "amount 或 percent。",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/CouponResponse"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": ""
+          },
+          "401": {
+            "description": ""
+          },
+          "403": {
+            "description": ""
+          },
+          "500": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/coupon/coupons/batch": {
+      "post": {
+        "tags": [
+          "coupon-admin"
+        ],
+        "operationId": "coupon_admin_batch_create",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/CreateCouponRequest"
+                }
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/CouponResponse"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": ""
+          },
+          "401": {
+            "description": ""
+          },
+          "403": {
+            "description": ""
+          },
+          "409": {
+            "description": ""
+          },
+          "500": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/coupon/coupons/{code}": {
+      "delete": {
+        "tags": [
+          "coupon-admin"
+        ],
+        "operationId": "coupon_admin_delete",
+        "parameters": [
+          {
+            "name": "code",
+            "in": "path",
+            "description": "优惠券编码",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          },
+          "400": {
+            "description": ""
+          },
+          "401": {
+            "description": ""
+          },
+          "403": {
+            "description": ""
+          },
+          "404": {
+            "description": ""
+          },
+          "500": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/coupon/discount-coupons": {
+      "get": {
+        "tags": [
+          "coupon-admin"
+        ],
+        "operationId": "coupon_admin_percent_list",
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/CouponResponse"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": ""
+          },
+          "403": {
+            "description": ""
+          },
+          "500": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/coupon/users/{username}/coupons": {
+      "get": {
+        "tags": [
+          "coupon-admin"
+        ],
+        "operationId": "coupon_admin_user_amount_list",
+        "parameters": [
+          {
+            "name": "username",
+            "in": "path",
+            "description": "用户名",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/CouponResponse"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": ""
+          },
+          "403": {
+            "description": ""
+          },
+          "500": {
+            "description": ""
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "coupon-admin"
+        ],
+        "operationId": "coupon_admin_user_amount_assign",
+        "parameters": [
+          {
+            "name": "username",
+            "in": "path",
+            "description": "用户名",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AssignCouponRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          },
+          "400": {
+            "description": ""
+          },
+          "401": {
+            "description": ""
+          },
+          "403": {
+            "description": ""
+          },
+          "404": {
+            "description": ""
+          },
+          "409": {
+            "description": ""
+          },
+          "500": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/coupon/users/{username}/coupons/{code}": {
+      "delete": {
+        "tags": [
+          "coupon-admin"
+        ],
+        "operationId": "coupon_admin_user_amount_remove",
+        "parameters": [
+          {
+            "name": "username",
+            "in": "path",
+            "description": "用户名",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "code",
+            "in": "path",
+            "description": "优惠券编码",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          },
+          "401": {
+            "description": ""
+          },
+          "403": {
+            "description": ""
+          },
+          "404": {
+            "description": ""
+          },
+          "500": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/coupon/users/{username}/discount-coupons": {
+      "get": {
+        "tags": [
+          "coupon-admin"
+        ],
+        "operationId": "coupon_admin_user_percent_list",
+        "parameters": [
+          {
+            "name": "username",
+            "in": "path",
+            "description": "用户名",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/CouponResponse"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": ""
+          },
+          "403": {
+            "description": ""
+          },
+          "500": {
+            "description": ""
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "coupon-admin"
+        ],
+        "operationId": "coupon_admin_user_percent_assign",
+        "parameters": [
+          {
+            "name": "username",
+            "in": "path",
+            "description": "用户名",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AssignCouponRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          },
+          "400": {
+            "description": ""
+          },
+          "401": {
+            "description": ""
+          },
+          "403": {
+            "description": ""
+          },
+          "404": {
+            "description": ""
+          },
+          "409": {
+            "description": ""
+          },
+          "500": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/coupon/users/{username}/discount-coupons/{code}": {
+      "delete": {
+        "tags": [
+          "coupon-admin"
+        ],
+        "operationId": "coupon_admin_user_percent_remove",
+        "parameters": [
+          {
+            "name": "username",
+            "in": "path",
+            "description": "用户名",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "code",
+            "in": "path",
+            "description": "优惠券编码",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          },
+          "401": {
+            "description": ""
+          },
+          "403": {
+            "description": ""
+          },
+          "404": {
+            "description": ""
+          },
+          "500": {
+            "description": ""
           }
         }
       }
@@ -7752,6 +9450,46 @@
         }
       }
     },
+    "/api/payment/auto-withdrawals/run": {
+      "post": {
+        "tags": [
+          "payment-admin"
+        ],
+        "summary": "跑一轮自动出款",
+        "description": "手动跑一轮自动出款，需要 `payment.auto_withdrawal_run.post`。只扫「待出款」的单，并逐笔过自动出款的门禁：开发者的自动提现开关要开着、金额不能超过自动出款上限。**不自动重试出款失败的单**——渠道报失败不等于钱没出去，那类单只能人工核对渠道流水后走「重试」或「确认未出款」。一笔失败不影响其余。",
+        "operationId": "payment_admin_run_auto_withdrawals",
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "本轮最多处理多少笔（默认 200，上限 500）",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "本轮汇总与逐笔明细",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AutoPayoutRunResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "没有该接口权限"
+          },
+          "503": {
+            "description": "出款通道未就绪"
+          }
+        }
+      }
+    },
     "/api/payment/availability": {
       "get": {
         "tags": [
@@ -8113,6 +9851,39 @@
           },
           "404": {
             "description": "支付单不存在，或不属于当前登录人"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "payment-admin"
+        ],
+        "summary": "删除支付单记录",
+        "description": "管理端硬删一张支付单记录（非退款语义），需要 `payment.order_delete.delete`。**只允许删没收到过钱的单**：已支付的支付单下面挂着退款单与分账单，删掉之后对账就答不出「这笔钱收在哪一单上」，这种单回 409。删记录会留审计（谁在什么时候删的）。",
+        "operationId": "payment_admin_delete_order",
+        "parameters": [
+          {
+            "name": "order_no",
+            "in": "path",
+            "description": "支付单号",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "已删除"
+          },
+          "403": {
+            "description": "没有该接口权限"
+          },
+          "404": {
+            "description": "支付单不存在（含并发下已被别人先删）"
+          },
+          "409": {
+            "description": "这张单已支付或底下还挂着退款单 / 分账单"
           }
         }
       }
@@ -8694,6 +10465,41 @@
           },
           "403": {
             "description": "没有该接口权限"
+          }
+        }
+      }
+    },
+    "/api/payment/withdrawals/{withdrawal_id}": {
+      "delete": {
+        "tags": [
+          "payment-admin"
+        ],
+        "summary": "删除提现单记录",
+        "description": "管理端硬删一张提现单记录，需要 `payment.admin_withdrawal_delete.delete`。**只允许删钱还没出过平台的单**（待审核 / 已驳回）：额度是按提现单汇总算的，删掉一张在途单等于凭空多出一笔可提现额度。其余状态回 409，并在文案里说明该先做什么（对账 / 确认未出款）。",
+        "operationId": "payment_admin_delete_withdrawal",
+        "parameters": [
+          {
+            "name": "withdrawal_id",
+            "in": "path",
+            "description": "提现单号",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "已删除"
+          },
+          "403": {
+            "description": "没有该接口权限"
+          },
+          "404": {
+            "description": "提现单不存在（含并发下已被别人先删）"
+          },
+          "409": {
+            "description": "这张单已经出过款或正在出款，不能删"
           }
         }
       }
@@ -10339,7 +12145,7 @@
           "requirement"
         ],
         "summary": "需求方验收交付（可通过 / 可打回）",
-        "description": "需求方验收交付，需要 `requirement.request_final_payment.post`。请求体沿用 1.x `AcceptDeliveryRequest` 的形状：`{ \"result\": \"passed\" | \"rejected\", \"note\": \"...\" }`（`result` 缺省按通过）。**通过**：与 `POST /{id}/request-final-payment` 同一份实现——自管模式验收即结单，担保模式验收通过进待付尾款（合同未签署回 400）。**打回**：**必须写理由**（空理由 400），状态退回 `in_development` 挡住尾款，起算限期补救期限（`[breach] remediation_hours`，默认 72 小时），通知开发者整改；打回会把「验收通过」那一面整体撤下，全部结论（含每一次打回）落在追加流水里。打回**不回滚已经发生的资金动作**：真要追回走违约或售后。**自管模式没有打回这一支**（那边验收即结单，没有「待付尾款」可退），返回 409。只有需求方本人能调，其余 403。",
+        "description": "需求方验收交付，需要 `requirement.request_final_payment.post`。请求体沿用 1.x `AcceptDeliveryRequest` 的形状：`{ \"result\": \"passed\" | \"rejected\", \"note\": \"...\" }`（`result` 缺省按通过）。**通过**：与 `POST /{id}/request-final-payment` 同一份实现——自管模式验收即结单，担保模式验收通过进待付尾款（合同未签署回 400）。**打回**：**必须写理由**（空理由 400），状态退回 `in_development` 挡住尾款，起算限期补救期限（`[breach] remediation_hours`，默认 72 小时），通知开发者整改；打回会把「验收通过」那一面整体撤下，全部结论（含每一次打回）落在追加流水里。担保模式下「已付定金 + 已交付」与「待付尾款 + 已交付」都能打回——前一档正是线上常态（接单只占位、定金到账才推状态、交付不改状态）。打回**不回滚已经发生的资金动作**：真要追回走违约或售后。**自管模式没有打回这一支**（那边验收即结单，没有「待付尾款」可退），返回 409。只有需求方本人能调，其余 403。",
         "operationId": "requirement_acceptance",
         "parameters": [
           {
@@ -10700,6 +12506,42 @@
       }
     },
     "/api/requirement/{requirement_id}/deadline-change-request": {
+      "get": {
+        "tags": [
+          "requirement-deadline"
+        ],
+        "summary": "读待处理的期限变更申请（客服）",
+        "description": "客服读这条需求当前待处理的期限变更申请，需要 `requirement.deadline_change_request.get`。返回申请人、事由、时长、说明与提交时间——批不批要看这些，只给「有一条申请」等于让客服盲批。**没有待处理申请时回 200 + `request = null`**，不是 404。同时只有一条：申请入口对同一需求只允许一条待处理记录。",
+        "operationId": "requirement_get_deadline_change_request",
+        "parameters": [
+          {
+            "name": "requirement_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "当前待处理的申请（可能为 null）",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeadlineChangeRequestView"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "没有该接口权限"
+          },
+          "404": {
+            "description": "需求不存在"
+          }
+        }
+      },
       "post": {
         "tags": [
           "requirement-deadline"
@@ -10742,6 +12584,50 @@
           },
           "409": {
             "description": "已有待处理的申请，或需求已结单 / 已取消"
+          }
+        }
+      }
+    },
+    "/api/requirement/{requirement_id}/deadline-change-request/reject": {
+      "post": {
+        "tags": [
+          "requirement-deadline"
+        ],
+        "summary": "驳回期限变更申请（客服）",
+        "description": "客服驳回当事人的顺延 / 中止申请，需要 `requirement.deadline_request_reject.post`。**期限一点不动**：驳回只把申请结为 `rejected` 并记下理由与处理人。驳回理由建议写清楚（申请人会看到），为空也能结（兼容旧前端）。这条需求没有待处理申请回 404；并发下已被别人处理回 409。",
+        "operationId": "requirement_reject_deadline_change_request",
+        "parameters": [
+          {
+            "name": "requirement_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RejectDeadlineRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "已驳回，无响应体"
+          },
+          "403": {
+            "description": "没有该接口权限"
+          },
+          "404": {
+            "description": "需求不存在，或这条需求没有待处理申请"
+          },
+          "409": {
+            "description": "申请已被其他请求处理"
           }
         }
       }
@@ -10864,6 +12750,44 @@
           },
           "409": {
             "description": "状态不是待付尾款、不是担保模式，或本周期催告次数已用完"
+          }
+        }
+      }
+    },
+    "/api/requirement/{requirement_id}/late-penalty": {
+      "get": {
+        "tags": [
+          "requirement-deadline"
+        ],
+        "summary": "读迟延履行违约金（客服）",
+        "description": "按 1.x 的口径算这条需求的迟延履行违约金：**合同总价 × 日费率 × 逾期天数**，受累计上限兜底，逾期不足一天按一天算。需要 `requirement.late_penalty.get`。日费率、上限、交付期限都取 `[breach]` 的配置；`delivery_deadline_hours = 0`表示没设交付期限，一律返回 0——**默认就是关的**，打开等于开始对存量需求计罚。**只算不动钱**：1.x 也是在争议裁决那一刻按人认定的天数算一次，并进从接单保证金扣划的总额；2.0 的裁决额度同样由客服填，这个端点只把数摆出来。还没交付的按「仍在迟延」算到此刻，金额会随时间继续涨；交付后金额定格。",
+        "operationId": "requirement_get_late_penalty",
+        "parameters": [
+          {
+            "name": "requirement_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "违约金明细",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LatePenaltyResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "没有该接口权限"
+          },
+          "404": {
+            "description": "需求不存在"
           }
         }
       }
@@ -15688,6 +17612,222 @@
         }
       }
     },
+    "/api/system/activity-campaigns": {
+      "get": {
+        "tags": [
+          "activity-admin"
+        ],
+        "operationId": "system_activity_campaign_list",
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/OfficialActivityResponse"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": ""
+          },
+          "403": {
+            "description": ""
+          },
+          "500": {
+            "description": ""
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "activity-admin"
+        ],
+        "operationId": "system_activity_campaign_publish",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PublishActivityCampaignRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublishOfficialActivityResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": ""
+          },
+          "401": {
+            "description": ""
+          },
+          "403": {
+            "description": ""
+          },
+          "404": {
+            "description": ""
+          },
+          "409": {
+            "description": ""
+          },
+          "500": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/system/activity-campaigns/{activity_id}": {
+      "put": {
+        "tags": [
+          "activity-admin"
+        ],
+        "operationId": "system_activity_campaign_update",
+        "parameters": [
+          {
+            "name": "activity_id",
+            "in": "path",
+            "description": "活动编号",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateActivityCampaignRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OfficialActivityResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": ""
+          },
+          "401": {
+            "description": ""
+          },
+          "403": {
+            "description": ""
+          },
+          "404": {
+            "description": ""
+          },
+          "500": {
+            "description": ""
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "activity-admin"
+        ],
+        "operationId": "system_activity_campaign_delete",
+        "parameters": [
+          {
+            "name": "activity_id",
+            "in": "path",
+            "description": "活动编号",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          },
+          "401": {
+            "description": ""
+          },
+          "403": {
+            "description": ""
+          },
+          "404": {
+            "description": ""
+          },
+          "500": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/system/activity-coupon-packs": {
+      "get": {
+        "tags": [
+          "activity-admin"
+        ],
+        "operationId": "system_activity_coupon_pack_list",
+        "parameters": [
+          {
+            "name": "coupon_type",
+            "in": "query",
+            "description": "amount 或 percent。",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ActivityCouponPackResponse"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": ""
+          },
+          "401": {
+            "description": ""
+          },
+          "403": {
+            "description": ""
+          },
+          "500": {
+            "description": ""
+          }
+        }
+      }
+    },
     "/api/system/data-encryption-key": {
       "get": {
         "tags": [
@@ -15990,6 +18130,78 @@
         }
       }
     },
+    "/api/system/official-activities": {
+      "get": {
+        "tags": [
+          "activity-admin"
+        ],
+        "operationId": "system_official_activity_list",
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/OfficialActivityResponse"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": ""
+          },
+          "403": {
+            "description": ""
+          },
+          "500": {
+            "description": ""
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "activity-admin"
+        ],
+        "operationId": "system_official_activity_publish",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PublishOfficialActivityRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublishOfficialActivityResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": ""
+          },
+          "401": {
+            "description": ""
+          },
+          "403": {
+            "description": ""
+          },
+          "500": {
+            "description": ""
+          }
+        }
+      }
+    },
     "/api/system/rate-limit": {
       "get": {
         "tags": [
@@ -16118,13 +18330,61 @@
         }
       }
     },
+    "/api/system/settings/activity-campaigns/claim": {
+      "post": {
+        "tags": [
+          "activity"
+        ],
+        "operationId": "system_activity_campaign_claim",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ActivityCampaignClaimRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ActivityCampaignClaimResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": ""
+          },
+          "401": {
+            "description": ""
+          },
+          "403": {
+            "description": ""
+          },
+          "404": {
+            "description": ""
+          },
+          "409": {
+            "description": ""
+          },
+          "500": {
+            "description": ""
+          }
+        }
+      }
+    },
     "/api/system/settings/profile": {
       "get": {
         "tags": [
           "profile"
         ],
         "summary": "我的档案",
-        "description": "**需要登录 + `system.profile.get`**。返回本人档案：登录名、简介、主邮箱、头像与主页背景地址、两因素开关、两个订阅开关。归属即权限——只能读自己的，接口没有「读谁」的参数。1.x 响应里的 `wechat_bound` 在 2.0 没有对应能力（微信登录尚未接入），因此不返回。令牌缺失 / 无效 / 已吊销回 401；账号不存在回 404 `USER_NOT_FOUND`。",
+        "description": "**需要登录 + `system.profile.get`**。返回本人档案：登录名、简介、主邮箱、头像与主页背景地址、两因素开关、两个订阅开关。归属即权限——只能读自己的，接口没有「读谁」的参数。1.x 响应里的 `wechat_bound` 不在档案里重复返回，绑定状态走 `/api/auth/providers`。令牌缺失 / 无效 / 已吊销回 401；账号不存在回 404 `USER_NOT_FOUND`。",
         "operationId": "profile_get",
         "responses": {
           "200": {
@@ -17635,6 +19895,186 @@
         }
       }
     },
+    "/api/tips": {
+      "post": {
+        "tags": [
+          "tip"
+        ],
+        "summary": "发起一笔打赏",
+        "description": "**需要登录**，不挂权限码。打赏人永远是令牌里的那个人，请求体里没有「谁打赏」。校验顺序固定：不能自赏 → 开发者开着打赏 → 金额命中档位或落在自填区间 → 留言 ≤ 200 字。平台抽成比例在**下单时快照**，之后改配置不影响这一单。建单成功后会向支付渠道建一笔支付，响应里带 `pay_url`（电脑端扫码）；渠道建单失败时订单仍留在 `pending`，重试不会重复收钱。",
+        "operationId": "tip_create",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateTipRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "打赏单（等待付款）",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TipOrderResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "自赏 / 未开放 / 金额不合法 / 留言过长"
+          },
+          "401": {
+            "description": "未认证"
+          },
+          "500": {
+            "description": "内部错误或渠道失败"
+          }
+        }
+      }
+    },
+    "/api/tips/received": {
+      "get": {
+        "tags": [
+          "tip"
+        ],
+        "summary": "我收到的打赏",
+        "description": "**需要登录**，不挂权限码（查的是自己收到的）。只列**已收款**的单，按收款时间倒序，最多 200 条。匿名单不会把打赏人带出来（`tipper` 为空串）——但开发者本人需要知道「谁给我打赏了」吗？口径与 1.x 一致：**匿名对所有人匿名**，包括开发者本人。",
+        "operationId": "tip_received",
+        "responses": {
+          "200": {
+            "description": "打赏列表",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/TipOrderResponse"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "未认证"
+          },
+          "500": {
+            "description": "内部错误"
+          }
+        }
+      }
+    },
+    "/api/tips/settings": {
+      "get": {
+        "tags": [
+          "tip"
+        ],
+        "summary": "读自己的打赏设置",
+        "description": "**需要登录**，不挂权限码（只能读自己的）。没配置过时返回默认值，其中 `enabled = false`——打赏默认关闭，开发者主动开了才会在主页出现入口。",
+        "operationId": "tip_get_settings",
+        "responses": {
+          "200": {
+            "description": "打赏设置",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TipConfigResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "未认证"
+          },
+          "500": {
+            "description": "内部错误"
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "tip"
+        ],
+        "summary": "更新自己的打赏设置",
+        "description": "**需要登录**，不挂权限码（只能改自己的）。校验与归一化在服务层：档位最多 6 个、每个金额 > 0、去重后升序；自填区间必须 `下限 > 0` 且 `上限 >= 下限`；感谢语最多 100 字。任何一条不满足回 400 `TIP_CONFIG_INVALID`，文案就是给用户看的那句。",
+        "operationId": "tip_update_settings",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateTipConfigRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "写入后的设置",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TipConfigResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "配置不合法（`TIP_CONFIG_INVALID`）"
+          },
+          "401": {
+            "description": "未认证"
+          },
+          "500": {
+            "description": "内部错误"
+          }
+        }
+      }
+    },
+    "/api/tips/{order_no}": {
+      "get": {
+        "tags": [
+          "tip"
+        ],
+        "summary": "查一张打赏单",
+        "description": "**需要登录**，不挂权限码。**只有打赏人与被打赏的开发者能看**，其他人一律 404 `TIP_ORDER_NOT_FOUND`——403 会泄漏「这个单号真实存在」。若单据仍是 `pending`，本接口会顺手向渠道回查一次并推进状态（惰性回查，替代 1.x 的渠道回调；查到了 `paid` 会顺带发起分账）。",
+        "operationId": "tip_get_order",
+        "parameters": [
+          {
+            "name": "order_no",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "打赏单",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TipOrderResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "未认证"
+          },
+          "404": {
+            "description": "单号不存在，或你不是这笔单的当事人"
+          },
+          "500": {
+            "description": "内部错误"
+          }
+        }
+      }
+    },
     "/api/user/oauth/{provider}/system": {
       "get": {
         "tags": [
@@ -17956,6 +20396,112 @@
           }
         }
       }
+    },
+    "/auth/qq/callback": {
+      "get": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "QQ 登录 / 绑定回调（旧根前缀）",
+        "description": "**免登录**：同 `/auth/wechat/callback`，渠道路换成 QQ。**响应一律 302**。",
+        "operationId": "auth_qq_callback_legacy",
+        "parameters": [
+          {
+            "name": "code",
+            "in": "query",
+            "description": "授权码。",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "state",
+            "in": "query",
+            "description": "防 CSRF 的签名 state。",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "error",
+            "in": "query",
+            "description": "第三方返回的错误码。",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "error_description",
+            "in": "query",
+            "description": "第三方返回的错误描述。",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "302": {
+            "description": "跳回前端落地页，结果见跳转参数"
+          }
+        }
+      }
+    },
+    "/auth/wechat/callback": {
+      "get": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "微信登录 / 绑定回调（旧根前缀）",
+        "description": "**免登录**：1.x 时代的回调前缀，为不打断已在微信后台登记的地址而保留；\n                   与 `/api/auth/wechat/callback` 是同一个处理函数、同一套判定。**响应一律 302**。",
+        "operationId": "auth_wechat_callback_legacy",
+        "parameters": [
+          {
+            "name": "code",
+            "in": "query",
+            "description": "授权码。",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "state",
+            "in": "query",
+            "description": "防 CSRF 的签名 state。",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "error",
+            "in": "query",
+            "description": "第三方返回的错误码。",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "error_description",
+            "in": "query",
+            "description": "第三方返回的错误描述。",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "302": {
+            "description": "跳回前端落地页，结果见跳转参数"
+          }
+        }
+      }
     }
   },
   "components": {
@@ -18167,6 +20713,126 @@
           "status_label": {
             "type": "string",
             "description": "状态的中文说明。"
+          }
+        }
+      },
+      "ActivityCampaignClaimRequest": {
+        "type": "object",
+        "required": [
+          "code"
+        ],
+        "properties": {
+          "code": {
+            "type": "string"
+          }
+        }
+      },
+      "ActivityCampaignClaimResponse": {
+        "type": "object",
+        "required": [
+          "activity_id",
+          "title",
+          "coupon_type",
+          "coupon_name",
+          "assigned_coupon_code",
+          "claimed_at",
+          "already_claimed"
+        ],
+        "properties": {
+          "activity_id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "already_claimed": {
+            "type": "boolean"
+          },
+          "assigned_coupon_code": {
+            "type": "string"
+          },
+          "claimed_at": {
+            "type": "string"
+          },
+          "coupon_name": {
+            "type": "string"
+          },
+          "coupon_type": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          }
+        }
+      },
+      "ActivityCouponPackResponse": {
+        "type": "object",
+        "required": [
+          "pack_id",
+          "name",
+          "coupon_type",
+          "min_amount_fen",
+          "starts_at",
+          "total_count",
+          "available_count",
+          "created_by",
+          "created_at"
+        ],
+        "properties": {
+          "amount_off_fen": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64"
+          },
+          "available_count": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "coupon_type": {
+            "type": "string"
+          },
+          "created_at": {
+            "type": "string"
+          },
+          "created_by": {
+            "type": "string"
+          },
+          "discount_bps": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32"
+          },
+          "ends_at": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "max_discount_fen": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64"
+          },
+          "min_amount_fen": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "name": {
+            "type": "string"
+          },
+          "pack_id": {
+            "type": "string"
+          },
+          "starts_at": {
+            "type": "string"
+          },
+          "total_count": {
+            "type": "integer",
+            "format": "int64"
           }
         }
       },
@@ -18832,6 +21498,114 @@
           }
         }
       },
+      "AgreementAcceptanceRequest": {
+        "type": "object",
+        "description": "同意记录请求体。字段与 1.x 一致（`agreement_version` 缺省时按模板当前版本落库）。",
+        "required": [
+          "agreement_code"
+        ],
+        "properties": {
+          "agreement_code": {
+            "type": "string",
+            "description": "协议代号，如 `user_service_agreement`。未知代号回 400。"
+          },
+          "agreement_version": {
+            "type": "string",
+            "description": "协议版本；留空表示「按模板当前版本」。"
+          },
+          "client_platform": {
+            "type": "string",
+            "description": "客户端形态（`web` / `app` / `miniprogram`）。"
+          },
+          "source": {
+            "type": "string",
+            "description": "来源，缺省 `user`；注册时服务端自动留痕的来源是 `register`。"
+          }
+        }
+      },
+      "AgreementAcceptanceResponse": {
+        "type": "object",
+        "description": "同意记录响应。",
+        "required": [
+          "username",
+          "role",
+          "agreement_code",
+          "agreement_version",
+          "client_platform",
+          "source",
+          "agreed_at"
+        ],
+        "properties": {
+          "agreed_at": {
+            "type": "string",
+            "description": "同意时间（东八区 `YYYY-MM-DD HH:MM:SS`）。"
+          },
+          "agreement_code": {
+            "type": "string",
+            "description": "协议代号。"
+          },
+          "agreement_version": {
+            "type": "integer",
+            "format": "int32",
+            "description": "协议版本。"
+          },
+          "client_platform": {
+            "type": "string",
+            "description": "客户端形态。"
+          },
+          "role": {
+            "type": "string",
+            "description": "同意时的主角色快照。"
+          },
+          "source": {
+            "type": "string",
+            "description": "来源。"
+          },
+          "username": {
+            "type": "string",
+            "description": "同意人。"
+          }
+        }
+      },
+      "AgreementContentResponse": {
+        "type": "object",
+        "description": "协议正文响应。",
+        "required": [
+          "code",
+          "title",
+          "content",
+          "version",
+          "effective_at",
+          "updated_at"
+        ],
+        "properties": {
+          "code": {
+            "type": "string",
+            "description": "协议代号。"
+          },
+          "content": {
+            "type": "string",
+            "description": "正文（纯文本，段落用换行分隔）。"
+          },
+          "effective_at": {
+            "type": "string",
+            "description": "生效时间（东八区 `YYYY-MM-DD HH:MM:SS`），模板未配置时为空串。"
+          },
+          "title": {
+            "type": "string",
+            "description": "标题。"
+          },
+          "updated_at": {
+            "type": "string",
+            "description": "模板更新时间（东八区）。"
+          },
+          "version": {
+            "type": "integer",
+            "format": "int32",
+            "description": "当前版本号（自增整数；1.x 这里是日期串，见模块注释）。"
+          }
+        }
+      },
       "ApiCallbackLogQueryParams": {
         "type": "object",
         "description": "回调投递记录的查询参数。",
@@ -19176,6 +21950,17 @@
           }
         }
       },
+      "AssignCouponRequest": {
+        "type": "object",
+        "required": [
+          "coupon_code"
+        ],
+        "properties": {
+          "coupon_code": {
+            "type": "string"
+          }
+        }
+      },
       "AttachmentReviewRequest": {
         "type": "object",
         "description": "附件审核请求体（管理端 `POST /api/contract/{id}/attachment/review`）。",
@@ -19394,6 +22179,105 @@
           }
         }
       },
+      "AutoPayoutRunItemResponse": {
+        "type": "object",
+        "description": "跑一轮自动出款的结果（一笔一行）。",
+        "required": [
+          "withdrawal_id",
+          "creator",
+          "amount_fen",
+          "outcome",
+          "outcome_label",
+          "status"
+        ],
+        "properties": {
+          "amount_fen": {
+            "type": "integer",
+            "format": "int64",
+            "description": "金额（分）。"
+          },
+          "creator": {
+            "type": "string",
+            "description": "申请人。"
+          },
+          "outcome": {
+            "type": "string",
+            "description": "处理结果：`submitted` / `skipped` / `failed`。"
+          },
+          "outcome_label": {
+            "type": "string",
+            "description": "处理结果中文说明。"
+          },
+          "status": {
+            "type": "string",
+            "description": "这一笔处理完时的状态（认领不到时读回来的真实状态）。"
+          },
+          "withdrawal_id": {
+            "type": "string",
+            "description": "提现单号。"
+          }
+        }
+      },
+      "AutoPayoutRunQuery": {
+        "type": "object",
+        "description": "跑一轮自动出款的查询参数。",
+        "properties": {
+          "limit": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "本轮最多处理多少笔。缺省 200，上限 500。"
+          }
+        }
+      },
+      "AutoPayoutRunResponse": {
+        "type": "object",
+        "description": "跑一轮自动出款的汇总。",
+        "required": [
+          "scanned",
+          "submitted",
+          "skipped",
+          "failed",
+          "ineligible",
+          "details"
+        ],
+        "properties": {
+          "details": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AutoPayoutRunItemResponse"
+            },
+            "description": "逐笔明细。"
+          },
+          "failed": {
+            "type": "integer",
+            "format": "int64",
+            "description": "发起失败的笔数。"
+          },
+          "ineligible": {
+            "type": "integer",
+            "format": "int64",
+            "description": "被门禁挡住（开关没开 / 超上限）、这一轮没轮到的笔数。"
+          },
+          "scanned": {
+            "type": "integer",
+            "format": "int64",
+            "description": "扫了多少笔待出款单。"
+          },
+          "skipped": {
+            "type": "integer",
+            "format": "int64",
+            "description": "跳过的笔数（认领不到：正在出款 / 已被别处推进）。"
+          },
+          "submitted": {
+            "type": "integer",
+            "format": "int64",
+            "description": "发起出款的笔数。"
+          }
+        }
+      },
       "AvailabilityResponse": {
         "type": "object",
         "description": "支付通道可用性。",
@@ -19581,11 +22465,47 @@
             "description": "开发者交付之后、需求方提出验收异议的期限（小时）。\n\n逾期未提出**具体异议**即按合同约定视为验收通过：担保模式推进到待付尾款，\n自管模式验收即结单。取值 1～720（1 小时 ~ 30 天），0 等于不给人看的时间，属于配置事故。",
             "default": 72
           },
+          "cure_notice_lead_hours": {
+            "type": "integer",
+            "format": "int64",
+            "description": "催告提前量（小时，0 = 不做提前催告）。\n\n到点前多少小时提醒一次（整条需求只提醒一次）。1.x 默认 12。",
+            "default": 12
+          },
+          "delivery_deadline_hours": {
+            "type": "integer",
+            "format": "int64",
+            "description": "交付期限（小时，0 = 不设交付期限）。\n\n从合同签署时刻起算。**默认 0 = 关**，与 1.x 同口径（`[breach] delivery_deadline_hours`\n默认 0）：不设期限就没有交付逾期，也就没有迟延履行违约金——1.x 上线时是关着的，\n打开等于给存量需求追溯计罚，所以只能由运营显式开。",
+            "default": 0
+          },
           "deposit_pay_hours": {
             "type": "integer",
             "format": "int64",
             "description": "合同签好后甲方缴付定金的期限（小时）。\n\n逾期视为甲方根本违约：解除绑定、作废合同、需求回到大厅。\n取值 1～720（1 小时 ~ 30 天），0 会让期限立刻到期，属于配置事故。",
             "default": 48
+          },
+          "developer_final_cure_max": {
+            "type": "integer",
+            "format": "int64",
+            "description": "同一尾款周期内开发者最多能催告几次（0 = 禁止催告）。\n\n1.x `developer_final_cure_max` 默认 3。",
+            "default": 3
+          },
+          "final_pay_cure_hours": {
+            "type": "integer",
+            "format": "int64",
+            "description": "尾款缴付期限（小时，0 = 不做尾款逾期判定）。\n\n从验收通过、进入待付尾款起算。**到期不清空**：它是迟延履行天数的基准，\n清掉就再也没法回答「拖了几天」。1.x 同口径（默认 72）。",
+            "default": 72
+          },
+          "late_penalty_bps_per_day": {
+            "type": "integer",
+            "format": "int32",
+            "description": "迟延履行违约金的日费率（万分之几 / 日，0 = 不计违约金）。\n\n按**合同总价**（本合同的需求预算快照）计，口径照 1.x `late_penalty_bps_per_day`（默认 5）。",
+            "default": 5
+          },
+          "late_penalty_cap_bps": {
+            "type": "integer",
+            "format": "int32",
+            "description": "违约金的累计上限（万分之几 / 合同总价，0 = 不封顶）。\n\n1.x `late_penalty_cap_bps` 默认 1000，即最多罚到合同总价的 10%。",
+            "default": 1000
           },
           "remediation_hours": {
             "type": "integer",
@@ -19757,6 +22677,20 @@
                   "null"
                 ],
                 "description": "结案时间。"
+              },
+              "handled_by": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "平台处置人（裁决 / 驳回的处理人）。未处置为 `null`。\n\n驳回没有裁决内容，但「谁在什么时候驳回的」要能查到——那是问责的依据。"
+              },
+              "handled_time": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "平台处置时间。"
               },
               "mutual_agreed_time": {
                 "type": [
@@ -20753,6 +23687,101 @@
           }
         }
       },
+      "CouponPackResponse": {
+        "type": "object",
+        "required": [
+          "pack_id",
+          "name",
+          "coupon_type",
+          "total_count"
+        ],
+        "properties": {
+          "coupon_type": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "pack_id": {
+            "type": "string"
+          },
+          "total_count": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      },
+      "CouponResponse": {
+        "type": "object",
+        "required": [
+          "code",
+          "name",
+          "discount_type",
+          "min_amount_fen",
+          "active",
+          "status"
+        ],
+        "properties": {
+          "active": {
+            "type": "boolean"
+          },
+          "amount_off_fen": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64"
+          },
+          "code": {
+            "type": "string"
+          },
+          "coupon_pack_id": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "discount_bps": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32"
+          },
+          "discount_type": {
+            "type": "string"
+          },
+          "ends_at": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "max_discount_fen": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64"
+          },
+          "min_amount_fen": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "name": {
+            "type": "string"
+          },
+          "starts_at": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "status": {
+            "type": "string"
+          }
+        }
+      },
       "CreateApiKeyRequest": {
         "type": "object",
         "description": "创建密钥请求体。",
@@ -20892,6 +23921,97 @@
             "type": "integer",
             "format": "int64",
             "description": "模板主键（必填）。"
+          }
+        }
+      },
+      "CreateCouponPackFromSelectionRequest": {
+        "type": "object",
+        "required": [
+          "coupon_type",
+          "coupon_codes"
+        ],
+        "properties": {
+          "coupon_codes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "coupon_type": {
+            "type": "string"
+          },
+          "pack_name": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "CreateCouponRequest": {
+        "type": "object",
+        "required": [
+          "name",
+          "discount_type"
+        ],
+        "properties": {
+          "amount_off_fen": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "满减金额（分），discount_type=amount 时必填。"
+          },
+          "code": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "create_pack": {
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "discount_bps": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32",
+            "description": "优惠百分比基点，2000 表示优惠 20%，discount_type=percent 时必填。"
+          },
+          "discount_type": {
+            "type": "string"
+          },
+          "ends_at": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "max_discount_fen": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64"
+          },
+          "min_amount_fen": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "name": {
+            "type": "string"
+          },
+          "starts_at": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "东八区 YYYY-MM-DD HH:MM:SS。"
           }
         }
       },
@@ -21194,6 +24314,33 @@
           }
         }
       },
+      "CreateTipRequest": {
+        "type": "object",
+        "description": "发起打赏的请求体。",
+        "required": [
+          "developer",
+          "amount_fen"
+        ],
+        "properties": {
+          "amount_fen": {
+            "type": "integer",
+            "format": "int64",
+            "description": "金额（分）。"
+          },
+          "anonymous": {
+            "type": "boolean",
+            "description": "是否匿名。"
+          },
+          "developer": {
+            "type": "string",
+            "description": "被打赏的开发者。"
+          },
+          "message": {
+            "type": "string",
+            "description": "留言，最多 200 字。"
+          }
+        }
+      },
       "CreateUserRequest": {
         "type": "object",
         "description": "创建用户请求体。",
@@ -21439,6 +24586,51 @@
           "reason": {
             "type": "string",
             "description": "事由。"
+          }
+        }
+      },
+      "DeadlineChangeRequestView": {
+        "type": "object",
+        "description": "待处理申请的响应体（客服工作台用）。",
+        "required": [
+          "id",
+          "kind",
+          "reason",
+          "hours",
+          "note",
+          "requested_by",
+          "requested_at"
+        ],
+        "properties": {
+          "hours": {
+            "type": "integer",
+            "format": "int64",
+            "description": "申请时长（小时）。"
+          },
+          "id": {
+            "type": "integer",
+            "format": "int64",
+            "description": "申请编号。"
+          },
+          "kind": {
+            "type": "string",
+            "description": "`extend` / `suspend`。"
+          },
+          "note": {
+            "type": "string",
+            "description": "申请说明。"
+          },
+          "reason": {
+            "type": "string",
+            "description": "事由：`force_majeure` / `requirement_change` / `third_party`。"
+          },
+          "requested_at": {
+            "type": "string",
+            "description": "提交时间（东八区 `YYYY-MM-DD HH:MM:SS`）。"
+          },
+          "requested_by": {
+            "type": "string",
+            "description": "申请人。"
           }
         }
       },
@@ -21929,6 +25121,44 @@
           "status": {
             "type": "string",
             "description": "支付单状态。"
+          }
+        }
+      },
+      "DevAccessStatusResponse": {
+        "type": "object",
+        "description": "开发者准入状态。",
+        "required": [
+          "is_dev",
+          "is_super_admin",
+          "realname_approved",
+          "is_adult",
+          "developer_agreement_signed",
+          "api_usage_agreement_signed"
+        ],
+        "properties": {
+          "api_usage_agreement_signed": {
+            "type": "boolean",
+            "description": "是否已签《接口使用协议》。"
+          },
+          "developer_agreement_signed": {
+            "type": "boolean",
+            "description": "是否已签《开发者入驻协议》。"
+          },
+          "is_adult": {
+            "type": "boolean",
+            "description": "是否已成年。"
+          },
+          "is_dev": {
+            "type": "boolean",
+            "description": "是否已具备开发者 scope（生效权限里有 `scope.dev.access`）。"
+          },
+          "is_super_admin": {
+            "type": "boolean",
+            "description": "是否是超管。"
+          },
+          "realname_approved": {
+            "type": "boolean",
+            "description": "实名是否已通过。"
           }
         }
       },
@@ -23157,6 +26387,73 @@
           }
         }
       },
+      "LatePenaltyResponse": {
+        "type": "object",
+        "description": "迟延履行违约金的响应体（客服在争议裁决时作依据）。",
+        "required": [
+          "requirement_id",
+          "overdue_days",
+          "total_fen",
+          "per_day_bps",
+          "cap_bps",
+          "amount_fen",
+          "amount_yuan",
+          "settled"
+        ],
+        "properties": {
+          "amount_fen": {
+            "type": "integer",
+            "format": "int64",
+            "description": "违约金金额（分）。"
+          },
+          "amount_yuan": {
+            "type": "string",
+            "description": "违约金金额（元，两位小数的展示口径）。"
+          },
+          "cap_bps": {
+            "type": "integer",
+            "format": "int32",
+            "description": "累计上限（万分之几 / 合同总价，0 = 不封顶）。"
+          },
+          "delivered_at": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "实际交付时间；`null` 表示还没交付（金额会继续随天数上涨）。"
+          },
+          "delivery_due_at": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "交付期限（东八区）；`null` 表示没设交付期限。"
+          },
+          "overdue_days": {
+            "type": "integer",
+            "format": "int64",
+            "description": "逾期天数（未逾期为 0）。"
+          },
+          "per_day_bps": {
+            "type": "integer",
+            "format": "int32",
+            "description": "日费率（万分之几 / 日）。"
+          },
+          "requirement_id": {
+            "type": "string",
+            "description": "需求编号。"
+          },
+          "settled": {
+            "type": "boolean",
+            "description": "是否已交付（交付后金额定格）。"
+          },
+          "total_fen": {
+            "type": "integer",
+            "format": "int64",
+            "description": "计算基数：本合同的需求预算快照（分）。"
+          }
+        }
+      },
       "LegalCertOcrRequest": {
         "type": "object",
         "description": "身份证 OCR 请求体。",
@@ -23758,6 +27055,79 @@
           }
         }
       },
+      "OfficialActivityResponse": {
+        "type": "object",
+        "required": [
+          "id",
+          "title",
+          "content",
+          "published_by",
+          "published_at",
+          "created_at",
+          "activity_kind"
+        ],
+        "properties": {
+          "activity_kind": {
+            "type": "string"
+          },
+          "content": {
+            "type": "string"
+          },
+          "coupon_code": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "coupon_name": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "coupon_pack_available_count": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64"
+          },
+          "coupon_pack_id": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "coupon_pack_name": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "coupon_type": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "created_at": {
+            "type": "string"
+          },
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "published_at": {
+            "type": "string"
+          },
+          "published_by": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          }
+        }
+      },
       "OpenPurchaseRequest": {
         "type": "object",
         "description": "开发者站点下单请求体。",
@@ -24349,7 +27719,7 @@
       },
       "ProfileResponse": {
         "type": "object",
-        "description": "个人的档案响应。字段名与 1.x 一致，前端共用同一份类型定义。\n\n**没有** `wechat_bound`：1.x 那个字段来自微信登录绑定，2.0 还没有微信登录\n（见 `AGENTS.md` 的 identity 缺口清单），恒为 `false` 的字段只会让前端渲染出\n一个点了没反应的「去绑定」按钮，所以不返回。",
+        "description": "个人的档案响应。字段名与 1.x 一致，前端共用同一份类型定义。\n\n**没有** `wechat_bound`：微信绑定状态统一走 `/api/auth/providers`，\n不在档案响应里重复返回。",
         "required": [
           "username",
           "profile_description",
@@ -24525,6 +27895,109 @@
           "updated_at": {
             "type": "string",
             "description": "更新时间。"
+          }
+        }
+      },
+      "ProviderAccountResponse": {
+        "type": "object",
+        "description": "一条绑定关系。",
+        "required": [
+          "username",
+          "provider",
+          "external_id",
+          "external_login",
+          "bound_at"
+        ],
+        "properties": {
+          "bound_at": {
+            "type": "string",
+            "description": "绑定时间（东八区 `YYYY-MM-DD HH:MM:SS`）。"
+          },
+          "external_id": {
+            "type": "string",
+            "description": "渠道内的账号 ID。"
+          },
+          "external_login": {
+            "type": "string",
+            "description": "渠道内的登录名。"
+          },
+          "provider": {
+            "type": "string",
+            "description": "渠道（`github` / `gitee`）。"
+          },
+          "username": {
+            "type": "string",
+            "description": "平台用户名。"
+          }
+        }
+      },
+      "ProviderAccountsQuery": {
+        "type": "object",
+        "description": "绑定列表查询参数。",
+        "properties": {
+          "keyword": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "关键字：同时匹配平台用户名与渠道内登录名（不区分大小写）。"
+          },
+          "page": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "页码，从 1 起。"
+          },
+          "page_size": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "每页条数，默认 20，上限 200。"
+          },
+          "provider": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "只列某个渠道：`github` / `gitee`；留空表示全部。"
+          }
+        }
+      },
+      "ProviderAccountsResponse": {
+        "type": "object",
+        "description": "绑定列表响应。",
+        "required": [
+          "total",
+          "page",
+          "page_size",
+          "items"
+        ],
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ProviderAccountResponse"
+            },
+            "description": "绑定关系。"
+          },
+          "page": {
+            "type": "integer",
+            "format": "int64",
+            "description": "当前页。"
+          },
+          "page_size": {
+            "type": "integer",
+            "format": "int64",
+            "description": "每页条数。"
+          },
+          "total": {
+            "type": "integer",
+            "format": "int64",
+            "description": "命中条件的总条数（不受分页影响）。"
           }
         }
       },
@@ -24718,6 +28191,61 @@
           }
         }
       },
+      "PublishActivityCampaignRequest": {
+        "type": "object",
+        "required": [
+          "title",
+          "content",
+          "coupon_type",
+          "coupon_pack_id"
+        ],
+        "properties": {
+          "content": {
+            "type": "string"
+          },
+          "coupon_pack_id": {
+            "type": "string"
+          },
+          "coupon_type": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          }
+        }
+      },
+      "PublishOfficialActivityRequest": {
+        "type": "object",
+        "required": [
+          "title",
+          "content"
+        ],
+        "properties": {
+          "content": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          }
+        }
+      },
+      "PublishOfficialActivityResponse": {
+        "type": "object",
+        "required": [
+          "activity",
+          "notified_subscriber_count"
+        ],
+        "properties": {
+          "activity": {
+            "$ref": "#/components/schemas/OfficialActivityResponse"
+          },
+          "notified_subscriber_count": {
+            "type": "integer",
+            "description": "实际生成的订阅通知任务数；未配置邮件端口时也按任务数返回。",
+            "minimum": 0
+          }
+        }
+      },
       "PurchaseConfig": {
         "type": "object",
         "description": "资源售卖口径。",
@@ -24763,6 +28291,100 @@
           }
         },
         "additionalProperties": false
+      },
+      "QrConfirmRequest": {
+        "type": "object",
+        "description": "确认请求体。",
+        "required": [
+          "state"
+        ],
+        "properties": {
+          "state": {
+            "type": "string",
+            "description": "二维码上的 state。"
+          }
+        }
+      },
+      "QrStatusQuery": {
+        "type": "object",
+        "description": "轮询查询参数。",
+        "required": [
+          "state",
+          "poll_secret"
+        ],
+        "properties": {
+          "poll_secret": {
+            "type": "string",
+            "description": "建码时拿到的轮询凭据。"
+          },
+          "state": {
+            "type": "string",
+            "description": "二维码上的 state。"
+          }
+        }
+      },
+      "QrStatusResponse": {
+        "type": "object",
+        "description": "轮询响应。",
+        "required": [
+          "status"
+        ],
+        "properties": {
+          "status": {
+            "type": "string",
+            "description": "`pending` / `confirmed` / `expired`。"
+          },
+          "token": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "已确认时返回令牌（取走即作废）。"
+          },
+          "username": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "已确认时返回账号。"
+          }
+        }
+      },
+      "QrUrlQuery": {
+        "type": "object",
+        "description": "二维码地址查询参数。",
+        "properties": {
+          "redirect_to": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "登录成功后跳回的前端地址；留空用渠道落地页。"
+          }
+        }
+      },
+      "QrUrlResponse": {
+        "type": "object",
+        "description": "二维码地址响应。",
+        "required": [
+          "url",
+          "state",
+          "poll_secret"
+        ],
+        "properties": {
+          "poll_secret": {
+            "type": "string",
+            "description": "轮询凭据：只在这时返回一次。"
+          },
+          "state": {
+            "type": "string",
+            "description": "一次性标识。"
+          },
+          "url": {
+            "type": "string",
+            "description": "授权地址（前端画成二维码）。"
+          }
+        }
       },
       "RateLimitConfig": {
         "type": "object",
@@ -25273,6 +28895,16 @@
           "username": {
             "type": "string",
             "description": "登录名。"
+          }
+        }
+      },
+      "RejectDeadlineRequest": {
+        "type": "object",
+        "description": "驳回请求体。",
+        "properties": {
+          "note": {
+            "type": "string",
+            "description": "驳回理由（写进申请记录，申请人看得到）。"
           }
         }
       },
@@ -26682,11 +30314,47 @@
                 "description": "开发者交付之后、需求方提出验收异议的期限（小时）。\n\n逾期未提出**具体异议**即按合同约定视为验收通过：担保模式推进到待付尾款，\n自管模式验收即结单。取值 1～720（1 小时 ~ 30 天），0 等于不给人看的时间，属于配置事故。",
                 "default": 72
               },
+              "cure_notice_lead_hours": {
+                "type": "integer",
+                "format": "int64",
+                "description": "催告提前量（小时，0 = 不做提前催告）。\n\n到点前多少小时提醒一次（整条需求只提醒一次）。1.x 默认 12。",
+                "default": 12
+              },
+              "delivery_deadline_hours": {
+                "type": "integer",
+                "format": "int64",
+                "description": "交付期限（小时，0 = 不设交付期限）。\n\n从合同签署时刻起算。**默认 0 = 关**，与 1.x 同口径（`[breach] delivery_deadline_hours`\n默认 0）：不设期限就没有交付逾期，也就没有迟延履行违约金——1.x 上线时是关着的，\n打开等于给存量需求追溯计罚，所以只能由运营显式开。",
+                "default": 0
+              },
               "deposit_pay_hours": {
                 "type": "integer",
                 "format": "int64",
                 "description": "合同签好后甲方缴付定金的期限（小时）。\n\n逾期视为甲方根本违约：解除绑定、作废合同、需求回到大厅。\n取值 1～720（1 小时 ~ 30 天），0 会让期限立刻到期，属于配置事故。",
                 "default": 48
+              },
+              "developer_final_cure_max": {
+                "type": "integer",
+                "format": "int64",
+                "description": "同一尾款周期内开发者最多能催告几次（0 = 禁止催告）。\n\n1.x `developer_final_cure_max` 默认 3。",
+                "default": 3
+              },
+              "final_pay_cure_hours": {
+                "type": "integer",
+                "format": "int64",
+                "description": "尾款缴付期限（小时，0 = 不做尾款逾期判定）。\n\n从验收通过、进入待付尾款起算。**到期不清空**：它是迟延履行天数的基准，\n清掉就再也没法回答「拖了几天」。1.x 同口径（默认 72）。",
+                "default": 72
+              },
+              "late_penalty_bps_per_day": {
+                "type": "integer",
+                "format": "int32",
+                "description": "迟延履行违约金的日费率（万分之几 / 日，0 = 不计违约金）。\n\n按**合同总价**（本合同的需求预算快照）计，口径照 1.x `late_penalty_bps_per_day`（默认 5）。",
+                "default": 5
+              },
+              "late_penalty_cap_bps": {
+                "type": "integer",
+                "format": "int32",
+                "description": "违约金的累计上限（万分之几 / 合同总价，0 = 不封顶）。\n\n1.x `late_penalty_cap_bps` 默认 1000，即最多罚到合同总价的 10%。",
+                "default": 1000
               },
               "remediation_hours": {
                 "type": "integer",
@@ -27149,6 +30817,24 @@
           "featured": {
             "type": "boolean",
             "description": "是否精选。"
+          }
+        }
+      },
+      "SetUserPermissionRequest": {
+        "type": "object",
+        "description": "设置用户级权限覆盖的请求体。",
+        "required": [
+          "permission_code",
+          "granted"
+        ],
+        "properties": {
+          "granted": {
+            "type": "boolean",
+            "description": "是否授予：`true` = 显式授予，`false` = 显式回收。"
+          },
+          "permission_code": {
+            "type": "string",
+            "description": "权限码。"
           }
         }
       },
@@ -28689,6 +32375,134 @@
           }
         }
       },
+      "TipConfigResponse": {
+        "type": "object",
+        "description": "打赏设置响应。",
+        "required": [
+          "enabled",
+          "cash_tiers_fen",
+          "allow_custom_cash",
+          "custom_cash_min_fen",
+          "custom_cash_max_fen",
+          "public_records",
+          "thanks_message",
+          "updated_at"
+        ],
+        "properties": {
+          "allow_custom_cash": {
+            "type": "boolean",
+            "description": "是否允许自填金额。"
+          },
+          "cash_tiers_fen": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "format": "int64"
+            },
+            "description": "固定档位（分）。"
+          },
+          "custom_cash_max_fen": {
+            "type": "integer",
+            "format": "int64",
+            "description": "自填上限（分）。"
+          },
+          "custom_cash_min_fen": {
+            "type": "integer",
+            "format": "int64",
+            "description": "自填下限（分）。"
+          },
+          "enabled": {
+            "type": "boolean",
+            "description": "总开关。"
+          },
+          "public_records": {
+            "type": "boolean",
+            "description": "是否公开打赏记录。"
+          },
+          "thanks_message": {
+            "type": "string",
+            "description": "感谢语。"
+          },
+          "updated_at": {
+            "type": "string",
+            "description": "最后修改时间（东八区）。"
+          }
+        }
+      },
+      "TipOrderResponse": {
+        "type": "object",
+        "description": "打赏单响应。",
+        "required": [
+          "order_no",
+          "tipper",
+          "developer",
+          "amount_fen",
+          "developer_net_fen",
+          "message",
+          "anonymous",
+          "status",
+          "split_status",
+          "created_at"
+        ],
+        "properties": {
+          "amount_fen": {
+            "type": "integer",
+            "format": "int64",
+            "description": "金额（分）。"
+          },
+          "anonymous": {
+            "type": "boolean",
+            "description": "是否匿名。"
+          },
+          "created_at": {
+            "type": "string",
+            "description": "创建时间（东八区）。"
+          },
+          "developer": {
+            "type": "string",
+            "description": "被打赏的开发者。"
+          },
+          "developer_net_fen": {
+            "type": "integer",
+            "format": "int64",
+            "description": "开发者净额（分）。"
+          },
+          "message": {
+            "type": "string",
+            "description": "留言。"
+          },
+          "order_no": {
+            "type": "string",
+            "description": "单号。"
+          },
+          "paid_at": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "收款时间（东八区）。"
+          },
+          "pay_url": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "收银台地址（电脑端扫码）。"
+          },
+          "split_status": {
+            "type": "string",
+            "description": "分账状态：`none` / `pending` / `succeeded` / `failed`。"
+          },
+          "status": {
+            "type": "string",
+            "description": "状态：`pending` / `paid` / `failed` / `closed` / `refunding` / `refunded`。"
+          },
+          "tipper": {
+            "type": "string",
+            "description": "打赏人（匿名单对开发者之外的人隐藏，见 handler 注释）。"
+          }
+        }
+      },
       "TokenRequest": {
         "type": "object",
         "description": "token 端点请求（form）。",
@@ -28991,6 +32805,29 @@
           }
         }
       },
+      "UnbindProviderResponse": {
+        "type": "object",
+        "description": "解绑响应。",
+        "required": [
+          "username",
+          "provider",
+          "unbound"
+        ],
+        "properties": {
+          "provider": {
+            "type": "string",
+            "description": "渠道。"
+          },
+          "unbound": {
+            "type": "boolean",
+            "description": "是否真的删掉了一条绑定；`false` 表示本来就没绑（幂等成功）。"
+          },
+          "username": {
+            "type": "string",
+            "description": "平台用户名。"
+          }
+        }
+      },
       "UnreadCountResponse": {
         "type": "object",
         "description": "未读数响应。",
@@ -29002,6 +32839,21 @@
             "type": "integer",
             "format": "int64",
             "description": "未读条数。"
+          }
+        }
+      },
+      "UpdateActivityCampaignRequest": {
+        "type": "object",
+        "required": [
+          "title",
+          "content"
+        ],
+        "properties": {
+          "content": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
           }
         }
       },
@@ -29669,6 +33521,49 @@
           }
         }
       },
+      "UpdateTipConfigRequest": {
+        "type": "object",
+        "description": "写打赏设置的请求体（字段与响应一致，`updated_at` 忽略）。",
+        "required": [
+          "enabled"
+        ],
+        "properties": {
+          "allow_custom_cash": {
+            "type": "boolean",
+            "description": "是否允许自填金额。"
+          },
+          "cash_tiers_fen": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "format": "int64"
+            },
+            "description": "固定档位（分），最多 6 个。"
+          },
+          "custom_cash_max_fen": {
+            "type": "integer",
+            "format": "int64",
+            "description": "自填上限（分）。"
+          },
+          "custom_cash_min_fen": {
+            "type": "integer",
+            "format": "int64",
+            "description": "自填下限（分）。"
+          },
+          "enabled": {
+            "type": "boolean",
+            "description": "总开关。"
+          },
+          "public_records": {
+            "type": "boolean",
+            "description": "是否公开打赏记录。"
+          },
+          "thanks_message": {
+            "type": "string",
+            "description": "感谢语，最多 100 字。"
+          }
+        }
+      },
       "UpdateTwoFactorRequest": {
         "type": "object",
         "description": "两因素开关请求体。",
@@ -29902,6 +33797,86 @@
               "type": "string"
             },
             "description": "权限码列表。"
+          }
+        }
+      },
+      "UserPermissionOverrideResponse": {
+        "type": "object",
+        "description": "用户级权限覆盖条目响应。",
+        "required": [
+          "code",
+          "name",
+          "granted",
+          "updated_at"
+        ],
+        "properties": {
+          "code": {
+            "type": "string",
+            "description": "权限码。"
+          },
+          "description": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "描述。"
+          },
+          "granted": {
+            "type": "boolean",
+            "description": "是否显式授予（`false` = 显式回收）。"
+          },
+          "name": {
+            "type": "string",
+            "description": "权限名。"
+          },
+          "updated_at": {
+            "type": "string",
+            "description": "覆盖写入时间（东八区）。"
+          }
+        }
+      },
+      "UserPermissionsResponse": {
+        "type": "object",
+        "description": "用户权限总览响应。",
+        "required": [
+          "username",
+          "roles",
+          "role_permissions",
+          "overrides",
+          "effective_permissions"
+        ],
+        "properties": {
+          "effective_permissions": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "生效权限（用户级覆盖优先于角色合成出来的，已排序）。"
+          },
+          "overrides": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/UserPermissionOverrideResponse"
+            },
+            "description": "用户级显式覆盖。"
+          },
+          "role_permissions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PermissionResponse"
+            },
+            "description": "角色授予的权限。"
+          },
+          "roles": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "全部角色。"
+          },
+          "username": {
+            "type": "string",
+            "description": "用户名。"
           }
         }
       },
@@ -30229,6 +34204,19 @@
         "properties": {
           "pay_info": {
             "description": "微信 JSAPI 唤起参数（渠道原样透传）。"
+          }
+        }
+      },
+      "WechatMiniprogramLoginRequest": {
+        "type": "object",
+        "description": "小程序登录请求体。",
+        "required": [
+          "code"
+        ],
+        "properties": {
+          "code": {
+            "type": "string",
+            "description": "`wx.login` 拿到的 code（一次性，5 分钟有效）。"
           }
         }
       },

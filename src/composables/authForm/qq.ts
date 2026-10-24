@@ -35,10 +35,10 @@ export function useQqLogin({
     qqAuthorizationWindow = null
   }
 
-  async function checkQqLogin(state: string, generation: number, attempt = 0) {
+  async function checkQqLogin(state: string, pollSecret: string, generation: number, attempt = 0) {
     if (generation !== qqLoginGeneration) return
     try {
-      const result = await getQqLoginQrStatus(state)
+      const result = await getQqLoginQrStatus(state, pollSecret)
       if (generation !== qqLoginGeneration) return
       if (result.token) {
         stopQqLogin()
@@ -58,7 +58,7 @@ export function useQqLogin({
       return
     }
     qqPollTimer = setTimeout(
-      () => void checkQqLogin(state, generation, attempt + 1),
+      () => void checkQqLogin(state, pollSecret, generation, attempt + 1),
       qrPollDelayMs(attempt + 1),
     )
   }
@@ -97,7 +97,7 @@ export function useQqLogin({
     try {
       const qr = await getQqLoginQrUrl(redirectTarget)
       if (generation !== qqLoginGeneration) return
-      if (!qr.url.trim() || !qr.state.trim()) {
+      if (!qr.url.trim() || !qr.state.trim() || !qr.poll_secret?.trim()) {
         throw new Error('QQ授权地址为空')
       }
       if (!qqAuthorizationWindow) {
@@ -105,7 +105,7 @@ export function useQqLogin({
         return
       }
       qqAuthorizationWindow.location.href = qr.url
-      void checkQqLogin(qr.state, generation)
+      void checkQqLogin(qr.state, qr.poll_secret, generation)
     } catch (err) {
       if (generation !== qqLoginGeneration) return
       stopQqLogin()

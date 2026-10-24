@@ -1,162 +1,110 @@
-import { apiUrl, authHeader, readErrorMessage, requestJson } from '@/api/http'
+import type { components } from '@/api/generated/schema'
 
-export type AlipayCreatePaymentResp = {
-  payment_id: string
-  requirement_id: string
-  channel: string
-  amount_cny: number
-  status: string
-  alipay_order_string: string
-  expires_at: string
+import { authHeaders, requestJson } from '@/api/http'
+
+type Schemas = components['schemas']
+
+/** 一张支付单（契约 `PaymentOrderResponse`，字段即后端返回的 snake_case）。 */
+export type PaymentOrder = Schemas['PaymentOrderResponse']
+
+/** 我的支付单分页（契约 `MyOrderListResponse`：`items` + 分页三项）。 */
+export type PaymentOrderPage = Schemas['MyOrderListResponse']
+
+/** 发起退款（契约 `RefundRequest`）：`amount_fen` 缺省表示退全额。 */
+export type PaymentRefundRequest = Schemas['RefundRequest']
+
+/** 退款回执（契约 `RefundResponse`）。 */
+export type PaymentRefundResult = Schemas['RefundResponse']
+
+/** `GET /api/payment/orders` 的筛选条件，与契约的 query 参数一一对应。 */
+export type PaymentOrderQuery = {
+  status?: string
+  biz_type?: string
+  /** 东八区墙钟串（`YYYY-MM-DD HH:MM:SS`），与后端时间列同口径 */
+  created_from?: string
+  created_to?: string
+  page?: number
+  page_size?: number
 }
 
-export type AlipayPageCreatePaymentResp = AlipayCreatePaymentResp & {
-  page_html: string
-}
-
-export type WechatCreatePaymentResp = {
-  payment_id: string
-  requirement_id: string
-  channel: string
-  amount_cny: number
-  status: string
-  wechat_prepay_id?: string | null
-  code_url: string
-  expires_at: string
-}
-
-export type ConfirmPaymentResp = {
-  status: string
-  requirement_status?: string
-}
-
-export type PaymentOrderItem = {
-  payment_id: string
-  status: string
-}
-
-export type ConfirmResult = {
-  ok: boolean
-  status: number
-  data?: ConfirmPaymentResp
-  message?: string
-}
-
-export async function listPaymentOrders(token: string): Promise<PaymentOrderItem[]> {
-  const resp = await fetch(apiUrl('/payments/orders'), {
-    headers: {
-      ...authHeader(token),
-    },
-    credentials: 'omit',
-  })
-
-  if (!resp.ok) {
-    return []
-  }
-
-  return (await resp.json()) as PaymentOrderItem[]
-}
-
-export async function createPayment(
-  token: string,
-  channel: 'alipay' | 'wechat',
-  payload: {
-    requirement_id: string
-    amount_cny: number
-    coupon_code?: string
-    description: string
-  },
-): Promise<AlipayCreatePaymentResp | WechatCreatePaymentResp> {
-  const path = channel === 'alipay' ? '/payments/alipay/create' : '/payments/wechat/create'
-  return requestJson<AlipayCreatePaymentResp | WechatCreatePaymentResp>(
-    path,
-    {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        ...authHeader(token),
-      },
-      body: JSON.stringify(payload),
-    },
-    `创建${channel === 'alipay' ? '支付宝' : '微信'}支付订单失败`,
-  )
-}
-
-export async function createAlipayPagePayment(
-  token: string,
-  payload: {
-    requirement_id: string
-    amount_cny: number
-    coupon_code?: string
-    description: string
-  },
-): Promise<AlipayPageCreatePaymentResp> {
-  return requestJson<AlipayPageCreatePaymentResp>(
-    '/payments/alipay/page',
-    {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        ...authHeader(token),
-      },
-      body: JSON.stringify(payload),
-    },
-    '创建支付宝页面支付订单失败',
-  )
-}
-
-export async function getAlipayPageHtml(token: string, paymentId: string): Promise<string> {
-  const resp = await fetch(
-    apiUrl(`/payments/alipay/page?payment_id=${encodeURIComponent(paymentId)}`),
-    {
-      headers: {
-        ...authHeader(token),
-      },
-      credentials: 'omit',
-    },
-  )
-
-  if (!resp.ok) {
-    throw new Error(await readErrorMessage(resp, '获取支付宝页面支付数据失败'))
-  }
-
-  return resp.text()
-}
-
-export async function confirmPayment(
-  token: string,
-  channel: 'alipay' | 'wechat',
-  paymentId: string,
-): Promise<ConfirmResult> {
-  const path = channel === 'alipay' ? '/payments/alipay/confirm' : '/payments/wechat/confirm'
-  const resp = await fetch(apiUrl(path), {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      ...authHeader(token),
-    },
-    body: JSON.stringify({ payment_id: paymentId }),
-    credentials: 'omit',
-  })
-
-  if (!resp.ok) {
-    return {
-      ok: false,
-      status: resp.status,
-      message: await readErrorMessage(resp, '确认支付失败'),
+function orderQuery(query: PaymentOrderQuery): string {
+  const params = new URLSearchParams()
+  for (const [key, value] of Object.entries(query)) {
+    if (value === undefined || value === '') {
+      continue
     }
+    params.set(key, String(value))
   }
+  const text = params.toString()
+  return text ? `?${text}` : ''
+}
 
-  let data: ConfirmPaymentResp | undefined
-  try {
-    data = (await resp.json()) as ConfirmPaymentResp
-  } catch {
-    data = undefined
-  }
+/** 平台资金口径（契约 `PaymentConfig`）：定金比例、平台费率、违约金与个税基点在**万分之几**。 */
+export type PaymentLimits = Schemas['PaymentConfig']
 
-  return {
-    ok: true,
-    status: resp.status,
-    data,
-  }
+/**
+ * 平台资金口径（`GET /api/payment/limits/system`）。
+ *
+ * 定金比例读 `deposit_ratio_bps`（万分之几：2000 = 20%），别再读 1.x 的
+ * `deposit_ratio_percent`——那个字段在 2.0 不存在，读出来恒为 `undefined`，
+ * 前端会静默退回默认比例。
+ */
+export async function getPaymentLimits(token: string): Promise<PaymentLimits> {
+  return requestJson<PaymentLimits>(
+    '/payment/limits/system',
+    { headers: authHeaders(token) },
+    '加载平台资金口径失败',
+  )
+}
+
+/** 我的支付单列表（`GET /api/payment/orders`，按创建时间倒序）。 */
+export async function listPaymentOrders(
+  token: string,
+  query: PaymentOrderQuery = {},
+): Promise<PaymentOrderPage> {
+  return requestJson<PaymentOrderPage>(
+    `/payment/orders${orderQuery(query)}`,
+    { headers: authHeaders(token) },
+    '加载支付单失败',
+  )
+}
+
+/** 单张支付单（`GET /api/payment/orders/{order_no}`）：支付结果一律以它为准，没有「确认支付」接口。 */
+export async function getPaymentOrder(token: string, orderNo: string): Promise<PaymentOrder> {
+  return requestJson<PaymentOrder>(
+    `/payment/orders/${encodeURIComponent(orderNo)}`,
+    { headers: authHeaders(token) },
+    '查询支付单状态失败',
+  )
+}
+
+/**
+ * 删除支付单（`DELETE /api/payment/orders/{order_no}`）。
+ *
+ * 后端只允许删「钱还没动过」的单（`created` / `failed` / `canceled`，且底下没有退款与分账底账），
+ * 其余回 409 并说明该先做什么——不要在前端另写一套状态白名单去抢这个判定。
+ */
+export async function deletePaymentOrder(token: string, orderNo: string): Promise<void> {
+  await requestJson<null>(
+    `/payment/orders/${encodeURIComponent(orderNo)}`,
+    { method: 'DELETE', headers: authHeaders(token) },
+    '删除支付单失败',
+  )
+}
+
+/** 发起退款（`POST /api/payment/orders/{order_no}/refund`）。 */
+export async function refundPaymentOrder(
+  token: string,
+  orderNo: string,
+  payload: PaymentRefundRequest = {},
+): Promise<PaymentRefundResult> {
+  return requestJson<PaymentRefundResult>(
+    `/payment/orders/${encodeURIComponent(orderNo)}/refund`,
+    {
+      method: 'POST',
+      headers: authHeaders(token, { 'Content-Type': 'application/json' }),
+      body: JSON.stringify(payload),
+    },
+    '发起退款失败',
+  )
 }

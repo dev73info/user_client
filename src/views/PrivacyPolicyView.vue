@@ -1,40 +1,23 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed } from 'vue'
 import { useRouter } from 'vue-router'
-import { fetchAgreementContent, type AgreementContent } from '@/api/auth'
 import { privacyDocument } from '@/shared/legalContent'
-import { legalDocumentToBlocks, parseLegalText } from '@/components/legal/legalText'
+import { legalDocumentToBlocks } from '@/components/legal/legalText'
 
 const router = useRouter()
 
 /**
- * 正文来源：后端 `contract_template` 的 `privacy_policy` 行是**唯一事实源**
- * （R043 任务-02 入库、任务-03 切读）。接口不可用时才回落到前端 JSON 兜底快照。
+ * 正文来源：`shared/legalContent.json` 的 `privacy` 段（与静态快照脚本读同一份）。
+ *
+ * 早先这一页去调 `/api/auth/agreement-content?code=privacy_policy` 取后端正文，取不到就静默回落——
+ * 而**后端 2.0 根本没有这个端点**（契约里只有 `/api/auth/user-service-agreement`），
+ * 于是每次打开都在打一个必然 404 的请求，还把失败吞掉。现在直接渲染内置正文：
+ * 有就有、没有就没有，不再假装「后端是事实源」。
  */
-const agreement = ref<AgreementContent | null>(null)
-const loading = ref(true)
-
-const blocks = computed(() =>
-  agreement.value
-    ? parseLegalText(agreement.value.content)
-    : legalDocumentToBlocks(privacyDocument),
-)
-const title = computed(() => agreement.value?.title || privacyDocument.heading)
-const version = computed(() => agreement.value?.version || '')
-const effectiveAt = computed(() => agreement.value?.effective_at || '')
-
-async function loadAgreement() {
-  loading.value = true
-  try {
-    agreement.value = await fetchAgreementContent('privacy_policy')
-  } catch {
-    agreement.value = null
-  } finally {
-    loading.value = false
-  }
-}
-
-onMounted(loadAgreement)
+const blocks = computed(() => legalDocumentToBlocks(privacyDocument))
+const title = privacyDocument.heading
+/** 生效日期写在正文区块里（`{ type: 'effective' }`），页头不再单独占一行。 */
+const hasEffectiveBlock = privacyDocument.blocks.some((block) => block.type === 'effective')
 
 function goBack() {
   if (window.history.state?.back) {
@@ -57,9 +40,8 @@ function goBack() {
       </header>
 
       <article class="content-block">
-        <p v-if="version"><strong>版本号：</strong>{{ version }}</p>
-        <p v-if="effectiveAt"><strong>生效日期：</strong>{{ effectiveAt }}</p>
-        <p v-if="loading" class="legal-loading">政策内容加载中…</p>
+        <!-- 生效日期由正文第一块（`type: 'effective'`）渲染，页头不重复 -->
+        <p v-if="!hasEffectiveBlock" class="legal-loading">生效日期以协议正文为准。</p>
 
         <template v-for="(block, index) in blocks" :key="index">
           <h3 v-if="block.type === 'heading'" :id="block.id">{{ block.text }}</h3>

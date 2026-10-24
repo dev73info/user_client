@@ -70,16 +70,6 @@
   box-shadow: 0 12px 30px color-mix(in srgb, var(--73-warning) 40%, transparent);
 }
 
-.about-join__btn--ghost {
-  color: var(--73-border);
-  background: color-mix(in srgb, var(--73-surface-strong) 10%, transparent);
-  border: 1px solid color-mix(in srgb, var(--73-surface-strong) 25%, transparent);
-}
-
-.about-join__btn--ghost:hover {
-  background: color-mix(in srgb, var(--73-surface-strong) 18%, transparent);
-}
-
 @media (max-width: 640px) {
   .about-join {
     padding: 36px 22px;

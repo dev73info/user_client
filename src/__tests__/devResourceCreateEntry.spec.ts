@@ -17,8 +17,6 @@ const mocks = vi.hoisted(() => ({
     query: Record<string, unknown>
   },
   listResources: vi.fn(),
-  inbox: vi.fn(),
-  mine: vi.fn(),
   tagTree: vi.fn(),
   listMyTeams: vi.fn(),
 }))
@@ -63,22 +61,10 @@ vi.mock('@/api/mcResources', () => ({
   deleteMcResource: vi.fn(),
   applyResourcePromoCard: vi.fn(),
 }))
-vi.mock('@/api/points', () => ({
-  listMyPromoCards: vi.fn(),
-  getResourcePromoMeta: vi.fn(),
-  promoCardLabel: (code: string) => code,
-}))
 vi.mock('@/api/resourceTags', () => ({
   getProcessedTagTree: mocks.tagTree,
   invalidateTagTreeCache: vi.fn(),
   getResourceDetailSlug: () => 'slug',
-}))
-vi.mock('@/api/resourceTransfers', () => ({
-  listMyResourceTransferInbox: mocks.inbox,
-  listMyResourceTransfers: mocks.mine,
-  acceptResourceTransfer: vi.fn(),
-  rejectResourceTransfer: vi.fn(),
-  cancelResourceTransfer: vi.fn(),
 }))
 vi.mock('@/api/team', () => ({
   listMyTeams: mocks.listMyTeams,
@@ -130,8 +116,6 @@ describe('DevResourceListView：发布资源入口分两条', () => {
     mocks.route = { params: {}, query: {} }
     mocks.tagTree.mockResolvedValue({ roots: [] })
     mocks.listResources.mockResolvedValue([])
-    mocks.inbox.mockResolvedValue([])
-    mocks.mine.mockResolvedValue([])
   })
 
   it('菜单里就是普通资源与接口资源两项', async () => {

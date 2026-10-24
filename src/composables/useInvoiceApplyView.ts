@@ -15,6 +15,9 @@ export type InvoiceApplyViewOptions = {
  * 只读汇总，不改状态：两侧文案、可开票金额、结单闸门说明、已存在的发票与本次会开出哪几张票。
  * 三个判定与后端一致，改之前先看注释：已开过（含审核中 / 已通过）的一侧不计入可开票金额，
  * 被红冲的一侧会重新计入；平台服务费票只有需求方能申请。
+ *
+ * 这里**不再**判定「票面该不该红冲」：汇总响应里没有「原票票面与当前净额是否对不上」的信号，
+ * 前端自己拿票面与净额比会在每次部分退款后给出一条假的「需红冲」提示。
  */
 export function useInvoiceApplyView(options: InvoiceApplyViewOptions) {
   const copy = computed(() => COPY[options.role])
@@ -62,11 +65,6 @@ export function useInvoiceApplyView(options: InvoiceApplyViewOptions) {
     return records
   })
 
-  /** 需要红冲的记录：票面与已实际发生的净额不一致（售后退款 / 赔付已成立）。 */
-  const staleInvoices = computed(() =>
-    existingInvoices.value.filter((item) => item.invoice.reversalRequired),
-  )
-
   /**
    * 本次申请会开出哪几张票。判定与后端一致（见 `apply_invoices`）：某一侧已经开过、或没有可开
    * 金额，就不在这次申请里；平台服务费票只有需求方能申请。
@@ -95,7 +93,6 @@ export function useInvoiceApplyView(options: InvoiceApplyViewOptions) {
     amountCny,
     invoiceGateNotice,
     existingInvoices,
-    staleInvoices,
     openSides,
   }
 }

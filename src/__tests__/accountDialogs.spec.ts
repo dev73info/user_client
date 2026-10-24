@@ -5,10 +5,11 @@ import { describe, expect, it } from 'vitest'
 import CloseAccountDialog from '@/components/account/CloseAccountDialog.vue'
 import CloseSettleDialog from '@/components/account/CloseSettleDialog.vue'
 import EmailDialog from '@/components/account/EmailDialog.vue'
-import UsernameDialog from '@/components/account/UsernameDialog.vue'
 
 /**
- * 账号与安全页「改用户名 / 改邮箱 / 注销账号 / 注销结算账户」四个弹窗的父子接口。
+ * 账号与安全页「改邮箱 / 注销账号 / 注销结算账户」三个弹窗的父子接口。
+ *
+ * 「改用户名」弹窗已按契约删除（`PUT /settings/profile` 不接受自助改登录名），对应用例一并移除。
  *
  * 重点不是长什么样，而是**事件键名与次数**：`v-model:visible` 走的是带冒号的
  * `update:visible`，写成 `updateVisible` 会静默不触发；父级提交时读的是自己那份草稿，
@@ -30,61 +31,6 @@ function buttonByText(wrapper: VueWrapper, text: string) {
   }
   return found
 }
-
-describe('UsernameDialog：改用户名弹窗', () => {
-  it('初值来自父级 initial，输入一次回传一次 update:value', async () => {
-    const wrapper = mountDialog(UsernameDialog, { initial: 'alice', saving: false })
-    const input = wrapper.find('input')
-    expect((input.element as HTMLInputElement).value).toBe('alice')
-
-    await input.setValue('alice_new')
-
-    expect(wrapper.emitted('update:value')).toEqual([['alice_new']])
-    wrapper.unmount()
-  })
-
-  it('点「保存用户名」只发一次 submit（校验与请求在视图）', async () => {
-    const wrapper = mountDialog(UsernameDialog, { initial: 'alice', saving: false })
-
-    await buttonByText(wrapper, '保存用户名').trigger('click')
-
-    expect(wrapper.emitted('submit')).toHaveLength(1)
-    wrapper.unmount()
-  })
-
-  it('saving 时输入框与按钮禁用、按钮文案换成「保存中...」', () => {
-    const wrapper = mountDialog(UsernameDialog, { initial: 'alice', saving: true })
-
-    expect(wrapper.find('input').attributes('disabled')).toBeDefined()
-    const save = buttonByText(wrapper, '保存中...')
-    expect(save.attributes('disabled')).toBeDefined()
-    wrapper.unmount()
-  })
-
-  it('关闭按钮把 update:visible 传成 false（update:open → update:visible 键名核对）', async () => {
-    const wrapper = mountDialog(UsernameDialog, { initial: 'alice', saving: false })
-
-    await wrapper.find('.t73-dialog__close').trigger('click')
-
-    expect(wrapper.emitted('update:visible')).toEqual([[false]])
-    wrapper.unmount()
-  })
-
-  it('visible=false 时整个弹窗不渲染（可见性仍由父级持有）', () => {
-    const wrapper = mountDialog(UsernameDialog, { visible: false, initial: 'alice', saving: false })
-
-    expect(wrapper.find('.dialog-form').exists()).toBe(false)
-    wrapper.unmount()
-  })
-
-  it('弹窗内容节点带本组件的 scoped 属性：搬过来的 .dialog-form 仍然命中', () => {
-    const wrapper = mountDialog(UsernameDialog, { initial: 'alice', saving: false })
-
-    const form = wrapper.find('.dialog-form')
-    expect(Object.keys(form.attributes()).some((name) => name.startsWith('data-v-'))).toBe(true)
-    wrapper.unmount()
-  })
-})
 
 describe('EmailDialog：改邮箱弹窗', () => {
   function mountEmail(overrides: Record<string, unknown> = {}) {

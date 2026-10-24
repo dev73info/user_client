@@ -7,21 +7,17 @@
  * 订单多起来之后不再一次性把全部订单平铺出来。
  * 页面形态对齐「我的需求」（`MyRequirementsView.vue`）的工具栏 + 列表 + 分页器。
  *
- * 取数、统计、防抖与分页都在 `useMyResourcePurchases`；使用权转移弹窗在
- * `PurchaseTransferDialog`。本页只剩控件、列表行与两个入口。
+ * 取数、统计、防抖与分页都在 `useMyResourcePurchases`，本页只剩控件与列表行。
+ * 2.0 没有「使用权转移 / 资源过户」的契约端点，相关入口已随模块一起下线。
  */
-import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 
 import type { ResourcePurchaseOrder } from '@/api/resourcePurchase'
 import { getResourceDetailSlug } from '@/api/resourceTags'
 import PurchaseStatsStrip from '@/components/payment/PurchaseStatsStrip.vue'
-import PurchaseTransferDialog from '@/components/payment/PurchaseTransferDialog.vue'
 import { LIST_PAGE_SIZES } from '@/composables/useClientPagination'
 import { useMyResourcePurchases } from '@/composables/useMyResourcePurchases'
-import { useAuthStore } from '@/stores/auth'
 import {
-  fenToYuanText,
   formatPurchaseAmountLabel,
   isApiResourcePurchaseOrder,
   resourcePurchaseStatusLabel,
@@ -39,7 +35,6 @@ import {
 } from 'ui_73info'
 
 const router = useRouter()
-const auth = useAuthStore()
 
 /** 状态筛选项：取值与文案一律沿用既有状态口径（`resourcePurchaseStatusLabel`），不自创状态名。 */
 const STATUS_FILTERS: { value: string; label: string }[] = [
@@ -66,23 +61,6 @@ const {
   reload,
   resetFilters,
 } = useMyResourcePurchases()
-
-/* R042 使用权转移：只有接口资源且已支付的订单可以发起。 */
-const transferOpen = ref(false)
-const transferOrder = ref<ResourcePurchaseOrder | null>(null)
-
-function canTransfer(order: ResourcePurchaseOrder): boolean {
-  return isApiResourcePurchaseOrder(order) && order.status === 'paid'
-}
-
-function openTransfer(order: ResourcePurchaseOrder) {
-  transferOrder.value = order
-  transferOpen.value = true
-}
-
-function goTransfers() {
-  void router.push({ name: 'workbench-purchase-transfers' })
-}
 
 function openResource(order: ResourcePurchaseOrder) {
   void router.push({
@@ -191,16 +169,9 @@ function openResource(order: ResourcePurchaseOrder) {
                 <template v-else-if="order.status === 'paid'"> · 未下载</template>
                 <template v-if="order.entitlement_revoked"> · 下载权已被退款收回</template>
               </span>
-              <!-- R029 推广分成：只在真有分成时补一行金额；买家侧不显示推广者是谁、也不显示未归因原因 -->
-              <span v-if="order.promoter_fee_fen > 0" class="wb-item__meta">
-                含推广分成 ¥{{ fenToYuanText(order.promoter_fee_fen) }}
-              </span>
             </div>
             <div class="wb-item__actions">
               <TButton variant="outline" @click="openResource(order)">查看资源</TButton>
-              <TButton v-if="canTransfer(order)" variant="outline" @click="openTransfer(order)">
-                转移使用权
-              </TButton>
             </div>
           </li>
         </ul>
@@ -227,13 +198,6 @@ function openResource(order: ResourcePurchaseOrder) {
         </div>
       </template>
     </section>
-
-    <PurchaseTransferDialog
-      v-model:open="transferOpen"
-      :order="transferOrder"
-      :token="auth.token"
-      @submitted="goTransfers"
-    />
   </main>
 </template>
 

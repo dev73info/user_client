@@ -38,6 +38,7 @@ defineExpose({ open })
   <DeliverySubmitDialog
     v-model:visible="visible"
     :token="props.token"
+    :requirement-id="requirement?.requirement_id ?? ''"
     :bound-resource-id="requirement?.bound_resource_id ?? null"
     @submitted="emit('submitted')"
   />

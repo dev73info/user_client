@@ -21,6 +21,9 @@ const versions: PublicMcResourceVersionItem[] = [
     note: '修复了 **红石时钟** 偶发停摆',
     creator: 'alice',
     created_at: '2026-02-02 10:00:00',
+    is_current: true,
+    price_fen: 0,
+    purchasable: false,
   },
   {
     id: 10,
@@ -30,6 +33,9 @@ const versions: PublicMcResourceVersionItem[] = [
     note: null,
     creator: 'alice',
     created_at: '2026-01-20 10:00:00',
+    is_current: false,
+    price_fen: 0,
+    purchasable: false,
   },
 ]
 

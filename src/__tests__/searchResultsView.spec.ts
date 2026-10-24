@@ -8,8 +8,8 @@ import SearchResultsView from '@/views/SearchResultsView.vue'
 
 /**
  * 搜索结果页的最小挂载烟测（这页原先零覆盖）。拆 `SearchResultsView`（1017 行）之前补的一层网，
- * 钉五件事：① 首屏按当前关键词取三类结果（资源全量、需求精选单页 100、帖子把关键词交给接口）
- * 与三段的**渲染条数**——卡片 DOM 现在在 `components/search/*`，条数最容易拆丢；
+ * 钉五件事：① 首屏按当前关键词取两类结果（资源全量、需求精选单页 100）
+ * 与两段的**渲染条数**——卡片 DOM 现在在 `components/search/*`，条数最容易拆丢；
  * ② `?scope=` 切换只取、只渲染对应那一段；③ **路由 query 变化触发重新搜索**——本页没有搜索框，
  * `watch(route.query)` 是唯一的再搜入口，挪错一层就再也不会重新取数；④ 需求弹窗补详情后合并摘要
  * 并与接取入口的落点；⑤ 资源卡片按标签树算出的页内详情态。
@@ -19,7 +19,6 @@ import SearchResultsView from '@/views/SearchResultsView.vue'
  */
 const mocks = vi.hoisted(() => ({
   listResources: vi.fn(),
-  listCommunity: vi.fn(),
   listRequirements: vi.fn(),
   hallItem: vi.fn(),
 }))
@@ -27,10 +26,6 @@ const mocks = vi.hoisted(() => ({
 vi.mock('@/api/resources', async (orig) => ({
   ...(await orig<typeof import('@/api/resources')>()),
   listAllPublicMcResources: mocks.listResources,
-}))
-vi.mock('@/api/community', async (orig) => ({
-  ...(await orig<typeof import('@/api/community')>()),
-  listCommunityPosts: mocks.listCommunity,
 }))
 vi.mock('@/api/requirements', async (orig) => ({
   ...(await orig<typeof import('@/api/requirements')>()),
@@ -76,19 +71,6 @@ const dataRequirementItem = {
   description: '按天出运营看板',
 }
 
-const communityItem = {
-  id: 21,
-  author: 'carol',
-  title: '爬虫心得',
-  status: 'published',
-  tags: [{ id: 1, name: '爬虫' }],
-  content_html: '<p>正文</p>',
-  like_count: 2,
-  comment_count: 1,
-  published_at: '2026-10-03 10:00:00',
-  updated_at: '2026-10-03 10:00:00',
-}
-
 /** 标签树只用来把资源落点算成「根分区 / 子分区」，这里给一份最小可用的。 */
 const tagTree = {
   roots: [
@@ -129,10 +111,6 @@ beforeEach(() => {
     page_size: 100,
     items: [requirementItem, dataRequirementItem],
   })
-  // 帖子那一路是真的服务端过滤：关键词不命中就回空数组，这里照这个口径模拟
-  mocks.listCommunity.mockImplementation((params: { keyword?: string }) =>
-    Promise.resolve(params.keyword === '数据' ? [] : [communityItem]),
-  )
   mocks.hallItem.mockResolvedValue({
     ...requirementItem,
     acceptance_criteria: '按验收模板逐条自测',
@@ -150,11 +128,6 @@ async function render(query: Record<string, string>) {
       { name: 'search', path: SEARCH_PATH, component: { template: '<div/>' } },
       { name: 'home', path: '/', component: { template: '<div/>' } },
       { name: 'resources', path: '/resources', component: { template: '<div/>' } },
-      {
-        name: 'community-post',
-        path: '/community/post/:postId',
-        component: { template: '<div/>' },
-      },
       {
         name: 'dev-requirement-detail',
         path: '/workbench/developer/requirements/detail/:requirementId',
@@ -178,11 +151,11 @@ async function render(query: Record<string, string>) {
 
 type Wrapper = Awaited<ReturnType<typeof render>>['wrapper']
 
-/** 三段分区的小标题（资源项目 / 需求项目 / 社区帖子）。 */
+/** 两段分区的小标题（资源项目 / 需求项目）。 */
 const sectionTitles = (wrapper: Wrapper) =>
   wrapper.findAll('.portal-search-page__section h2').map((node) => node.text())
 
-/** 卡片标题：三支卡片共用 `.portal-search-result-card` 基座，h3 里是各自的标题。 */
+/** 卡片标题：两支卡片共用 `.portal-search-result-card` 基座，h3 里是各自的标题。 */
 const cardTitles = (wrapper: Wrapper) =>
   wrapper.findAll('.portal-search-result-card h3').map((node) => node.text())
 
@@ -191,27 +164,20 @@ const chipCounts = (wrapper: Wrapper) =>
   wrapper.findAll('.portal-page__loading-chip').map((node) => node.text())
 
 describe('搜索结果页：最小挂载烟测', () => {
-  it('按关键词取三类结果，三段的渲染条数与请求实参口径不变', async () => {
+  it('按关键词取两类结果，两段的渲染条数与请求实参口径不变', async () => {
     const { wrapper } = await render({ keyword: '爬虫' })
 
-    // 取数：未登录则 token 传 null；资源全量、需求精选取满 100 条、帖子把关键词交给接口
+    // 取数：未登录则 token 传 null；资源全量、需求精选取满 100 条
     expect(mocks.listResources).toHaveBeenCalledWith(null)
     expect(mocks.listRequirements).toHaveBeenCalledWith(1, 100)
-    expect(mocks.listCommunity).toHaveBeenCalledWith({
-      token: null,
-      keyword: '爬虫',
-      limit: 12,
-    })
 
-    // 三段都在，条数各 1（需求取回两条，只有标题命中关键词的那条留下）
-    expect(sectionTitles(wrapper)).toEqual(['资源项目', '需求项目', '社区帖子'])
-    expect(chipCounts(wrapper)).toEqual(['1 条', '1 条', '1 条'])
-    expect(cardTitles(wrapper)).toEqual(['爬虫工具箱', '爬虫小工具定制', '爬虫心得'])
+    // 两段都在，条数各 1（需求取回两条，只有标题命中关键词的那条留下）
+    expect(sectionTitles(wrapper)).toEqual(['资源项目', '需求项目'])
+    expect(chipCounts(wrapper)).toEqual(['1 条', '1 条'])
+    expect(cardTitles(wrapper)).toEqual(['爬虫工具箱', '爬虫小工具定制'])
 
-    // 摘要按「N 个资源、N 个需求、N 篇帖子」拼
-    expect(wrapper.find('.portal-search-page__summary').text()).toBe(
-      '找到 1 个资源、1 个需求、1 篇帖子',
-    )
+    // 摘要按「N 个资源、N 个需求」拼
+    expect(wrapper.find('.portal-search-page__summary').text()).toBe('找到 1 个资源、1 个需求')
 
     wrapper.unmount()
   })
@@ -221,7 +187,6 @@ describe('搜索结果页：最小挂载烟测', () => {
 
     expect(mocks.listRequirements).toHaveBeenCalledTimes(1)
     expect(mocks.listResources).not.toHaveBeenCalled()
-    expect(mocks.listCommunity).not.toHaveBeenCalled()
 
     expect(sectionTitles(wrapper)).toEqual(['需求项目'])
     expect(cardTitles(wrapper)).toEqual(['爬虫小工具定制'])
@@ -231,21 +196,15 @@ describe('搜索结果页：最小挂载烟测', () => {
 
   it('路由 query 变化触发重新搜索，并把上一批结果换掉', async () => {
     const { wrapper, router } = await render({ keyword: '爬虫' })
-    expect(mocks.listCommunity).toHaveBeenCalledTimes(1)
+    expect(mocks.listResources).toHaveBeenCalledTimes(1)
 
     await router.push({ name: 'search', query: { keyword: '数据' } })
     await flushPromises()
 
-    // 再搜一次：三路都重新取，帖子那一路换成了新关键词
-    expect(mocks.listCommunity).toHaveBeenCalledTimes(2)
-    expect(mocks.listCommunity).toHaveBeenLastCalledWith({
-      token: null,
-      keyword: '数据',
-      limit: 12,
-    })
+    // 再搜一次：两路都重新取
     expect(mocks.listResources).toHaveBeenCalledTimes(2)
 
-    // 页面跟着换：资源与帖子都不再命中，只剩标题带「数据」的那条需求
+    // 页面跟着换：资源不再命中，只剩标题带「数据」的那条需求
     expect(sectionTitles(wrapper)).toEqual(['需求项目'])
     expect(cardTitles(wrapper)).toEqual(['数据看板定制'])
 

@@ -6,7 +6,6 @@ import AppDownloadCard from '@/components/app/AppDownloadCard.vue'
 import AppSiteFooter from '@/components/app/AppSiteFooter.vue'
 import PortalTopNav from '@/components/PortalTopNav.vue'
 import PortalMobileDock from '@/components/PortalMobileDock.vue'
-import SupportChatWidget from '@/components/SupportChatWidget.vue'
 import MockIdentitySwitcher from '@/mock/MockIdentitySwitcher.vue'
 import { TScrollbar } from 'ui_73info'
 import { useAppShellAuth } from '@/components/app/useAppShellAuth'
@@ -19,7 +18,8 @@ import { useAppShellAuth } from '@/components/app/useAppShellAuth'
  * 外壳样式在 `app-shell.css`（scoped）与 `app-shell-global.css`（非 scoped）。
  */
 const route = useRoute()
-const { auth } = useAppShellAuth()
+// 登录态接线靠这次调用挂载（启动初始化会话 + 全局 401 兜底），外壳本身不再读取它的返回值。
+useAppShellAuth()
 const showSiteFooter = computed(
   () => !route.matched.some((record) => record.meta.hideSiteFooter === true),
 )
@@ -45,9 +45,6 @@ const showSiteFooter = computed(
       </TScrollbar>
       <PortalMobileDock />
     </div>
-
-    <!-- 在线客服浮窗：仅登录用户可见 -->
-    <SupportChatWidget v-if="auth.isAuthed" />
 
     <!-- mock 身份切换器：只在 pnpm dev 且开了 mock 时渲染，详见 src/mock/ -->
     <MockIdentitySwitcher />

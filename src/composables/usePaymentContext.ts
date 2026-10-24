@@ -41,7 +41,6 @@ type UsePaymentContextOptions = {
   /** 资源中间页回填的支付参数 */
   resourcePayInfo: () => string
   adapayPayUrl: () => string
-  developerDepositPayUrl: () => string
   /** 是否已拿到 Adapay 订单（拿不到时按内容判断「订单不匹配」） */
   hasAdapayPayment: () => boolean
   resourceOrder: () => { order_no: string; amount_fen: number; resource_id: number } | null
@@ -70,7 +69,6 @@ export function usePaymentContext(options: UsePaymentContextOptions) {
       tipPayInfo: options.tipPayInfo(),
       resourcePayInfo: options.resourcePayInfo(),
       adapayPayUrl: options.adapayPayUrl(),
-      developerDepositPayUrl: options.developerDepositPayUrl(),
       queryQrContent: ctx.value.queryQrContent,
     }),
   )
@@ -98,7 +96,6 @@ export function usePaymentContext(options: UsePaymentContextOptions) {
       name: 'payment',
       query: {
         adapay: '1',
-        developer_deposit: ctx.value.isDeveloperDeposit ? '1' : undefined,
         payment_id: ctx.value.paymentId,
         payment_handoff: '1',
         requirement_id: ctx.value.requirementId,

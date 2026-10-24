@@ -10,27 +10,26 @@ import {
   type MySettlementAccountSnapshot,
 } from '@/api/adapay'
 import type { UserRealnameVerification } from '@/api/realname'
-import { missingEnterpriseOnboardingLabels } from '@/shared/realnameMaterials'
-import {
-  isSettleBound,
-  isSettleRejected,
-  isSettleUnderReview,
-  settleAccountStage,
-  settleProviderErrorText,
-} from '@/shared/settleAccountStage'
+import { useSettlementAccountLabels } from '@/composables/useSettlementAccountLabels'
 import { useAuthStore } from '@/stores/auth'
-import { getSettlementCities, prepareSettlementAccount } from '@/utils/settlementAccount'
+import { findBankCodeByName, prepareSettlementAccount } from '@/utils/settlementAccount'
 import { TMessage } from 'ui_73info'
 
 /**
- * 收款银行卡（Adapay 结算账户）域：四态进度、缺资料清单、省市联动、脱敏明细回填、绑卡与换卡、
- * 注销结算账户。弹窗模板在 `components/account/SettlementDialog.vue`。
- * `current` 与 `adapayMember` 跨 hero / 入口卡 / 结算 / onMounted 共用，必须注入。
+ * 收款银行卡（结算账户）域：表单草稿、脱敏回填、绑定与更换、注销账户。
+ *
+ * 弹窗模板在 `components/account/SettlementDialog.vue`；派生读数（阶段、主体、缺资料、渠道原话）
+ * 在 `useSettlementAccountLabels`。提交的请求体就是契约那两条：
+ * `POST /api/payment/settlement-account`（首次）与 `POST /api/payment/settlement-account/change`（改绑），
+ * 都只收 `account_name` / `bank_name` / `account_no_tail` / `member_type`——**完整卡号平台不存**，
+ * 所以表单里也只有「卡号后四位」这一格。
+ *
+ * `realname` 与 `adapayMember` 跨 hero / 入口卡 / 结算 / onMounted 共用，必须注入。
  */
 export type SettlementAccountOptions = {
   /** 当前实名记录（跨块共用，注入）。 */
   realname: Ref<UserRealnameVerification | null>
-  /** 渠道会员状态（跨块共用，注入）。 */
+  /** 结算账户读数（跨块共用，注入）。 */
   adapayMember: Ref<AdapayMemberStatus | null>
   /** 当前实名主体是不是企业 / 个体工商户：决定绑对公账户还是个人银行卡。 */
   isEnterpriseSubject: () => boolean
@@ -44,7 +43,10 @@ export type { AdapayMemberStatus }
 
 export function useSettlementAccount(options: SettlementAccountOptions) {
   const auth = useAuthStore()
-  const { realname, adapayMember, isEnterpriseSubject } = options
+  const { realname, adapayMember } = options
+
+  const labels = useSettlementAccountLabels(options)
+  const { settleBound, settleCorporateLocked } = labels
 
   const settleDialogVisible = ref(false)
   const settleSaving = ref(false)
@@ -53,93 +55,27 @@ export function useSettlementAccount(options: SettlementAccountOptions) {
   const closeSettleLoading = ref(false)
   /** 注销确认词：与「注销账号」同一道防误触，必须原样键入「注销结算账户」才允许提交。 */
   const closeSettleConfirmation = ref('')
-  /** 已绑卡的**脱敏**明细：只回填开户行 / 省市区 / 账户类型，脱敏卡号只作提示、不回填输入框。 */
+  /** 已绑账户的**脱敏**明细：只回填户名 / 开户行 / 尾号，卡号只有后四位可回显。 */
   const settleSnapshot = ref<MySettlementAccountSnapshot | null>(null)
   const settleForm = reactive({
+    /** 卡号后四位（契约字段 `account_no_tail`），不是完整卡号。 */
     card_id: '',
     bank_code: '',
-    prov_code: '',
-    area_code: '',
     bank_acct_type: '2',
   })
-
-  /** 是否已绑定结算账户（决定提交时走「绑定」还是「更换」接口）。口径见 `@/shared/settleAccountStage`。 */
-  const settleBound = computed(() => isSettleBound(adapayMember.value?.settleAccountId))
-
-  /** 四态分开看：`failed` 是「去整改」不是「等」。口径见 `@/shared/settleAccountStage`。 */
-  const settleStage = computed(() =>
-    settleAccountStage(adapayMember.value?.onboardingStatus, adapayMember.value?.settleAccountId),
-  )
-
-  /** 已绑的卡是否还挂在旧主体上：主体变更后渠道侧账户不会自动跟着换，必须先说清原因。 */
-  const settleSubjectMismatch = computed(() => {
-    const expected = isEnterpriseSubject() ? 'enterprise' : 'personal'
-    return Boolean(adapayMember.value?.memberType) && adapayMember.value?.memberType !== expected
-  })
-
-  /** 企业主体的收款账户只能是对公账户，持证人固定取实名主体，因此不给用户改。 */
-  const settleCorporateLocked = computed(() => isEnterpriseSubject())
-
-  /** 当前实名主体的中文口径，用于把「这张卡为什么不能继续用」讲清楚。 */
-  const settleSubjectLabel = computed(() =>
-    settleCorporateLocked.value ? '企业 / 个体工商户' : '个人',
-  )
-
-  /** 该主体要绑的账户类型：企业 / 个体工商户是对公账户，其余是银行卡。 */
-  const settleAccountWord = computed(() => (settleCorporateLocked.value ? '对公账户' : '银行卡'))
-
-  /** 企业进件资料缺任一项渠道都会拒绝建会员，所以提前拦在界面层并说清缺哪几项。 */
-  const settleMaterialMissing = computed(
-    () =>
-      settleCorporateLocked.value && missingEnterpriseOnboardingLabels(realname.value).length > 0,
-  )
-  const settleMaterialMissingText = computed(() =>
-    missingEnterpriseOnboardingLabels(realname.value).join('、'),
-  )
-
-  /** 渠道会员是否还在审核中：审核期间绑不了对公账户。口径见 `@/shared/settleAccountStage`。 */
-  const settleUnderReview = computed(() =>
-    isSettleUnderReview(adapayMember.value?.onboardingStatus),
-  )
-
-  /** 「审核中」那句提示：企业与个人绑的不是同一种账户，不能共用一句写死对公账户的话。 */
-  const settleUnderReviewText = computed(() =>
-    settleCorporateLocked.value
-      ? '企业收款账户正在渠道审核中，审核通过后即可绑定对公账户'
-      : '收款账户正在渠道审核中，审核通过后即可绑定银行卡',
-  )
-
-  /** `onboarding_status = failed` 是唯一表示「渠道给了否定结论」的取值。 */
-  const settleRejected = computed(() => isSettleRejected(adapayMember.value?.onboardingStatus))
-
-  /** 渠道侧最近一次拒绝的原话；已开通且卡还在时不提旧伤，换卡失败解绑时必留。 */
-  const settleProviderError = computed(() =>
-    settleProviderErrorText(
-      adapayMember.value?.onboardingStatus,
-      adapayMember.value?.providerError,
-      adapayMember.value?.settleAccountId,
-    ),
-  )
-
-  const settleCities = computed(() => getSettlementCities(settleForm.prov_code))
-
-  /** 省份一换就把城市重算：只有一个城市时直接替用户选上。 */
-  function setSettleProvince(provinceCode: string) {
-    settleForm.prov_code = provinceCode
-    settleForm.area_code = settleCities.value.length === 1 ? settleCities.value[0]!.value : ''
-  }
 
   /** 清空表单，避免上次未提交的输入（尤其是更换时取消）残留到下一次打开。 */
   function resetSettleForm() {
     settleForm.card_id = ''
     settleForm.bank_code = ''
-    settleForm.prov_code = ''
-    settleForm.area_code = ''
     // 账户类型跟着实名主体走：企业主体只能绑对公账户，个人主体默认个人卡。
     settleForm.bank_acct_type = settleCorporateLocked.value ? '1' : '2'
   }
 
-  /** 重新拉取会员状态；失败时置空，让界面退化为「未绑定」而不是继续显示旧卡。 */
+  /**
+   * 重新拉取结算账户读数；失败时置空，让界面退化为「未绑定」而不是继续显示旧账户。
+   * 这里不把失败原因抛给用户：入口卡与 hero 都会各自读到「未绑定」，多弹一个错误只是噪音。
+   */
   async function refreshAdapayMember() {
     if (!auth.token) return
     try {
@@ -149,33 +85,32 @@ export function useSettlementAccount(options: SettlementAccountOptions) {
     }
   }
 
-  /** 拉取脱敏明细并回填能提交出去的字段（开户行 / 省 / 市 / 账户类型）；卡号留空让用户重填。 */
+  /** 拉取脱敏明细并回填能提交出去的字段（开户行）；卡号只有后四位，仍需用户重填。 */
   async function loadSettleSnapshot() {
     settleSnapshot.value = null
     if (!auth.token || !settleBound.value) return
     try {
       const snapshot = await getMySettlementAccountSnapshot(auth.token)
       settleSnapshot.value = snapshot
-      if (snapshot.bankCode) settleForm.bank_code = snapshot.bankCode
-      if (snapshot.provCode) settleForm.prov_code = snapshot.provCode
-      if (snapshot.areaCode) settleForm.area_code = snapshot.areaCode
-      if (snapshot.bankAcctType === '1' || snapshot.bankAcctType === '2') {
-        settleForm.bank_acct_type = snapshot.bankAcctType
+      if (snapshot?.bound) {
+        settleForm.bank_acct_type = snapshot.memberType === 'enterprise' ? '1' : '2'
+        // 契约只回开户行名称，表单按编码取名称，所以这里把名称折回编码再回填
+        settleForm.bank_code = findBankCodeByName(snapshot.bankName ?? '')
       }
     } catch {
-      // 拿不到明细不影响换卡：表单已按实名主体给了默认账户类型，用户自己填即可
+      // 拿不到明细不影响换绑：表单已按实名主体给了默认账户类型，用户自己填即可
       settleSnapshot.value = null
     }
   }
 
-  /** 卡号输入框的提示：已绑卡时直接显示渠道给的脱敏卡号，一眼看清当前是哪张卡。 */
+  /** 卡号输入框的提示：已绑账户时显示后端给的后四位，一眼看清当前是哪一张卡。 */
   const settleCardPlaceholder = computed(() => {
-    if (!settleBound.value) return '请输入收款银行卡号'
-    const masked = (settleSnapshot.value?.cardIdMasked ?? '').trim()
-    return masked ? `当前 ${masked}（更换请整卡重填）` : '请输入收款银行卡号（需整卡重填）'
+    if (!settleBound.value) return '请输入收款银行卡号后四位'
+    const tail = (settleSnapshot.value?.accountNoTail ?? '').trim()
+    return tail ? `当前尾号 ${tail}（更换请重填后四位）` : '请输入收款银行卡号后四位'
   })
 
-  /** 打开弹窗即进入表单：已绑卡时回填脱敏明细，未绑卡时按实名主体给默认值。 */
+  /** 打开弹窗即进入表单：已绑账户时回填脱敏明细，未绑时按实名主体给默认值。 */
   async function openSettleDialog() {
     settleDialogVisible.value = true
     resetSettleForm()
@@ -195,16 +130,26 @@ export function useSettlementAccount(options: SettlementAccountOptions) {
     settleSnapshot.value = null
   }
 
+  /** 收款户名：优先用已绑账户上的户名，其次取实名主体（企业用公司名，个人用姓名）。 */
+  const settlementAccountName = computed(
+    () =>
+      settleSnapshot.value?.accountName ??
+      realname.value?.company_name ??
+      realname.value?.real_name ??
+      '',
+  )
+
+  /** 提交绑定 / 更换：请求体由 `prepareSettlementAccount` 按契约字段拼，前端不再另写一套。 */
   async function saveSettleAccount() {
     if (!auth.token || settleSaving.value) return
     let payload
     try {
-      payload = prepareSettlementAccount(settleForm)
+      payload = prepareSettlementAccount(settleForm, settlementAccountName.value)
     } catch (err) {
       TMessage.warning(err instanceof Error ? err.message : '请检查银行卡信息')
       return
     }
-    // 提交前定一次语义：更换会先解绑旧卡，失败时界面要按真实状态回落
+    // 提交前定一次语义：更换会先解绑旧账户，失败时界面要按真实状态回落
     const changing = settleBound.value
     settleSaving.value = true
     try {
@@ -265,25 +210,12 @@ export function useSettlementAccount(options: SettlementAccountOptions) {
   }
 
   return {
+    ...labels,
     settleDialogVisible,
     settleSaving,
     settleLoading,
     settleForm,
-    settleBound,
-    settleStage,
-    settleCorporateLocked,
-    settleSubjectLabel,
-    settleAccountWord,
-    settleSubjectMismatch,
-    settleMaterialMissing,
-    settleMaterialMissingText,
-    settleUnderReview,
-    settleUnderReviewText,
-    settleRejected,
-    settleProviderError,
-    settleCities,
     settleCardPlaceholder,
-    setSettleProvince,
     refreshAdapayMember,
     openSettleDialog,
     closeSettleDialog,

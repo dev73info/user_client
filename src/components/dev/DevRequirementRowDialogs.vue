@@ -13,7 +13,7 @@ import type { RequirementItem } from '@/api/devRequirements'
  * 把子弹窗的事件接成 emits——「这一单能不能打开」由页面判，组件不自己查。
  *
  * 交付版本（`DeliverySubmitDialog`）与违约申报（`RequirementBreachDialog`）不在这里：
- * 前者由本页直接挂，后者跟着 `useBreachCase` 的编排走。
+ * 前者由本页直接挂，后者跟着 `useRequirementBreach` 的编排走。
  */
 defineProps<{
   token: string
@@ -44,7 +44,6 @@ const emit = defineEmits<{
     :current-username="username"
     :requirement-id="afterSalesTarget?.requirement_id ?? ''"
     :requirement-title="afterSalesTarget?.title ?? ''"
-    :requirement-budget="afterSalesTarget?.budget ?? null"
     :can-open-case="false"
     @close="emit('closeAfterSales')"
   />

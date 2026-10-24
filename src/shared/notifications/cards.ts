@@ -1,57 +1,27 @@
-import type { CommentWarning, CommunityPost } from '@/api/community'
 import type { ConversationHistoryDisclosure } from '@/api/conversations'
-import type { AfterSalesCase } from '@/api/afterSales'
-import type { ResourceTransferPayload } from '@/api/resourceTransfers'
-import { afterSalesExpectationLabel, afterSalesStatusLabel } from '@/shared/afterSalesStatus'
-import {
-  describeTransferReceiver,
-  isTransferCancelable,
-  transferStatusLabel,
-} from '@/shared/resourceTransfer'
-import { sanitizeRichHtml } from '@/utils/sanitizeHtml'
+import type { AfterSalesCaseSummary } from '@/api/afterSales'
 
 import { parseNoticeTime } from './time'
 import { NOTIFICATION_KIND_LABELS } from './types'
 import type { NotificationCard, NotificationSources } from './types'
 
 /**
- * 把四类来源合成一张按时间倒序的通知列表。
+ * 把两类来源合成一张按时间倒序的通知列表。
  *
- * 时间格式各类都不一样（评论警告与帖子是 `YYYY-MM-DD HH:MM:SS`，公开申请与解除合作案件带时区），
- * 解析失败的排在最后而不是排到最前——解析不出来当成「很早」，不要因为格式异常把一条旧通知顶到最上面。
+ * 时间串都是东八区墙钟串，统一交给 `parseNoticeTime` 解析；解析失败的排在最后而不是排到最前——
+ * 解析不出来当成「很早」，不要因为格式异常把一条旧通知顶到最上面。
+ *
+ * 资源过户那两类来源已整体下线（契约里没有 `/resources/transfers/**`）。
  */
 export function buildNotificationCards(sources: NotificationSources): NotificationCard[] {
   const cards = [
-    ...(sources.warnings ?? []).map(buildCommentWarningCard),
     ...(sources.disclosures ?? []).map((item) =>
       buildHistoryDisclosureCard(item, sources.username),
     ),
-    ...(sources.transferInbox ?? []).map(buildIncomingTransferCard),
-    ...(sources.myTransfers ?? []).map(buildOutgoingTransferCard),
     ...(sources.afterSales ?? []).map(buildAfterSalesCard),
-    ...(sources.announcements ?? []).map(buildAnnouncementCard),
   ]
 
   return cards.sort((left, right) => right.sortTime - left.sortTime)
-}
-
-function buildCommentWarningCard(warning: CommentWarning): NotificationCard {
-  return {
-    key: `comment-warning-${warning.id}`,
-    kind: 'comment-warning',
-    kindLabel: NOTIFICATION_KIND_LABELS['comment-warning'],
-    title: warning.comment_type === 'resource' ? '资源评论被平台警告' : '社区评论被平台警告',
-    // 原评论与原因分两行：原因往往是长句，与快照挤在一行会把快照截掉，而快照是用户唯一能对照的内容。
-    body: [
-      `原评论：${warning.comment_snapshot || '（内容已不可见）'}`,
-      `警告原因：${warning.reason}`,
-    ],
-    meta: `${warning.created_at} · 操作人 ${warning.operator}`,
-    createdAt: warning.created_at,
-    sortTime: parseNoticeTime(warning.created_at),
-    snapshot: warning.comment_snapshot,
-    canVote: false,
-  }
 }
 
 function buildHistoryDisclosureCard(
@@ -125,120 +95,25 @@ function historyDisclosureVoteHint(
 }
 
 /**
- * 资源过户卡片。
- *
- * 两类方向共用一种卡片，但动作不同：收件箱里的申请只可能是 `pending`，给同意 / 拒绝；
- * 「我发起的」里只有还在 pending 的才给撤销，已同意 / 已拒绝 / 已撤销都只留状态说明。
- * 所有权变更与全部校验都在后端，这里只把申请映射成通知，动作按钮由页面调接口。
- */
-function buildIncomingTransferCard(transfer: ResourceTransferPayload): NotificationCard {
-  const resourceName = transfer.resource_name || `资源 #${transfer.resource_id}`
-  const sender = transfer.from_team_name
-    ? `团队 ${transfer.from_team_name}`
-    : `开发者 ${transfer.from_user}`
-  const body = [`来自 ${sender} · 发起于 ${transfer.initiated_at}`]
-  if (transfer.message) {
-    body.push(`留言：${transfer.message}`)
-  }
-  body.push('同意后资源归你所有，原所有者将不再拥有它。')
-
-  return {
-    key: `resource-transfer-inbox-${transfer.transfer_id}`,
-    kind: 'resource-transfer',
-    kindLabel: NOTIFICATION_KIND_LABELS['resource-transfer'],
-    title: `接收资源「${resourceName}」`,
-    body,
-    meta: `${transfer.initiated_at} 发起`,
-    createdAt: transfer.initiated_at,
-    sortTime: parseNoticeTime(transfer.initiated_at),
-    canVote: false,
-    transferId: transfer.transfer_id,
-    transferResourceName: resourceName,
-    transferAction: 'respond',
-  }
-}
-
-function buildOutgoingTransferCard(transfer: ResourceTransferPayload): NotificationCard {
-  const resourceName = transfer.resource_name || `资源 #${transfer.resource_id}`
-  const body = [
-    `转给 ${describeTransferReceiver(transfer)} · 当前状态：${transferStatusLabel(transfer.status)}`,
-  ]
-  if (transfer.responded_at) {
-    body.push(`对方处理于 ${transfer.responded_at}`)
-  }
-  if (transfer.message) {
-    body.push(`留言：${transfer.message}`)
-  }
-
-  return {
-    key: `resource-transfer-mine-${transfer.transfer_id}`,
-    kind: 'resource-transfer',
-    kindLabel: NOTIFICATION_KIND_LABELS['resource-transfer'],
-    title: `转出资源「${resourceName}」`,
-    body,
-    meta: `${transfer.initiated_at} 发起`,
-    createdAt: transfer.initiated_at,
-    sortTime: parseNoticeTime(transfer.initiated_at),
-    canVote: false,
-    transferId: transfer.transfer_id,
-    transferResourceName: resourceName,
-    transferAction: isTransferCancelable(transfer.status) ? 'cancel' : undefined,
-  }
-}
-
-/**
  * 解除合作案件卡片：只读。
  *
  * 为什么要进通知页：案件状态的每一次变化都只落在需求会话里的一张卡片上，而结单之后双方本来就
  * 不太会再去盯需求列表——会话未读是个角标，很容易被忽略过去。这里给它第二个可见面。
  *
  * 卡片不带动作：发起、接受/不接受、撤回都在需求列表的解除合作弹窗里做，这里再摆一套按钮就是
- * 两份规则；与评论警告同一取舍（只读，说明现状）。
+ * 两份规则（只读，说明现状）。
  */
-function buildAfterSalesCard(row: AfterSalesCase): NotificationCard {
-  const expectation = afterSalesExpectationLabel(row)
-  const claim =
-    row.claimAmountFen > 0 ? `${expectation}（主张金额 ${row.claimAmountCny} 元）` : expectation
+function buildAfterSalesCard(row: AfterSalesCaseSummary): NotificationCard {
+  const claim = row.claim_amount_fen > 0 ? `主张金额 ${row.claim_amount} 元` : '不主张资金'
   return {
-    key: `after-sales-${row.id}`,
+    key: `after-sales-${row.case_no}`,
     kind: 'after-sales',
     kindLabel: NOTIFICATION_KIND_LABELS['after-sales'],
-    title: row.requirementTitle || row.requirementId,
-    body: [
-      `${row.caseNo} · 需求 ${row.requirementId}`,
-      `诉求：${claim} · 当前状态：${afterSalesStatusLabel(row.status)}`,
-    ],
-    // 时间与发起人放在弱信息行：卡片右上角只摆这两项，正文留给「这条解除合作在等谁做什么」。
-    meta: `${row.createdAt} 由 ${row.openedBy} 发起`,
-    createdAt: row.createdAt,
-    sortTime: parseNoticeTime(row.createdAt),
+    title: row.requirement_id,
+    body: [`${row.case_no} · ${row.kind_label}`, `诉求：${claim} · 当前状态：${row.status_label}`],
+    meta: `${row.created_time} 由 ${row.filed_by} 发起`,
+    createdAt: row.created_time,
+    sortTime: parseNoticeTime(row.created_time),
     canVote: false,
   }
-}
-
-function buildAnnouncementCard(post: CommunityPost): NotificationCard {
-  return {
-    key: `announcement-${post.id}`,
-    kind: 'announcement',
-    kindLabel: NOTIFICATION_KIND_LABELS.announcement,
-    title: post.title,
-    body: [announcementPreview(post.content_html)],
-    meta: `${post.published_at} 发布`,
-    createdAt: post.published_at,
-    sortTime: parseNoticeTime(post.published_at),
-    postId: post.id,
-    canVote: false,
-  }
-}
-
-/** 公告正文摘要：富文本先净化再剥标签，与我的收藏的预览同一做法（sanitizeHtml 已在前端过一次）。 */
-export function announcementPreview(contentHtml: string, limit = 140): string {
-  const text = sanitizeRichHtml(contentHtml)
-    .replace(/<[^>]*>/g, '')
-    .replace(/\s+/g, ' ')
-    .trim()
-  if (!text) {
-    return '点击查看公告全文。'
-  }
-  return text.length > limit ? `${text.slice(0, limit)}…` : text
 }

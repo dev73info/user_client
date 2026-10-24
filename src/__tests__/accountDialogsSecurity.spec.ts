@@ -31,6 +31,7 @@ function buttonByText(wrapper: VueWrapper, text: string) {
 describe('PasswordDialog：改密码弹窗', () => {
   function mountPassword(overrides: Record<string, unknown> = {}) {
     return mountDialog(PasswordDialog, {
+      initialOldPassword: '',
       initialPassword: '',
       initialConfirm: '',
       initialCode: '',
@@ -41,18 +42,21 @@ describe('PasswordDialog：改密码弹窗', () => {
     })
   }
 
-  it('三个输入框各自回传自己的事件键，一次输入只发一次', async () => {
+  it('四个输入框各自回传自己的事件键，一次输入只发一次', async () => {
     const wrapper = mountPassword()
     const inputs = wrapper.findAll('input')
-    expect(inputs).toHaveLength(3)
-    expect(inputs[0]!.attributes('placeholder')).toBe('请输入新的密码，至少 6 位')
-    expect(inputs[1]!.attributes('placeholder')).toBe('请再次输入新密码')
-    expect(inputs[2]!.attributes('placeholder')).toBe('输入6位验证码')
+    expect(inputs).toHaveLength(4)
+    expect(inputs[0]!.attributes('placeholder')).toBe('请输入当前密码')
+    expect(inputs[1]!.attributes('placeholder')).toBe('请输入新的密码，至少 6 位')
+    expect(inputs[2]!.attributes('placeholder')).toBe('请再次输入新密码')
+    expect(inputs[3]!.attributes('placeholder')).toBe('输入6位验证码')
 
-    await inputs[0]!.setValue('pw123456')
+    await inputs[0]!.setValue('old-pw123456')
     await inputs[1]!.setValue('pw123456')
-    await inputs[2]!.setValue('654321')
+    await inputs[2]!.setValue('pw123456')
+    await inputs[3]!.setValue('654321')
 
+    expect(wrapper.emitted('update:old-password')).toEqual([['old-pw123456']])
     expect(wrapper.emitted('update:password')).toEqual([['pw123456']])
     expect(wrapper.emitted('update:confirm')).toEqual([['pw123456']])
     expect(wrapper.emitted('update:code')).toEqual([['654321']])

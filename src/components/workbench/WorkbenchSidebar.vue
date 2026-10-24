@@ -26,7 +26,6 @@ defineProps<{
   messagesAnchorIndex: number
   teamInvitationCount: number
   notificationsMenuItem: WorkbenchMenuItem
-  ticketsMenuItem: WorkbenchMenuItem
   messagesRouteName: string
   conversations: RequirementConversation[]
   conversationLoading: boolean
@@ -74,7 +73,6 @@ const emit = defineEmits<{
             :messages-anchor-index="messagesAnchorIndex"
             :team-invitation-count="teamInvitationCount"
             :notifications-menu-item="notificationsMenuItem"
-            :tickets-menu-item="ticketsMenuItem"
             :messages-route-name="messagesRouteName"
             :conversations="conversations"
             :conversation-loading="conversationLoading"

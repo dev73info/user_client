@@ -1,8 +1,8 @@
 /**
  * 支付内容与二维码载荷拼装（纯函数，不依赖 Vue）。
  *
- * 支付页要展示的「支付内容」有 5 个来源，优先级固定：
- * 打赏中间页回填 > 资源中间页回填 > Adapay 订单 payUrl > 保证金订单 payUrl > query 自带。
+ * 支付页要展示的「支付内容」有 4 个来源，优先级固定：
+ * 打赏中间页回填 > 资源中间页回填 > Adapay 订单 payUrl > query 自带。
  * 这里把优先级和 URL 形态识别收成纯函数，视图只负责把 ref 传进来。
  */
 
@@ -16,9 +16,7 @@ export type PaymentContentParts = {
   resourcePayInfo: string
   /** Adapay 需求单返回的 payUrl */
   adapayPayUrl: string
-  /** Adapay 保证金单返回的 payUrl */
-  developerDepositPayUrl: string
-  /** query 里的 `qr_content` / `alipay_order_string` */
+  /** query 里的 `qr_content` */
   queryQrContent: string
 }
 
@@ -28,7 +26,6 @@ export function pickPaymentContent(parts: PaymentContentParts): string {
     parts.tipPayInfo.trim() ||
     parts.resourcePayInfo.trim() ||
     parts.adapayPayUrl.trim() ||
-    parts.developerDepositPayUrl.trim() ||
     parts.queryQrContent
   )
 }

@@ -108,7 +108,6 @@ export function installPortalRouteGuard(router: Router) {
 
     const authRequired =
       to.path.startsWith('/workbench') ||
-      to.path.startsWith('/invite') ||
       to.name === 'profile' ||
       to.name === 'messages' ||
       // 支付页默认要登录；微信 handoff / 资源购买中间页（token 在 query）放行
@@ -117,7 +116,6 @@ export function installPortalRouteGuard(router: Router) {
         !isResourceWechatMiddlePage(to.query)) ||
       // R034 收银台：带一次性票据时无需登录（票据换 JWT）；不带票据按普通页面要求登录
       (to.name === 'api-resource-checkout' && !hasCheckoutTicket) ||
-      to.name === 'tickets' ||
       to.name === 'contract-sign' ||
       to.name === 'realname'
 

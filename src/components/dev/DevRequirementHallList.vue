@@ -15,8 +15,8 @@ import { formatCnDateTime } from '@/shared/requirementDisplay'
  * 可接需求列表：宽屏是表格，窄屏（≤640）换成 App 式的卡片流。
  *
  * 两套视图同时渲染，靠 CSS 决定显示哪一套——和改造前一致，不做 JS 断点判断。
- * 「接单」按钮上的字由父级给的 `gate`（协议 / 保证金 / 信用额度）算出来，
- * 判定顺序在 `@/shared/devRequirementHall` 的 `bindButtonLabel` 里。
+ * 「接单」按钮上的字由父级给的 `gate`（目前只有入驻协议签署状态）算出来，
+ * 判定在 `@/shared/devRequirementHall` 的 `bindButtonLabel` 里；保证金由后端在接单时判。
  */
 const props = defineProps<{
   rows: RequirementItem[]
@@ -75,11 +75,11 @@ function rowButtonLabel(row: RequirementItem): string {
         <PaymentModeChip :mode="scope.row.payment_mode" />
       </template>
     </TTableColumn>
-    <!-- 最近更新只报到分钟（工作台总览的「更新于」也是这个格式）：后端给的是
-         「2026-09-28 15:30:00」，19 个字符要 144px，132px 的列会被截成
-         「2026-09-28 15:…」；掐掉秒之后 107px 就够，也不再需要省略号。 -->
-    <TTableColumn label="最近更新" width="132" resizable show-overflow-tooltip>
-      <template #default="scope">{{ formatCnDateTime(scope.row.updated_at) }}</template>
+    <!-- 发布时间只报到分钟：后端给的是「2026-09-28 15:30:00」，19 个字符要 144px，
+         132px 的列会被截成「2026-09-28 15:…」；掐掉秒之后 107px 就够。
+         列名是「发布时间」而不是「最近更新」——契约里没有更新时间的字段。 -->
+    <TTableColumn label="发布时间" width="132" resizable show-overflow-tooltip>
+      <template #default="scope">{{ formatCnDateTime(scope.row.created_time) }}</template>
     </TTableColumn>
     <TTableColumn label="操作" width="118" fixed="right" resizable>
       <template #default="scope">
@@ -117,7 +117,7 @@ function rowButtonLabel(row: RequirementItem): string {
           <div class="hall-feed__meta">
             <PaymentModeChip :mode="row.payment_mode" />
             <span>{{ row.creator }}</span>
-            <span>{{ formatCnDateTime(row.updated_at) }}</span>
+            <span>{{ formatCnDateTime(row.created_time) }}</span>
           </div>
           <TButton variant="solid" tone="accent" class="hall-feed__cta" @click="emit('open', row)">
             {{ rowButtonLabel(row) }}

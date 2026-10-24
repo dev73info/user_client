@@ -1,37 +1,34 @@
 import { flushPromises, mount } from '@vue/test-utils'
 import { describe, expect, it } from 'vitest'
 
-import type { AdapayBreachCase } from '@/api/adapay'
+import type { RequirementBreachCaseItem } from '@/api/afterSales'
 import RequirementBreachDialog from '@/components/dev/RequirementBreachDialog.vue'
 
 /**
  * 开发者侧解除合作弹窗的接线测试：**只钉 props / emits 的逐字对齐**。
  *
- * 这个弹窗是从 2780 行的视图里整块搬出来的，搬动时最容易坏的不是样式而是键名：
- * `v-model:reason` 少一个冒号、`emit('submitPlatformReview')` 拼错一个字母，
- * 界面照旧渲染，只是按钮点了没反应——视图侧没有任何测试会发现。
- * 文案与判定口径（谁该表态、能不能再发起）在 `shared/requirementBreach` 的测试里。
+ * 搬动时最容易坏的不是样式而是键名：`v-model:reason` 少一个冒号、
+ * `emit('submitDecision')` 的参数拼错，界面照旧渲染，只是按钮点了没反应。
+ *
+ * 契约口径：表态只有 `approve` / `reject` 两支；「申请平台介入」与「AI 判定后接受 / 不接受」
+ * 在契约里没有端点，那两段按钮与对应用例一起删了。
  */
 
-function breachCase(patch: Partial<AdapayBreachCase> = {}): AdapayBreachCase {
+function breachCase(patch: Partial<RequirementBreachCaseItem> = {}): RequirementBreachCaseItem {
   return {
-    id: 11,
-    caseNo: 'BREACH_11',
-    requirementId: 'REQ-1',
-    paymentId: 'pay_1',
-    reportedBy: 'client_a',
-    reason: '交付内容与合同不符',
-    status: 'submitted',
-    depositAmountFen: 200000,
-    depositAmountCny: '2000.00',
-    refundAmountFen: 0,
-    refundAmountCny: '0.00',
-    compensationAmountFen: 0,
-    compensationAmountCny: '0.00',
-    extraCompensationFen: 0,
-    extraCompensationCny: '0.00',
-    createdAt: '2026-10-01T10:00:00Z',
-    updatedAt: '2026-10-01T10:00:00Z',
+    case_no: 'BC-20261028153000-AB12',
+    kind: 'mutual_unbind',
+    kind_label: '协商解除',
+    status: 'negotiating',
+    status_label: '协商中',
+    is_open: true,
+    filed_by: 'client_a',
+    respondent: 'dev_flow',
+    claim_amount_fen: 0,
+    claim_amount_cny: 0,
+    opened_at: '2026-10-28 15:30:00',
+    turn: 'respondent',
+    turn_label: '等待 dev_flow 表态',
     ...patch,
   }
 }
@@ -49,19 +46,17 @@ function render(patch: Partial<Props> = {}) {
     props: {
       visible: true,
       breachCase: null,
+      breachCaseDetail: null,
       caseLoading: false,
       newRound: false,
       reportLoading: false,
-      platformReviewLoading: false,
       withdrawLoading: false,
       withdrawConfirm: false,
       decisionLoading: false,
-      rejectPanel: false,
       withdrawnByMe: false,
       canStartNewRound: true,
       canRespond: false,
       canWithdraw: false,
-      canDecide: false,
       reason: '',
       decisionNote: '',
       ...patch,
@@ -92,50 +87,39 @@ describe('解除合作弹窗：props / emits 接线', () => {
     wrapper.unmount()
   })
 
-  it('协商中：同意 / 不同意与申请平台介入各走自己的动作', async () => {
+  it('在办案件：同意 / 不同意各走自己的表态动作，且没有「申请平台介入」', async () => {
     const wrapper = render({ breachCase: breachCase(), canRespond: true, canWithdraw: false })
+    // 契约里没有这个端点：按钮不许再出现
+    expect(buttonTexts(wrapper)).not.toContain('申请平台介入')
 
     await buttonByText(wrapper, '同意解除')!.trigger('click')
-    expect(lastEmitted(wrapper, 'submitDecision')).toEqual(['accepted'])
+    expect(lastEmitted(wrapper, 'submitDecision')).toEqual(['approve'])
 
     await buttonByText(wrapper, '不同意')!.trigger('click')
-    expect(lastEmitted(wrapper, 'submitDecision')).toEqual(['rejected'])
-
-    await buttonByText(wrapper, '申请平台介入')!.trigger('click')
-    expect(wrapper.emitted('submitPlatformReview')).toHaveLength(1)
+    expect(lastEmitted(wrapper, 'submitDecision')).toEqual(['reject'])
     wrapper.unmount()
   })
 
-  it('AI 判定后只有我方还没表态才出「接受判定」', async () => {
-    const deciding = render({
-      breachCase: breachCase({ status: 'ai_judged' }),
-      canDecide: true,
-    })
-    expect(buttonTexts(deciding)).toContain('接受判定')
-    await buttonByText(deciding, '不接受')!.trigger('click')
-    // 先展开原因输入框，再让「确认不接受」出现（同一份 decisionNote 草稿）
-    expect(deciding.emitted('openRejectPanel')).toHaveLength(1)
-    deciding.unmount()
-
-    // 我方已表态：这段表态区整块不出现，只剩「关闭」
-    const decided = render({
-      breachCase: breachCase({ status: 'ai_judged', developerDecision: 'accepted' }),
-      canDecide: false,
-    })
-    expect(buttonTexts(decided)).not.toContain('接受判定')
-    decided.unmount()
+  it('不是对方当事人时只显示进展，不给表态按钮', () => {
+    const wrapper = render({ breachCase: breachCase(), canRespond: false, canWithdraw: true })
+    expect(wrapper.text()).toContain('等待 dev_flow 表态')
+    expect(buttonTexts(wrapper)).not.toContain('同意解除')
+    // 立案人能看到撤回入口
+    expect(buttonTexts(wrapper)).toContain('撤回申请')
+    wrapper.unmount()
   })
 
   it('结案且没有生效合同时只给说明，不给「发起新的解除合作」', async () => {
     const blocked = render({
-      breachCase: breachCase({ status: 'succeeded' }),
+      breachCase: breachCase({ status: 'closed', status_label: '已结案', is_open: false }),
       canStartNewRound: false,
     })
     expect(buttonTexts(blocked)).not.toContain('发起新的解除合作')
     expect(blocked.text()).toContain('需重新接单并签约后才能再次发起解除合作')
+    blocked.unmount()
 
     const allowed = render({
-      breachCase: breachCase({ status: 'succeeded' }),
+      breachCase: breachCase({ status: 'closed', status_label: '已结案', is_open: false }),
       canStartNewRound: true,
     })
     await buttonByText(allowed, '发起新的解除合作')!.trigger('click')
@@ -143,14 +127,13 @@ describe('解除合作弹窗：props / emits 接线', () => {
     allowed.unmount()
   })
 
-  it('上一轮由我方撤回时，申请人写「我方」、按钮写「重新发起」', async () => {
+  it('上一轮由我方撤回时，立案人写「我方」、按钮写「重新发起」', async () => {
     const wrapper = render({
-      breachCase: breachCase({ status: 'withdrawn' }),
+      breachCase: breachCase({ status: 'withdrawn', status_label: '已撤回', is_open: false }),
       withdrawnByMe: true,
     })
-    // 案件还在（不是在填新一轮表单）：标题仍是「进展」，申请人那行由 withdrawnByMe 决定
+    // 案件还在（不是在填新一轮表单）：标题仍是「进展」
     expect(wrapper.text()).toContain('解除合作进展')
-    expect(wrapper.text()).toContain('我方')
 
     await buttonByText(wrapper, '重新发起')!.trigger('click')
     expect(wrapper.emitted('reopen')).toHaveLength(1)
@@ -158,7 +141,7 @@ describe('解除合作弹窗：props / emits 接线', () => {
 
     // 点过「重新发起」之后（newRound）标题才换成「重新发起解除合作」
     const form = render({
-      breachCase: breachCase({ status: 'withdrawn' }),
+      breachCase: breachCase({ status: 'withdrawn', status_label: '已撤回', is_open: false }),
       withdrawnByMe: true,
       newRound: true,
     })

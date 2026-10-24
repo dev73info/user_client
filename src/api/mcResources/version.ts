@@ -6,26 +6,50 @@ import type {
   UpdateMcResourceVersionRequest,
 } from './types'
 
+type UploadedVersionFile = {
+  resource: string
+  file_name: string
+}
+
+async function uploadVersionFile(
+  token: string,
+  resourceId: number,
+  file: File,
+): Promise<UploadedVersionFile> {
+  const formData = new FormData()
+  formData.append('file', file)
+  return requestJson<UploadedVersionFile>(
+    `/dev/resources/resources/${resourceId}/versions/upload`,
+    {
+      method: 'POST',
+      headers: authHeader(token),
+      body: formData,
+    },
+    '上传版本文件失败',
+  )
+}
+
 export async function createMcResourceVersion(
   token: string,
   resourceId: number,
   payload: CreateMcResourceVersionRequest,
 ): Promise<McResourceVersionPayload> {
-  const formData = new FormData()
-  formData.append('version', payload.version)
-  if (payload.note?.trim()) {
-    formData.append('note', payload.note.trim())
-  }
-  formData.append('file', payload.file)
-
+  const uploaded = await uploadVersionFile(token, resourceId, payload.file)
   return requestJson<McResourceVersionPayload>(
     `/dev/resources/resources/${resourceId}/versions`,
     {
       method: 'POST',
       headers: {
+        'Content-Type': 'application/json',
         ...authHeader(token),
       },
-      body: formData,
+      body: JSON.stringify({
+        version: payload.version,
+        resource: uploaded.resource,
+        file_name: uploaded.file_name,
+        note: payload.note?.trim() || null,
+        price_fen: payload.price_fen ?? null,
+      }),
     },
     '发布新版本失败',
   )
@@ -53,25 +77,7 @@ export async function updateMcResourceVersion(
   versionId: number,
   payload: UpdateMcResourceVersionRequest,
 ): Promise<McResourceVersionPayload> {
-  if (payload.file) {
-    const formData = new FormData()
-    formData.append('version', payload.version)
-    if (payload.note?.trim()) {
-      formData.append('note', payload.note.trim())
-    }
-    formData.append('file', payload.file)
-    return requestJson<McResourceVersionPayload>(
-      `/dev/resources/resources/${resourceId}/versions/${versionId}`,
-      {
-        method: 'PATCH',
-        headers: {
-          ...authHeader(token),
-        },
-        body: formData,
-      },
-      '更新版本失败',
-    )
-  }
+  const uploaded = payload.file ? await uploadVersionFile(token, resourceId, payload.file) : null
 
   return requestJson<McResourceVersionPayload>(
     `/dev/resources/resources/${resourceId}/versions/${versionId}`,
@@ -81,7 +87,12 @@ export async function updateMcResourceVersion(
         'Content-Type': 'application/json',
         ...authHeader(token),
       },
-      body: JSON.stringify(payload),
+      body: JSON.stringify({
+        version: payload.version,
+        note: payload.note?.trim() || null,
+        price_fen: payload.price_fen ?? null,
+        ...(uploaded ? { resource: uploaded.resource, file_name: uploaded.file_name } : {}),
+      }),
     },
     '更新版本失败',
   )

@@ -3,10 +3,8 @@ import { watch } from 'vue'
 import type { PropType } from 'vue'
 import { TIcon, ArrowDown } from 'ui_73info'
 
-import RequirementAgentPanel from '@/components/RequirementAgentPanel.vue'
 import RichTextEditor from '@/components/RichTextEditor.vue'
 import { useAcceptanceTemplateMenu } from '@/composables/useAcceptanceTemplateMenu'
-import { usePublishAgentDraft } from '@/composables/usePublishAgentDraft'
 import { usePublishDraft } from '@/composables/usePublishDraft'
 import { usePublishModalFields } from '@/composables/usePublishModalFields'
 
@@ -14,12 +12,10 @@ import { usePublishModalFields } from '@/composables/usePublishModalFields'
  * 发布需求弹窗（首页 / 个人中心 / 需求大厅共用）。
  *
  * 表单字段本身仍由父级持有（`v-model:publish*`），本组件只做三件事：把输入转成 emit、
- * 挂「验收标准模板」与「跟 AI 聊着填」两个二级入口、按用户 / 场景隔离草稿。四块逻辑各自在
- * composable 里：
+ * 挂「验收标准模板」二级入口、按用户 / 场景隔离草稿。三块逻辑各自在 composable 里：
  * - `usePublishModalFields`：五个输入框的转发、发布方式门禁与电签担保可用性的两次询问；
  * - `usePublishDraft`：localStorage 草稿的存 / 取 / 清（`defineExpose({ clearDraft })` 仍对外）；
- * - `useAcceptanceTemplateMenu`：模板菜单与覆盖确认（含 document 级指针 / 键盘监听）；
- * - `usePublishAgentDraft`：AI 对话面板的开关与草稿回填。
+ * - `useAcceptanceTemplateMenu`：模板菜单与覆盖确认（含 document 级指针 / 键盘监听）。
  */
 
 type NotifyType = 'success' | 'warning' | 'error'
@@ -100,33 +96,12 @@ const {
   applyAcceptance: updateAcceptance,
 })
 
-const { agentMode, toggleAgentPanel, applyAgentDraft } = usePublishAgentDraft({
-  applyField: (key, value) => {
-    if (key === 'publishTitle') {
-      emit('update:publishTitle', value)
-      return
-    }
-    if (key === 'publishDescription') {
-      emit('update:publishDescription', value)
-      return
-    }
-    if (key === 'publishBudget') {
-      emit('update:publishBudget', value)
-      return
-    }
-    emit('update:publishAcceptance', value)
-  },
-  applyPaymentMode: updatePaymentMode,
-  notify: forwardNotify,
-})
-
-// 弹窗关闭时收起模板菜单与覆盖确认，避免下次打开残留；AI 面板也回到表单视图
+// 弹窗关闭时收起模板菜单与覆盖确认，避免下次打开残留
 watch(
   () => props.visible,
   (visible) => {
     if (!visible) {
       resetAcceptanceTemplateMenu()
-      agentMode.value = false
     }
   },
 )
@@ -155,26 +130,9 @@ defineExpose({
       <section class="auth-modal publish-modal" :aria-label="`${modalTitle}弹窗`">
         <header class="publish-modal__head">
           <h3>{{ modalTitle }}</h3>
-          <button
-            v-if="!agentMode"
-            type="button"
-            class="publish-agent__trigger"
-            title="跟 AI 聊着填：用自然语言说清需求，AI 帮你整理成表单内容"
-            @click="toggleAgentPanel"
-          >
-            <span>跟 AI 聊着填</span>
-          </button>
         </header>
 
-        <div v-if="agentMode" class="publish-modal__agent">
-          <RequirementAgentPanel
-            @close="toggleAgentPanel"
-            @filled="applyAgentDraft"
-            @notify="forwardNotify"
-          />
-        </div>
-
-        <div v-else class="publish-modal__body">
+        <div class="publish-modal__body">
           <label>
             需求标题 *
             <input
@@ -307,7 +265,7 @@ defineExpose({
           <p v-if="isGuaranteeMode" class="publish-cycle-hint">{{ developmentCycleHint }}</p>
         </div>
 
-        <div v-if="!agentMode" class="auth-modal-actions publish-modal__actions">
+        <div class="auth-modal-actions publish-modal__actions">
           <button class="auth-btn ghost" type="button" @click="emit('close')">取消</button>
           <button
             class="auth-btn solid"
@@ -319,7 +277,7 @@ defineExpose({
           </button>
         </div>
 
-        <footer v-if="draftEnabled && !agentMode" class="publish-modal__draft-hint">
+        <footer v-if="draftEnabled" class="publish-modal__draft-hint">
           <span>内容将自动保存为草稿</span>
         </footer>
       </section>

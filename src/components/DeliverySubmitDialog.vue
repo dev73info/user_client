@@ -6,6 +6,7 @@ import {
   listMcResourceVersions,
   type McResourceVersionPayload,
 } from '@/api/mcResources'
+import { submitRequirementDelivery } from '@/api/requirements'
 
 import DeliveryArtifactField from '@/components/delivery/DeliveryArtifactField.vue'
 import { TButton, TDialog, TForm, TFormItem, TInput, TMessage } from 'ui_73info'
@@ -18,6 +19,7 @@ const visible = defineModel<boolean>('visible', { required: true })
 
 const props = defineProps<{
   token: string
+  requirementId: string
   /** 需求绑定的资源项目；为空时没有可交付的载体。 */
   boundResourceId?: number | null
 }>()
@@ -101,7 +103,7 @@ function requestClose() {
 
 async function submit() {
   const resourceId = props.boundResourceId
-  if (!props.token || resourceId == null) {
+  if (!props.token || !props.requirementId || resourceId == null) {
     TMessage.warning('当前需求还没有关联资源项目')
     return
   }
@@ -124,6 +126,7 @@ async function submit() {
       file: artifact.value,
       note: note.value.trim() || null,
     })
+    await submitRequirementDelivery(props.token, props.requirementId)
     TMessage.success(`交付版本 ${created.version} 已提交，等待客户验收`)
     visible.value = false
     emit('submitted')

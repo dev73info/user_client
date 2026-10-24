@@ -14,7 +14,6 @@ import PortalSidebarColumn from '@/components/home/PortalSidebarColumn.vue'
 import PortalWorkflowSection from '@/components/home/PortalWorkflowSection.vue'
 import SpotlightResourceSection from '@/components/home/SpotlightResourceSection.vue'
 import { useHomeAuthQuery } from '@/composables/useHomeAuthQuery'
-import { useHomeCheckin } from '@/composables/useHomeCheckin'
 import { useHomeDepositCard } from '@/composables/useHomeDepositCard'
 import { useHomePortalActions } from '@/composables/useHomePortalActions'
 import { useHomePortalAuth } from '@/composables/useHomePortalAuth'
@@ -48,7 +47,6 @@ const {
   resolveResourceRoute,
   ensureTagTree,
   applyResourceList,
-  applyHighLikeThreshold,
   applyLikeState,
 } = usePublicResources()
 const auth = useAuthStore()
@@ -69,7 +67,6 @@ const {
   publicDeveloperCount,
   pendingRequirements,
   publicRequirementSpotlights,
-  announcementPosts,
   loadPendingRequirements,
   loadRequirementOverview,
   loadPublicPortalData,
@@ -77,7 +74,6 @@ const {
   isMounted: () => isMounted,
   ensureTagTree,
   applyResourceList,
-  applyHighLikeThreshold,
 })
 
 /** URL 取值口径只有这一份：弹窗开关、`redirect_to`、邀请码、分享参数共用。 */
@@ -106,26 +102,17 @@ const {
 })
 
 /** 侧栏两张榜单：资源由本视图统一请求后传进去，composable 只做聚合，不再发资源请求。 */
-const { developerRanks, teamRanks, totalContribResources, developerBadges } =
-  usePortalRanks(publicResources)
-/** 侧栏「内测中」卡片里的每日签到（写操作 + 两个 api 都留在这支 composable 里）。 */
-const {
-  status: homeCheckinStatus,
-  saving: checkinHomeSaving,
-  load: loadHomeCheckin,
-  checkin: handleHomeCheckin,
-} = useHomeCheckin()
+const { developerRanks, teamRanks, totalContribResources } = usePortalRanks(publicResources)
 
 /**
  * 首屏、登录态变化、5 分钟轮询与卸载清理整块在 `useHomePortalLifecycle`：视图只交出四路 loader、
- * 签到、授权回跳参数的消费与三个「有写在途就不轮询」的标记，顺手拿回登录成功后要跑的
+ * 授权回跳参数的消费与三个「有写在途就不轮询」的标记，顺手拿回登录成功后要跑的
  * `refreshPortalData`（与首屏那一份是同一个函数，不另立第二份口径）。
  */
 const { refreshPortalData } = useHomePortalLifecycle({
   markUnmounted: () => {
     isMounted = false
   },
-  loadCheckin: loadHomeCheckin,
   consumeAuthQuery,
   loadDepositRatio,
   loadPendingRequirements,
@@ -152,7 +139,8 @@ const { publishModalBindings, publishModalRef, publishLoading, openPublishModal,
     routeQueryValue,
   })
 
-const isDeveloperAccount = computed(() => auth.role === 'dev' || auth.role === 'super_admin')
+/** 是否按开发者身份展示首页入口：按**生效权限**判定（`scope.dev.access` 或超管），不按角色名。 */
+const isDeveloperAccount = computed(() => auth.isDev)
 const devActionLabel = computed(() => (isDeveloperAccount.value ? '我要接单' : '成为开发者'))
 
 const heroSignals = HOME_HERO_SIGNALS
@@ -191,7 +179,6 @@ const spotlightLikeSubmittingIds = portalActions.spotlightLikeSubmittingIds
 const portalNotices = computed<PortalNotice[]>(() => {
   const resource = publicResources.value[0]
   return buildPortalNotices({
-    posts: announcementPosts.value,
     latestDeal: latestDeals.value[0],
     resource,
     resourceRoute: resource ? resolveResourceRoute(resource) : null,
@@ -220,7 +207,6 @@ const platformStats = computed<PortalMilestoneStat[]>(() =>
             @publish="portalActions.openPrimaryPublishAction"
             @dev-workbench="portalActions.openDevWorkbench"
             @free-resources="portalActions.openFreeResources"
-            @community="portalActions.openCommunity"
           />
 
           <PortalQuickPanels :panels="quickPanels" @open="portalActions.openQuickPanel" />
@@ -239,20 +225,14 @@ const platformStats = computed<PortalMilestoneStat[]>(() =>
         </div>
 
         <PortalSidebarColumn
-          :is-authed="auth.isAuthed"
-          :checkin="homeCheckinStatus"
-          :checkin-saving="checkinHomeSaving"
           :notices="portalNotices"
           :stats="platformStats"
           :is-developer-account="isDeveloperAccount"
           :developer-ranks="developerRanks"
-          :developer-badges="developerBadges"
           :total-contrib-resources="totalContribResources"
           :team-ranks="teamRanks"
-          @checkin="handleHomeCheckin"
           @open-group="portalActions.openBetaGroup"
           @open-notice="portalActions.openPortalNotice"
-          @more-notices="portalActions.openCommunity"
           @open-resource-init="portalActions.openResourceInit"
           @open-developer="portalActions.openDeveloperProfile"
           @open-team="portalActions.openTeamProfile"

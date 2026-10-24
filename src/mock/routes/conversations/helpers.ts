@@ -2,6 +2,7 @@ import {
   type RequirementConversation,
   type RequirementConversationDetail,
 } from '@/shared/conversations'
+import type { MockRequirementRow } from '../../db/requirements'
 import { DEV_USERNAME, findRequirement, requirements } from '../../db'
 import { type MockRequest } from '../../router'
 
@@ -16,7 +17,7 @@ export function conversationIdOf(requirementCode: string): string {
 }
 
 /** 有开发者的需求才有会话；客户看到自己全部有开发者的单，开发者看自己的接单。 */
-export function visibleRequirements(request: MockRequest) {
+export function visibleRequirements(request: MockRequest): MockRequirementRow[] {
   return requirements.filter((item) => {
     if (!item.developer) {
       return false
@@ -173,7 +174,7 @@ export function detailOf(request: MockRequest, code: string): RequirementConvers
     return null
   }
 
-  return { conversation, messages: messagesOf(code) }
+  return { conversation, messages: messagesOf(code), has_more: false }
 }
 
 /* ------------------------------------------------------------------ 实时流 */

@@ -7,7 +7,7 @@ export function canDownloadResource(
   resource: ResourceSaleLike,
   viewerUsername?: string | null,
 ): boolean {
-  if (!isPricedResource(resource.price_fen, resource.price_points)) {
+  if (!isPricedResource(resource.buyout_price_fen, resource.price_points)) {
     return true
   }
   if (resource.purchased_by_me) {
@@ -170,14 +170,17 @@ export function resourcePurchaseStatusLabel(status: string): string {
   }
 }
 
-/** 接口资源订单（R034）：`source_kind === 'api'`，或已记录平台买家 `buyer_account`。 */
+/** 开放接口订单：来源为 `oauth`，并可能带客户端与外部用户标识。 */
 
 export function isApiResourcePurchaseOrder(order: {
   source_kind?: string | null
-  buyer_account?: string | null
+  client_id?: string | null
+  buyer_external_id?: string | null
 }): boolean {
   return (
-    (order.source_kind ?? '').trim().toLowerCase() === 'api' || Boolean(order.buyer_account?.trim())
+    (order.source_kind ?? '').trim().toLowerCase() === 'oauth' ||
+    Boolean(order.client_id?.trim()) ||
+    Boolean(order.buyer_external_id?.trim())
   )
 }
 

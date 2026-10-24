@@ -1,10 +1,7 @@
 import { computed, ref, type Ref } from 'vue'
 
 import { detectClientPlatform, recordAgreementAcceptance } from '@/api/auth'
-import {
-  LEGAL_NOTICE_VERSION,
-  rememberLegalNoticeConfirmedAt,
-} from '@/components/legal/legalNotice'
+import { rememberLegalNoticeConfirmedAt } from '@/components/legal/legalNotice'
 import { useAuthStore } from '@/stores/auth'
 
 /**
@@ -61,8 +58,6 @@ export function useContractNoticeConfirm(options: UseContractNoticeConfirmOption
       noticeVersion.value,
       detectClientPlatform(),
       'sign',
-      confirmedAt,
-      LEGAL_NOTICE_VERSION,
     ).catch(() => undefined)
     return ''
   }

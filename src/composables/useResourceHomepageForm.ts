@@ -147,7 +147,7 @@ export function useResourceHomepageForm(options: {
     form.originUrl = payload.origin_url || ''
     form.originOrg = payload.origin_org || ''
     form.originNote = payload.origin_note || ''
-    form.priceYuan = fenToYuanText(payload.price_fen ?? 0)
+    form.priceYuan = fenToYuanText(payload.buyout_price_fen ?? 0)
     form.pricePoints = String(Math.max(0, Math.trunc(Number(payload.price_points ?? 0))))
     // R029：比例以万分比存，回显换算回百分比数值（1000 → 10；0 → 0）
     form.promoSharePercent = Number(promoShareBpsToPercentText(payload.promo_share_bps) || 0)
@@ -171,7 +171,7 @@ export function useResourceHomepageForm(options: {
     form.originUrl = updated.origin_url || ''
     form.originOrg = updated.origin_org || ''
     form.originNote = updated.origin_note || ''
-    form.priceYuan = fenToYuanText(updated.price_fen ?? 0)
+    form.priceYuan = fenToYuanText(updated.buyout_price_fen ?? 0)
     form.pricePoints = String(Math.max(0, Math.trunc(Number(updated.price_points ?? 0))))
     form.promoSharePercent = Number(promoShareBpsToPercentText(updated.promo_share_bps) || 0)
     form.copyrightDeclared = Boolean(updated.copyright_declared)
