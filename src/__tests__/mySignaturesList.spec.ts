@@ -5,6 +5,7 @@ import { useAuthStore } from '@/stores/auth'
 import MySignaturesView from '@/views/MySignaturesView.vue'
 import UserWorkbenchView from '@/views/UserWorkbenchView.vue'
 import ContractSignView from '@/views/ContractSignView.vue'
+import type { MyContractSummary } from '@/api/contracts'
 import { CONTRACT_STATUS } from '@/shared/contracts'
 import { baseContract, primeSignatureMocks, renderSignatureView } from './helpers/mySignatures'
 
