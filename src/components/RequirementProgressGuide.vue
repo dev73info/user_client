@@ -2,6 +2,7 @@
 import { computed } from 'vue'
 import type { RequirementStatus } from '@/api/requirements'
 import type { ContractSigningStatus } from '@/shared/contracts'
+import { parseBackendDateTime } from '@/shared/datetime'
 
 type ViewMode = 'creator' | 'dev'
 const props = defineProps<{
@@ -77,8 +78,8 @@ const settlementDaysLeft = computed(() => {
   if (!availableAt) {
     return null
   }
-  const target = new Date(availableAt).getTime()
-  if (Number.isNaN(target)) {
+  const target = parseBackendDateTime(availableAt)?.getTime()
+  if (target === undefined) {
     return null
   }
   return Math.ceil((target - Date.now()) / 86_400_000)

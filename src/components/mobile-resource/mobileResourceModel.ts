@@ -2,6 +2,7 @@ import { apiUrl } from '@/api/http'
 import type { PublicMcResourceItem } from '@/api/resources'
 import type { McTagFilterSection } from '@/api/resourceTags'
 import { formatResourcePriceLabel } from '@/shared/resourceSale'
+import { parseBackendDateTime } from '@/shared/datetime'
 
 /**
  * 移动端资源列表的数据形状与映射。
@@ -69,8 +70,9 @@ export function mapResourceToCard(item: PublicMcResourceItem): MobileCard {
 }
 
 export function formatUpdatedAt(value: string): string {
-  const date = new Date(value)
-  if (Number.isNaN(date.getTime())) {
+  // 后端时间是东八区墙钟串、不带偏移，解析口径见 shared/datetime.ts。
+  const date = parseBackendDateTime(value)
+  if (!date) {
     return '最近'
   }
 

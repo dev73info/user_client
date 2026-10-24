@@ -8,6 +8,7 @@ import {
   type InviteStatsResponse,
 } from '@/api/invite'
 import { LIST_PAGE_SIZES, useClientPagination } from '@/composables/useClientPagination'
+import { parseBackendDateTime } from '@/shared/datetime'
 import { useAuthStore } from '@/stores/auth'
 
 import {
@@ -43,10 +44,12 @@ const invitees = computed(() => stats.value?.invitees ?? [])
  * 在「全部」里看得到、换个档却看不到，会被当成数据丢了。
  */
 function joinedDaysAgo(value: string): number | null {
-  const time = new Date(value).getTime()
-  if (Number.isNaN(time)) {
+  // 后端时间是东八区墙钟串，口径见 shared/datetime.ts。
+  const parsed = parseBackendDateTime(value)
+  if (!parsed) {
     return null
   }
+  const time = parsed.getTime()
   return (Date.now() - time) / (24 * 60 * 60 * 1000)
 }
 
@@ -111,8 +114,8 @@ function resetFilters() {
 }
 
 function joinedAt(value: string) {
-  const date = new Date(value)
-  if (Number.isNaN(date.getTime())) {
+  const date = parseBackendDateTime(value)
+  if (!date) {
     return value
   }
   return date.toLocaleDateString('zh-CN')
