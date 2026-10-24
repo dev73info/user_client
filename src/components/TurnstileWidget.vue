@@ -48,9 +48,16 @@ async function mountWidget() {
       theme: 'auto',
       callback: (token) => emit('update:token', token),
       'error-callback': () => {
-        // 脚本加载失败 / 渲染失败：清空 token，并允许用户点重试
+        // 失败挂件会在后台反复重建 iframe；必须销毁，等用户点「重试」时再创建。
         emit('update:token', '')
         loadError.value = '人机验证加载失败'
+        queueMicrotask(() => {
+          if (widgetId && window.turnstile) {
+            const failedWidgetId = widgetId
+            widgetId = undefined
+            window.turnstile.remove(failedWidgetId)
+          }
+        })
       },
       'expired-callback': () => {
         // token 有时效（默认约 5 分钟），过期即作废，必须重新取
