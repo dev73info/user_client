@@ -1,10 +1,10 @@
 /**
  * mock 模式下的 WebSocket 替身。
  *
- * 在线客服走 `ws://<host>/api/support/conversations/ws?token=…` 长连接。
+ * 开发者工作台看板走 `ws://<host>/api/requirement/dev/dashboard/ws?token=…` 长连接。
  * WebSocket 不像 fetch 那样能被 fetch 拦截层覆盖，真连会连不上并反复重试，
  * 在控制台刷成片的红色报错。这里把「指到后端接口」的 ws 连接换成一个空壳：
- * 直接进入已连接状态但不收发任何消息，于是客服面板安静地停在未连接，
+ * 直接进入已连接状态但不收发任何消息，于是看板安静地停在未连接，
  * 页面其他部分不受影响。
  *
  * 只拦 `/api/` 下的 ws。Vite 自己的 HMR 连接（`ws://localhost:5173/?token=…`，路径是 `/`）
@@ -78,7 +78,7 @@ class MockWebSocket {
     return true
   }
 
-  /** mock 不真的发消息：客服面板发出去的内容不会有人回。 */
+  /** mock 不真的发消息：前端发出去的内容不会有人回。 */
   send(_data?: unknown): void {
     void _data
   }

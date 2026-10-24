@@ -1,5 +1,4 @@
 import {
-  devOrderDeposit,
   findRequirement,
   markPaymentPaid,
   paymentOf,
@@ -96,11 +95,6 @@ export function confirm(requirementId: string): { status: string; requirement_st
   }
 
   const result = markPaymentPaid(record)
-
-  // 接单保证金：客户付了定金说明需求真的启动，这里同步一下开发者的保证金口径
-  if (record.kind === 'deposit') {
-    devOrderDeposit.can_bind_requirement = true
-  }
 
   return { status: 'paid', requirement_status: result.requirement_status }
 }

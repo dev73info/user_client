@@ -56,7 +56,7 @@ export function installMockFetch(): void {
 
   // mock 关着就什么都不做：不装 fetch / WebSocket 替身，不写假令牌，也不打「已启用」日志。
   // 以前这里是无条件安装的，于是「关掉 mock」会留下三处副作用：假令牌把真实登录态冲掉
-  // （刷新后必 401 并弹出登录框）、客服长连接被换成空壳、控制台照样打印「已启用」把人误导回去。
+  // （刷新后必 401 并弹出登录框）、后端 ws 长连接被换成空壳、控制台照样打印「已启用」把人误导回去。
   // 需要开的时候整页刷新重跑 main.ts 会再进来一次，不存在「装早了」的问题。
   if (!mockEnabled()) {
     return
@@ -103,7 +103,7 @@ export function installMockFetch(): void {
   target.__mockFetchInstalled__ = true
   target[DEBUG_HANDLE] = createDebugApi()
 
-  // 客服长连接没法用 fetch 拦截，单独换成空壳实现（只拦 /api 下的 ws，放行 Vite 的 HMR）。
+  // 后端 ws 长连接没法用 fetch 拦截，单独换成空壳实现（只拦 /api 下的 ws，放行 Vite 的 HMR）。
   installMockWebSocket()
 
   // 留一行启动日志：页面出问题时先看控制台有没有这行，就能区分

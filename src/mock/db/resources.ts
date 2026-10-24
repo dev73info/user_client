@@ -35,6 +35,7 @@ function buildResource(
     origin_url: null,
     origin_org: null,
     origin_note: null,
+    buyout_price_fen: 0,
     price_fen: 0,
     price_points: 0,
     copyright_declared: false,
@@ -74,6 +75,7 @@ export const mcResources: McResourcePayload[] = [
       'published',
       6,
     )
+    paid.buyout_price_fen = 990
     paid.price_fen = 990
     paid.copyright_declared = true
     paid.copyright_declared_at = iso(-6, 12, 0)
@@ -104,6 +106,9 @@ function buildVersion(
     note,
     creator: DEV_USERNAME,
     created_at: datetime(-daysAgo, 15, 10),
+    is_current: false,
+    price_fen: 0,
+    purchasable: false,
   }
 }
 

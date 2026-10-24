@@ -217,43 +217,18 @@ const routes: MockRoute[] = [
     method: 'GET',
     path: '/auth/qq/login/qr/url',
     note: 'QQ 扫码登录（占位）',
-    handler: () => jsonResponse({ url: mockAuthorizeUrl('qq').url, state: 'mock-state' }),
+    handler: () =>
+      jsonResponse({
+        url: mockAuthorizeUrl('qq').url,
+        state: 'mock-state',
+        poll_secret: 'mock-secret',
+      }),
   },
   {
     method: 'GET',
     path: '/auth/qq/login/qr/status',
     note: 'QQ 扫码状态：保持未扫码',
-    handler: () => jsonResponse({ token: null }),
-  },
-  {
-    method: 'GET',
-    path: '/auth/wechat/bind/qr/url',
-    note: '微信绑定二维码（占位）',
-    handler: () => jsonResponse({ url: '', state: 'mock-state' }),
-  },
-  {
-    method: 'GET',
-    path: '/auth/wechat/bind/qr/status',
-    note: '微信绑定状态：未完成',
-    handler: () => jsonResponse({ done: false, success: false, error: null }),
-  },
-  {
-    method: 'GET',
-    path: '/auth/wechat/payment/status',
-    note: '微信支付授权状态：mock 视为已授权，避免支付页反复跳授权',
-    handler: () => jsonResponse({ authorized: true }),
-  },
-  {
-    method: 'GET',
-    path: '/auth/wechat/payment/url',
-    note: '微信支付授权地址（占位）',
-    handler: () => jsonResponse(mockAuthorizeUrl('wechat')),
-  },
-  {
-    method: 'GET',
-    path: '/adapay/union/payment/url',
-    note: '云闪付授权地址（占位）',
-    handler: () => jsonResponse(mockAuthorizeUrl('unionpay')),
+    handler: () => jsonResponse({ token: null, status: 'pending' }),
   },
   {
     method: 'DELETE',

@@ -1,7 +1,5 @@
-import type { UserPointsSelf } from '@/api/points'
 import type { UserRealnameVerification } from '@/api/realname'
 
-import { points } from '../../db'
 import { currentMockProfile } from '../../identity'
 
 export function nowText(): string {
@@ -74,45 +72,5 @@ export function realnameRecord(): UserRealnameVerification {
     created_at: nowText(),
     updated_at: nowText(),
     changing_subject: false,
-  }
-}
-
-/** 开发者信用额度：mock 给足，避免需求大厅的接单按钮被「信用不足」挡住。 */
-export function devCreditSelf() {
-  return {
-    username: currentUsername(),
-    credit_score: 120,
-    cny_per_credit: 1000,
-    max_deposit_cny: 200000,
-    max_order_amount_cny: 200000,
-    remaining_deposit_cap_cny: 200000,
-    enforce_deposit_limit: false,
-    enforce_order_limit: false,
-  }
-}
-
-export function pointsSelf(): UserPointsSelf {
-  return {
-    username: currentUsername(),
-    points_balance: points.balance,
-    logs: [
-      {
-        id: 1,
-        username: currentUsername(),
-        delta: 50,
-        balance_after: points.balance,
-        reason: '每日签到',
-        source_type: 'checkin',
-        source_id: null,
-        operator: null,
-        created_at: nowText(),
-      },
-    ],
-    logs_total: 1,
-    logs_page: 1,
-    logs_page_size: 20,
-    username_gradient_owned: false,
-    username_gradient: false,
-    perks: [],
   }
 }

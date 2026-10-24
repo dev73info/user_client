@@ -2,124 +2,60 @@ import type { MockRoute } from '../../router'
 
 import {
   DEV_USERNAME,
-  devOrderDeposit,
   devWallet,
   devWithdrawalLimits,
   devWithdrawalSetting,
   devWithdrawals,
   payments,
 } from '../../db'
-import { jsonResponse, noContentResponse } from '../../response'
+import { errorResponse, jsonResponse, noContentResponse } from '../../response'
 import { nowText } from './helpers'
 
 export const devPaymentRoutes: MockRoute[] = [
   /* ---------------------------------------------------------------- 开发者侧 */
   {
     method: 'GET',
-    path: '/dev/payments/developer-order-deposit',
-    note: '接单保证金状态',
-    handler: () => jsonResponse({ ...devOrderDeposit, username: DEV_USERNAME }),
+    path: '/payment/withdrawals',
+    note: '收益提现记录（契约 `WithdrawalResponse[]`）',
+    handler: () => jsonResponse(devWithdrawals),
   },
   {
     method: 'GET',
-    path: '/dev/payments/developer-order-deposit/orders',
-    note: '保证金充值记录（「资金明细」里的「保证金充值」那一段；演示数据只有最近一笔）',
-    handler: () => jsonResponse(devOrderDeposit.latest_order ? [devOrderDeposit.latest_order] : []),
-  },
-  {
-    method: 'GET',
-    path: '/dev/payments/developer-order-deposit/withdrawals',
-    note: '保证金提现记录（演示数据里没有保证金退回记录，返回空列表）',
+    path: '/payment/withdrawals/balance',
+    note: '提现额度（契约 `WithdrawalBalanceResponse`，单位分）',
     handler: () =>
       jsonResponse({
-        withdrawable_balance_cny: devOrderDeposit.available_cny,
-        pending_withdraw_cny: devOrderDeposit.pending_withdraw_cny,
-        paid_withdraw_cny: devOrderDeposit.paid_withdraw_cny,
-        withdrawals: [],
+        income_fen: Math.round(devWallet.total_income_cny * 100),
+        withdrawn_fen: Math.round(devWallet.paid_withdraw_cny * 100),
+        withdrawable_fen: Math.round(devWallet.withdrawable_balance_cny * 100),
       }),
   },
   {
     method: 'POST',
-    path: '/dev/payments/developer-order-deposit/withdrawals',
-    note: '提交保证金提现申请',
-    handler: (request) => {
-      const body = (request.body ?? {}) as {
-        amount_cny?: number
-        account_name?: string
-        account_no?: string
-        note?: string | null
-      }
-
-      const record = {
-        withdrawal_id: `WD-DEPOSIT-${Date.now()}`,
-        creator: DEV_USERNAME,
-        source: 'developer_order_deposit' as const,
-        amount_cny: Number(body.amount_cny) || 0,
-        channel: 'adapay' as const,
-        account_name: body.account_name ?? '',
-        account_no: body.account_no ?? '',
-        account_no_masked: `****${(body.account_no ?? '').slice(-4)}`,
-        status: 'pending_review' as const,
-        note: body.note ?? null,
-        review_note: null,
-        reviewed_by: null,
-        reviewed_at: null,
-        paid_reference: null,
-        paid_at: null,
-        payout_failure_message: null,
-        created_at: nowText(),
-        updated_at: nowText(),
-      }
-
-      return jsonResponse(record)
-    },
-  },
-  {
-    method: 'GET',
-    path: '/dev/payments/withdrawals',
-    note: '收益提现记录',
-    handler: () =>
-      jsonResponse({
-        withdrawable_balance_cny: devWallet.withdrawable_balance_cny,
-        pending_withdraw_cny: devWallet.pending_withdraw_cny,
-        paid_withdraw_cny: devWallet.paid_withdraw_cny,
-        withdrawals: devWithdrawals,
-      }),
-  },
-  {
-    method: 'POST',
-    path: '/dev/payments/withdrawals',
+    path: '/payment/withdrawals',
     note: '提交收益提现申请：写进记录列表并计入待处理金额',
     handler: (request) => {
       const body = (request.body ?? {}) as {
-        amount_cny?: number
-        channel?: 'alipay' | 'wechat' | 'adapay'
-        account_name?: string
-        account_no?: string
+        amount_fen?: number
         note?: string | null
       }
-      const amount = Number(body.amount_cny) || 0
+      const amountFen = Number(body.amount_fen) || 0
+      const amount = amountFen / 100
 
       const record = {
         withdrawal_id: `WD-${Date.now()}`,
         creator: DEV_USERNAME,
-        amount_cny: amount,
-        channel: body.channel ?? 'adapay',
-        account_name: body.account_name ?? '',
-        account_no: body.account_no ?? '',
-        account_no_masked: `****${(body.account_no ?? '').slice(-4)}`,
+        amount_fen: amountFen,
+        account_name: '开发者',
+        account_no_tail: '3445',
         status: 'pending_review' as const,
-        note: body.note ?? null,
-        review_note: null,
-        reviewed_by: null,
-        reviewed_at: null,
-        paid_reference: null,
-        paid_at: null,
-        payout_failure_message: null,
-        payout_started_at: null,
+        status_label: '待审核',
+        note: body.note ?? '',
+        review_note: '',
+        payout_failure_reason: null,
         payout_attempts: 0,
-        created_at: nowText(),
-        updated_at: nowText(),
+        created_time: nowText(),
+        paid_time: null,
       }
 
       devWithdrawals.unshift(record)
@@ -131,19 +67,19 @@ export const devPaymentRoutes: MockRoute[] = [
   },
   {
     method: 'GET',
-    path: '/dev/payments/withdrawal-limits',
-    note: '提现限额与通道开关',
+    path: '/payment/withdrawal-limits/system',
+    note: '提现限额（契约 `WithdrawalConfig`）',
     handler: () => jsonResponse(devWithdrawalLimits),
   },
   {
     method: 'GET',
-    path: '/dev/payments/withdrawal-setting',
+    path: '/payment/withdrawal-setting',
     note: '自动提现设置',
     handler: () => jsonResponse(devWithdrawalSetting),
   },
   {
     method: 'PATCH',
-    path: '/dev/payments/withdrawal-setting',
+    path: '/payment/withdrawal-setting',
     note: '开关自动提现',
     handler: (request) => {
       const body = (request.body ?? {}) as { auto_withdraw_enabled?: boolean }
@@ -156,12 +92,20 @@ export const devPaymentRoutes: MockRoute[] = [
     },
   },
   {
-    method: 'GET',
-    path: '/dev/payments/withdrawals/:id',
-    note: '单条提现详情（预留）',
+    method: 'DELETE',
+    path: '/payment/withdrawals/:id',
+    note: '删除提现单：只允许删「钱还没动过」的单（待审核 / 已驳回）',
     handler: (_request, params) => {
-      const record = devWithdrawals.find((item) => item.withdrawal_id === params.id)
-      return record ? jsonResponse(record) : noContentResponse()
+      const index = devWithdrawals.findIndex((item) => item.withdrawal_id === params.id)
+      const record = index >= 0 ? devWithdrawals[index] : null
+      if (!record) {
+        return errorResponse(404, '提现单不存在')
+      }
+      if (record.status !== 'pending_review' && record.status !== 'rejected') {
+        return errorResponse(409, '这笔提现的钱已经动过，不能删除')
+      }
+      devWithdrawals.splice(index, 1)
+      return noContentResponse()
     },
   },
 ]

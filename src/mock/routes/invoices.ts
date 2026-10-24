@@ -44,7 +44,6 @@ function buildInvoice(
   return {
     id,
     invoiceNo: `INV-MOCK-${String(id).padStart(4, '0')}`,
-    paymentId: null,
     contractId,
     requirementId,
     invoiceRole: role,
@@ -53,6 +52,7 @@ function buildInvoice(
     developerUsername: DEV_USERNAME,
     issuerName: role === 'platform' ? MOCK_ISSUER : MOCK_ISSUER,
     developerType: 'individual',
+    titleType: 'personal',
     invoiceTitle: `${CLIENT_NICKNAME}（演示）`,
     taxNumber: '',
     recipientEmail: 'client@example.com',
@@ -75,9 +75,6 @@ function buildInvoice(
     reversalReason: null,
     reversedAt: null,
     reversedBy: null,
-    currentInvoiceableFen: fenOf(amountCny),
-    reversalSuggestionFen: 0,
-    reversalRequired: false,
   }
 }
 
@@ -152,16 +149,14 @@ function buildSummary(requirementId: string): InvoiceableSummary | null {
     platformFeeCny: platformFee.toFixed(2),
     developerGrossAmountFen: fenOf(developerGross),
     developerGrossAmountCny: developerGross.toFixed(2),
-    developerPayoutFen: 0,
-    developerPayoutCny: '0.00',
+    refundedFen: 0,
+    refundedCny: '0.00',
     developerInvoiceFen: fenOf(developerGross),
     developerInvoiceCny: developerGross.toFixed(2),
     invoiceableTotalFen: fenOf(pendingTotal),
     invoiceableTotalCny: pendingTotal.toFixed(2),
     invoiceAvailable,
     requirementStatus: requirement.status,
-    pendingRefundFen: 0,
-    pendingRefundCny: '0.00',
     platformInvoice: platformInvoice ?? null,
     developerInvoice: developerInvoice ?? null,
   }
