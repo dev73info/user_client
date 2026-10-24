@@ -1,8 +1,5 @@
 import { HttpError } from '@/api/http'
-import type {
-  ResourceTransferPayload,
-  ResourceTransferStatus,
-} from '@/api/resourceTransfers'
+import type { ResourceTransferPayload, ResourceTransferStatus } from '@/api/resourceTransfers'
 import { readBackendErrorText } from '@/shared/backendErrorText'
 
 /** 发起过户表单里选中的接收方（用户名与团队二选一）。 */
@@ -106,7 +103,10 @@ export function describeTransferError(
       return { message: '登录状态已失效，请重新登录', needRefresh: false }
     }
     if (error.status === 403) {
-      return { message: '只有过户的接收方本人（或该团队的管理者）可以处理这条申请', needRefresh: false }
+      return {
+        message: '只有过户的接收方本人（或该团队的管理者）可以处理这条申请',
+        needRefresh: false,
+      }
     }
     if (error.status === 404 && (!body || body === 'not found' || body === 'Not Found')) {
       return { message: '过户申请不存在或已被删除', needRefresh: true }

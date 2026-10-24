@@ -11,11 +11,7 @@ import { readErrorShape, toApiErrorShape } from '@/shared/api/httpError'
 import { AUTH_UNAUTHORIZED_EVENT } from '@/shared/api/authEvents'
 
 /** 用最小响应替身：jsdom 里不保证有全局 `Response`，这里只实现被测代码用到的成员。 */
-function response(
-  status: number,
-  body = '',
-  headers: Record<string, string> = {},
-): Response {
+function response(status: number, body = '', headers: Record<string, string> = {}): Response {
   return {
     ok: status >= 200 && status < 300,
     status,
@@ -51,14 +47,20 @@ describe('错误结构：HttpError', () => {
 describe('错误结构：readErrorShape', () => {
   it('JSON 错误体带 code / message / field 时按结构取', async () => {
     const shape = await readErrorShape(
-      response(400, JSON.stringify({ code: 'INVALID_ARGUMENT', message: '金额不合法', field: 'amount' })),
+      response(
+        400,
+        JSON.stringify({ code: 'INVALID_ARGUMENT', message: '金额不合法', field: 'amount' }),
+      ),
       '兜底文案',
     )
     expect(shape).toEqual({ code: 'INVALID_ARGUMENT', message: '金额不合法', field: 'amount' })
   })
 
   it('JSON 错误体没有这些字段时按 detail 取文案，不把 JSON 原文塞给用户', async () => {
-    const shape = await readErrorShape(response(500, JSON.stringify({ detail: 'boom' })), '兜底文案')
+    const shape = await readErrorShape(
+      response(500, JSON.stringify({ detail: 'boom' })),
+      '兜底文案',
+    )
     expect(shape.code).toBe('HTTP_500')
     expect(shape.message).toBe('boom')
     expect(shape.field).toBeUndefined()
@@ -99,7 +101,10 @@ describe('请求层：失败时抛结构化错误', () => {
     vi.stubGlobal(
       'fetch',
       vi.fn(async () =>
-        response(422, JSON.stringify({ code: 'INVALID_ARGUMENT', message: '金额不合法', field: 'amount' })),
+        response(
+          422,
+          JSON.stringify({ code: 'INVALID_ARGUMENT', message: '金额不合法', field: 'amount' }),
+        ),
       ),
     )
     await expect(requestJson('/payment/orders', {}, '创建支付订单失败')).rejects.toMatchObject({
@@ -111,7 +116,10 @@ describe('请求层：失败时抛结构化错误', () => {
   })
 
   it('纯文本错误体用原文 + HTTP_<status> 兜底', async () => {
-    vi.stubGlobal('fetch', vi.fn(async () => response(400, '合同不存在或已被删除')))
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => response(400, '合同不存在或已被删除')),
+    )
     await expect(requestJson('/contract/detail', {}, '加载合同失败')).rejects.toMatchObject({
       status: 400,
       code: 'HTTP_400',
@@ -120,7 +128,10 @@ describe('请求层：失败时抛结构化错误', () => {
   })
 
   it('requestText 失败时同样抛 HttpError', async () => {
-    vi.stubGlobal('fetch', vi.fn(async () => response(500, '服务器开小差了')))
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => response(500, '服务器开小差了')),
+    )
     await expect(requestText('/payment/callback', {}, '加载支付回调失败')).rejects.toBeInstanceOf(
       HttpError,
     )
@@ -129,13 +140,19 @@ describe('请求层：失败时抛结构化错误', () => {
 
 describe('请求层：requestBlob', () => {
   it('成功时返回二进制内容', async () => {
-    vi.stubGlobal('fetch', vi.fn(async () => response(200, 'file-bytes')))
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => response(200, 'file-bytes')),
+    )
     const blob = await requestBlob('/resource/file', {}, '下载文件失败')
     expect(await blob.text()).toBe('file-bytes')
   })
 
   it('失败时抛结构化错误', async () => {
-    vi.stubGlobal('fetch', vi.fn(async () => response(404, '文件不存在')))
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => response(404, '文件不存在')),
+    )
     await expect(requestBlob('/resource/file', {}, '下载文件失败')).rejects.toMatchObject({
       status: 404,
       code: 'HTTP_404',
@@ -150,7 +167,10 @@ describe('请求层：401 分流', () => {
     async (path) => {
       const listener = vi.fn()
       window.addEventListener(AUTH_UNAUTHORIZED_EVENT, listener)
-      vi.stubGlobal('fetch', vi.fn(async () => response(401, '用户名或密码错误')))
+      vi.stubGlobal(
+        'fetch',
+        vi.fn(async () => response(401, '用户名或密码错误')),
+      )
 
       await expect(requestJson(path, {}, '登录失败')).rejects.toMatchObject({
         status: 401,
@@ -164,7 +184,10 @@ describe('请求层：401 分流', () => {
   it('受保护接口的 401 派发未授权事件并抛统一文案', async () => {
     const listener = vi.fn()
     window.addEventListener(AUTH_UNAUTHORIZED_EVENT, listener)
-    vi.stubGlobal('fetch', vi.fn(async () => response(401, '令牌已失效')))
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => response(401, '令牌已失效')),
+    )
 
     await expect(requestJson('/requirement/mine', {}, '加载我的需求失败')).rejects.toMatchObject({
       status: 401,
