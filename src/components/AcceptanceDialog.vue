@@ -7,12 +7,12 @@
  */
 import { ref, watch } from 'vue'
 
+import type { AdapayAcceptanceResult } from '@/api/adapay'
 import {
-  acceptAdapayDelivery,
-  listAdapayAcceptances,
-  type AdapayAcceptanceRecord,
-  type AdapayAcceptanceResult,
-} from '@/api/adapay'
+  listRequirementAcceptances,
+  submitRequirementAcceptance,
+  type RequirementAcceptanceHistoryItem,
+} from '@/api/requirements'
 import { formatCnDateTime } from '@/shared/requirementDisplay'
 import { TMessage } from 'ui_73info'
 
@@ -32,7 +32,7 @@ const emit = defineEmits<{
 const result = ref<AdapayAcceptanceResult>('passed')
 const note = ref('')
 const submitting = ref(false)
-const records = ref<AdapayAcceptanceRecord[]>([])
+const records = ref<RequirementAcceptanceHistoryItem[]>([])
 const recordsLoading = ref(false)
 
 /** 每次打开都回到「验收通过 + 空说明」，并重新拉一遍历史留档。 */
@@ -56,7 +56,9 @@ async function loadRecords() {
 
   recordsLoading.value = true
   try {
-    records.value = await listAdapayAcceptances(props.token, props.requirementId)
+    // 契约 AcceptanceListResponse 的 history：每次验收的历史（含打回），按时间倒序。
+    const list = await listRequirementAcceptances(props.token, props.requirementId)
+    records.value = list.history ?? []
   } catch (error) {
     // 历史留档只是辅助信息，取不到不挡本次验收。
     TMessage.error(error instanceof Error ? error.message : '加载验收记录失败')
@@ -83,10 +85,22 @@ async function submit() {
 
   submitting.value = true
   try {
-    await acceptAdapayDelivery(props.token, props.requirementId, result.value, note.value.trim())
+    const outcome = await submitRequirementAcceptance(
+      props.token,
+      props.requirementId,
+      result.value,
+      note.value.trim(),
+    )
     const rejected = result.value === 'rejected'
+    // 打回成功的响应里带整改截止时间；详情响应里暂时还没有这个字段（后端在补），
+    // 所以只在这一次提示里展示「整改截止」，刷新后不显示倒计时。
+    const dueAt = outcome.remediation_due_at ? formatCnDateTime(outcome.remediation_due_at) : ''
     TMessage.success(
-      rejected ? '已记下验收结论，开发者会收到整改通知' : '验收已通过，请继续支付尾款',
+      rejected
+        ? dueAt
+          ? `已打回，开发者会收到整改通知（整改截止 ${dueAt}）`
+          : '已记下验收结论，开发者会收到整改通知'
+        : '验收已通过，请继续支付尾款',
     )
     emit('submitted', result.value)
     emit('close')
@@ -112,13 +126,21 @@ async function submit() {
         <p class="pay-line"><strong>需求编号：</strong>{{ requirementId }}</p>
 
         <div class="acceptance-modal__choice" role="group" aria-label="验收结论">
-          <button class="acceptance-modal__choice-btn" :class="{ 'is-active': result === 'passed' }" type="button"
-            @click="result = 'passed'">
+          <button
+            class="acceptance-modal__choice-btn"
+            :class="{ 'is-active': result === 'passed' }"
+            type="button"
+            @click="result = 'passed'"
+          >
             验收通过
             <small>推进到待付尾款，随后可继续支付尾款</small>
           </button>
-          <button class="acceptance-modal__choice-btn" :class="{ 'is-active': result === 'rejected' }" type="button"
-            @click="result = 'rejected'">
+          <button
+            class="acceptance-modal__choice-btn"
+            :class="{ 'is-active': result === 'rejected' }"
+            type="button"
+            @click="result = 'rejected'"
+          >
             验收不通过
             <small>只留档并通知开发者整改，需求留在开发中</small>
           </button>
@@ -126,10 +148,16 @@ async function submit() {
 
         <label class="pay-line acceptance-modal__field">
           <strong>验收说明</strong>
-          <textarea v-model="note" rows="4" maxlength="1000"
-            :placeholder="result === 'rejected'
-              ? '请写明需要整改的问题，开发者会收到整改通知'
-              : '可选：记录本次验收的范围与结论'"></textarea>
+          <textarea
+            v-model="note"
+            rows="4"
+            maxlength="1000"
+            :placeholder="
+              result === 'rejected'
+                ? '请写明需要整改的问题，开发者会收到整改通知'
+                : '可选：记录本次验收的范围与结论'
+            "
+          ></textarea>
         </label>
 
         <p class="tip">
@@ -152,13 +180,10 @@ async function submit() {
                 <strong :class="record.result === 'passed' ? 'is-passed' : 'is-rejected'">
                   {{ record.result === 'passed' ? '验收通过' : '验收不通过' }}
                 </strong>
-                <time>{{ formatCnDateTime(record.createdAt) }}</time>
+                <time>{{ formatCnDateTime(record.recorded_at) }}</time>
               </div>
-              <p class="acceptance-modal__record-version">
-                交付版本：{{ record.resourceVersion?.trim() || '未记录' }}
-              </p>
               <p v-if="record.note">{{ record.note }}</p>
-              <small>提交人：{{ record.submittedBy }}</small>
+              <small>提交人：{{ record.actor }}</small>
             </li>
           </ul>
         </div>
@@ -203,10 +228,10 @@ async function submit() {
   gap: 4px;
   min-height: 64px;
   padding: 12px 14px;
-  border: 1px solid rgba(209, 220, 243, 0.95);
+  border: 1px solid color-mix(in srgb, var(--73-accent-soft) 95%, transparent);
   border-radius: 14px;
-  background: #ffffff;
-  color: #334155;
+  background: var(--73-surface-strong);
+  color: var(--73-ink-soft);
   font-size: 14px;
   font-weight: 800;
   text-align: left;
@@ -218,17 +243,17 @@ async function submit() {
 }
 
 .pay-modal .acceptance-modal__choice-btn small {
-  color: #64748b;
+  color: var(--73-ink-muted);
   font-size: 12px;
   font-weight: 600;
   line-height: 1.5;
 }
 
 .pay-modal .acceptance-modal__choice-btn.is-active {
-  border-color: rgba(37, 99, 235, 0.62);
-  background: rgba(239, 246, 255, 0.96);
-  color: #1d4ed8;
-  box-shadow: 0 8px 18px rgba(37, 99, 235, 0.1);
+  border-color: color-mix(in srgb, var(--73-accent) 62%, transparent);
+  background: color-mix(in srgb, var(--73-accent-soft) 96%, transparent);
+  color: var(--73-accent);
+  box-shadow: 0 8px 18px color-mix(in srgb, var(--73-accent) 10%, transparent);
 }
 
 .pay-modal .acceptance-modal__field {
@@ -239,7 +264,7 @@ async function submit() {
 }
 
 .pay-modal .acceptance-modal__field > strong {
-  color: #64748b;
+  color: var(--73-ink-muted);
   font-size: 13px;
   font-weight: 700;
 }
@@ -248,9 +273,9 @@ async function submit() {
 .pay-modal .acceptance-modal__history {
   margin-top: 16px;
   padding: 12px 14px;
-  border: 1px solid rgba(226, 232, 240, 0.95);
+  border: 1px solid color-mix(in srgb, var(--73-border) 95%, transparent);
   border-radius: 14px;
-  background: rgba(248, 250, 252, 0.72);
+  background: color-mix(in srgb, var(--73-surface-strong) 72%, transparent);
 }
 
 .pay-modal .acceptance-modal__history-head {
@@ -258,21 +283,21 @@ async function submit() {
   align-items: center;
   justify-content: space-between;
   gap: 10px;
-  color: #0f172a;
+  color: var(--73-ink);
   font-size: 13px;
   font-weight: 800;
 }
 
 .pay-modal .acceptance-modal__history-head span,
 .pay-modal .acceptance-modal__history-head time {
-  color: #64748b;
+  color: var(--73-ink-muted);
   font-size: 12px;
   font-weight: 600;
 }
 
 .pay-modal .acceptance-modal__empty {
   margin: 10px 0 0;
-  color: #64748b;
+  color: var(--73-ink-muted);
   font-size: 13px;
 }
 
@@ -290,9 +315,9 @@ async function submit() {
   display: grid;
   gap: 4px;
   padding: 10px 12px;
-  border: 1px solid rgba(226, 232, 240, 0.95);
+  border: 1px solid color-mix(in srgb, var(--73-border) 95%, transparent);
   border-radius: 12px;
-  background: #ffffff;
+  background: var(--73-surface-strong);
 }
 
 .pay-modal .acceptance-modal__record-head {
@@ -304,29 +329,23 @@ async function submit() {
 
 .pay-modal .acceptance-modal__records p {
   margin: 0;
-  color: #334155;
+  color: var(--73-ink-soft);
   font-size: 13px;
   line-height: 1.6;
   overflow-wrap: anywhere;
 }
 
-.pay-modal .acceptance-modal__record-version {
-  color: #475569;
-  font-size: 12px;
-  font-weight: 600;
-}
-
 .pay-modal .acceptance-modal__records small {
-  color: #94a3b8;
+  color: var(--73-ink-placeholder);
   font-size: 12px;
 }
 
 .pay-modal .acceptance-modal__record-head strong.is-passed {
-  color: #15803d;
+  color: var(--73-success);
 }
 
 .pay-modal .acceptance-modal__record-head strong.is-rejected {
-  color: #b91c1c;
+  color: var(--73-danger);
 }
 
 @media (max-width: 640px) {

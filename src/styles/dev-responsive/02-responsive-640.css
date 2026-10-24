@@ -1,0 +1,199 @@
+/* R047 断点收敛：原档位 720px → 640px。
+   本文件原本相邻两块都写 720px（内容互不重叠），收档后按 R047 要求合并为一处，
+   免得同一档出现两个块、后来的人只改其中一块。 */
+@media (max-width: 640px) {
+  .dev-stack-item {
+    flex-direction: column;
+  }
+
+  .dev-stack-item__side {
+    min-width: 0;
+    text-align: left;
+  }
+
+  /* 面板形态的卡片（`.dev-surface-card`，含挂了这个类的 TCard）在窄屏收到 20px，
+     与桌面档 24px 同源，理由见 dev-base.css 里那条的注释。 */
+  .dev-surface-card:not(.el-card) {
+    padding: 20px;
+  }
+
+  .dev-page--publish .dev-upload-actions--split {
+    align-items: stretch;
+    flex-direction: row;
+  }
+
+  .dev-page--publish .dev-upload-actions__buttons {
+    justify-content: flex-end;
+  }
+
+  /* Tighten common page layouts on narrow screens */
+
+  /* 面板形态的卡片同上：再收到 16px */
+  .dev-surface-card:not(.el-card) {
+    padding: 16px;
+  }
+
+  /* 统一顶部信息条：单列，标签与数值左右对齐 */
+  .dev-meta-strip {
+    grid-template-columns: 1fr;
+    padding: 14px 16px;
+  }
+
+  .dev-meta-strip__item {
+    justify-content: space-between;
+    width: 100%;
+  }
+
+  /* 统一工具栏收成两行：搜索独占第一行，筛选与「重置」等操作共用第二行。
+     筛选平分剩余宽度，操作不换行、贴右。窄栏（.dev-toolbar--stacked）同一口径。 */
+  .dev-toolbar {
+    gap: 8px;
+    margin-bottom: 12px;
+  }
+
+  .dev-toolbar__field,
+  .dev-toolbar--stacked .dev-toolbar__field {
+    flex: 1 1 0;
+    min-width: 0;
+  }
+
+  .dev-toolbar__actions {
+    flex: 0 0 auto;
+    flex-wrap: nowrap;
+    gap: 8px;
+    margin-left: auto;
+  }
+
+  .dev-toolbar__hint {
+    white-space: nowrap;
+  }
+
+  /* 只有「搜索 + 一个筛选」的工具栏合成一行：搜索吃剩余宽度，筛选收窄。
+     两个以上筛选或胶囊组摆不下，仍走上面的两行。 */
+  .dev-toolbar:has(> .dev-toolbar__search):not(
+      :has(> .dev-toolbar__field ~ .dev-toolbar__field)
+    ):not(:has(> .dev-chip-group))
+    .dev-toolbar__search {
+    flex: 1 1 120px;
+    max-width: none;
+    order: 0;
+  }
+
+  /* 一行时筛选在搜索左边 */
+  .dev-toolbar:has(> .dev-toolbar__search):not(
+      :has(> .dev-toolbar__field ~ .dev-toolbar__field)
+    ):not(:has(> .dev-chip-group))
+    .dev-toolbar__field {
+    flex: 0 1 112px;
+    order: -1;
+  }
+
+  /* 带图标的操作按钮（重置）收成无框图标，与刷新按钮同一观感；文字只留给读屏 */
+  .dev-toolbar__actions .t73-button:has(.t73-icon + span),
+  .dev-toolbar__actions .t73-button:has(.t73-icon + span):hover,
+  .dev-toolbar__actions .t73-button:has(.t73-icon + span):focus-visible {
+    width: 36px;
+    padding: 0;
+    border-color: transparent !important;
+    background: transparent !important;
+    box-shadow: none !important;
+    color: var(--dev-muted);
+    font-size: 18px;
+  }
+
+  .dev-toolbar__actions .t73-button:has(.t73-icon + span):active {
+    background: color-mix(in srgb, var(--73-accent) 8%, transparent) !important;
+    color: var(--dev-blue);
+  }
+
+  .dev-toolbar__actions .t73-button:has(.t73-icon + span):disabled {
+    opacity: 0.45;
+  }
+
+  .dev-toolbar__actions .t73-button .t73-icon + span {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+  }
+
+  /* 筛选胶囊到触屏档加高一档（28px → 36px）：门户侧 .wb-chip--button 在同一断点也是 36px，
+     两边同断点必须同高，否则同一个状态筛选组换一次模式就矮掉 8px、指头点起来还不一样大。 */
+  .dev-chip--button {
+    min-height: 36px;
+  }
+
+  /* 统一卡片头：操作按钮跟在标题右边，收成紧凑尺寸，长文案省略而不撑出容器 */
+  .dev-card-head__actions .dev-btn {
+    flex: 0 1 auto;
+    min-width: 0;
+    max-width: 100%;
+    height: 36px;
+    min-height: 36px;
+    padding: 0 12px;
+    font-size: 13px;
+    white-space: nowrap;
+  }
+
+  .dev-card-head__actions .dev-btn > span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  /* 统一提示条：窄屏收窄内边距，动作按钮转到下一行并撑到触屏最小目标 */
+  /* 统一提示条：图标、文案、动作同一行；文案吃剩余宽度并在自身内折行，动作收成紧凑尺寸贴右 */
+  .dev-notice {
+    flex-wrap: nowrap;
+    gap: 10px;
+    padding: 10px 12px;
+    border-color: color-mix(in srgb, var(--73-warning) 18%, transparent);
+    border-radius: 14px;
+    background: var(--73-warning-soft);
+    box-shadow: none;
+  }
+
+  .dev-notice__icon {
+    flex-basis: 30px;
+    width: 30px;
+    height: 30px;
+    font-size: 16px;
+  }
+
+  .dev-notice__copy {
+    flex: 1 1 0;
+  }
+
+  .dev-notice__copy strong {
+    font-size: 14px;
+  }
+
+  .dev-notice__copy p {
+    font-size: 12px;
+  }
+
+  .dev-notice__action {
+    flex: 0 0 auto;
+    gap: 6px;
+  }
+
+  .dev-notice__action .t73-button,
+  .dev-notice__action .dev-btn {
+    height: 32px;
+    min-height: 32px;
+    padding: 0 12px;
+    font-size: 13px;
+    white-space: nowrap;
+  }
+
+  /* 统一表尾：计数与分页各占一行居中 */
+  .dev-pager {
+    justify-content: center;
+  }
+
+  .dev-pager__count {
+    width: 100%;
+    justify-content: space-between;
+  }
+}

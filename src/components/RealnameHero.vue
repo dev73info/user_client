@@ -5,6 +5,7 @@ import { TTag } from 'ui_73info'
 
 import { getMyAdapayMember } from '@/api/adapay'
 import { getMyRealnameVerification, type UserRealnameVerification } from '@/api/realname'
+import { isSettleRejected, isSettleUnderReview } from '@/shared/settleAccountStage'
 import { useAuthStore } from '@/stores/auth'
 
 const auth = useAuthStore()
@@ -93,11 +94,10 @@ const settleAccountText = computed(() => {
  * 所以这一格如实写「审核中」——写成「未设置」会让用户以为要自己再点一次绑定，
  * 而实际是渠道还没放行。（企业会员自 2026-10-05 起改在「结算账户」那一步创建，
  * 所以这条提示更常出现在个人主体上。）
+ *
+ * 口径见 `@/shared/settleAccountStage`，与账户页那一份同源。
  */
-const settleUnderReview = computed(() => {
-  const status = adapayMember.value?.onboardingStatus
-  return status === 'under_review' || status === 'pending'
-})
+const settleUnderReview = computed(() => isSettleUnderReview(adapayMember.value?.onboardingStatus))
 
 /**
  * 渠道已明确拒绝开通收款账户（企业开户审核未通过 / 审核通过但开户失败）。
@@ -105,8 +105,9 @@ const settleUnderReview = computed(() => {
  * 后端把渠道 `audit_state` 翻成了 `onboarding_status = failed` 与一句中文原因
  * （`providerError`）。这一格的价值在于：实名认证是「已通过」的，但收款账户并没有开通，
  * 只说实名那一句会让用户以为钱能收了。
+ * 口径见 `@/shared/settleAccountStage`。
  */
-const settleRejected = computed(() => adapayMember.value?.onboardingStatus === 'failed')
+const settleRejected = computed(() => isSettleRejected(adapayMember.value?.onboardingStatus))
 
 const heroDesc = computed(() => {
   if (current.value?.status === 'approved') {
@@ -185,17 +186,16 @@ onMounted(async () => {
 <style scoped>
 .realname-hero {
   display: grid;
-  grid-template-columns: minmax(0, 1.15fr) minmax(300px, 0.85fr);
+  /* R047：右列原为硬最小 300px，断点收到 640 后 641px 视口下左列只剩 252px。
+     改成 220px 下限 —— 桌面视觉不变（0.85fr 仍占主导），窄屏时两侧都能呼吸。 */
+  grid-template-columns: minmax(0, 1.15fr) minmax(220px, 0.85fr);
   gap: 24px;
   padding: 20px 24px;
   border-radius: 26px;
   border: 1px solid var(--73-border);
   /* 两团装饰性光晕没有对应的语义令牌（不是表面色也不是状态色），按原样保留；
      最底层那张半透明白卡走 --73-surface。 */
-  background:
-    radial-gradient(circle at top left, rgba(84, 124, 255, 0.16), transparent 30%),
-    radial-gradient(circle at bottom right, rgba(100, 213, 255, 0.12), transparent 26%),
-    var(--73-surface);
+  background: var(--73-app-grad-soft-15), var(--73-app-grad-soft-14), var(--73-surface);
   backdrop-filter: blur(var(--73-glass-blur));
   box-shadow: var(--73-shadow-card);
   align-items: center;
@@ -253,14 +253,15 @@ onMounted(async () => {
   font-size: 14px;
 }
 
-@media (max-width: 860px) {
+/* R047 断点收敛：原 860px → 640px（用户决定统一到 640）。
+   原先这里两块分别写着「860px 塌主栅格」和「720px 塌指标栅格」，本轮一起收到 640，
+   两块条件相同且相邻，按级联顺序合并成一块。 */
+@media (max-width: 640px) {
   .realname-hero {
     grid-template-columns: 1fr;
     padding: 22px;
   }
-}
 
-@media (max-width: 720px) {
   .realname-hero__metrics {
     grid-template-columns: 1fr;
   }

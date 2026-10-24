@@ -1,0 +1,181 @@
+.portal-spotlight-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  align-content: start;
+}
+
+.portal-pagination {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.portal-pagination__nav,
+.portal-pagination__page,
+.portal-pagination__ellipsis {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 30px;
+  border: 0;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--73-accent) 8%, transparent);
+  color: var(--73-accent);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1;
+  cursor: pointer;
+  transition:
+    background-color 140ms ease,
+    color 140ms ease,
+    box-shadow 140ms ease;
+}
+
+.portal-pagination__nav {
+  gap: 4px;
+  padding: 0 10px;
+}
+
+.portal-pagination__nav svg {
+  width: 13px;
+  height: 13px;
+}
+
+.portal-pagination__page {
+  min-width: 30px;
+  padding: 0 6px;
+  font-variant-numeric: tabular-nums;
+}
+
+.portal-pagination__ellipsis {
+  min-width: 26px;
+  padding: 0 4px;
+  letter-spacing: 0.08em;
+}
+
+.portal-pagination__nav:hover:not(:disabled),
+.portal-pagination__page:hover:not(.is-active),
+.portal-pagination__ellipsis:hover {
+  background: color-mix(in srgb, var(--73-accent) 16%, transparent);
+}
+
+.portal-pagination__nav:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.portal-pagination__page.is-active {
+  background: var(--73-app-grad-accent-13);
+  color: var(--73-surface-strong);
+  box-shadow: 0 6px 14px color-mix(in srgb, var(--73-accent) 28%, transparent);
+}
+
+.portal-pagination__jump-wrap {
+  position: relative;
+  display: inline-flex;
+}
+
+.portal-pagination__jump {
+  position: absolute;
+  bottom: calc(100% + 12px);
+  left: 50%;
+  z-index: 40;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 10px;
+  border: 1px solid color-mix(in srgb, var(--73-ink-disabled) 90%, transparent);
+  border-radius: 12px;
+  background: var(--73-surface-strong);
+  box-shadow: 0 14px 30px color-mix(in srgb, var(--73-ink) 14%, transparent);
+  transform: translateX(-50%);
+  animation: portal-pagination-jump-in 140ms ease both;
+  white-space: nowrap;
+}
+
+.portal-pagination__jump::after {
+  content: '';
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  width: 10px;
+  height: 10px;
+  background: var(--73-surface-strong);
+  border-right: 1px solid color-mix(in srgb, var(--73-ink-disabled) 90%, transparent);
+  border-bottom: 1px solid color-mix(in srgb, var(--73-ink-disabled) 90%, transparent);
+  border-bottom-right-radius: 2px;
+  transform: translate(-50%, -5px) rotate(45deg);
+}
+
+.portal-pagination__jump-label {
+  color: var(--73-ink-muted);
+  font-size: 12.5px;
+}
+
+.portal-pagination__jump-input {
+  width: 52px;
+  height: 28px;
+  padding: 0 8px;
+  border: 1px solid color-mix(in srgb, var(--73-ink-disabled) 95%, transparent);
+  border-radius: 8px;
+  background: var(--73-surface-strong);
+  color: var(--73-ink);
+  font: inherit;
+  font-size: 13px;
+  text-align: center;
+  outline: none;
+  transition:
+    border-color 140ms ease,
+    box-shadow 140ms ease;
+}
+
+.portal-pagination__jump-input:focus {
+  border-color: color-mix(in srgb, var(--73-accent) 60%, transparent);
+  background: var(--73-surface-strong);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--73-accent) 12%, transparent);
+}
+
+.portal-pagination__jump-input::-webkit-outer-spin-button,
+.portal-pagination__jump-input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.portal-pagination__jump-input[type='number'] {
+  appearance: textfield;
+  -moz-appearance: textfield;
+}
+
+.portal-pagination__jump-submit {
+  height: 28px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 8px;
+  background: var(--73-app-grad-accent-13);
+  color: var(--73-surface-strong);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition:
+    box-shadow 140ms ease,
+    transform 140ms ease;
+}
+
+.portal-pagination__jump-submit:hover {
+  box-shadow: 0 8px 16px color-mix(in srgb, var(--73-accent) 30%, transparent);
+  transform: translateY(-1px);
+}
+
+@keyframes portal-pagination-jump-in {
+  from {
+    opacity: 0;
+    transform: translate(-50%, 4px);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+}

@@ -1,4 +1,4 @@
-import type { RequirementPaymentMode } from '@/api/requirements'
+import type { RequirementPaymentMode, RequirementStatus } from '@/api/requirements'
 
 /** 与支付模式无关的状态文案；`deposit_paid` 一码两义，见下面的 `DEPOSIT_PAID_LABELS`。 */
 const REQUIREMENT_STATUS_LABELS: Record<string, string> = {
@@ -42,7 +42,10 @@ const DEPOSIT_PAID_UNKNOWN_MODE_LABEL = '已付定金 / 待开发'
  * `paymentMode` 可选：只有 `deposit_paid` 需要它来消歧（见上），其余状态给了也不影响结果。
  * 传了未知 / 缺失的模式时按「未知模式回退」处理，不猜单边含义。状态码本身不在表里时原样返回。
  */
-export function requirementStatusLabel(status: string, paymentMode?: RequirementPaymentMode): string {
+export function requirementStatusLabel(
+  status: string,
+  paymentMode?: RequirementPaymentMode,
+): string {
   if (status === 'deposit_paid') {
     return (paymentMode && DEPOSIT_PAID_LABELS[paymentMode]) || DEPOSIT_PAID_UNKNOWN_MODE_LABEL
   }
@@ -90,3 +93,73 @@ const REQUIREMENT_PROGRESS_PERCENT: Record<string, number> = {
 export function requirementProgressPercent(status: string): number {
   return REQUIREMENT_PROGRESS_PERCENT[status] ?? 0
 }
+
+/**
+ * 需求状态归到三个档位，每个状态都有归属、不留「其它」：
+ * - 审核中（pending）：待审核、已驳回（驳回后改了可再提审）
+ * - 开发中（active）：待签署 / 待付定金、定金已付待开发、开发中、待付尾款
+ *   （「待签署」没有独立状态，落在待付定金里）
+ * - 已完成（completed）：尾款已付待分账、已完成（含可评价）、已取消（终态）
+ *
+ * 「我的需求」页顶部读数条与状态筛选共用这一份定义：两边各写一遍的话，
+ * 同一批需求会算出两个数字。
+ */
+export type RequirementBucket = 'pending' | 'active' | 'completed'
+
+/** 状态筛选的取值：`all` 加上三个档位。 */
+export type RequirementFilterKey = 'all' | RequirementBucket
+
+/** 顶部读数条的四格读数（全部 = 三档之和）。 */
+export type RequirementBucketSummary = {
+  total: number
+  pending: number
+  active: number
+  completed: number
+}
+
+export function requirementBucketOf(status: RequirementStatus): RequirementBucket {
+  switch (status) {
+    case 'pending_review':
+    case 'rejected':
+      return 'pending'
+    case 'pending_deposit':
+    case 'deposit_paid':
+    case 'in_development':
+    case 'pending_final':
+      return 'active'
+    case 'pending_settlement':
+    case 'completed':
+    case 'cancelled':
+      return 'completed'
+  }
+}
+
+/** 一次算齐四格读数（纯函数，单测见 `__tests__/requirementStatus.spec.ts`）。 */
+export function summarizeRequirementBuckets(
+  items: ReadonlyArray<{ status: RequirementStatus }>,
+): RequirementBucketSummary {
+  const summary: RequirementBucketSummary = {
+    total: items.length,
+    pending: 0,
+    active: 0,
+    completed: 0,
+  }
+  for (const item of items) {
+    summary[requirementBucketOf(item.status)] += 1
+  }
+  return summary
+}
+
+export type RequirementFilterOption = {
+  value: RequirementFilterKey
+  label: string
+}
+
+/* 状态筛选走下拉（统一层 .wb-toolbar__field + el-select）：档位与顶部读数条同口径，
+   条数直接写进选项文案里。几档合计在上面读数条已经报过一遍，所以收起时只显示当前口径也不丢信息。 */
+export const REQUIREMENT_FILTER_OPTIONS: RequirementFilterOption[] = [
+  { value: 'all', label: '全部' },
+  { value: 'pending', label: '审核中' },
+  { value: 'active', label: '开发中' },
+  { value: 'completed', label: '已完成' },
+]

@@ -1,0 +1,42 @@
+.sold-purchases__refund-summary {
+  margin: 0 0 8px;
+  font-weight: 600;
+}
+
+.sold-purchases__refund-warning {
+  margin: 0 0 16px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: var(--73-warning-soft, color-mix(in srgb, var(--73-warning) 12%, transparent));
+  color: var(--73-warning, var(--73-warning));
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.sold-purchases__refund-error {
+  margin: 0 auto 0 0;
+  color: var(--73-danger, var(--73-danger));
+  font-size: 12px;
+  text-align: left;
+}
+
+.sold-purchases__confirm-list {
+  margin: 0 0 12px;
+}
+
+.sold-purchases__confirm-list > div {
+  display: flex;
+  gap: 12px;
+  padding: 6px 0;
+}
+
+.sold-purchases__confirm-list dt {
+  flex: 0 0 72px;
+  color: var(--dev-ink-muted, var(--73-ink-muted));
+  font-size: 12px;
+}
+
+.sold-purchases__confirm-list dd {
+  margin: 0;
+  word-break: break-all;
+}

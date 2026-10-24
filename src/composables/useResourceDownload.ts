@@ -1,8 +1,11 @@
 import { HttpError } from '@/api/http'
 import {
+  downloadPublicMcResourceVersionFile,
+  extractResourceFileNameFromUrl,
   resolveResourceDownloadFileName,
   with73Extension,
   type DownloadProgress,
+  type PublicMcResourceVersionItem,
 } from '@/api/resources'
 import { useAuthStore } from '@/stores/auth'
 import { useDownloadStore } from '@/stores/download'
@@ -18,7 +21,9 @@ export function useResourceDownload() {
   const downloadStore = useDownloadStore()
 
   async function triggerDownload(
-    run: (onProgress: (progress: DownloadProgress) => void) => Promise<{ blob: Blob; fileName: string }>,
+    run: (
+      onProgress: (progress: DownloadProgress) => void,
+    ) => Promise<{ blob: Blob; fileName: string }>,
     fileName: string,
   ) {
     const downloadFileName = with73Extension(fileName)
@@ -62,5 +67,23 @@ export function useResourceDownload() {
     }
   }
 
-  return { triggerDownload }
+  /**
+   * 下载某个资源版本的交付文件（需求行「下载」与版本列表共用）。
+   *
+   * 文件名优先用资源 URL 还原出的真实文件名（`resource-<id>-<版本号>` 只在取不到时兜底），
+   * 进度条、落盘与 401 处理都走上面的 `triggerDownload`，不另开一条下载链。
+   */
+  async function downloadResourceVersion(
+    resourceId: number,
+    version: PublicMcResourceVersionItem,
+    token: string | null,
+  ) {
+    await triggerDownload(
+      (onProgress) =>
+        downloadPublicMcResourceVersionFile(resourceId, version.id, token, onProgress),
+      extractResourceFileNameFromUrl(version.resource, `resource-${resourceId}-${version.version}`),
+    )
+  }
+
+  return { triggerDownload, downloadResourceVersion }
 }

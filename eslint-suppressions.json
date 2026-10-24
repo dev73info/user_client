@@ -1,0 +1,12 @@
+{
+  "src/types/markdown-it.d.ts": {
+    "@typescript-eslint/no-require-imports": {
+      "count": 1
+    }
+  },
+  "src/utils/richTextEditorExtensions.ts": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 2
+    }
+  }
+}

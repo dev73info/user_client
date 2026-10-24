@@ -1,0 +1,204 @@
+/* 左侧标签筛选菜单的样式：分组标题、折叠箭头、选中态竖条、子项胶囊与「清空」。
+   随模板节点从 `ResourceCatalog.vue` 搬来，类名与声明未改。 */
+
+.portal-resource-browser__filters {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 14px;
+  border-radius: 12px;
+  position: sticky;
+  top: 86px;
+}
+
+.portal-resource-browser__menu {
+  display: grid;
+  gap: 6px;
+}
+
+.portal-resource-browser__menu-group {
+  display: grid;
+  gap: 6px;
+}
+
+.portal-resource-browser__menu-head {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.portal-resource-browser__menu-badge {
+  flex: 0 0 auto;
+  display: inline-grid;
+  place-items: center;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: var(--accent);
+  color: var(--73-surface-strong);
+  font-size: 11px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+/* 单组「全清」：只在有选中时出现，避免占掉组标题的位置 */
+.portal-resource-browser__menu-clear {
+  flex: 0 0 auto;
+  height: 24px;
+  padding: 0 8px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--73-ink-muted);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition:
+    background 160ms ease,
+    color 160ms ease;
+}
+
+.portal-resource-browser__menu-clear:hover {
+  background: color-mix(in srgb, var(--73-accent) 8%, transparent);
+  color: var(--accent);
+}
+
+.portal-resource-browser__menu-trigger {
+  position: sticky;
+  top: 86px;
+  z-index: 2;
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 36px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  /* 常驻 1px 透明描边：选中 / 悬停只换描边色，不用阴影也不用内描边环 */
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--73-ink-soft);
+  cursor: pointer;
+  text-align: left;
+  transition:
+    background 180ms ease,
+    border-color 180ms ease,
+    color 180ms ease,
+    transform 180ms ease;
+}
+
+/* 折叠指示箭头：折叠朝下、展开朝上。
+   原来这四个分组只是一行粗体字，没有任何"可点开"的提示 */
+.portal-resource-browser__menu-trigger::after {
+  content: '';
+  justify-self: end;
+  width: 7px;
+  height: 7px;
+  margin-right: 3px;
+  border-right: 2px solid currentColor;
+  border-bottom: 2px solid currentColor;
+  border-radius: 1px;
+  opacity: 0.45;
+  transform: rotate(45deg) translate(-1px, -1px);
+  transition:
+    transform 180ms ease,
+    opacity 180ms ease;
+}
+
+.portal-resource-browser__menu-group--open > .portal-resource-browser__menu-trigger::after {
+  opacity: 0.9;
+  transform: rotate(-135deg) translate(-1px, -1px);
+}
+
+.portal-resource-browser__menu-trigger::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 9px;
+  bottom: 9px;
+  width: 3px;
+  border-radius: 999px;
+  background: var(--73-accent);
+  opacity: 0;
+  transform: scaleY(0.45);
+  transform-origin: center;
+  transition:
+    opacity 180ms ease,
+    transform 180ms ease;
+}
+
+.portal-resource-browser__menu-trigger:hover,
+.portal-resource-browser__menu-trigger--active,
+.portal-resource-browser__menu-group--open > .portal-resource-browser__menu-trigger {
+  background: color-mix(in srgb, var(--73-accent-soft) 96%, transparent);
+  color: var(--73-accent);
+  border-color: color-mix(in srgb, var(--73-accent-soft) 52%, transparent);
+}
+
+.portal-resource-browser__menu-trigger:hover {
+  transform: translateX(2px);
+}
+
+.portal-resource-browser__menu-trigger--active::before,
+.portal-resource-browser__menu-group--open > .portal-resource-browser__menu-trigger::before {
+  opacity: 1;
+  transform: scaleY(1);
+}
+
+.portal-resource-browser__menu-title {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 13px;
+  font-weight: 800;
+  color: var(--73-ink-soft);
+}
+
+.portal-resource-browser__submenu {
+  display: grid;
+  gap: 6px;
+  margin-left: 12px;
+  padding-left: 12px;
+  border-left: 1px solid color-mix(in srgb, var(--73-accent-soft) 95%, transparent);
+}
+
+.portal-resource-browser__submenu-link {
+  width: 100%;
+  min-height: 34px;
+  border: 0;
+  border-radius: 10px;
+  padding: 7px 10px;
+  background: transparent;
+  color: var(--73-ink-soft);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 800;
+  text-align: left;
+  cursor: pointer;
+  transition:
+    background 180ms ease,
+    color 180ms ease,
+    transform 180ms ease;
+}
+
+.portal-resource-browser__submenu-link:hover {
+  transform: translateX(2px);
+}
+
+.portal-resource-browser__submenu-link:hover,
+.portal-resource-browser__submenu-link--active {
+  background: color-mix(in srgb, var(--73-accent-soft) 96%, transparent);
+  color: var(--73-accent);
+}
+
+@media (max-width: 900px) {
+  .portal-resource-browser__filters {
+    position: static;
+    max-height: none;
+  }
+}

@@ -1,0 +1,67 @@
+---
+name: branch-and-merge
+description: 从 develop 开分支、提交、推分支、开 PR（base=develop）、跑门禁、请求独立审阅、合并的完整一条龙。开始任何"改进/新增/修复"之前用它；不确定该不该开分支、PR base 写什么、能不能自己合并时也用它。
+---
+
+# 开分支 → 门禁 → PR → 独立审阅 → 合并
+
+本仓（user_client）的集成分支是 `develop`，稳定线是 `master`。**改动一律走分支 + PR**。
+
+## 一、开工前 30 秒
+
+```bash
+pwd                                                       # 在本仓根
+git fetch origin
+git status --porcelain && git branch --show-current        # 有别人的脏改动？别动它
+git log --oneline -1 origin/develop                        # 基线在哪
+```
+
+- 当前已经在 `develop` / `master` 上 → **必须新建分支**，不要在集成分支上直接改。
+- 工作区有不是本次的改动 → 不要提交、不要还原，在回复里说明；需要干净基线时开 worktree。
+
+## 二、开分支
+
+```bash
+git switch develop && git pull --ff-only          # 基线必须是最新 origin/develop
+git switch -c feat/r0xx-<简称>                     # fix/… chore/… docs/… refactor/…
+```
+
+命名：`feat/<需求号>-<简称>`、`fix/<缺陷号>-<简称>`、`chore/…`、`docs/…`、`refactor/…`。
+一条分支只做一件事；跨仓需求各仓用**同名**分支。`hotfix/` 从 `master` 切。
+
+## 三、做 + 验
+
+1. 改代码，`git add <具体文件>`（禁止 `git add -A`），`git diff --cached --check` 后提交；
+2. 提交信息：Conventional Commits 前缀 + 中文简述，一个提交一件事，**不写任何工具或 agent 署名**；
+3. 跑门禁：见技能 `gate`（提交前 `pnpm gate:quick`，开 PR 前 `pnpm gate`）。
+
+## 四、推分支 + 开 PR
+
+```bash
+git fetch origin && git rebase origin/develop
+git push -u origin HEAD
+gh pr create --base develop --head "$(git branch --show-current)" \
+  --title '[需求号] 类型(范围): 中文简述' \
+  --body-file "$TMPDIR/pr-body.md" --draft
+```
+
+- **base 写 `develop`**（`hotfix/` 才是 `master`）。仓的默认分支是 `master`，
+  所以**不要靠 `gh` 推断 base**，一定显式写 `--base develop`；
+- 正文按根仓 `docs/开发流程/PR模板.md` 五段填，写到**仓库外**的临时文件再 `--body-file`；
+- 门禁绿了再 `gh pr ready <编号>` 并请求审阅；跨仓 PR 互相贴链接。
+
+## 五、合并
+
+1. **必须由另一个会话 / 子代理 / 人审阅**，拿到 `PASS` 结论才合并——
+   执行代理**不给自己写 PASS**，也不自己点合并；
+2. 合并用 squash；合并后删掉远端分支；
+3. 合并进 `develop` 之后才能说「已完成」；只在分支上、PR 开着都叫「待验收」。
+
+## 六、不能自己决定的三件事
+
+推 `develop` / `master`、改别人的分支、**改 PR 的目标分支**——先问用户。
+
+## 七、收尾
+
+- 清掉临时脚本与走查截图（`.playwright-mcp/`、散落的 `*.png`）；
+- 把证据与结论回写到对应的需求/任务文件里；任务文件在根仓 `docs/任务/` 下（根仓无远程，只 commit）。

@@ -6,18 +6,19 @@
  * `limit` / `offset`，总数在响应头 `X-Total-Count`），前端只负责控件与展示——
  * 订单多起来之后不再一次性把全部订单平铺出来。
  * 页面形态对齐「我的需求」（`MyRequirementsView.vue`）的工具栏 + 列表 + 分页器。
+ *
+ * 取数、统计、防抖与分页都在 `useMyResourcePurchases`；使用权转移弹窗在
+ * `PurchaseTransferDialog`。本页只剩控件、列表行与两个入口。
  */
-import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
-import WorkbenchBarSlot from '@/components/WorkbenchBarSlot.vue'
+import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 
-import {
-  countMyResourcePurchases,
-  listMyResourcePurchasesPage,
-  type ResourcePurchaseOrder,
-} from '@/api/resourcePurchase'
+import type { ResourcePurchaseOrder } from '@/api/resourcePurchase'
 import { getResourceDetailSlug } from '@/api/resourceTags'
-import { DEFAULT_LIST_PAGE_SIZE, LIST_PAGE_SIZES } from '@/composables/useClientPagination'
+import PurchaseStatsStrip from '@/components/payment/PurchaseStatsStrip.vue'
+import PurchaseTransferDialog from '@/components/payment/PurchaseTransferDialog.vue'
+import { LIST_PAGE_SIZES } from '@/composables/useClientPagination'
+import { useMyResourcePurchases } from '@/composables/useMyResourcePurchases'
 import { useAuthStore } from '@/stores/auth'
 import {
   fenToYuanText,
@@ -27,13 +28,11 @@ import {
 } from '@/shared/resourceSale'
 
 import {
-  Refresh,
   RefreshLeft,
   Search,
   TButton,
   TIcon,
   TInput,
-  TMessage,
   TOption,
   TPagination,
   TSelect,
@@ -53,139 +52,36 @@ const STATUS_FILTERS: { value: string; label: string }[] = [
   { value: 'failed', label: resourcePurchaseStatusLabel('failed') },
 ]
 
-/** 搜索输入防抖时长：够短不至于觉得迟钝，够长不至于每敲一个字打一次接口。 */
-const SEARCH_DEBOUNCE_MS = 300
+const {
+  loading,
+  statsLoading,
+  orders,
+  total,
+  page,
+  pageSize,
+  statusFilter,
+  keyword,
+  stats,
+  hasActiveFilters,
+  reload,
+  resetFilters,
+} = useMyResourcePurchases()
 
-const loading = ref(false)
-const statsLoading = ref(false)
-const orders = ref<ResourcePurchaseOrder[]>([])
-/** 当前筛选条件下的订单总数（来自响应头 X-Total-Count），分页器据此渲染页码 */
-const total = ref(0)
-const page = ref(1)
-const pageSize = ref(DEFAULT_LIST_PAGE_SIZE)
-const statusFilter = ref('all')
-const keyword = ref('')
+/* R042 使用权转移：只有接口资源且已支付的订单可以发起。 */
+const transferOpen = ref(false)
+const transferOrder = ref<ResourcePurchaseOrder | null>(null)
 
-/** 页头读数条：分状态总数（同样取服务端 X-Total-Count，不受当前筛选影响） */
-const stats = ref({ all: 0, paid: 0, refunding: 0, refunded: 0 })
-
-const hasActiveFilters = computed(
-  () => keyword.value.trim() !== '' || statusFilter.value !== 'all',
-)
-
-function stripValue(count: number) {
-  return statsLoading.value ? '—' : String(count)
+function canTransfer(order: ResourcePurchaseOrder): boolean {
+  return isApiResourcePurchaseOrder(order) && order.status === 'paid'
 }
 
-async function loadOrders() {
-  auth.hydrate()
-  if (!auth.token.trim()) {
-    return
-  }
-  const seq = ++loadSeq
-  loading.value = true
-  try {
-    const result = await listMyResourcePurchasesPage(auth.token, {
-      status: statusFilter.value === 'all' ? undefined : statusFilter.value,
-      keyword: keyword.value.trim() || undefined,
-      limit: pageSize.value,
-      offset: (page.value - 1) * pageSize.value,
-    })
-    if (seq !== loadSeq) {
-      // 期间又发了新请求，这次的结果已经过期
-      return
-    }
-    orders.value = result.items
-    total.value = result.total
-  } catch (error) {
-    if (seq !== loadSeq) {
-      return
-    }
-    TMessage.error(error instanceof Error ? error.message : '加载已购资源失败')
-  } finally {
-    if (seq === loadSeq) {
-      loading.value = false
-    }
-  }
+function openTransfer(order: ResourcePurchaseOrder) {
+  transferOrder.value = order
+  transferOpen.value = true
 }
 
-/** 读数条的分状态统计：每个状态取一次总数（`limit=1`，只要响应头里的 total）。 */
-async function loadStats() {
-  auth.hydrate()
-  if (!auth.token.trim()) {
-    return
-  }
-  statsLoading.value = true
-  try {
-    const [all, paid, refunding, refunded] = await Promise.all([
-      countMyResourcePurchases(auth.token),
-      countMyResourcePurchases(auth.token, { status: 'paid' }),
-      countMyResourcePurchases(auth.token, { status: 'refunding' }),
-      countMyResourcePurchases(auth.token, { status: 'refunded' }),
-    ])
-    stats.value = { all, paid, refunding, refunded }
-  } catch (error) {
-    TMessage.error(error instanceof Error ? error.message : '加载已购资源统计失败')
-  } finally {
-    statsLoading.value = false
-  }
-}
-
-function reload() {
-  void Promise.all([loadOrders(), loadStats()])
-}
-
-let searchTimer: ReturnType<typeof setTimeout> | null = null
-/** 同一次交互里可能同时触发多个 watcher；用 nextTick 合并成一次请求。 */
-let loadQueued = false
-/** 请求序号：响应回来时若已不是最新一次，就丢弃，避免慢响应覆盖新结果。 */
-let loadSeq = 0
-
-function queueLoad() {
-  if (loadQueued) {
-    return
-  }
-  loadQueued = true
-  void nextTick(() => {
-    loadQueued = false
-    void loadOrders()
-  })
-}
-
-/* 筛选条件一变就回到第 1 页，否则从第 3 页开始筛会直接看到一张空列表。 */
-watch(statusFilter, () => {
-  page.value = 1
-  queueLoad()
-})
-
-watch(pageSize, () => {
-  page.value = 1
-  queueLoad()
-})
-
-watch(page, queueLoad)
-
-/* 关键词防抖：输入停止后再请求，避免逐字打接口。 */
-watch(keyword, () => {
-  if (searchTimer) {
-    clearTimeout(searchTimer)
-  }
-  searchTimer = setTimeout(() => {
-    searchTimer = null
-    page.value = 1
-    queueLoad()
-  }, SEARCH_DEBOUNCE_MS)
-})
-
-function resetFilters() {
-  if (searchTimer) {
-    clearTimeout(searchTimer)
-    searchTimer = null
-  }
-  keyword.value = ''
-  statusFilter.value = 'all'
-  page.value = 1
-  queueLoad()
+function goTransfers() {
+  void router.push({ name: 'workbench-purchase-transfers' })
 }
 
 function openResource(order: ResourcePurchaseOrder) {
@@ -196,49 +92,16 @@ function openResource(order: ResourcePurchaseOrder) {
     },
   })
 }
-
-onMounted(() => {
-  reload()
-})
-
-onBeforeUnmount(() => {
-  if (searchTimer) {
-    clearTimeout(searchTimer)
-    searchTimer = null
-  }
-})
 </script>
 
 <template>
   <main class="page-shell custom-page-shell profile-page" :aria-busy="loading">
-    <WorkbenchBarSlot>
-      <div class="wb-strip" aria-label="已购资源概览">
-        <div class="wb-strip__item">
-          <span class="wb-strip__label">订单数</span>
-          <span class="wb-strip__value">{{ stripValue(stats.all) }}</span>
-        </div>
-        <div class="wb-strip__divider" />
-        <div class="wb-strip__item">
-          <span class="wb-strip__label">有效已购</span>
-          <span class="wb-strip__value">{{ stripValue(stats.paid) }}</span>
-        </div>
-        <div class="wb-strip__divider" />
-        <div class="wb-strip__item">
-          <span class="wb-strip__label">退款中</span>
-          <span class="wb-strip__value">{{ stripValue(stats.refunding) }}</span>
-        </div>
-        <div class="wb-strip__divider" />
-        <div class="wb-strip__item">
-          <span class="wb-strip__label">已退款</span>
-          <span class="wb-strip__value">{{ stripValue(stats.refunded) }}</span>
-        </div>
-        <div class="wb-strip__item wb-strip__action">
-          <TButton icon-only :loading="loading || statsLoading" aria-label="刷新已购列表" @click="reload">
-            <TIcon><Refresh /></TIcon>
-          </TButton>
-        </div>
-      </div>
-    </WorkbenchBarSlot>
+    <PurchaseStatsStrip
+      :stats="stats"
+      :loading="loading"
+      :stats-loading="statsLoading"
+      @refresh="reload"
+    />
 
     <section class="wallet-section">
       <div class="wb-card-head">
@@ -272,7 +135,9 @@ onBeforeUnmount(() => {
           placeholder="搜索订单号或资源标题"
           aria-label="搜索已购订单"
         >
-          <template #prefix><TIcon><Search /></TIcon></template>
+          <template #prefix
+            ><TIcon><Search /></TIcon
+          ></template>
         </TInput>
         <div class="wb-toolbar__actions">
           <span v-if="hasActiveFilters" class="wb-toolbar__hint">
@@ -305,10 +170,16 @@ onBeforeUnmount(() => {
           <li v-for="order in orders" :key="order.order_no" class="wb-item">
             <div class="wb-item__main">
               <div class="wb-item__title-row">
-                <button type="button" class="wb-item__title purchases__title" @click="openResource(order)">
+                <button
+                  type="button"
+                  class="wb-item__title purchases__title"
+                  @click="openResource(order)"
+                >
                   {{ order.resource_title || `资源 #${order.resource_id}` }}
                 </button>
-                <span v-if="isApiResourcePurchaseOrder(order)" class="purchases__tag">接口资源</span>
+                <span v-if="isApiResourcePurchaseOrder(order)" class="purchases__tag"
+                  >接口资源</span
+                >
               </div>
               <span class="wb-item__meta">
                 订单 {{ order.order_no }} · {{ resourcePurchaseStatusLabel(order.status) }} ·
@@ -327,6 +198,9 @@ onBeforeUnmount(() => {
             </div>
             <div class="wb-item__actions">
               <TButton variant="outline" @click="openResource(order)">查看资源</TButton>
+              <TButton v-if="canTransfer(order)" variant="outline" @click="openTransfer(order)">
+                转移使用权
+              </TButton>
             </div>
           </li>
         </ul>
@@ -334,7 +208,12 @@ onBeforeUnmount(() => {
         <div class="wb-pager">
           <div class="wb-pager__count">
             <TSelect v-model="pageSize" class="wb-pager__size" aria-label="每页订单数">
-              <TOption v-for="size in LIST_PAGE_SIZES" :key="size" :label="`${size} 条/页`" :value="size" />
+              <TOption
+                v-for="size in LIST_PAGE_SIZES"
+                :key="size"
+                :label="`${size} 条/页`"
+                :value="size"
+              />
             </TSelect>
           </div>
           <TPagination
@@ -348,6 +227,13 @@ onBeforeUnmount(() => {
         </div>
       </template>
     </section>
+
+    <PurchaseTransferDialog
+      v-model:open="transferOpen"
+      :order="transferOrder"
+      :token="auth.token"
+      @submitted="goTransfers"
+    />
   </main>
 </template>
 
@@ -375,9 +261,9 @@ onBeforeUnmount(() => {
   flex: 0 0 auto;
   padding: 2px 8px;
   border-radius: 999px;
-  border: 1px solid rgba(147, 197, 253, 0.85);
-  background: rgba(239, 246, 255, 0.92);
-  color: #1d4ed8;
+  border: 1px solid color-mix(in srgb, var(--73-accent) 85%, transparent);
+  background: color-mix(in srgb, var(--73-accent-soft) 92%, transparent);
+  color: var(--73-accent);
   font-size: 12px;
   font-weight: 700;
   line-height: 1.5;

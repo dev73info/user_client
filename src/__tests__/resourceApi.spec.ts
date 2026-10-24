@@ -3,11 +3,13 @@ import { describe, expect, it } from 'vitest'
 import {
   API_CALLBACK_SIGNATURE_RULE,
   API_INTEGRATION_GUIDE_PATH,
+  API_OPEN_PURCHASE_ALIAS_PATH,
   API_OPEN_PURCHASE_PATH,
   buildApiIntegrationPrompt,
   findInvalidAllowedOrigin,
   formatAllowedOriginsText,
   isApiResourceKind,
+  isResourceRowActionAvailable,
   isValidAllowedOrigin,
   isValidCallbackUrl,
   listApiChannelBlockers,
@@ -27,6 +29,23 @@ describe('resourceApi', () => {
     expect(resourceKindLabel('api')).toBe('接口资源')
     expect(resourceKindLabel('normal')).toBe('普通资源')
     expect(resourceKindLabel(undefined)).toBe('普通资源')
+  })
+
+  it('isResourceRowActionAvailable：接口资源藏掉版本 / 道具卡 / 过户，其余动作照常', () => {
+    // 接口资源没有可下载文件、不进公开面、渠道配置不随归属走
+    for (const action of ['publish', 'versions', 'use-promo', 'transfer'] as const) {
+      expect(isResourceRowActionAvailable(action, 'api')).toBe(false)
+    }
+    // 仍成立的四项：审核、上下架、订单、删除
+    for (const action of ['request-review', 'set-private', 'sold-orders', 'delete'] as const) {
+      expect(isResourceRowActionAvailable(action, 'api')).toBe(true)
+    }
+    // 普通资源（含缺省 / 脏值）一项都不藏
+    for (const kind of ['normal', null, undefined, ''] as const) {
+      for (const action of ['publish', 'versions', 'use-promo', 'transfer'] as const) {
+        expect(isResourceRowActionAvailable(action, kind)).toBe(true)
+      }
+    }
   })
 
   it('resourceKindFromQuery 只认 api，其余一律普通', () => {
@@ -165,14 +184,35 @@ describe('resourceApi', () => {
     ).toEqual(['未配置回调地址，暂不可被下单', '未配置允许来源，暂不可被下单'])
   })
 
-  it('buildApiIntegrationPrompt 带上指导文档、接口密钥与接入地址', () => {
+  it('buildApiIntegrationPrompt 与 2.0 开放接口契约一致', () => {
     const prompt = buildApiIntegrationPrompt(88, { apiBase: 'https://api.73info.cn/' })
 
     expect(prompt).toContain(`https://api.73info.cn${API_INTEGRATION_GUIDE_PATH}`)
-    expect(prompt).toContain('X-Api-Key')
-    expect(prompt).toContain('sk-73info-')
+    // 2.0 只认 Authorization 头：Basic 客户端凭据 / Bearer 用户令牌，X-Api-Key 已取消
+    expect(prompt).toContain('Authorization')
+    expect(prompt).toContain('client_id:client_secret')
+    expect(prompt).toContain('不再使用 X-Api-Key')
+    expect(prompt).not.toContain('sk-73info-')
+    // 下单走正式路径，兼容别名只作备注
     expect(prompt).toContain(`POST https://api.73info.cn${API_OPEN_PURCHASE_PATH}`)
+    expect(API_OPEN_PURCHASE_PATH).toBe('/api/resource/open/purchases')
+    expect(prompt).toContain(API_OPEN_PURCHASE_ALIAS_PATH)
     expect(prompt).toContain('resource_id = 88')
+    // 2.0 的另外三个端点
+    expect(prompt).toContain('/open/users/ensure')
+    expect(prompt).toContain('/open/orders/{order_no}')
+    expect(prompt).toContain('/open/checkout/exchange')
+    // 2.0 不再自动建号：未绑定返回 409
+    expect(prompt).toContain('409')
+    // 下单返回 checkout_url（票据 10 分钟一次性），不再有 pay_url
+    expect(prompt).toContain('checkout_url')
+    expect(prompt).toContain('10 分钟')
+    expect(prompt).not.toContain('pay_url')
+    // 回调：四个头 + 签名口径 + 不可当唯一入账依据
+    expect(prompt).toContain('X-73Info-Signature')
+    expect(prompt).toContain(API_CALLBACK_SIGNATURE_RULE)
+    expect(prompt).toContain('原始请求体重算')
+    expect(prompt).toContain('不影响收款与分账')
     // 不再组装 curl：旧示例里的调用体字段不应再出现在提示词里
     expect(prompt).not.toContain('curl')
     // 资源编号未知时用占位符，不要让开发者抄到一条假编号

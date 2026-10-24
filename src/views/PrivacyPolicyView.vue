@@ -1,47 +1,74 @@
 <script setup lang="ts">
+import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
+import { fetchAgreementContent, type AgreementContent } from '@/api/auth'
 import { privacyDocument } from '@/shared/legalContent'
+import { legalDocumentToBlocks, parseLegalText } from '@/components/legal/legalText'
 
 const router = useRouter()
-const policy = privacyDocument
+
+/**
+ * 正文来源：后端 `contract_template` 的 `privacy_policy` 行是**唯一事实源**
+ * （R043 任务-02 入库、任务-03 切读）。接口不可用时才回落到前端 JSON 兜底快照。
+ */
+const agreement = ref<AgreementContent | null>(null)
+const loading = ref(true)
+
+const blocks = computed(() =>
+  agreement.value
+    ? parseLegalText(agreement.value.content)
+    : legalDocumentToBlocks(privacyDocument),
+)
+const title = computed(() => agreement.value?.title || privacyDocument.heading)
+const version = computed(() => agreement.value?.version || '')
+const effectiveAt = computed(() => agreement.value?.effective_at || '')
+
+async function loadAgreement() {
+  loading.value = true
+  try {
+    agreement.value = await fetchAgreementContent('privacy_policy')
+  } catch {
+    agreement.value = null
+  } finally {
+    loading.value = false
+  }
+}
+
+onMounted(loadAgreement)
 
 function goBack() {
-    if (window.history.state?.back) {
-        router.back()
-        return
-    }
+  if (window.history.state?.back) {
+    router.back()
+    return
+  }
 
-    router.push('/')
+  router.push('/')
 }
 </script>
 
 <template>
-    <main class="page-shell">
-        <section class="panel">
-            <header class="panel-head">
-                <div>
-                    <h2>{{ policy.heading }}</h2>
-                </div>
-                <button class="top-back" type="button" @click="goBack">返回</button>
-            </header>
+  <main class="page-shell">
+    <section class="panel">
+      <header class="panel-head">
+        <div>
+          <h2>{{ title }}</h2>
+        </div>
+        <button class="top-back" type="button" @click="goBack">返回</button>
+      </header>
 
-            <article class="content-block">
-                <!-- 正文出自 src/shared/legalContent.json：SPA 与构建期静态快照共用同一份文案 -->
-                <template v-for="(block, index) in policy.blocks" :key="index">
-                    <h3 v-if="block.type === 'heading'">{{ block.text }}</h3>
-                    <p v-else-if="block.type === 'effective'">
-                        <strong>{{ block.label }}：</strong>{{ block.text }}
-                    </p>
-                    <ul v-else-if="block.type === 'list'">
-                        <li v-for="(item, itemIndex) in block.items" :key="itemIndex">{{ item }}</li>
-                    </ul>
-                    <p v-else-if="block.type === 'paragraph'">{{ block.text }}</p>
-                    <p v-else-if="block.type === 'paragraph-link'">
-                        {{ block.before
-                        }}<RouterLink :to="block.to">{{ block.linkText }}</RouterLink>{{ block.after }}
-                    </p>
-                </template>
-            </article>
-        </section>
-    </main>
+      <article class="content-block">
+        <p v-if="version"><strong>版本号：</strong>{{ version }}</p>
+        <p v-if="effectiveAt"><strong>生效日期：</strong>{{ effectiveAt }}</p>
+        <p v-if="loading" class="legal-loading">政策内容加载中…</p>
+
+        <template v-for="(block, index) in blocks" :key="index">
+          <h3 v-if="block.type === 'heading'" :id="block.id">{{ block.text }}</h3>
+          <ul v-else-if="block.type === 'list'">
+            <li v-for="(item, itemIndex) in block.items" :key="itemIndex">{{ item }}</li>
+          </ul>
+          <p v-else>{{ block.text }}</p>
+        </template>
+      </article>
+    </section>
+  </main>
 </template>

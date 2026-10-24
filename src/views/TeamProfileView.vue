@@ -1,11 +1,10 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
+import { useRoute } from 'vue-router'
 
 import { apiUrl, requestJson } from '@/api/http'
 import { listAllPublicMcResources, type PublicMcResourceItem } from '@/api/resources'
-import { getResourceDetailSlug, getTagRouteSlug } from '@/api/resourceTags'
-import { resourceDetailLocation, resourceListingSaleOf } from '@/shared/resourceNavigation'
+import TeamPublicResourceCard from '@/components/team/TeamPublicResourceCard.vue'
 import { TLoading, TMessage } from 'ui_73info'
 
 interface TeamPublicProfile {
@@ -19,7 +18,6 @@ interface TeamPublicProfile {
 }
 
 const route = useRoute()
-const router = useRouter()
 
 const teamId = computed(() => Number(route.params.teamId))
 const loading = ref(false)
@@ -28,9 +26,7 @@ const allResources = ref<PublicMcResourceItem[]>([])
 const failedAvatarUrl = ref(false)
 
 const teamResources = computed(() =>
-  allResources.value.filter(
-    (r) => r.ownership_type === 'team' && r.team_id === teamId.value,
-  ),
+  allResources.value.filter((r) => r.ownership_type === 'team' && r.team_id === teamId.value),
 )
 
 const stats = computed(() => ({
@@ -63,32 +59,6 @@ onMounted(async () => {
 
 function onAvatarError() {
   failedAvatarUrl.value = true
-}
-
-function openResource(resource: PublicMcResourceItem) {
-  const selections = resource.tag_selections ?? []
-  const rootName = selections.find((s) => s.group_path.length > 0)?.group_path[0] ?? ''
-  const entryName = selections.find((s) => s.group_path.length > 1)?.group_path[1] ?? (resource.platform || '')
-  const rootAlias = selections.find((s) => (s.group_path_aliases?.length ?? 0) > 0)?.group_path_aliases?.[0] ?? ''
-  const entryAlias = selections.find((s) => (s.group_path_aliases?.length ?? 0) > 1)?.group_path_aliases?.[1] ?? ''
-  const rootSlug = rootAlias || getTagRouteSlug(rootName)
-  const entrySlug = entryAlias || getTagRouteSlug(entryName)
-  const resourceSlug = getResourceDetailSlug(resource.id, resource.creator || resource.author)
-
-  // 资源没有分类标签时分类段是空字符串，push 带分类的路由会抛 `Missing required param "rootSlug"`。
-  if (!rootSlug || !entrySlug) {
-    void router.push({ name: 'resource-detail-direct', params: { resourceSlug } })
-    return
-  }
-
-  void router.push(
-    resourceDetailLocation({
-      resourceId: resource.id,
-      rootSlug,
-      entrySlug,
-      sale: resourceListingSaleOf(resource.price_fen, resource.price_points),
-    }),
-  )
 }
 </script>
 
@@ -141,32 +111,11 @@ function openResource(resource: PublicMcResourceItem) {
         <p>该团队暂未发布公开资源</p>
       </div>
       <div v-else class="team-profile__resource-grid">
-        <article
+        <TeamPublicResourceCard
           v-for="resource in teamResources"
           :key="resource.id"
-          class="team-profile__resource-card"
-          @click="openResource(resource)"
-        >
-          <div class="team-profile__resource-cover-wrap">
-            <img
-              v-if="resource.cover_url"
-              :src="apiUrl(resource.cover_url)"
-              :alt="resource.title"
-              class="team-profile__resource-cover"
-            />
-            <span v-else class="team-profile__resource-cover team-profile__resource-cover--text">
-              {{ resource.title.slice(0, 1).toUpperCase() }}
-            </span>
-          </div>
-          <div class="team-profile__resource-body">
-            <h3 class="team-profile__resource-title">{{ resource.title }}</h3>
-            <p class="team-profile__resource-desc">{{ resource.description || '暂无简介' }}</p>
-            <div class="team-profile__resource-meta">
-              <span>{{ resource.platform }}</span>
-              <span>{{ resource.like_count }} 赞</span>
-            </div>
-          </div>
-        </article>
+          :resource="resource"
+        />
       </div>
     </section>
   </TLoading>
@@ -185,10 +134,10 @@ function openResource(resource: PublicMcResourceItem) {
   align-items: center;
   gap: 20px;
   padding: 28px 32px;
-  border: 1px solid rgba(226, 232, 240, 0.96);
+  border: 1px solid color-mix(in srgb, var(--73-border) 96%, transparent);
   border-radius: 16px;
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.98), rgba(248, 250, 252, 0.94));
-  box-shadow: 0 4px 16px rgba(15, 23, 42, 0.04);
+  background: var(--73-app-grad-soft-71);
+  box-shadow: 0 4px 16px color-mix(in srgb, var(--73-ink) 4%, transparent);
 }
 
 .team-profile__avatar-wrap {
@@ -202,7 +151,7 @@ function openResource(resource: PublicMcResourceItem) {
   height: 72px;
   border-radius: 50%;
   object-fit: cover;
-  border: 2px solid rgba(96, 165, 250, 0.4);
+  border: 2px solid color-mix(in srgb, var(--73-accent) 40%, transparent);
   display: block;
 }
 
@@ -210,8 +159,8 @@ function openResource(resource: PublicMcResourceItem) {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(135deg, #7c3aed, #6366f1);
-  color: #fff;
+  background: var(--73-app-grad-accent-17);
+  color: var(--73-surface-strong);
   font-size: 28px;
   font-weight: 700;
 }
@@ -224,12 +173,12 @@ function openResource(resource: PublicMcResourceItem) {
   margin: 0 0 4px;
   font-size: 28px;
   font-weight: 700;
-  color: #0f172a;
+  color: var(--73-ink);
 }
 
 .team-profile__desc {
   margin: 0 0 6px;
-  color: #475569;
+  color: var(--73-ink-soft);
   font-size: 14px;
   line-height: 1.5;
 }
@@ -240,7 +189,7 @@ function openResource(resource: PublicMcResourceItem) {
   flex-wrap: wrap;
   gap: 12px;
   font-size: 13px;
-  color: #94a3b8;
+  color: var(--73-ink-placeholder);
 }
 
 .team-profile__stats {
@@ -251,9 +200,9 @@ function openResource(resource: PublicMcResourceItem) {
 
 .team-profile__stat {
   padding: 20px 16px;
-  border: 1px solid rgba(226, 232, 240, 0.96);
+  border: 1px solid color-mix(in srgb, var(--73-border) 96%, transparent);
   border-radius: 12px;
-  background: rgba(255, 255, 255, 0.92);
+  background: color-mix(in srgb, var(--73-surface-strong) 92%, transparent);
   text-align: center;
   display: grid;
   gap: 4px;
@@ -262,27 +211,27 @@ function openResource(resource: PublicMcResourceItem) {
 .team-profile__stat strong {
   font-size: 28px;
   font-weight: 700;
-  color: #0f172a;
+  color: var(--73-ink);
 }
 
 .team-profile__stat span {
   font-size: 13px;
-  color: #64748b;
+  color: var(--73-ink-muted);
 }
 
 .team-profile__section-title {
   margin: 0 0 14px;
   font-size: 18px;
   font-weight: 700;
-  color: #0f172a;
+  color: var(--73-ink);
 }
 
 .team-profile__empty {
   padding: 48px 16px;
-  border: 1px dashed rgba(148, 163, 184, 0.36);
+  border: 1px dashed color-mix(in srgb, var(--73-ink-placeholder) 36%, transparent);
   border-radius: 12px;
   text-align: center;
-  color: #94a3b8;
+  color: var(--73-ink-placeholder);
   font-size: 14px;
 }
 
@@ -290,84 +239,6 @@ function openResource(resource: PublicMcResourceItem) {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
   gap: 14px;
-}
-
-.team-profile__resource-card {
-  border: 1px solid rgba(226, 232, 240, 0.96);
-  border-radius: 12px;
-  background: rgba(255, 255, 255, 0.94);
-  overflow: hidden;
-  cursor: pointer;
-  transition:
-    border-color 0.18s ease,
-    box-shadow 0.18s ease,
-    transform 0.18s ease;
-}
-
-.team-profile__resource-card:hover {
-  border-color: rgba(99, 102, 241, 0.36);
-  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.08);
-  transform: translateY(-2px);
-}
-
-.team-profile__resource-cover-wrap {
-  width: 100%;
-  height: 160px;
-  border-bottom: 1px solid rgba(226, 232, 240, 0.6);
-  overflow: hidden;
-}
-
-.team-profile__resource-cover {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  display: block;
-}
-
-.team-profile__resource-cover--text {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: linear-gradient(135deg, #f5f3ff, #ede9fe);
-  color: #a78bfa;
-  font-size: 36px;
-  font-weight: 700;
-  object-fit: unset;
-}
-
-.team-profile__resource-body {
-  padding: 14px 16px;
-  display: grid;
-  gap: 6px;
-}
-
-.team-profile__resource-title {
-  margin: 0;
-  font-size: 15px;
-  font-weight: 700;
-  color: #0f172a;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.team-profile__resource-desc {
-  margin: 0;
-  font-size: 13px;
-  color: #64748b;
-  line-height: 1.5;
-  display: -webkit-box;
-  overflow: hidden;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
-}
-
-.team-profile__resource-meta {
-  display: flex;
-  gap: 12px;
-  font-size: 12px;
-  color: #94a3b8;
-  padding-top: 4px;
 }
 
 @media (max-width: 640px) {

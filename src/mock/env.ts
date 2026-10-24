@@ -83,6 +83,16 @@ export function mockSupported(): boolean {
 }
 
 /**
+ * 左上角的 mock 身份切换悬浮窗是否显示。
+ *
+ * 与 mock 开关**分开**：有些场合只要假数据、不想让悬浮窗挡住页面（截图对照、走查、演示），
+ * 设 `VITE_MOCK_SWITCHER=false` 即可隐藏；不写就保持默认显示。
+ */
+export function mockSwitcherEnabled(): boolean {
+  return import.meta.env.VITE_MOCK_SWITCHER !== 'false'
+}
+
+/**
  * mock 开关的判定口径。纯函数，不读环境、不写存储，便于把优先级钉进单测。
  *
  * 优先级：地址参数 → 会话覆盖 → 环境变量；三者都没表态就是关。

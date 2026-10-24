@@ -1,0 +1,145 @@
+.attachment-panel {
+  margin: 24px 0;
+  padding: 18px 20px;
+  border: 1px solid var(--73-ink-disabled);
+  border-left: 3px solid var(--73-success);
+  border-radius: 8px;
+  background: var(--73-surface-strong);
+}
+
+.attachment-panel__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.attachment-panel__head h3 {
+  margin: 0;
+  font-size: 15px;
+  color: var(--73-ink);
+}
+
+.attachment-panel__badge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 22px;
+  padding: 0 10px;
+  border-radius: 999px;
+  border: 1px solid var(--73-ink-disabled);
+  background: var(--73-surface-strong);
+  color: var(--73-ink-soft);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.attachment-panel__badge--pending {
+  border-color: var(--73-warning);
+  background: var(--73-warning-soft);
+  color: var(--73-danger);
+}
+
+.attachment-panel__badge--approved {
+  border-color: var(--73-success);
+  background: var(--73-success-soft);
+  color: var(--73-success);
+}
+
+.attachment-panel__badge--rejected {
+  border-color: var(--73-danger-soft);
+  background: var(--73-danger-soft);
+  color: var(--73-danger);
+}
+
+.attachment-panel__rule {
+  margin: 12px 0 16px;
+  padding: 10px 12px;
+  border-radius: 6px;
+  background: var(--73-surface-strong);
+  color: var(--73-ink-soft);
+  font-size: 12.5px;
+  line-height: 1.7;
+}
+
+.attachment-panel__empty {
+  margin: 0 0 12px;
+  color: var(--73-ink-muted);
+  font-size: 13px;
+  line-height: 1.7;
+}
+
+.attachment-card {
+  border: 1px solid var(--73-border);
+  border-radius: 8px;
+  background: var(--73-surface-strong);
+  padding: 14px 16px;
+}
+
+.attachment-card__facts {
+  margin: 0;
+  display: grid;
+  gap: 10px;
+}
+
+.attachment-card__facts > div {
+  display: grid;
+  grid-template-columns: 150px minmax(0, 1fr);
+  gap: 10px;
+  font-size: 13px;
+}
+
+.attachment-card__facts dt {
+  color: var(--73-ink-muted);
+}
+
+.attachment-card__facts dd {
+  margin: 0;
+  color: var(--73-ink);
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.attachment-card__hash {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--73-accent);
+}
+
+.attachment-note {
+  margin: 12px 0 0;
+  font-size: 13px;
+  line-height: 1.7;
+}
+
+.attachment-note--pending {
+  color: var(--73-danger);
+}
+
+.attachment-note--approved {
+  color: var(--73-success);
+}
+
+.attachment-note--rejected {
+  color: var(--73-danger);
+}
+
+.attachment-note--locked {
+  margin: 12px 0 0;
+  color: var(--73-warning-text);
+}
+
+.attachment-note__reason {
+  margin: 6px 0 0;
+  padding: 8px 10px;
+  border-radius: 6px;
+  background: var(--73-danger-soft);
+  color: var(--73-danger);
+}
+
+.attachment-card__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 14px;
+}

@@ -1,0 +1,95 @@
+.invoice-panel {
+  display: grid;
+  gap: 14px;
+  border: 1px solid var(--73-border);
+  border-radius: 12px;
+  background: var(--73-surface-strong);
+  padding: 18px;
+  box-shadow: 0 12px 30px color-mix(in srgb, var(--73-ink) 6%, transparent);
+}
+
+.invoice-panel__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.invoice-panel h2 {
+  margin: 4px 0 0;
+}
+
+.invoice-panel__head strong {
+  color: var(--73-warning);
+  font-size: 13px;
+}
+
+.invoice-panel__hint {
+  color: var(--73-ink-muted);
+  font-size: 13px;
+  line-height: 1.6;
+  margin: 0;
+}
+
+.invoice-panel__notice {
+  margin: 0;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: var(--73-warning-soft);
+  color: var(--73-warning-text);
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+/* 自动预填的说明：只是交代抬头/税号从哪来，不抢警示色的注意力。 */
+.invoice-panel__prefill {
+  margin: 0;
+  color: var(--73-ink-muted);
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+/* 可开票金额：申请合并成一次动作后它是弹窗里唯一的主角，单独一块摆出来，
+   下面几行小字分别是「这笔钱要开成哪几张票」与「本需求结算合计的拆解」。 */
+.invoice-amount {
+  display: grid;
+  gap: 4px;
+  border: 1px solid var(--73-border);
+  border-radius: 10px;
+  padding: 12px 14px;
+  background: var(--73-surface-strong);
+}
+
+.invoice-amount__label {
+  color: var(--73-ink-muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.invoice-amount__value {
+  color: var(--73-ink);
+  font-size: 24px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.2;
+}
+
+.invoice-amount__note {
+  color: var(--73-ink-placeholder);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.invoice-panel__submit {
+  border: 0;
+  border-radius: 8px;
+  padding: 9px 14px;
+  background: var(--73-success);
+  color: var(--73-surface-strong);
+  cursor: pointer;
+}
+
+.invoice-panel__submit:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}

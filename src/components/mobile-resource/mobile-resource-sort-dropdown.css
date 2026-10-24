@@ -1,0 +1,12 @@
+/* 排序下拉的弹层样式（弹层 Teleport 到 body，拿不到组件作用域，所以是不带 scoped 的块）。
+   原样从 `MobileResourceList.vue` 的全局 style 块搬来，未改声明。 */
+
+.mobile-sort-dropdown {
+  border-radius: 14px !important;
+  border: 1px solid color-mix(in srgb, var(--73-accent-soft) 96%, transparent) !important;
+  background: color-mix(in srgb, var(--73-surface-strong) 98%, transparent) !important;
+  box-shadow: 0 14px 34px color-mix(in srgb, var(--73-accent) 14%, transparent) !important;
+  padding: 4px !important;
+  min-width: 0 !important;
+  width: auto !important;
+}

@@ -1,0 +1,190 @@
+/**
+ * 搜索结果页（/search）：页壳、结果分区与三支结果卡片的视觉。
+ *
+ * 从 `views/SearchResultsView.vue` 的 scoped 块整块搬来（R047），**取值一字未改**：
+ * 卡片 DOM 现在分布在 `components/search/*.vue`，三支卡片共用一个基座
+ * （`.portal-search-result-card` 的 min-height / 悬停 / 标题 / 摘要两行截断），
+ * 拆成三份 scoped 块就会同一条规则抄三遍——所以卡片视觉留在全局层，DOM 在组件里。
+ *
+ * 颜色一律取视图根上那套 `--sr-*` 自定义属性（声明在 `SearchResultsView.vue` 的
+ * scoped 块里，供本文件与弹窗共用）：本文件零裸色值，改色只改一处。
+ */
+
+.portal-search-page {
+  gap: 18px;
+}
+
+.portal-search-page__hero {
+  display: grid;
+  gap: 10px;
+}
+
+.portal-search-page__header {
+  margin-bottom: 0;
+}
+
+.portal-search-page__summary {
+  margin: 8px 0 0;
+  color: var(--sr-text-muted);
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.portal-search-page__section {
+  display: grid;
+  gap: 14px;
+}
+
+.portal-search-page__section .portal-page__section-header {
+  margin-bottom: 0;
+}
+
+.portal-search-page__grid {
+  gap: 14px;
+}
+
+/* ---------- 三支结果卡片的共用基座 ---------- */
+
+.portal-search-result-card {
+  min-height: 220px;
+  cursor: pointer;
+  transition:
+    border-color 180ms ease,
+    box-shadow 180ms ease,
+    transform 180ms ease;
+}
+
+.portal-search-result-card:hover,
+.portal-search-result-card:focus-visible {
+  border-color: var(--sr-card-hover-line);
+  box-shadow: 0 20px 42px var(--sr-card-hover-shadow);
+  outline: none;
+  transform: translateY(-2px);
+}
+
+.portal-search-result-card h3 {
+  margin: 0;
+  color: var(--sr-ink);
+  font-size: 20px;
+  line-height: 1.35;
+}
+
+/* 摘要固定两行高：一行与三行的卡片在栅格里高度一致。 */
+.portal-search-result-card p {
+  display: -webkit-box;
+  min-height: 44px;
+  margin: 0;
+  overflow: hidden;
+  color: var(--sr-text-muted);
+  line-height: 1.65;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+/* ---------- 资源卡片：左封面 + 右正文 ---------- */
+
+.portal-search-result-card--resource {
+  display: grid;
+  grid-template-columns: 128px minmax(0, 1fr);
+  gap: 16px;
+}
+
+.portal-search-result-card__cover {
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  min-height: 150px;
+  border-radius: 18px;
+  background: linear-gradient(135deg, var(--sr-cover-from), var(--sr-cover-to));
+  color: var(--sr-brand);
+  font-size: 22px;
+  font-weight: 900;
+}
+
+.portal-search-result-card__cover img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.portal-search-result-card__body {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* ---------- 标签行与元数据行（资源卡片的标签、需求卡片的编号 / 更新时间同款胶囊） ---------- */
+
+.portal-search-result-card__tags,
+.portal-search-result-card__meta-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.portal-search-result-card__tags span,
+.portal-search-result-card__meta-row span {
+  display: inline-flex;
+  align-items: center;
+  min-height: 26px;
+  padding: 4px 9px;
+  border-radius: 999px;
+  background: var(--sr-chip-bg);
+  color: var(--sr-ink-muted);
+  font-size: 12px;
+  font-weight: 800;
+  box-shadow: inset 0 0 0 1px var(--sr-chip-line);
+}
+
+/* ---------- 需求卡片右下角那个「查看需求」入口 ---------- */
+
+.portal-search-result-card__action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 32px;
+  padding: 0 13px;
+  border-radius: 999px;
+  background: var(--sr-action-bg);
+  color: var(--sr-brand);
+  font-size: 13px;
+  font-weight: 900;
+  line-height: 1;
+  box-shadow: inset 0 0 0 1px var(--sr-action-line);
+  transition:
+    background-color 160ms ease,
+    box-shadow 160ms ease,
+    color 160ms ease,
+    transform 160ms ease;
+}
+
+.portal-search-result-card__action::after {
+  content: '›';
+  margin-left: 6px;
+  font-size: 16px;
+  line-height: 1;
+}
+
+.portal-search-result-card:hover .portal-search-result-card__action,
+.portal-search-result-card:focus-visible .portal-search-result-card__action {
+  background: var(--sr-brand);
+  color: var(--sr-on-brand);
+  box-shadow: 0 8px 18px var(--sr-action-hover-shadow);
+  transform: translateX(1px);
+}
+
+/* R047 断点收敛：原 860px → 640px（用户决定统一到 640）。 */
+@media (max-width: 640px) {
+  .portal-search-page__grid {
+    grid-template-columns: 1fr;
+  }
+
+  .portal-search-result-card--resource {
+    grid-template-columns: 1fr;
+  }
+
+  .portal-search-result-card__cover {
+    min-height: 180px;
+  }
+}

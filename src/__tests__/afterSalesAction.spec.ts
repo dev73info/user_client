@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   afterSalesBadgeText,
+  countAwaitingCasesByRequirement,
   isAwaitingViewerAction,
   type AfterSalesActionSubject,
 } from '@/shared/afterSalesStatus'
@@ -67,5 +68,26 @@ describe('解除合作待办角标读数 afterSalesBadgeText', () => {
     expect(afterSalesBadgeText(1)).toBe('1')
     expect(afterSalesBadgeText(99)).toBe('99')
     expect(afterSalesBadgeText(100)).toBe('99+')
+  })
+})
+
+describe('解除合作待办按需求计数 countAwaitingCasesByRequirement', () => {
+  it('只数在等我动作的案件，同一需求多案累加、不产生空键', () => {
+    const counts = countAwaitingCasesByRequirement([
+      { ...caseOf(), requirementId: 'R1' },
+      { ...caseOf({ status: 'support_reviewing' }), requirementId: 'R1' },
+      // 已表态：不算待办，这条需求的计数不该被它拉高。
+      { ...caseOf({ developerDecision: 'accept' }), requirementId: 'R1' },
+      // 别的需求的案件不该混进来。
+      { ...caseOf({ developerDecision: 'reject' }), requirementId: 'R2' },
+    ])
+    expect(counts).toEqual({ R1: 2 })
+  })
+
+  it('一件待办都没有时返回空对象，角标据此不渲染', () => {
+    expect(countAwaitingCasesByRequirement([])).toEqual({})
+    expect(
+      countAwaitingCasesByRequirement([{ ...caseOf({ viewerRole: null }), requirementId: 'R1' }]),
+    ).toEqual({})
   })
 })

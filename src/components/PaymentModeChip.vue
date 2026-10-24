@@ -42,12 +42,12 @@ const label = computed(() => requirementPaymentModeLabel(props.mode))
 }
 
 .pay-mode-chip--platform_guarantee {
-  background: rgba(187, 247, 208, 0.6);
-  color: #166534;
+  background: color-mix(in srgb, var(--73-success) 60%, transparent);
+  color: var(--73-success);
 }
 
 .pay-mode-chip--self_managed {
-  background: rgba(253, 230, 138, 0.55);
-  color: #92400e;
+  background: color-mix(in srgb, var(--73-warning) 55%, transparent);
+  color: var(--73-warning-text);
 }
 </style>

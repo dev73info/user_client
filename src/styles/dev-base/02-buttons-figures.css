@@ -1,0 +1,123 @@
+/* === 原生按钮 / 链接按钮 ===
+   工具栏以外的卡片头、空态里放的是 RouterLink 或原生 <button>，不是 TButton，
+   拿不到 .dev-toolbar__primary / __ghost 的规格（那两个变体挂在 TButton 上）。
+   这两个变体与它们同高同圆角同配色，保证「同一个动作，无论在工具栏还是卡片头，长得一样」。 */
+.dev-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: var(--dev-control-height);
+  height: var(--dev-control-height);
+  padding: 0 16px;
+  border: 1px solid transparent;
+  border-radius: var(--dev-radius-control);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1;
+  white-space: nowrap;
+  text-decoration: none;
+  cursor: pointer;
+  transition:
+    box-shadow 160ms ease,
+    background-color 160ms ease,
+    border-color 160ms ease,
+    color 160ms ease;
+}
+/* 按钮里的图标：尺寸跟着按钮字号走（TIcon 默认 1em），这一档定成 15px */
+.dev-btn .t73-icon {
+  font-size: 15px;
+}
+
+.dev-btn--primary {
+  background: var(--dev-blue);
+  border-color: var(--dev-blue);
+  color: var(--73-surface-strong);
+}
+
+.dev-btn--primary:hover,
+.dev-btn--primary:focus-visible {
+  color: var(--73-surface-strong);
+  box-shadow: 0 10px 22px color-mix(in srgb, var(--73-accent) 22%, transparent);
+}
+
+.dev-btn--ghost {
+  background: var(--dev-surface-strong);
+  border-color: var(--dev-line);
+  color: var(--dev-ink-soft);
+}
+
+.dev-btn--ghost:hover,
+.dev-btn--ghost:focus-visible {
+  border-color: color-mix(in srgb, var(--73-accent) 32%, transparent);
+  background: color-mix(in srgb, var(--73-accent) 8%, transparent);
+  color: var(--dev-blue);
+  box-shadow: 0 8px 18px color-mix(in srgb, var(--73-accent) 10%, transparent);
+}
+
+/* 金色变体：给「金额与提示」这一类动作用（保证金不足时的充值、金色读数旁的按钮）。
+   悬停与 --primary 同口径——只加一层投影，不提亮底色。 */
+.dev-btn--gold {
+  background: var(--dev-gold);
+  border-color: var(--dev-gold);
+  color: var(--73-surface-strong);
+}
+
+.dev-btn--gold:hover,
+.dev-btn--gold:focus-visible {
+  color: var(--73-surface-strong);
+  box-shadow: 0 10px 22px color-mix(in srgb, var(--73-warning) 24%, transparent);
+}
+
+.dev-btn--danger {
+  background: var(--dev-surface-strong);
+  border-color: color-mix(in srgb, var(--73-danger) 32%, transparent);
+  color: var(--73-danger);
+}
+
+.dev-btn--danger:hover,
+.dev-btn--danger:focus-visible {
+  border-color: color-mix(in srgb, var(--73-danger) 50%, transparent);
+  background: color-mix(in srgb, var(--73-danger) 8%, transparent);
+  color: var(--73-danger);
+  box-shadow: 0 8px 18px color-mix(in srgb, var(--73-danger) 10%, transparent);
+}
+
+.dev-btn:disabled,
+.dev-btn[aria-disabled='true'] {
+  opacity: 0.56;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+/* === 金额大数 ===
+   同一笔钱在两个页面必须长一样。总览页的「资金概览」与收益钱包页的「接单收入 / 保证金余额」
+   报的是同一组读数（可提现余额、可用保证金），原来却是 30px 与 36px 两种字号、
+   金色与墨色两种颜色，切菜单时会看到数字「跳」一下。
+   现在统一走这两个类：金（设计规范里「金额与提示」那一支）+ 30px + 800 字重；
+   内嵌块里的次级金额用 --sm 一档。计数与金额都必须带 tabular-nums。 */
+.dev-figure {
+  color: var(--dev-gold);
+  font-size: 30px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+}
+
+.dev-figure--sm {
+  font-size: 24px;
+  letter-spacing: -0.01em;
+}
+
+/* 不可提 / 不满足条件的金额：压成弱字，尺寸与其他大数保持一致 */
+.dev-figure--muted {
+  color: var(--dev-muted);
+}
+
+/* 读数是信息、不是可操作的金额时（总览页的「今日收入」、保证金段里的「可用保证金」）用墨色。
+   尺寸与金色大数同一档，同一栏里就不会出现第三种字号——这才是切菜单时数字「跳一下」的根源。 */
+.dev-figure--ink {
+  color: var(--dev-ink);
+}

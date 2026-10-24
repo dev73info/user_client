@@ -96,17 +96,16 @@ function mountView(): VueWrapper {
       config: { warnHandler: () => {} },
       stubs: {
         WorkbenchBarSlot: { name: 'WorkbenchBarSlot', template: '<div><slot /></div>' },
+        // 卡片一行是拆出去的构件（R047）：这里要它真渲染，否则断言不到卡片上的标题与类别
+        NotificationCardItem: false,
       },
     },
   })
 }
 
 type ViewState = {
-  transferInbox: ResourceTransferPayload[]
-  myTransfers: ResourceTransferPayload[]
   cards: NotificationCard[]
   pendingActions: number
-  loadTransfers: () => Promise<void>
   respondTransfer: (card: NotificationCard, accepted: boolean) => Promise<void>
   cancelTransfer: (card: NotificationCard) => Promise<void>
 }
@@ -132,7 +131,10 @@ describe('系统通知：资源过户', () => {
     mocks.accept.mockResolvedValue({})
     mocks.reject.mockResolvedValue({})
     mocks.cancel.mockResolvedValue({})
-    vi.stubGlobal('confirm', vi.fn(() => true))
+    vi.stubGlobal(
+      'confirm',
+      vi.fn(() => true),
+    )
   })
 
   it('挂载后把「待我同意」与「我发起的」合并进通知列表', async () => {
@@ -143,9 +145,11 @@ describe('系统通知：资源过户', () => {
     expect(mocks.mine).toHaveBeenCalledTimes(1)
 
     const view = state(wrapper)
-    expect(view.transferInbox).toHaveLength(2)
-    expect(view.myTransfers).toHaveLength(1)
-    expect(view.cards.filter((card) => card.kind === 'resource-transfer')).toHaveLength(3)
+    // 两份列表都并进了通知列表：inbox 两条各给「同意接收 / 拒绝」，我发起的那条给「撤销申请」。
+    const transferCards = view.cards.filter((card) => card.kind === 'resource-transfer')
+    expect(transferCards).toHaveLength(3)
+    expect(transferCards.filter((card) => card.transferAction === 'respond')).toHaveLength(2)
+    expect(transferCards.filter((card) => card.transferAction === 'cancel')).toHaveLength(1)
     expect(view.pendingActions).toBe(2)
 
     expect(wrapper.text()).toContain('资源过户')

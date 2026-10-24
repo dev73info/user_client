@@ -1,0 +1,22 @@
+.dev-resource-table__title-link {
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: var(--dev-blue);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+  text-align: left;
+}
+
+.dev-resource-table__title-link:hover {
+  color: var(--73-accent);
+}
+
+/* 状态列里「可见性」与「已锁定」两个标签并排时要留缝 */
+.dev-resource-table__status-tags {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}

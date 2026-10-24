@@ -7,7 +7,6 @@ import { LIST_PAGE_SIZES, useClientPagination } from '@/composables/useClientPag
 import { useAuthStore } from '@/stores/auth'
 import { sanitizeRichHtml } from '@/utils/sanitizeHtml'
 
-
 import {
   TButton,
   TIcon,
@@ -49,9 +48,16 @@ const tagFilters = computed(() => {
 const filteredPosts = computed(() => {
   const search = keyword.value.trim().toLocaleLowerCase()
   return posts.value.filter((post) => {
-    const matchesTag = selectedTag.value === 'all' || (post.tags ?? []).some((tag) => tag.name === selectedTag.value)
-    const matchesSearch = !search || [post.title, post.author, preview(post.content_html),
-      ...(post.tags ?? []).map((tag) => tag.name)].some((field) => field?.toLocaleLowerCase().includes(search))
+    const matchesTag =
+      selectedTag.value === 'all' || (post.tags ?? []).some((tag) => tag.name === selectedTag.value)
+    const matchesSearch =
+      !search ||
+      [
+        post.title,
+        post.author,
+        preview(post.content_html),
+        ...(post.tags ?? []).map((tag) => tag.name),
+      ].some((field) => field?.toLocaleLowerCase().includes(search))
     return matchesTag && matchesSearch
   })
 })
@@ -94,7 +100,10 @@ function openPost(post: CommunityPost) {
 }
 
 function preview(content: string) {
-  return sanitizeRichHtml(content).replace(/<[^>]*>/g, '').trim().slice(0, 120)
+  return sanitizeRichHtml(content)
+    .replace(/<[^>]*>/g, '')
+    .trim()
+    .slice(0, 120)
 }
 
 onMounted(() => {
@@ -138,22 +147,42 @@ onMounted(() => {
 
       <div v-if="posts.length || hasActiveFilters" class="wb-toolbar">
         <div v-if="tagFilters.length" class="wb-chip-group" role="group" aria-label="按标签筛选">
-          <button type="button" class="wb-chip wb-chip--button" :class="{ 'is-active': selectedTag === 'all' }"
-            :aria-pressed="selectedTag === 'all'" @click="selectedTag = 'all'">
+          <button
+            type="button"
+            class="wb-chip wb-chip--button"
+            :class="{ 'is-active': selectedTag === 'all' }"
+            :aria-pressed="selectedTag === 'all'"
+            @click="selectedTag = 'all'"
+          >
             全部<span class="wb-chip__count">{{ posts.length }}</span>
           </button>
-          <button v-for="tag in tagFilters" :key="tag.name" type="button" class="wb-chip wb-chip--button"
-            :class="{ 'is-active': selectedTag === tag.name }" :aria-pressed="selectedTag === tag.name"
-            @click="selectedTag = tag.name">
+          <button
+            v-for="tag in tagFilters"
+            :key="tag.name"
+            type="button"
+            class="wb-chip wb-chip--button"
+            :class="{ 'is-active': selectedTag === tag.name }"
+            :aria-pressed="selectedTag === tag.name"
+            @click="selectedTag = tag.name"
+          >
             {{ tag.name }}<span class="wb-chip__count">{{ tag.count }}</span>
           </button>
         </div>
-        <TInput v-model="keyword" class="wb-toolbar__search" clearable placeholder="搜索标题、作者或标签"
-          aria-label="搜索收藏">
-          <template #prefix><TIcon><Search /></TIcon></template>
+        <TInput
+          v-model="keyword"
+          class="wb-toolbar__search"
+          clearable
+          placeholder="搜索标题、作者或标签"
+          aria-label="搜索收藏"
+        >
+          <template #prefix
+            ><TIcon><Search /></TIcon
+          ></template>
         </TInput>
         <div class="wb-toolbar__actions">
-          <span v-if="hasActiveFilters" class="wb-toolbar__hint">筛选出 {{ filteredTotal }} / {{ posts.length }} 篇</span>
+          <span v-if="hasActiveFilters" class="wb-toolbar__hint"
+            >筛选出 {{ filteredTotal }} / {{ posts.length }} 篇</span
+          >
           <TButton variant="outline" v-if="hasActiveFilters" @click="resetFilters">
             <TIcon><RefreshLeft /></TIcon><span>重置</span>
           </TButton>
@@ -162,7 +191,9 @@ onMounted(() => {
 
       <p v-if="loading && !posts.length" class="wb-empty" role="status">正在加载收藏…</p>
       <div v-else-if="!filteredPosts.length" class="wb-empty">
-        <span class="wb-empty__title">{{ posts.length ? '没有符合条件的收藏' : '还没有收藏帖子' }}</span>
+        <span class="wb-empty__title">{{
+          posts.length ? '没有符合条件的收藏' : '还没有收藏帖子'
+        }}</span>
         <template v-if="posts.length">
           <div class="wb-empty__actions">
             <TButton variant="outline" @click="resetFilters">
@@ -174,10 +205,18 @@ onMounted(() => {
       </div>
       <template v-else>
         <ul class="wb-list" aria-label="我收藏的帖子">
-          <li v-for="post in pagedPosts" :key="post.id" class="wb-item wb-item--clickable" @click="openPost(post)">
+          <li
+            v-for="post in pagedPosts"
+            :key="post.id"
+            class="wb-item wb-item--clickable"
+            @click="openPost(post)"
+          >
             <div class="wb-item__main">
-              <RouterLink class="wb-item__title favorites__title"
-                :to="{ name: 'community-post', params: { postId: post.id } }">{{ post.title }}</RouterLink>
+              <RouterLink
+                class="wb-item__title favorites__title"
+                :to="{ name: 'community-post', params: { postId: post.id } }"
+                >{{ post.title }}</RouterLink
+              >
               <span class="wb-item__meta">{{ post.author }} · {{ post.published_at }}</span>
               <span class="wb-item__meta favorites__preview">
                 {{ preview(post.content_html) || '这篇帖子暂未添加正文摘要。' }}
@@ -186,8 +225,12 @@ onMounted(() => {
             <div class="wb-item__side">
               <span v-for="tag in post.tags" :key="tag.id" class="wb-badge">{{ tag.name }}</span>
               <span class="favorites__metrics">
-                <span><TIcon><Star /></TIcon>{{ post.like_count }}</span>
-                <span><TIcon><ChatDotRound /></TIcon>{{ post.comment_count }}</span>
+                <span
+                  ><TIcon><Star /></TIcon>{{ post.like_count }}</span
+                >
+                <span
+                  ><TIcon><ChatDotRound /></TIcon>{{ post.comment_count }}</span
+                >
               </span>
             </div>
           </li>
@@ -195,11 +238,22 @@ onMounted(() => {
         <div class="wb-pager">
           <div class="wb-pager__count">
             <TSelect v-model="pageSize" class="wb-pager__size" aria-label="每页帖子数">
-              <TOption v-for="size in LIST_PAGE_SIZES" :key="size" :label="`${size} 条/页`" :value="size" />
+              <TOption
+                v-for="size in LIST_PAGE_SIZES"
+                :key="size"
+                :label="`${size} 条/页`"
+                :value="size"
+              />
             </TSelect>
           </div>
-          <TPagination v-model:current-page="page" :page-size="pageSize" :total="filteredTotal"
-            :pager-count="5" background aria-label="收藏分页" />
+          <TPagination
+            v-model:current-page="page"
+            :page-size="pageSize"
+            :total="filteredTotal"
+            :pager-count="5"
+            background
+            aria-label="收藏分页"
+          />
         </div>
       </template>
     </section>
@@ -218,7 +272,7 @@ onMounted(() => {
 }
 
 /* 列表标题的悬停色取工作台主色令牌（--wb-accent，与统一层 .wb-item--clickable 同源），
-   不用个人中心的 --profile-accent（#4f8cff）——那一支比工作台自己的侧边栏还亮一档，
+   不用个人中心的 --profile-accent（var(--73-accent)）——那一支比工作台自己的侧边栏还亮一档，
    统一层已经把工作台按钮的颜色从它收回令牌了。 */
 .favorites__title:hover {
   color: var(--wb-accent);

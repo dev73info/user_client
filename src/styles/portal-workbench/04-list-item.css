@@ -1,0 +1,85 @@
+/* === 列表与列表项 ===
+   卡片里的行式列表：一行一个条目，左侧标题 + 说明，右侧状态与动作。
+   结构同 .dev-stack-list：.wb-list > .wb-item(> __title + __meta + __side) */
+.wb-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.wb-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 16px 18px;
+  border: 1px solid var(--wb-line);
+  border-radius: var(--wb-radius-item);
+  background: color-mix(in srgb, var(--73-surface-strong) 58%, transparent);
+  color: var(--profile-text-sub, var(--73-ink-muted));
+}
+
+.wb-item__main {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+
+.wb-item__title {
+  color: var(--profile-text-main, var(--73-ink));
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 1.5;
+}
+
+.wb-item__meta {
+  color: var(--profile-text-sub, var(--73-ink-muted));
+  font-size: 13px;
+  line-height: 1.7;
+}
+
+.wb-item__side {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 10px;
+  flex-shrink: 0;
+  color: var(--profile-text-sub, var(--73-ink-muted));
+  font-size: 13px;
+  text-align: right;
+}
+
+/* 整行可点（进详情）：只加游标和悬停，不改结构 */
+.wb-item--clickable {
+  cursor: pointer;
+  transition:
+    border-color 160ms ease,
+    background 160ms ease,
+    box-shadow 160ms ease;
+}
+
+.wb-item--clickable:hover {
+  border-color: var(--wb-accent-line);
+  background: var(--73-accent-soft);
+}
+
+/* 主从列表里「当前选中」的那一行（工单中心、消息中心）：描边换成主色 + 一层浅底。
+   整行可点的悬停规则在上面，选中态要压过它，所以单独成一条、写在后面。 */
+.wb-item--active {
+  border-color: var(--wb-accent);
+  background: var(--wb-accent-soft);
+  box-shadow: 0 0 0 1px var(--wb-accent) inset;
+}
+/* 列表行内嵌按钮矮一档（32px）：行本身的圆角是 12px、内边距 16px 18px，
+   36px 的按钮在行里显得比行还重。开发者侧同一层级由 .dev-stack-item .dev-btn 定成 32px，
+   消息中心这一页在两种模式下渲染同一行，两边必须同高——否则切一次模式行尾按钮就长高 4px。 */
+.wb-item .wb-btn {
+  min-height: 32px;
+  height: 32px;
+  border-radius: var(--wb-radius-control);
+  font-weight: 700;
+}

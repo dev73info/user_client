@@ -42,3 +42,9 @@ export function breachStatusLabel(status: string | null | undefined): string {
   if (!status) return '—'
   return BREACH_STATUS_LABELS[status as BreachCaseStatus] ?? status
 }
+
+/** 已结束的案件不再提供入口，只需要能重新申报时给出表单。 */
+export const BREACH_CLOSED_STATUSES: string[] = ['withdrawn', 'rejected', 'succeeded']
+
+/** 已结案 / 已驳回：结论定案不可翻案，新一轮申报会新建一条案件。 */
+export const SETTLED_BREACH_STATUSES: string[] = ['rejected', 'succeeded']

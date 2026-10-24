@@ -215,17 +215,31 @@ onBeforeUnmount(() => {
             <h3>登录 73Info</h3>
             <p class="wechat-authorization-modal__subtitle">微信扫码登录</p>
           </div>
-          <button class="wechat-authorization-modal__close" type="button" aria-label="关闭微信扫码登录"
-            @click="close">
+          <button
+            class="wechat-authorization-modal__close"
+            type="button"
+            aria-label="关闭微信扫码登录"
+            @click="close"
+          >
             ×
           </button>
         </header>
 
         <p class="wechat-authorization-modal__intro">
-          <svg class="wechat-authorization-modal__intro-icon" viewBox="0 0 24 24" fill="none"
-            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
-            aria-hidden="true" focusable="false">
-            <path d="M4 8V5.6A1.6 1.6 0 0 1 5.6 4H8M16 4h2.4A1.6 1.6 0 0 1 20 5.6V8M20 16v2.4a1.6 1.6 0 0 1-1.6 1.6H16M8 20H5.6A1.6 1.6 0 0 1 4 18.4V16" />
+          <svg
+            class="wechat-authorization-modal__intro-icon"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            aria-hidden="true"
+            focusable="false"
+          >
+            <path
+              d="M4 8V5.6A1.6 1.6 0 0 1 5.6 4H8M16 4h2.4A1.6 1.6 0 0 1 20 5.6V8M20 16v2.4a1.6 1.6 0 0 1-1.6 1.6H16M8 20H5.6A1.6 1.6 0 0 1 4 18.4V16"
+            />
             <path d="M4 12h16" />
           </svg>
           <span class="wechat-authorization-modal__intro-text">
@@ -302,17 +316,33 @@ onBeforeUnmount(() => {
         </div>
 
         <p class="wechat-authorization-modal__hint">
-          <svg class="wechat-authorization-modal__hint-icon" viewBox="0 0 24 24" fill="none"
-            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
-            aria-hidden="true" focusable="false">
+          <svg
+            class="wechat-authorization-modal__hint-icon"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            aria-hidden="true"
+            focusable="false"
+          >
             <path d="M12 3l7 3v6c0 4.2-2.9 7.6-7 9-4.1-1.4-7-4.8-7-9V6z" />
             <path d="M9.5 12.5l1.8 1.8 3.4-3.6" />
           </svg>
           <span class="wechat-authorization-modal__hint-text">
             请保持本页面打开，手机确认后电脑才会登录。
             <span class="wechat-authorization-modal__hint-warn">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
-                stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2.2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                aria-hidden="true"
+                focusable="false"
+              >
                 <path d="M12 4.5 3.5 19.5h17z" />
                 <path d="M12 10v4M12 17h.01" />
               </svg>
@@ -329,111 +359,4 @@ onBeforeUnmount(() => {
   </Teleport>
 </template>
 
-<style scoped>
-/* 外壳样式在 `styles/modal.css`（三个微信扫码弹窗共用），这里只留扫码登录特有的部分 */
-
-/* 二维码遮罩：盖住整块二维码区，白色蒙层 + 轻微毛玻璃 */
-.wechat-authorization-modal__overlay {
-  position: absolute;
-  inset: 0;
-  z-index: 1;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
-  padding: 22px 20px;
-  border-radius: inherit;
-  background: rgba(255, 255, 255, 0.94);
-  backdrop-filter: blur(4px);
-  animation: wechat-qr-overlay-in 200ms ease-out;
-}
-
-/* 待确认态：二维码还在，蒙层留一点透明度、毛玻璃也轻一档，
-   让底下的码还认得出形状——表明「扫的就是这一张」 */
-.wechat-authorization-modal__overlay.is-scanned {
-  background: rgba(237, 243, 245, 0.86);
-  backdrop-filter: blur(2px);
-}
-
-.wechat-authorization-modal__spinner {
-  width: 34px;
-  height: 34px;
-  border: 3px solid rgba(31, 74, 209, 0.16);
-  border-top-color: var(--accent);
-  border-radius: 50%;
-  animation: wechat-qr-spin 900ms linear infinite;
-}
-
-.wechat-authorization-modal__overlay-mark {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 52px;
-  height: 52px;
-  border-radius: 50%;
-  color: #b42318;
-  background: rgba(239, 68, 68, 0.1);
-  box-shadow: inset 0 0 0 1px rgba(239, 68, 68, 0.14);
-}
-
-.wechat-authorization-modal__overlay.is-expired .wechat-authorization-modal__overlay-mark {
-  color: #92400e;
-  background: rgba(251, 191, 36, 0.16);
-  box-shadow: inset 0 0 0 1px rgba(251, 191, 36, 0.24);
-}
-
-.wechat-authorization-modal__overlay-mark svg {
-  width: 26px;
-  height: 26px;
-}
-
-.wechat-authorization-modal__overlay-title {
-  margin: 0;
-  color: var(--text-main);
-  font-size: 16px;
-  font-weight: 800;
-  line-height: 1.4;
-}
-
-.wechat-authorization-modal__overlay-text {
-  margin: 0;
-  max-width: 17em;
-  color: var(--text-sub);
-  font-size: 12.5px;
-  line-height: 1.7;
-  text-wrap: pretty;
-}
-
-.wechat-authorization-modal__overlay-action {
-  margin-top: 6px;
-  padding: 0 22px;
-  min-height: 40px;
-  border-radius: 999px;
-}
-
-@keyframes wechat-qr-overlay-in {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
-}
-
-@keyframes wechat-qr-spin {
-  to {
-    transform: rotate(360deg);
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .wechat-authorization-modal__overlay {
-    animation: none;
-  }
-
-  .wechat-authorization-modal__spinner {
-    animation-duration: 2.4s;
-  }
-}
-</style>
+<style scoped src="./wechat-login-qr-modal.css"></style>

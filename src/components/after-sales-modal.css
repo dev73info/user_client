@@ -1,0 +1,221 @@
+/* 样式挂在全局的 .pay-modal 之上：这里只补解除合作弹窗自己的字段与记录列表。 */
+.pay-modal.after-sales-modal {
+  width: min(600px, 100%);
+  max-height: calc(100vh - 36px);
+  overflow-y: auto;
+}
+
+/* 需求标题与编号并成一行：它们是背景信息，不值得占两行正文位置。 */
+.pay-modal .after-sales-modal__subject {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 8px;
+  margin: 0 0 14px;
+}
+
+.pay-modal .after-sales-modal__subject strong {
+  color: var(--73-ink);
+  font-size: 15px;
+  font-weight: 800;
+}
+
+.pay-modal .after-sales-modal__subject span {
+  color: var(--73-ink-placeholder);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+/* 案件事实排成两列：字段一眼扫完，不再是一串「标签：值」的长行。 */
+.pay-modal .after-sales-modal__facts {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px 18px;
+  margin: 0;
+  padding: 12px 14px;
+  border: 1px solid color-mix(in srgb, var(--73-border) 95%, transparent);
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--73-surface-strong) 72%, transparent);
+}
+
+.pay-modal .after-sales-modal__facts > div {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.pay-modal .after-sales-modal__facts > div.is-wide {
+  grid-column: 1 / -1;
+}
+
+.pay-modal .after-sales-modal__facts dt {
+  color: var(--73-ink-muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.pay-modal .after-sales-modal__facts dd {
+  margin: 0;
+  color: var(--73-ink);
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+
+/* 规则与流程细节默认折起来，需要时再点开。 */
+.pay-modal .after-sales-modal__rules {
+  margin-top: 14px;
+  padding: 10px 14px;
+  border: 1px solid color-mix(in srgb, var(--73-border) 95%, transparent);
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--73-surface-strong) 72%, transparent);
+}
+
+.pay-modal .after-sales-modal__rules > summary {
+  color: var(--73-accent);
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.pay-modal .after-sales-modal__rules ul {
+  display: grid;
+  gap: 6px;
+  margin: 10px 0 0;
+  padding-left: 18px;
+  color: var(--73-ink-soft);
+  font-size: 13px;
+  line-height: 1.7;
+}
+
+.pay-modal .after-sales-modal__rules p {
+  margin: 10px 0 0;
+  color: var(--73-ink-soft);
+  font-size: 13px;
+  line-height: 1.7;
+}
+
+/* 历史案件默认折起来：动辄几十条，摊开只会把当前要处理的事顶出屏幕。 */
+.pay-modal .after-sales-modal__summary {
+  color: var(--73-ink);
+  font-size: 13px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.pay-modal .after-sales-modal__summary span {
+  margin-left: 8px;
+  color: var(--73-ink-muted);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.pay-modal .after-sales-modal__field {
+  display: grid;
+  align-items: stretch;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.pay-modal .after-sales-modal__field > strong {
+  color: var(--73-ink-muted);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+/* 期望多选：两个卡片式勾选项（要钱 / 要返工），可以同时选。
+   与「票种」那两个卡片同一个视觉口径，不再用下拉：选项就两个、还允许并存。 */
+.pay-modal .after-sales-modal__expectations {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  border: 0;
+  padding: 0;
+}
+
+.pay-modal .after-sales-modal__expectations legend {
+  margin-bottom: 8px;
+  padding: 0;
+  color: var(--73-ink-soft);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.pay-modal .after-sales-modal__expectation {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  border: 1px solid color-mix(in srgb, var(--73-accent) 90%, transparent);
+  border-radius: 12px;
+  padding: 10px 12px;
+  cursor: pointer;
+  transition:
+    border-color 0.15s ease,
+    background 0.15s ease;
+}
+
+.pay-modal .after-sales-modal__expectation:hover {
+  border-color: color-mix(in srgb, var(--73-ink-placeholder) 90%, transparent);
+}
+
+.pay-modal .after-sales-modal__expectation:has(input:checked) {
+  border-color: color-mix(in srgb, var(--73-accent) 50%, transparent);
+  background: color-mix(in srgb, var(--73-accent) 5%, transparent);
+}
+
+.pay-modal .after-sales-modal__expectation input {
+  width: auto;
+  min-height: 0;
+  margin: 3px 0 0;
+  accent-color: var(--73-accent);
+}
+
+.pay-modal .after-sales-modal__expectation span {
+  display: grid;
+  gap: 2px;
+}
+
+.pay-modal .after-sales-modal__expectation strong {
+  color: var(--73-ink);
+  font-size: 13px;
+}
+
+.pay-modal .after-sales-modal__expectation small {
+  color: var(--73-ink-muted);
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 1.5;
+}
+
+.pay-modal .after-sales-modal__field input {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid color-mix(in srgb, var(--73-accent) 90%, transparent);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--73-surface-strong) 92%, transparent);
+  color: var(--73-ink);
+  font-family: inherit;
+  font-size: 14px;
+  line-height: 1.6;
+  outline: none;
+}
+
+.pay-modal .after-sales-modal__field input:focus {
+  border-color: color-mix(in srgb, var(--73-accent) 58%, transparent);
+  background: var(--73-surface-strong);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--73-accent) 10%, transparent);
+}
+
+.pay-modal .after-sales-modal__empty {
+  margin: 10px 0 0;
+  color: var(--73-ink-muted);
+  font-size: 13px;
+}
+
+@media (max-width: 640px) {
+  /* 窄屏上事实列表退回单列：两列会把「标签 + 值」挤成竖排字。 */
+  .pay-modal .after-sales-modal__facts {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

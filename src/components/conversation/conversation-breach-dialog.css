@@ -1,0 +1,42 @@
+.conversation-actions__meta {
+  margin: 0 0 8px;
+  color: var(--73-ink-soft);
+  font-size: 13px;
+}
+
+.conversation-actions__line {
+  margin: 0 0 6px;
+  color: var(--73-ink-soft);
+  font-size: 13px;
+  line-height: 1.7;
+  word-break: break-word;
+}
+
+.conversation-actions__tip {
+  margin: 0 0 10px;
+  color: var(--73-ink-muted);
+  font-size: 12.5px;
+  line-height: 1.7;
+}
+
+.conversation-actions__field {
+  display: grid;
+  gap: 6px;
+  margin-bottom: 12px;
+  color: var(--73-ink-soft);
+  font-size: 13px;
+}
+
+.conversation-actions__field input[type='text'],
+.conversation-actions__field textarea {
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid color-mix(in srgb, var(--73-ink-disabled) 95%, transparent);
+  border-radius: 8px;
+  background: var(--73-surface-strong);
+  color: var(--73-ink);
+  font: inherit;
+  font-size: 13px;
+  line-height: 1.6;
+  resize: vertical;
+}

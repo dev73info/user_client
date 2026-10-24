@@ -1,0 +1,263 @@
+@media (max-width: 1180px) {
+  .portal-layout,
+  .portal-hero__main,
+  .portal-spotlight-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .portal-workflow-grid {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 16px;
+  }
+
+  .portal-main,
+  .portal-sidebar {
+    gap: 12px;
+  }
+
+  .portal-hero__copy h1 {
+    max-width: none;
+  }
+
+  .portal-step-card__arrow {
+    right: -13px;
+  }
+}
+
+@media (max-width: 900px) {
+  .portal-home {
+    padding: 0 0 36px;
+  }
+
+  .portal-shell {
+    width: calc(100% - 16px);
+  }
+
+  .portal-sidebar {
+    position: static;
+    top: auto;
+    grid-template-columns: 1fr;
+  }
+
+  .portal-layout,
+  .portal-hero__actions,
+  .portal-quick-grid,
+  .portal-hero__main,
+  .portal-spotlight-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .portal-stats-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .portal-quick-grid,
+  .portal-spotlight-grid {
+    display: grid;
+  }
+
+  /* 移动端：大卡片改为横排紧凑列表 */
+  .portal-spotlight-grid {
+    gap: 10px;
+    min-height: 0 !important;
+  }
+
+  .portal-spotlight-card {
+    flex-direction: row;
+    align-items: stretch;
+    min-height: 0;
+    border-radius: 14px;
+    box-shadow: 0 8px 18px color-mix(in srgb, var(--73-accent) 8%, transparent);
+  }
+
+  .portal-spotlight-card:hover,
+  .portal-spotlight-card:focus-visible {
+    transform: none;
+    box-shadow: 0 10px 22px color-mix(in srgb, var(--73-accent) 12%, transparent);
+  }
+
+  .portal-spotlight-card__cover {
+    flex: 0 0 96px;
+    width: 96px;
+    aspect-ratio: auto;
+    align-self: stretch;
+    min-height: 96px;
+  }
+
+  .portal-spotlight-card__cover-text {
+    font-size: 28px;
+  }
+
+  .portal-spotlight-card__badge {
+    top: 8px;
+    left: 8px;
+    max-width: calc(100% - 16px);
+    padding: 3px 7px;
+    font-size: 10px;
+  }
+
+  .portal-spotlight-card__mark {
+    top: auto;
+    right: 8px;
+    bottom: 8px;
+    min-height: 20px;
+    padding: 3px 7px 3px 6px;
+    font-size: 10px;
+    box-shadow: 0 4px 10px color-mix(in srgb, var(--73-ink) 14%, transparent);
+  }
+
+  .portal-spotlight-card__screen {
+    display: none;
+  }
+
+  .portal-spotlight-card__body {
+    gap: 6px;
+    min-height: 0;
+    min-width: 0;
+    padding: 10px 12px 10px 10px;
+  }
+
+  .portal-spotlight-card__body h3 {
+    -webkit-line-clamp: 1;
+    line-clamp: 1;
+    font-size: 15px;
+    line-height: 1.3;
+  }
+
+  .portal-spotlight-card__body p {
+    -webkit-line-clamp: 1;
+    line-clamp: 1;
+    font-size: 12px;
+    line-height: 1.45;
+  }
+
+  .portal-spotlight-card__meta-row {
+    margin-top: 0;
+  }
+
+  .portal-spotlight-card__meta-row strong {
+    min-height: 22px;
+    padding: 2px 8px;
+    font-size: 11px;
+  }
+
+  .portal-spotlight-card__footer {
+    gap: 4px;
+    padding-top: 6px;
+  }
+
+  .portal-spotlight-card__footer-main {
+    gap: 8px;
+  }
+
+  .portal-spotlight-card__footer span,
+  .portal-spotlight-card__likes {
+    font-size: 11px;
+  }
+
+  .portal-spotlight-card__footer .portal-spotlight-card__stat svg,
+  .portal-spotlight-card__likes svg {
+    width: 12px;
+    height: 12px;
+  }
+
+  .portal-spotlight-card__footer .portal-spotlight-card__origin {
+    min-height: 18px;
+    padding: 1px 7px;
+    font-size: 11px;
+  }
+
+  .portal-hero__copy h1 {
+    font-size: 38px;
+    white-space: normal;
+  }
+}
+
+@media (max-width: 900px) {
+  .portal-hero__main {
+    height: 280px;
+    min-height: 50px;
+  }
+}
+
+/* R047 断点收敛：原档位 560px → 640px。本文件末尾还有一块 640px（原 560px）；两块之间隔着多段 900px 块，合并会把同档规则的先后反转，故保留两处并各自标注。 */
+@media (max-width: 640px) {
+  .portal-shell {
+    width: calc(100% - 12px);
+  }
+
+  .portal-hero__main {
+    height: 260px;
+    min-height: 46px;
+  }
+
+  .portal-hero__main,
+  .portal-card--notice,
+  .portal-card--stats {
+    padding: 18px;
+  }
+
+  .portal-hero__copy h1 {
+    font-size: 34px;
+  }
+
+  .portal-hero__actions,
+  .portal-primary-action,
+  .portal-secondary-action {
+    width: 100%;
+  }
+
+  .portal-primary-action,
+  .portal-secondary-action {
+    justify-content: center;
+  }
+
+  .portal-stats-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .portal-notice-item {
+    align-items: flex-start;
+  }
+
+  .portal-spotlight-grid {
+    gap: 8px;
+  }
+
+  .portal-spotlight-card {
+    border-radius: 12px;
+  }
+
+  .portal-spotlight-card__cover {
+    flex-basis: 84px;
+    width: 84px;
+    min-height: 84px;
+  }
+
+  .portal-spotlight-card__body {
+    padding: 9px 10px;
+    gap: 5px;
+  }
+
+  .portal-spotlight-card__body h3 {
+    font-size: 14px;
+  }
+
+  /* 窄屏优先标题与操作，摘要可收起以控高度 */
+  .portal-spotlight-card__body p {
+    display: none;
+  }
+
+  /* 作者名交给详情页，避免与浏览/下载挤在一行 */
+  .portal-spotlight-card__footer-main .portal-spotlight-card__author {
+    display: none;
+  }
+
+  .portal-spotlight-card__footer-bottom {
+    gap: 6px;
+  }
+
+  .portal-spotlight-card__footer-leading {
+    gap: 6px;
+  }
+}

@@ -1,0 +1,94 @@
+:root {
+  --dev-resource-aspect-ratio: 1.618 / 1;
+}
+
+/* 资源模块曾经自带三套平行视觉，现在都已并入统一层，这里不再保留：
+   - .dev-platform-switch / .dev-platform-card（22px 圆角 + 悬停上浮的平台选择卡）；
+   - .dev-card-grid / .dev-task-card / .dev-resource-grid / .dev-resource-card（22px 圆角、
+     暖白渐变底的旧卡片，其中 .dev-task-card 的底是 color-mix(in srgb, var(--73-warning-soft) 90%, transparent) 的暖色）；
+   - .dev-upload-dropzone（占位虚框，已被 ResourceIconPicker / .dev-icon-upload 取代）；
+   - .dev-filter-panel / .dev-publish-specs / .dev-publish-spec（未接线的空壳）。
+   卡片一律 .dev-surface-card，卡片头 .dev-card-head，列表项 .dev-stack-item，见 dev-base.css。 */
+
+.dev-upload-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 24px;
+}
+
+.dev-upload-side {
+  display: grid;
+  gap: 24px;
+  align-content: start;
+}
+
+.dev-upload-grid {
+  display: grid;
+  gap: 18px;
+}
+
+.dev-upload-grid--two {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+/* 标签组：按内容宽排布，多个组一行并排、排不下才换行。
+   行宽由内容决定（标题 + 计数 + 下拉框），不撑满整块可用宽度——
+   否则一行里只有一个窄标题加一个空下拉框，右侧大片留白。 */
+.dev-upload-grid--tag-groups {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.dev-upload-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-top: 18px;
+}
+
+.dev-page--publish .dev-upload-actions--split {
+  padding-top: 18px;
+  border-top: 1px solid var(--dev-line);
+}
+
+/* 发布类页面（创建资源 / 编辑资源主页）不另立一套节奏：页面间距、卡片圆角、
+   卡片内边距、小节标题字号都与其余菜单页一致（见 dev-base.css 的 .dev-page / .dev-surface-card /
+   .dev-section-title）。原来这里把间距压到 18px、卡片圆角压到 20px、卡片内边距压到 18px、
+   小节标题压到 16px，于是同一张「基础信息」卡片在创建资源页与需求详情页长得不一样。 */
+
+.dev-page--publish .dev-upload-combined-card {
+  height: 100%;
+}
+
+.dev-page--publish .dev-upload-block {
+  display: grid;
+  /* minmax(0, 1fr)：隐式列不按 max-content 撑开。否则块里的宽内容（接入提示词的长行）
+     会把整块顶出卡片右边界，右侧被卡片裁掉。 */
+  grid-template-columns: minmax(0, 1fr);
+  gap: 14px;
+}
+
+.dev-page--publish .dev-tag-group-card__copy,
+.dev-page--publish .dev-preview-card__copy {
+  min-width: 0;
+}
+
+.dev-page--publish .dev-upload-block--split {
+  margin-top: 18px;
+  padding-top: 18px;
+  border-top: 1px solid var(--dev-line);
+}
+
+.dev-page--publish .dev-upload-grid--two {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr));
+}
+
+.dev-page--publish .dev-upload-grid > *,
+.dev-page--publish .dev-tag-group-panel > *,
+.dev-page--publish .dev-tag-group-row,
+.dev-page--publish .dev-tag-group-row__copy,
+.dev-page--publish .dev-tag-group-row__field {
+  min-width: 0;
+}

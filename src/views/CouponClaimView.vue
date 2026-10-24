@@ -3,6 +3,7 @@ import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
 import AuthModal from '@/components/AuthModal.vue'
+import CouponClaimOutcome from '@/components/coupon/CouponClaimOutcome.vue'
 import { claimActivityCampaign, type ActivityCampaignClaimResp } from '@/api/settings'
 import { useAuthForm } from '@/composables/useAuthForm'
 import { useAuthStore } from '@/stores/auth'
@@ -126,52 +127,16 @@ onMounted(() => {
         邮件里的活动链接会把券发到当前登录账号的背包。账号绑定邮箱必须和收件邮箱一致。
       </p>
 
-      <div v-if="claiming" class="claim-page__state claim-page__state--loading">
-        正在校验活动并发放福利，请稍候...
-      </div>
-
-      <div v-else-if="claimResult" class="claim-page__result">
-        <strong>{{ claimResult.already_claimed ? '这份福利你已经领过了' : '领取成功' }}</strong>
-        <p>活动：{{ claimResult.title }}</p>
-        <p>券类型：{{ claimResult.coupon_type === 'amount' ? '优惠券' : '折扣券' }}</p>
-        <p>券名称：{{ claimResult.coupon_name }}</p>
-        <p>券码：{{ claimResult.assigned_coupon_code }}</p>
-        <p>领取时间：{{ claimResult.claimed_at }}</p>
-        <p v-if="!claimResult.already_claimed && claimResult.points_awarded">
-          参与活动获得 <strong class="claim-page__points">+{{ claimResult.points_awarded }}</strong> 积分
-        </p>
-        <div class="claim-page__actions">
-          <button class="claim-page__primary" type="button" @click="goWorkbench">
-            前往工作台查看
-          </button>
-        </div>
-      </div>
-
-      <div v-else class="claim-page__result claim-page__result--empty">
-        <strong>尚未领取</strong>
-        <p>{{ claimError || '点击下方按钮登录后继续领取。' }}</p>
-        <div class="claim-page__actions">
-          <button
-            v-if="!auth.isAuthed"
-            class="claim-page__primary"
-            type="button"
-            @click="openAuth('login')"
-          >
-            登录后领取
-          </button>
-          <button v-else class="claim-page__primary" type="button" @click="runClaim">
-            重新尝试领取
-          </button>
-          <button
-            v-if="!auth.isAuthed"
-            class="claim-page__ghost"
-            type="button"
-            @click="openAuth('register')"
-          >
-            注册新账号
-          </button>
-        </div>
-      </div>
+      <CouponClaimOutcome
+        :claiming="claiming"
+        :result="claimResult"
+        :error="claimError"
+        :authed="auth.isAuthed"
+        @workbench="goWorkbench"
+        @claim="runClaim"
+        @login="openAuth('login')"
+        @register="openAuth('register')"
+      />
     </div>
 
     <AuthModal
@@ -219,11 +184,11 @@ onMounted(() => {
 .claim-page__panel {
   width: min(680px, 100%);
   padding: 36px;
-  border: 1px solid rgba(140, 184, 255, 0.18);
+  border: 1px solid color-mix(in srgb, var(--73-accent) 18%, transparent);
   border-radius: 28px;
-  background: rgba(6, 18, 34, 0.86);
-  box-shadow: 0 24px 90px rgba(0, 0, 0, 0.34);
-  color: #f4f7ff;
+  background: color-mix(in srgb, var(--73-accent) 86%, transparent);
+  box-shadow: 0 24px 90px color-mix(in srgb, var(--73-ink) 34%, transparent);
+  color: var(--73-accent-soft);
 }
 
 .claim-page h1 {
@@ -233,70 +198,13 @@ onMounted(() => {
 
 .claim-page__lead {
   margin: 0 0 24px;
-  color: rgba(244, 247, 255, 0.72);
+  color: color-mix(in srgb, var(--73-accent-soft) 72%, transparent);
   line-height: 1.8;
-}
-
-.claim-page__state,
-.claim-page__result {
-  padding: 20px;
-  border-radius: 20px;
-  background: rgba(255, 255, 255, 0.05);
-}
-
-.claim-page__state--loading {
-  color: #9fd8ff;
-}
-
-.claim-page__result strong {
-  display: block;
-  margin-bottom: 12px;
-  font-size: 22px;
-}
-
-.claim-page__result p {
-  margin: 8px 0;
-  color: rgba(244, 247, 255, 0.82);
-}
-.claim-page__points {
-  color: #fbbf24;
-}
-
-.claim-page__actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12px;
-  margin-top: 20px;
-}
-
-.claim-page__primary,
-.claim-page__ghost {
-  border: none;
-  border-radius: 999px;
-  padding: 12px 22px;
-  font: inherit;
-  cursor: pointer;
-}
-
-.claim-page__primary {
-  background: linear-gradient(135deg, #8bd0ff, #4ba7ff);
-  color: #04111f;
-  font-weight: 700;
-}
-
-.claim-page__ghost {
-  background: transparent;
-  color: #dfe9ff;
-  border: 1px solid rgba(223, 233, 255, 0.24);
 }
 
 @media (max-width: 640px) {
   .claim-page__panel {
     padding: 24px;
-  }
-
-  .claim-page__actions {
-    flex-direction: column;
   }
 }
 </style>

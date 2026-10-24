@@ -10,7 +10,7 @@
  */
 import { computed, ref } from 'vue'
 
-import { mockEnabled, mockSupported } from './env'
+import { mockEnabled, mockSwitcherEnabled } from './env'
 import { MOCK_IDENTITIES, MOCK_IDENTITY_PROFILES, currentMockIdentity } from './identity'
 import { disableMock, switchMockIdentity } from './index'
 import { clearUncoveredEndpoints, uncoveredEndpoints } from './uncovered'
@@ -18,7 +18,7 @@ import { clearUncoveredEndpoints, uncoveredEndpoints } from './uncovered'
 const expanded = ref(false)
 const showUncovered = ref(false)
 
-const available = computed(() => mockEnabled())
+const available = computed(() => mockEnabled() && mockSwitcherEnabled())
 const identity = computed(() => currentMockIdentity())
 const profile = computed(() => MOCK_IDENTITY_PROFILES[identity.value])
 const uncovered = computed(() => uncoveredEndpoints.value)
@@ -45,7 +45,11 @@ function selectIdentity(target: (typeof MOCK_IDENTITIES)[number]) {
       <span class="mock-switch__dot" aria-hidden="true"></span>
       <span class="mock-switch__fab-text">MOCK</span>
       <span class="mock-switch__fab-identity">{{ profile.label }}</span>
-      <span v-if="uncovered.length" class="mock-switch__badge" :title="`${uncovered.length} 个接口未实现`">
+      <span
+        v-if="uncovered.length"
+        class="mock-switch__badge"
+        :title="`${uncovered.length} 个接口未实现`"
+      >
         {{ uncovered.length }}
       </span>
     </button>
@@ -53,7 +57,12 @@ function selectIdentity(target: (typeof MOCK_IDENTITIES)[number]) {
     <section v-if="expanded" class="mock-switch__panel" aria-label="mock 身份切换">
       <header class="mock-switch__head">
         <strong>mock 身份</strong>
-        <button class="mock-switch__close" type="button" aria-label="收起" @click="expanded = false">
+        <button
+          class="mock-switch__close"
+          type="button"
+          aria-label="收起"
+          @click="expanded = false"
+        >
           ×
         </button>
       </header>
@@ -98,7 +107,11 @@ function selectIdentity(target: (typeof MOCK_IDENTITIES)[number]) {
           >
             清空清单
           </button>
-          <button class="mock-switch__link mock-switch__link--danger" type="button" @click="disableMock()">
+          <button
+            class="mock-switch__link mock-switch__link--danger"
+            type="button"
+            @click="disableMock()"
+          >
             关闭 mock
           </button>
         </div>
@@ -122,24 +135,24 @@ function selectIdentity(target: (typeof MOCK_IDENTITIES)[number]) {
   gap: 6px;
   align-items: center;
   padding: 6px 10px;
-  border: 1px solid rgba(17, 24, 39, 0.14);
+  border: 1px solid color-mix(in srgb, var(--73-ink) 14%, transparent);
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.94);
-  box-shadow: 0 6px 18px rgba(15, 23, 42, 0.16);
-  color: #0f172a;
+  background: color-mix(in srgb, var(--73-surface-strong) 94%, transparent);
+  box-shadow: 0 6px 18px color-mix(in srgb, var(--73-ink) 16%, transparent);
+  color: var(--73-ink);
   font: inherit;
   cursor: pointer;
 }
 
 .mock-switch__tip {
-  color: #475569;
+  color: var(--73-ink-soft);
 }
 
 .mock-switch__dot {
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  background: #16a34a;
+  background: var(--73-success);
 }
 
 .mock-switch__fab-text {
@@ -150,15 +163,15 @@ function selectIdentity(target: (typeof MOCK_IDENTITIES)[number]) {
 .mock-switch__fab-identity {
   padding: 1px 6px;
   border-radius: 999px;
-  background: #0f172a;
-  color: #fff;
+  background: var(--73-ink);
+  color: var(--73-surface-strong);
 }
 
 .mock-switch__badge {
   padding: 1px 6px;
   border-radius: 999px;
-  background: #dc2626;
-  color: #fff;
+  background: var(--73-danger);
+  color: var(--73-surface-strong);
   font-weight: 700;
 }
 
@@ -166,11 +179,11 @@ function selectIdentity(target: (typeof MOCK_IDENTITIES)[number]) {
   width: 280px;
   margin-top: 8px;
   padding: 12px;
-  border: 1px solid rgba(17, 24, 39, 0.12);
+  border: 1px solid color-mix(in srgb, var(--73-ink) 12%, transparent);
   border-radius: 12px;
-  background: #fff;
-  box-shadow: 0 18px 40px rgba(15, 23, 42, 0.2);
-  color: #0f172a;
+  background: var(--73-surface-strong);
+  box-shadow: 0 18px 40px color-mix(in srgb, var(--73-ink) 20%, transparent);
+  color: var(--73-ink);
 }
 
 .mock-switch__head {
@@ -183,7 +196,7 @@ function selectIdentity(target: (typeof MOCK_IDENTITIES)[number]) {
 .mock-switch__close {
   border: 0;
   background: transparent;
-  color: #64748b;
+  color: var(--73-ink-muted);
   font-size: 16px;
   line-height: 1;
   cursor: pointer;
@@ -191,7 +204,7 @@ function selectIdentity(target: (typeof MOCK_IDENTITIES)[number]) {
 
 .mock-switch__hint {
   margin: 6px 0 0;
-  color: #64748b;
+  color: var(--73-ink-muted);
 }
 
 .mock-switch__identities {
@@ -204,9 +217,9 @@ function selectIdentity(target: (typeof MOCK_IDENTITIES)[number]) {
   display: grid;
   gap: 2px;
   padding: 8px 10px;
-  border: 1px solid rgba(17, 24, 39, 0.12);
+  border: 1px solid color-mix(in srgb, var(--73-ink) 12%, transparent);
   border-radius: 10px;
-  background: #f8fafc;
+  background: var(--73-surface-strong);
   color: inherit;
   font: inherit;
   text-align: left;
@@ -214,18 +227,18 @@ function selectIdentity(target: (typeof MOCK_IDENTITIES)[number]) {
 }
 
 .mock-switch__identity--active {
-  border-color: #0f172a;
-  background: #eef2ff;
+  border-color: var(--73-ink);
+  background: var(--73-accent-soft);
 }
 
 .mock-switch__identity small {
-  color: #64748b;
+  color: var(--73-ink-muted);
 }
 
 .mock-switch__section {
   margin-top: 10px;
   padding-top: 10px;
-  border-top: 1px solid rgba(17, 24, 39, 0.08);
+  border-top: 1px solid color-mix(in srgb, var(--73-ink) 8%, transparent);
 }
 
 .mock-switch__row {
@@ -242,7 +255,7 @@ function selectIdentity(target: (typeof MOCK_IDENTITIES)[number]) {
 }
 
 .mock-switch__row:disabled {
-  color: #94a3b8;
+  color: var(--73-ink-placeholder);
   cursor: default;
 }
 
@@ -258,7 +271,7 @@ function selectIdentity(target: (typeof MOCK_IDENTITIES)[number]) {
   padding: 6px 8px;
   overflow: auto;
   border-radius: 8px;
-  background: #f1f5f9;
+  background: var(--73-surface-strong);
 }
 
 .mock-switch__list code {
@@ -276,14 +289,14 @@ function selectIdentity(target: (typeof MOCK_IDENTITIES)[number]) {
   padding: 0;
   border: 0;
   background: transparent;
-  color: #2563eb;
+  color: var(--73-accent);
   font: inherit;
   text-decoration: underline;
   cursor: pointer;
 }
 
 .mock-switch__link--danger {
-  color: #dc2626;
+  color: var(--73-danger);
 }
 
 @media (max-width: 640px) {

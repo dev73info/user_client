@@ -1,0 +1,62 @@
+/* === 工作台外壳（.user-workbench）色板 ===
+   侧边栏、品牌行、移动端顶栏、抽屉遮罩的色值收在这里，取值**与拆分前逐字相同**
+   （原 `UserWorkbenchView.vue` 的 `<style scoped>` 里的裸色值），一处没调。
+   为什么另立一套而不是直接用 `--73-*`：外壳这一支蓝（var(--73-accent) / var(--73-accent) / var(--73-accent)）
+   与组件库登记的 `--73-accent`（var(--73-accent)）不是同一个色，`--73-danger` 在 dev 主题下还是
+   另一支红（var(--73-danger)）——换成令牌就等于改了颜色，而这次拆分只做结构，不动视觉。
+   颜色逐步令牌化的账记在 `frontend-baseline.json` 的 raw-color 条目里（只减不增）。
+
+   命名前缀 `--uw-`（user-workbench）只给外壳用；挂在外壳根节点上、不进 `:root`，
+   避免与页面层的 `--wb-*` / `--dev-*` / `--profile-*` 混在一起。
+   与组件库取值完全一致的几档直接复用 `--73-*`（见下方注释），不另立变量。 */
+
+.user-workbench {
+  /* --- 文字 ---
+     var(--73-ink-muted) / var(--73-ink-placeholder) / var(--73-surface-strong) 在 portal 与 dev 两套主题下取值相同，
+     直接用 --73-ink-muted / --73-ink-placeholder / --73-ink-inverse，不另立变量。 */
+  --uw-ink-strong: var(--73-ink);
+  --uw-ink: var(--73-ink-soft);
+
+  /* --- 表面、描边与阴影 --- */
+  --uw-surface: color-mix(in srgb, var(--73-surface-strong) 94%, transparent);
+  --uw-surface-hover: color-mix(in srgb, var(--73-accent-soft) 96%, transparent);
+  --uw-surface-line: color-mix(in srgb, var(--73-accent-soft) 96%, transparent);
+  --uw-line: color-mix(in srgb, var(--73-accent-soft) 95%, transparent);
+  --uw-line-faint: color-mix(in srgb, var(--73-border) 82%, transparent);
+  --uw-surface-shadow: 0 14px 34px color-mix(in srgb, var(--73-accent) 8%, transparent);
+  --uw-bar-shadow: 0 10px 24px color-mix(in srgb, var(--73-accent) 8%, transparent);
+  --uw-backdrop: color-mix(in srgb, var(--73-ink) 36%, transparent);
+
+  /* --- 强调蓝：外壳自有的三档（与 --wb-accent var(--73-accent) 并列，不合并） --- */
+  --uw-blue-ink: var(--73-accent);
+  --uw-blue: var(--73-accent);
+  --uw-blue-bright: var(--73-accent);
+  --uw-blue-wash-faint: color-mix(in srgb, var(--73-accent-soft) 60%, transparent);
+  --uw-blue-wash-soft: color-mix(in srgb, var(--73-accent-soft) 86%, transparent);
+  --uw-blue-wash: color-mix(in srgb, var(--73-accent-soft) 94%, transparent);
+  --uw-blue-wash-strong: color-mix(in srgb, var(--73-accent-soft) 96%, transparent);
+  --uw-blue-fill-soft: color-mix(in srgb, var(--73-accent-soft) 82%, transparent);
+  --uw-blue-fill: color-mix(in srgb, var(--73-accent-soft) 90%, transparent);
+  --uw-blue-fill-strong: color-mix(in srgb, var(--73-accent-soft) 95%, transparent);
+  --uw-blue-fill-hover: color-mix(in srgb, var(--73-accent-soft) 96%, transparent);
+  --uw-blue-icon-active: color-mix(in srgb, var(--73-accent) 14%, transparent);
+  --uw-blue-line: color-mix(in srgb, var(--73-accent-soft) 90%, transparent);
+  --uw-blue-line-hover: color-mix(in srgb, var(--73-accent) 95%, transparent);
+  --uw-blue-ring: color-mix(in srgb, var(--73-accent-soft) 52%, transparent);
+
+  /* --- 危险色：退出登录一条用（不能借 --73-danger，dev 主题下是另一支红） --- */
+  --uw-danger: var(--73-danger);
+  --uw-danger-strong: var(--73-danger-text);
+  --uw-danger-wash: color-mix(in srgb, var(--73-danger-soft) 90%, transparent);
+  --uw-danger-wash-hover: color-mix(in srgb, var(--73-danger-soft) 96%, transparent);
+  --uw-danger-wash-strong: color-mix(in srgb, var(--73-danger-soft) 95%, transparent);
+  --uw-danger-ring: color-mix(in srgb, var(--73-danger-soft) 72%, transparent);
+
+  /* --- 角标与消息中心滚动条 --- */
+  --uw-badge: var(--73-danger);
+  --uw-badge-unread: var(--73-danger);
+  --uw-scroll-a: color-mix(in srgb, var(--73-accent) 70%, transparent);
+  --uw-scroll-a-hover: color-mix(in srgb, var(--73-accent) 90%, transparent);
+  --uw-scroll-b: color-mix(in srgb, var(--73-success) 80%, transparent);
+  --uw-scroll-b-hover: var(--73-success);
+}

@@ -1,0 +1,45 @@
+/* 头像卡下方的 App 式快捷入口：只在移动端出现（见 640px 断点） */
+.overview-hero__quick {
+  display: none;
+}
+
+.overview-hero__quick a {
+  display: grid;
+  justify-items: center;
+  gap: 6px;
+  min-width: 0;
+  color: var(--73-ink-soft);
+  font-size: 12px;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.overview-hero__quick a > span:last-child {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.overview-hero__quick-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 14px;
+  background: var(--73-surface-strong);
+  color: var(--73-accent);
+  box-shadow: 0 4px 10px color-mix(in srgb, var(--73-accent) 8%, transparent);
+}
+
+@media (max-width: 640px) {
+  .overview-hero__quick {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 14px 8px;
+    padding: 14px 4px;
+    border-radius: 12px;
+    background: var(--73-accent-soft);
+  }
+}

@@ -1,0 +1,230 @@
+/* 移动端侧栏三张卡（内测中 / 平台公告 / 内测里程碑）：桌面端是窄侧栏里的大卡片，
+   手机上通栏铺开，同样的内容竖着叠会占掉三屏，这里全部收紧 */
+@media (max-width: 900px) {
+  .portal-card {
+    padding: 12px;
+    border-radius: 14px;
+  }
+
+  .portal-card--notice,
+  .portal-card--stats {
+    padding: 12px;
+  }
+
+  /* —— 内测中 + 每日签到：徽标与「加入QQ群」同一行，签到块左文右钮 —— */
+  .portal-beta-notice {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    grid-template-areas:
+      'badge btn'
+      'invite invite';
+    align-items: center;
+    gap: 8px;
+  }
+
+  .portal-beta-notice__badge {
+    grid-area: badge;
+  }
+
+  .portal-beta-notice__btn {
+    grid-area: btn;
+    justify-self: end;
+    align-self: center;
+    padding: 4px 12px;
+    border-radius: 999px;
+  }
+
+  .portal-beta-invite {
+    grid-area: invite;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas:
+      'title cta'
+      'text cta';
+    align-items: center;
+    gap: 2px 12px;
+    margin-top: 0;
+    padding: 10px 12px;
+  }
+
+  .portal-beta-invite__title {
+    grid-area: title;
+    font-size: 13px;
+  }
+
+  .portal-beta-invite__text {
+    grid-area: text;
+    font-size: 12px;
+    line-height: 1.5;
+  }
+
+  .portal-beta-invite__cta,
+  .portal-checkin-card__cta {
+    grid-area: cta;
+    margin-top: 0;
+    padding: 7px 14px;
+    white-space: nowrap;
+  }
+
+  /* —— 平台公告：每条一行，标题单行省略，标签与时间并到右侧 —— */
+  .portal-card__header--notice {
+    margin-bottom: 2px;
+  }
+
+  .portal-notice-list {
+    gap: 6px;
+    margin-top: 6px;
+  }
+
+  .portal-notice-item {
+    gap: 8px;
+    padding: 9px 12px;
+    border-radius: 12px;
+  }
+
+  .portal-notice-item__main {
+    grid-template-columns: minmax(0, 1fr) max-content;
+    gap: 8px;
+    padding-left: 12px;
+  }
+
+  .portal-notice-item__main strong {
+    display: block;
+    overflow: hidden;
+    font-size: 13px;
+    line-height: 1.4;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .portal-notice-item .portal-tag {
+    padding: 3px 8px;
+  }
+
+  .portal-notice-item time {
+    font-size: 11px;
+  }
+
+  /* —— 内测里程碑：两列小卡，图标在左、文字在右，去掉大块留白 —— */
+  .portal-card__header--stats {
+    margin-bottom: 0;
+  }
+
+  .portal-milestone__intro {
+    margin: 4px 0 8px;
+    padding: 6px 12px;
+  }
+
+  .portal-stats-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+    margin-top: 0;
+  }
+
+  .portal-stat-item {
+    grid-template-columns: auto minmax(0, 1fr);
+    align-items: center;
+    justify-items: stretch;
+    gap: 8px;
+    min-height: 0;
+    padding: 10px;
+    border-radius: 12px;
+  }
+
+  .portal-stat-item__icon {
+    width: 32px;
+    height: 32px;
+    border-radius: 10px;
+  }
+
+  .portal-stat-item__icon svg {
+    width: 18px;
+    height: 18px;
+  }
+
+  .portal-stat-item__copy {
+    gap: 2px;
+    min-width: 0;
+  }
+
+  .portal-stat-item__label {
+    gap: 4px;
+  }
+
+  .portal-stat-item__copy span {
+    font-size: 12px;
+  }
+
+  .portal-stat-item__target {
+    min-height: 16px;
+    padding: 0 6px;
+    font-size: 10px !important;
+  }
+
+  .portal-stat-item__copy strong {
+    font-size: 16px;
+  }
+
+  .portal-stat-item__note {
+    font-size: 11px;
+  }
+
+  .portal-stat-item__progress {
+    height: 4px;
+    margin-top: 0;
+  }
+}
+
+/* 移动端移除「定制流程」区块（需求方口径）：整块不展示，桌面端保持原样。
+   原先移动端是「五步压成一行」的图标排，现在这一段在 ≤900px 直接收起。 */
+@media (max-width: 900px) {
+  .portal-section--workflow {
+    display: none;
+  }
+}
+
+/* 移动端横幅：插画靠右、文字靠左，左侧叠一层白色渐隐托住文字，不再与插画互相压住；
+   标题缩小一档，三条卖点竖排（后期换轮播图时，这一层渐隐可以随图一起换掉） */
+@media (max-width: 900px) {
+  .portal-hero__main {
+    align-items: center;
+    padding: 18px 16px;
+    border-radius: 14px;
+    background:
+      var(--73-app-grad-soft-60),
+      url('/icons/hero_r.png') right center / cover no-repeat,
+      var(--73-app-grad-soft-59);
+  }
+
+  .portal-hero__copy {
+    gap: 12px;
+  }
+
+  .portal-hero__copy h1 {
+    font-size: 26px;
+    line-height: 1.2;
+    white-space: nowrap;
+  }
+
+  .portal-signal-list {
+    flex-direction: column;
+    flex-wrap: nowrap;
+    gap: 6px;
+  }
+
+  .portal-signal {
+    color: var(--73-ink-soft);
+    font-size: 13px;
+  }
+}
+
+/* R047 断点收敛：原档位 560px → 640px（与上面那块同为 640px 档，中间隔着 900px 块，未合并） */
+@media (max-width: 640px) {
+  .portal-hero__main {
+    height: 168px;
+  }
+
+  .portal-hero__copy h1 {
+    font-size: 26px;
+  }
+}

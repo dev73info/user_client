@@ -7,6 +7,8 @@ import {
   HttpError,
   normalizeBackendPath,
   readErrorMessage,
+  readErrorShape,
+  toApiErrorShape,
 } from '@/shared/api/httpClient'
 import { dispatchAuthUnauthorized } from '@/shared/api/authEvents'
 
@@ -18,7 +20,10 @@ export {
   HttpError,
   normalizeBackendPath,
   readErrorMessage,
+  readErrorShape,
+  toApiErrorShape,
 }
+export type { ApiErrorShape } from '@/shared/api/httpClient'
 
 function shouldRedirectOnUnauthorized(path: string): boolean {
   const normalizedPath = normalizeBackendPath(path).split('?')[0] ?? path
@@ -40,4 +45,4 @@ const httpClient = createHttpClient({
   },
 })
 
-export const { requestJson, requestText, requestVoid } = httpClient
+export const { requestJson, requestText, requestVoid, requestBlob } = httpClient

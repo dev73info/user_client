@@ -1,0 +1,36 @@
+{
+  "repo": ".",
+  "entries": [
+    {
+      "rule": "raw-color",
+      "file": "src/components/home/PortalQuickPanels.vue",
+      "detail": "10 处裸色值",
+      "since": "2026-10-22",
+      "note": "随 HomeView 拆分搬移（原在 HomeView.vue 的 12 处），净减 2；非新增债"
+    },
+    {
+      "rule": "raw-color",
+      "file": "src/components/ShareCardGenerator.vue",
+      "detail": "19 处裸色值",
+      "since": "2026-10-22"
+    },
+    {
+      "rule": "raw-color",
+      "file": "src/composables/useFaceidChallenge.ts",
+      "detail": "2 处裸色值",
+      "since": "2026-10-22"
+    },
+    {
+      "rule": "raw-color",
+      "file": "src/mock/identity.ts",
+      "detail": "2 处裸色值",
+      "since": "2026-10-22"
+    },
+    {
+      "rule": "raw-color",
+      "file": "src/mock/response.ts",
+      "detail": "3 处裸色值",
+      "since": "2026-10-22"
+    }
+  ]
+}

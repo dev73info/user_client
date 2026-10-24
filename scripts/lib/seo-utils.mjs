@@ -25,7 +25,10 @@ export function readEnvFile(path) {
         .map((line) => {
           const index = line.indexOf('=')
           const name = line.slice(0, index).trim()
-          const value = line.slice(index + 1).trim().replace(/^['"]|['"]$/g, '')
+          const value = line
+            .slice(index + 1)
+            .trim()
+            .replace(/^['"]|['"]$/g, '')
           return [name, value]
         }),
     )
@@ -38,11 +41,15 @@ export function readEnvFile(path) {
 }
 
 export function normalizeBaseUrl(value) {
-  return String(value || '').trim().replace(/\/+$/, '')
+  return String(value || '')
+    .trim()
+    .replace(/\/+$/, '')
 }
 
 export function resolveSiteUrl() {
-  return normalizeBaseUrl(process.env.SITEMAP_SITE_URL || process.env.VITE_SITE_URL || DEFAULT_SITE_URL)
+  return normalizeBaseUrl(
+    process.env.SITEMAP_SITE_URL || process.env.VITE_SITE_URL || DEFAULT_SITE_URL,
+  )
 }
 
 export function resolveApiBaseUrl(projectRoot) {
@@ -319,6 +326,12 @@ export async function fetchCommunityPostDetail(apiBaseUrl, postId) {
 // 所以静态快照也必须现取，不能在脚本里写死一份。
 export async function fetchUserServiceAgreement(apiBaseUrl) {
   return fetchJson(apiBaseUrl, '/auth/user-service-agreement')
+}
+
+// 通用协议 / 附件正文（R043 任务-02/03）：《隐私政策》《支付与退款说明》等配套附件
+// 入库到后端 `contract_template` 之后，静态快照与 SPA 一样走接口读，避免"页面改了、快照没改"。
+export async function fetchAgreementContent(apiBaseUrl, code) {
+  return fetchJson(apiBaseUrl, `/auth/agreement-content?code=${encodeURIComponent(code)}`)
 }
 
 async function fetchJson(apiBaseUrl, path) {

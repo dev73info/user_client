@@ -1,5 +1,5 @@
 {
-  "name": "user-client",
+  "name": "user_client",
   "version": "0.0.0",
   "private": true,
   "type": "module",
@@ -11,12 +11,21 @@
     "build": "run-s generate:sitemap type-check \"build-only {@}\" --",
     "preview": "vite preview",
     "test:unit": "vitest",
+    "test:ci": "vitest run --exclude '**/.claude/**'",
     "build-only": "vite build && node scripts/generate-seo-pages.mjs",
     "type-check": "vue-tsc --build",
     "lint": "run-s lint:*",
     "lint:oxlint": "oxlint . --fix",
     "lint:eslint": "eslint . --fix --cache",
-    "format": "prettier --write --experimental-cli src/"
+    "lint:check": "eslint . --max-warnings=0",
+    "check:frontend": "node scripts/check-frontend.mjs .",
+    "gate": "run-s type-check lint:check test:ci check:frontend contract:check build",
+    "format": "prettier --write --experimental-cli src/",
+    "format:check": "prettier --check \"src/**/*.{ts,vue,css}\"",
+    "format:changed": "git diff --name-only --diff-filter=ACMR origin/develop...HEAD -- \"src/*.ts\" \"src/**/*.ts\" \"src/**/*.vue\" \"src/*.css\" \"src/**/*.css\" \"scripts/*.mjs\" \"scripts/**/*.mjs\" | xargs prettier --check",
+    "contract:check": "node scripts/contract-check.mjs",
+    "contract:write": "node scripts/contract-check.mjs --write",
+    "gate:quick": "run-s type-check lint:check test:ci check:frontend contract:check"
   },
   "dependencies": {
     "@tiptap/extension-code-block-lowlight": "^3.22.5",
@@ -57,6 +66,7 @@
     "jiti": "^2.6.1",
     "jsdom": "^29.0.1",
     "npm-run-all2": "^8.0.4",
+    "openapi-typescript": "^7.13.0",
     "oxlint": "~1.57.0",
     "prettier": "3.8.1",
     "typescript": "~6.0.0",

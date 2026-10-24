@@ -1,0 +1,240 @@
+/* 需求详情抽屉：从右侧划出、盖在会话之上。定位用 fixed——内嵌形态（消息中心）下
+   也要贴着视口右侧划出，不能依赖外层容器的定位；抽屉整棵 Teleport 到 body（见模板注释），
+   所以这里的层级是相对站点外壳算的：
+   压过会话弹窗（130）、个人中心浮层（120）、吸顶导航（40）与移动端底部坞（60），
+   但仍要留在验收弹窗（1400）这些从会话里点开的弹窗之下。 */
+.conversation-drawer-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+}
+
+.conversation-drawer__backdrop {
+  position: absolute;
+  inset: 0;
+  background: color-mix(in srgb, var(--73-ink) 28%, transparent);
+}
+
+.conversation-drawer {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  flex-direction: column;
+  width: min(380px, 100%);
+  border-left: 1px solid color-mix(in srgb, var(--73-accent-soft) 98%, transparent);
+  background: var(--73-surface-strong);
+  box-shadow: -12px 0 28px color-mix(in srgb, var(--73-accent) 12%, transparent);
+}
+
+/* 划出：遮罩淡入 + 面板从右侧推入。过渡类落在 layer 上，面板靠后代选择器跟着动。 */
+.conversation-drawer-enter-active,
+.conversation-drawer-leave-active {
+  transition: opacity 200ms ease;
+}
+
+.conversation-drawer-enter-active .conversation-drawer,
+.conversation-drawer-leave-active .conversation-drawer {
+  transition: transform 220ms ease;
+}
+
+.conversation-drawer-enter-from,
+.conversation-drawer-leave-to {
+  opacity: 0;
+}
+
+.conversation-drawer-enter-from .conversation-drawer,
+.conversation-drawer-leave-to .conversation-drawer {
+  transform: translateX(100%);
+}
+
+.conversation-drawer__head {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 14px 14px 12px 18px;
+  border-bottom: 1px solid color-mix(in srgb, var(--73-accent-soft) 95%, transparent);
+}
+
+.conversation-drawer__head h4 {
+  margin: 0;
+  color: var(--73-ink);
+  font-size: 15px;
+}
+
+/* 收起键。原来借的是会话头那颗 .conversation-modal__icon-btn——样式挂在会话弹窗的 scoped 里，
+   元素搬进本组件后就套不上了（scoped 只对同一模板里的元素生效）。声明按原样抄一份，
+   尺寸、颜色、悬停与禁用态都没变，只把类名换成抽屉自己的。 */
+.conversation-drawer__close {
+  display: inline-grid;
+  place-items: center;
+  border: 0;
+  cursor: pointer;
+  transition:
+    background 140ms ease,
+    box-shadow 140ms ease,
+    color 140ms ease,
+    transform 140ms ease;
+  width: 36px;
+  height: 36px;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--73-ink-soft);
+  font-size: 18px;
+}
+
+.conversation-drawer__close:hover:not(:disabled) {
+  background: var(--73-accent-soft);
+  color: var(--73-accent);
+}
+
+.conversation-drawer__close:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.conversation-drawer__body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  display: grid;
+  align-content: start;
+  gap: 12px;
+  padding: 14px 18px 18px;
+}
+
+.conversation-drawer__title {
+  margin: 0;
+  color: var(--73-ink);
+  font-size: 14px;
+  line-height: 1.4;
+}
+
+.conversation-drawer__hint {
+  margin: 0;
+  color: var(--73-ink-muted);
+  font-size: 13px;
+}
+
+.conversation-drawer__meta {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px 14px;
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: var(--73-surface-strong);
+}
+
+.conversation-drawer__meta div {
+  display: grid;
+  gap: 1px;
+  min-width: 0;
+}
+
+.conversation-drawer__meta dt {
+  color: var(--73-ink-placeholder);
+  font-size: 11px;
+  line-height: 1.4;
+}
+
+.conversation-drawer__meta dd {
+  margin: 0;
+  overflow: hidden;
+  color: var(--73-ink);
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.4;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.conversation-drawer__block {
+  display: grid;
+  gap: 4px;
+  padding-top: 10px;
+  border-top: 1px solid color-mix(in srgb, var(--73-border) 90%, transparent);
+}
+
+.conversation-drawer__block h6 {
+  margin: 0;
+  color: var(--73-ink-soft);
+  font-size: 12px;
+}
+
+.conversation-drawer__rich {
+  color: var(--73-ink-soft);
+  font-size: 13px;
+  line-height: 1.7;
+  overflow-wrap: anywhere;
+}
+
+/* 下面 13 处 :deep（8 条规则，含 strong/b、p/ul/ol/blockquote 这类合并写的）必须与上面
+   持有 v-html 的 .conversation-drawer__rich 同处一个作用域：v-html 写进来的节点没有本组件的
+   scoped 属性，只有 :deep 才排得上号；容器在哪层，这批富文本排版（段落间距、列表缩进、
+   pre/code、图片、附件链接）就跟着在哪层。漏一条就丢一段排版。 */
+.conversation-drawer__rich :deep(*:not(a)) {
+  color: inherit;
+}
+
+.conversation-drawer__rich :deep(strong),
+.conversation-drawer__rich :deep(b) {
+  color: var(--73-ink);
+  font-weight: 700;
+}
+
+.conversation-drawer__rich :deep(p),
+.conversation-drawer__rich :deep(ul),
+.conversation-drawer__rich :deep(ol),
+.conversation-drawer__rich :deep(blockquote) {
+  margin: 0 0 10px;
+}
+
+.conversation-drawer__rich :deep(ul),
+.conversation-drawer__rich :deep(ol) {
+  padding-left: 20px;
+}
+
+.conversation-drawer__rich :deep(a) {
+  color: var(--73-accent);
+  font-weight: 600;
+}
+
+.conversation-drawer__rich :deep(pre) {
+  overflow-x: auto;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: var(--73-ink);
+  color: var(--73-border);
+}
+
+.conversation-drawer__rich :deep(.rich-editor-media) {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  margin: 10px 0;
+  border-radius: 12px;
+}
+
+.conversation-drawer__rich :deep(.rich-editor-attachment) {
+  display: inline-flex;
+  max-width: 100%;
+  margin: 8px 0;
+  padding: 8px 12px;
+  border: 1px solid color-mix(in srgb, var(--73-accent-soft) 96%, transparent);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--73-accent-soft) 90%, transparent);
+  color: var(--73-accent);
+  font-weight: 800;
+  text-decoration: none;
+}
+
+@media (max-width: 640px) {
+  .conversation-drawer {
+    width: 100%;
+  }
+}

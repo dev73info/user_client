@@ -1,0 +1,85 @@
+/* 内嵌形态（移动端)把会话头搬进工作台顶栏时的覆写：选择器带 id，压过上面各层 ≤640 规则里的
+   竖排、按钮撑满等写法。节点在 ConversationModalHeader.vue，规则单独一份文件是因为
+   这一整段只有移动端顶栏里才生效，与桌面端的头部样式不是同一件事。 */
+
+/* === 会话头搬进工作台顶栏（移动端内嵌形态）===
+   一行：返回 · 头像 · 标题/对方与状态 · 详情 · 刷新；不带卡片底色与分隔线，顶栏自己是白底。
+   带 id 的选择器压过上面各层 ≤640 规则里的竖排、按钮撑满等写法。 */
+#workbench-mobile-bar-extra .conversation-modal__header {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-width: 0;
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+/* 顶栏里不放返回、详情、刷新：返回走系统返回 / 左侧菜单，详情点头像或标题进入，刷新靠实时同步 */
+#workbench-mobile-bar-extra .conversation-modal__back,
+#workbench-mobile-bar-extra .conversation-modal__header-actions {
+  display: none;
+}
+
+#workbench-mobile-bar-extra .conversation-modal__avatar {
+  flex: 0 0 auto;
+  width: 32px;
+  height: 32px;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+#workbench-mobile-bar-extra .conversation-modal__identity:focus-visible {
+  border-radius: 6px;
+  outline: 2px solid var(--73-accent);
+  outline-offset: 2px;
+}
+
+/* 实时状态只留彩色圆点：文字字号归零，读屏仍能读到；后面的间隔点一并去掉 */
+#workbench-mobile-bar-extra .conversation-modal__live {
+  gap: 0;
+  font-size: 0;
+}
+
+#workbench-mobile-bar-extra .conversation-modal__identity-meta > .conversation-modal__live::after {
+  content: none;
+}
+
+/* 不换行的长标题会把最小内容宽度一路往上报，撑宽工作台主区；contain 让这一块不参与外层的内容宽度计算 */
+#workbench-mobile-bar-extra .conversation-modal__identity {
+  flex: 1 1 auto;
+  min-width: 0;
+  gap: 1px;
+  contain: inline-size;
+  cursor: pointer;
+}
+
+#workbench-mobile-bar-extra .conversation-modal__identity h3 {
+  overflow: hidden;
+  font-size: 14px;
+  line-height: 1.3;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+#workbench-mobile-bar-extra .conversation-modal__identity-meta {
+  flex-wrap: nowrap;
+  overflow: hidden;
+  font-size: 11px;
+  line-height: 1.3;
+  white-space: nowrap;
+}
+
+#workbench-mobile-bar-extra .conversation-modal__peer {
+  overflow: hidden;
+  min-width: 0;
+  text-overflow: ellipsis;
+}
+
+#workbench-mobile-bar-extra .conversation-modal__recent {
+  display: none;
+}

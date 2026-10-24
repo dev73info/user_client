@@ -1,0 +1,217 @@
+/* 资源详情摘要卡的样式：标题行（可见性 / 价格 / 转载标记）、作者与开发者、
+   资源名与转载出处、简介、标签。随模板节点从 `ResourceDetailPanel.vue` 搬来；
+   原来与 CTA 行、页面内容共用的几条「护栏」规则，拆开后各自留一份（声明相同，只是不同文件）。 */
+.resource-detail-page__summary-card {
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  border: 0;
+  border-radius: 0;
+  border-top: 1px solid color-mix(in srgb, var(--73-accent) 72%, transparent);
+  background: color-mix(in srgb, var(--73-surface-strong) 98%, transparent);
+}
+
+.resource-detail-page__headline-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.resource-detail-page__status-pill,
+.resource-detail-page__author-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border-radius: 999px;
+  padding: 6px 12px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.resource-detail-page__price-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--73-success);
+  background: color-mix(in srgb, var(--73-success-soft) 95%, transparent);
+  border: 1px solid color-mix(in srgb, var(--73-success) 70%, transparent);
+}
+
+.resource-detail-page__price-pill.is-paid {
+  color: var(--73-danger-text);
+  background: color-mix(in srgb, var(--73-warning-soft) 96%, transparent);
+  border-color: color-mix(in srgb, var(--73-warning) 75%, transparent);
+}
+
+.resource-detail-page__status-pill {
+  color: var(--73-success);
+  background: color-mix(in srgb, var(--73-success-soft) 92%, transparent);
+}
+
+.resource-detail-page__author-pill {
+  color: var(--73-accent);
+  background: color-mix(in srgb, var(--73-accent-soft) 92%, transparent);
+}
+
+.resource-detail-page__author-pill--link {
+  text-decoration: none;
+  cursor: pointer;
+  transition: background 0.18s ease;
+}
+
+.resource-detail-page__author-pill--link:hover {
+  background: color-mix(in srgb, var(--73-accent-soft) 95%, transparent);
+}
+
+.resource-detail-page__headline-right {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.resource-detail-page__meta--aside {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin: 0;
+  padding: 6px 12px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--73-ink-muted);
+  background: color-mix(in srgb, var(--73-surface-strong) 92%, transparent);
+}
+
+.resource-detail-page__meta-label--green {
+  color: var(--73-success);
+}
+
+.resource-detail-page__meta--aside a {
+  color: var(--73-ink-muted);
+  text-decoration: none;
+  transition: color 0.18s ease;
+}
+
+.resource-detail-page__meta--aside a:hover {
+  color: var(--73-accent);
+}
+
+.resource-detail-page__identity-block {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.resource-detail-page__title {
+  margin: 0;
+  color: var(--73-ink);
+  font-size: clamp(28px, 3.2vw, 42px);
+  line-height: 1.12;
+  font-weight: 900;
+  letter-spacing: 0;
+  overflow-wrap: anywhere;
+}
+
+.resource-detail-page__repost-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.resource-detail-page__headline-left {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.resource-detail-page__repost-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border-radius: 999px;
+  padding: 6px 12px;
+  font-size: 12px;
+  font-weight: 700;
+  background: color-mix(in srgb, var(--73-accent) 12%, transparent);
+  color: var(--73-accent);
+}
+
+.resource-detail-page__repost-badge.is-repost {
+  background: color-mix(in srgb, var(--73-warning) 14%, transparent);
+  color: var(--73-warning);
+}
+
+.resource-detail-page__repost-origin {
+  color: var(--73-accent);
+  font-size: 13px;
+  overflow-wrap: anywhere;
+  text-decoration: none;
+}
+
+a.resource-detail-page__repost-origin:hover {
+  text-decoration: underline;
+}
+
+.resource-detail-page__meta,
+.resource-detail-page__summary {
+  margin: 0;
+  color: var(--73-ink-muted);
+  line-height: 1.8;
+}
+
+.resource-detail-page__summary {
+  max-width: 62ch;
+  font-size: 15px;
+}
+
+/* 与首页精选卡 portal-spotlight-card__meta-row 同款标签 */
+.resource-detail-page__tags {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
+.resource-detail-page__tag {
+  display: inline-flex;
+  align-items: center;
+  min-width: 0;
+  max-width: 100%;
+  min-height: 22px;
+  padding: 2px 9px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--73-surface-strong) 96%, transparent);
+  color: var(--73-ink-soft);
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.2;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* 内嵌列表页形态（`.--panel`）：标题降一档 */
+@media (max-width: 900px) {
+  .resource-detail-page--panel .resource-detail-page__title {
+    font-size: 24px;
+  }
+}
+
+@media (max-width: 640px) {
+  .resource-detail-page__summary-card {
+    min-height: auto;
+  }
+
+  .resource-detail-page__title {
+    font-size: 28px;
+  }
+}

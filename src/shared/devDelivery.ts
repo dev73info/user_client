@@ -53,9 +53,37 @@ export type DevOrderRow = {
   customer: string | null
 }
 
+/**
+ * 「我的接单」列表里的一行：交付与到账归并好之后，再把需求单本身贴回来。
+ *
+ * `item` 为空的两种行都不是需求单、也不出签署与操作栏：
+ * 有资源版本却没被任何需求单绑定的资源，以及到账归属的需求已解绑的那一笔。
+ * 卡片（`DevMyRequirementCard`）与页面的回款弹窗共用这一份行类型。
+ */
+export type DevMyOrderRow = DevOrderRow & { item: RequirementItem | null }
+
 /** 行标识：一份需求一行，不重复。 */
 export function devRowKey(requirementId: string): string {
   return `requirement:${requirementId}`
+}
+
+/** 行抬头：需求单行取需求标题，补充行取钱包回执里的标题。 */
+export function rowTitle(row: DevMyOrderRow): string {
+  return row.item?.title ?? row.title ?? '未关联需求'
+}
+
+/** 委托方：需求单行取需求方，补充行取钱包回执里的客户名。 */
+export function rowCustomer(row: DevMyOrderRow): string | null {
+  return row.item?.creator ?? row.customer
+}
+
+/** 最近更新：需求单行看需求的更新时间，补充行看最近一次到账或交付。 */
+export function rowUpdatedAt(row: DevMyOrderRow): string {
+  if (row.item) {
+    return row.item.updated_at
+  }
+
+  return latestReceiptAt(row.receipts) ?? row.delivery?.latestVersionAt ?? '—'
 }
 
 /* 时间串有 `YYYY-MM-DD HH:mm:ss` 与资源版本接口两种格式，解析不出来时按 0 处理：
@@ -70,10 +98,9 @@ export function timeValue(value: string | null | undefined): number {
 }
 
 /** 版本摘要：最新版本按发布时间取，版本总数留在同一行上，不再一行一个版本。 */
-export function versionSummary(versions: McResourceVersionPayload[]): Pick<
-  DevDelivery,
-  'latestVersion' | 'latestVersionAt' | 'versionCount'
-> {
+export function versionSummary(
+  versions: McResourceVersionPayload[],
+): Pick<DevDelivery, 'latestVersion' | 'latestVersionAt' | 'versionCount'> {
   const sorted = [...versions].sort(
     (left, right) => timeValue(right.created_at) - timeValue(left.created_at),
   )
@@ -87,11 +114,14 @@ export function versionSummary(versions: McResourceVersionPayload[]): Pick<
 }
 
 /** 回执按需求归堆：逐笔都留着，行上取合计与笔数，弹窗里摊开。 */
-export function groupReceipts(income: DevWalletIncomeItem[]): Map<string, {
-  receipts: DevReceipt[]
-  title: string
-  customer: string
-}> {
+export function groupReceipts(income: DevWalletIncomeItem[]): Map<
+  string,
+  {
+    receipts: DevReceipt[]
+    title: string
+    customer: string
+  }
+> {
   const grouped = new Map<string, { receipts: DevReceipt[]; title: string; customer: string }>()
 
   for (const item of income) {
@@ -146,10 +176,11 @@ export function buildDevOrderRows(
   const rows: DevOrderRow[] = []
 
   for (const requirement of requirements) {
-    const resource = requirement.bound_resource_id != null
-      ? resourceById.get(requirement.bound_resource_id)
-      : undefined
-    const versions = resource ? versionsByResource.get(resource.id) ?? [] : []
+    const resource =
+      requirement.bound_resource_id != null
+        ? resourceById.get(requirement.bound_resource_id)
+        : undefined
+    const versions = resource ? (versionsByResource.get(resource.id) ?? []) : []
     const group = receiptsByRequirement.get(requirement.requirement_id)
 
     rows.push({
@@ -186,6 +217,14 @@ export function buildDevOrderRows(
 /** 到账合计：行上显示的就是它，逐笔明细在回款详情弹窗里。 */
 export function receiptTotal(receipts: DevReceipt[]): number {
   return receipts.reduce((total, item) => total + item.amount, 0)
+}
+
+/**
+ * 到账金额文案：与「收益钱包 → 收入记录」同一口径（两位小数、带 ¥）。
+ * 行上放合计、回款详情弹窗里放逐笔，两处都用它，免得一边两位小数一边取整。
+ */
+export function receiptMoney(value: number): string {
+  return `¥${value.toFixed(2)}`
 }
 
 /** 最近一笔到账时间：没有到账时返回 `null`。 */

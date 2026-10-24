@@ -1,0 +1,77 @@
+.team-profile__resource-card {
+  border: 1px solid color-mix(in srgb, var(--73-border) 96%, transparent);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--73-surface-strong) 94%, transparent);
+  overflow: hidden;
+  cursor: pointer;
+  transition:
+    border-color 0.18s ease,
+    box-shadow 0.18s ease,
+    transform 0.18s ease;
+}
+
+.team-profile__resource-card:hover {
+  border-color: color-mix(in srgb, var(--73-accent) 36%, transparent);
+  box-shadow: 0 8px 24px color-mix(in srgb, var(--73-ink) 8%, transparent);
+  transform: translateY(-2px);
+}
+
+.team-profile__resource-cover-wrap {
+  width: 100%;
+  height: 160px;
+  border-bottom: 1px solid color-mix(in srgb, var(--73-border) 60%, transparent);
+  overflow: hidden;
+}
+
+.team-profile__resource-cover {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.team-profile__resource-cover--text {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--73-app-grad-accent-soft-07);
+  color: var(--73-accent);
+  font-size: 36px;
+  font-weight: 700;
+  object-fit: unset;
+}
+
+.team-profile__resource-body {
+  padding: 14px 16px;
+  display: grid;
+  gap: 6px;
+}
+
+.team-profile__resource-title {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--73-ink);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.team-profile__resource-desc {
+  margin: 0;
+  font-size: 13px;
+  color: var(--73-ink-muted);
+  line-height: 1.5;
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.team-profile__resource-meta {
+  display: flex;
+  gap: 12px;
+  font-size: 12px;
+  color: var(--73-ink-placeholder);
+  padding-top: 4px;
+}

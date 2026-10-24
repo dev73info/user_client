@@ -12,10 +12,7 @@ import {
 import WechatBindQrModal from '@/components/WechatBindQrModal.vue'
 import { useResourcePayment } from '@/composables/useResourcePayment'
 import { isWechatBrowser } from '@/shared/auth/browser'
-import {
-  formatPurchaseAmountLabel,
-  resourcePurchaseStatusLabel,
-} from '@/shared/resourceSale'
+import { formatPurchaseAmountLabel, resourcePurchaseStatusLabel } from '@/shared/resourceSale'
 import { useAuthStore } from '@/stores/auth'
 import { TButton, TMessage } from 'ui_73info'
 
@@ -59,8 +56,8 @@ const { qrDataUrl, renderQr, startPoll, stopPoll } = useResourcePayment({
 })
 
 const isPaid = computed(() => phase.value === 'paid')
-const orderTitle = computed(() =>
-  order.value?.resource_title?.trim() || `资源 #${order.value?.resource_id ?? ''}`,
+const orderTitle = computed(
+  () => order.value?.resource_title?.trim() || `资源 #${order.value?.resource_id ?? ''}`,
 )
 
 async function loadOrder(orderNo: string) {
@@ -266,166 +263,4 @@ onMounted(() => {
   </main>
 </template>
 
-<style scoped>
-.checkout-page {
-  display: flex;
-  justify-content: center;
-  padding: 48px 16px 72px;
-}
-
-.checkout-card {
-  width: min(560px, 100%);
-  display: grid;
-  gap: 20px;
-  padding: 26px;
-  border-radius: 24px;
-  border: 1px solid rgba(198, 210, 236, 0.72);
-  background: rgba(255, 255, 255, 0.96);
-  box-shadow: 0 18px 42px rgba(76, 103, 172, 0.12);
-}
-
-.checkout-card__head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-}
-
-.checkout-card__title {
-  margin: 0;
-  font-size: 22px;
-  font-weight: 800;
-  color: #0f172a;
-}
-
-.checkout-card__status {
-  padding: 4px 10px;
-  border-radius: 999px;
-  background: rgba(219, 234, 254, 0.92);
-  color: #1d4ed8;
-  font-size: 12px;
-  font-weight: 700;
-}
-
-.checkout-card__status-line {
-  margin: 0;
-  color: #475569;
-  font-size: 13px;
-  line-height: 1.6;
-}
-
-.checkout-card__error {
-  display: grid;
-  gap: 14px;
-  justify-items: start;
-  padding: 12px 14px;
-  border-radius: 14px;
-  border: 1px solid rgba(252, 165, 165, 0.85);
-  background: rgba(254, 242, 242, 0.9);
-  color: #b91c1c;
-  font-size: 13px;
-  line-height: 1.65;
-}
-
-.checkout-card__error p {
-  margin: 0;
-  word-break: break-word;
-}
-
-.checkout-summary {
-  display: grid;
-  gap: 10px;
-  margin: 0;
-  padding: 14px 16px;
-  border-radius: 16px;
-  border: 1px solid rgba(226, 232, 240, 0.95);
-  background: rgba(248, 250, 252, 0.96);
-}
-
-.checkout-summary__row {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 16px;
-}
-
-.checkout-summary__row dt {
-  flex: 0 0 auto;
-  color: #64748b;
-  font-size: 13px;
-}
-
-.checkout-summary__row dd {
-  margin: 0;
-  color: #0f172a;
-  font-size: 14px;
-  font-weight: 700;
-  text-align: right;
-  word-break: break-word;
-}
-
-.checkout-paid {
-  display: grid;
-  gap: 8px;
-  padding: 16px;
-  border-radius: 16px;
-  border: 1px solid rgba(134, 239, 172, 0.7);
-  background: rgba(240, 253, 244, 0.92);
-}
-
-.checkout-paid__title {
-  color: #15803d;
-  font-size: 18px;
-  font-weight: 800;
-}
-
-.checkout-paid__line {
-  margin: 0;
-  color: #334155;
-  font-size: 13px;
-  line-height: 1.6;
-  word-break: break-word;
-}
-
-.checkout-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-  margin-top: 6px;
-}
-
-.checkout-pay {
-  display: grid;
-  justify-items: center;
-  gap: 12px;
-  min-height: 248px;
-  align-content: center;
-  padding: 16px;
-  border-radius: 16px;
-  border: 1px dashed rgba(148, 163, 184, 0.7);
-  background: rgba(248, 250, 252, 0.9);
-}
-
-.checkout-pay__qr img {
-  border-radius: 12px;
-  border: 1px solid rgba(226, 232, 240, 0.95);
-  background: #fff;
-}
-
-@media (max-width: 640px) {
-  .checkout-page {
-    padding: 20px 12px 48px;
-  }
-
-  .checkout-card {
-    gap: 16px;
-    padding: 18px 16px;
-    border-radius: 20px;
-  }
-
-  .checkout-actions {
-    display: grid;
-    grid-template-columns: 1fr;
-  }
-}
-</style>
+<style scoped src="./../components/payment/api-checkout-page.css"></style>

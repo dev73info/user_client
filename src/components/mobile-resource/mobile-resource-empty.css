@@ -1,0 +1,56 @@
+/* 移动端资源列表空态的样式：说明文字与三条出口按钮。随模板节点从 `MobileResourceList.vue` 搬来。 */
+
+.mobile-empty {
+  display: grid;
+  gap: 6px;
+  margin: 8px 0;
+  padding: 18px;
+  text-align: center;
+  border-radius: 10px;
+  background: var(--73-surface-strong);
+  border: 1px solid var(--73-accent-soft);
+  color: var(--73-ink-muted);
+}
+
+.mobile-empty strong {
+  color: var(--73-ink);
+  font-size: 15px;
+}
+
+.mobile-empty span {
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+/* 空态的三条出口（与桌面同一套：清筛选 / 换分区 / 发布需求） */
+.mobile-empty-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.mobile-empty-btn {
+  min-height: 44px;
+  padding: 0 16px;
+  border: 1px solid var(--73-accent-soft);
+  border-radius: 10px;
+  background: var(--73-surface-strong);
+  color: var(--73-ink-soft);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.mobile-empty-btn--primary {
+  border-color: transparent;
+  background: var(--73-accent-gradient);
+  color: var(--73-surface-strong);
+}
+
+.mobile-empty-btn--ghost {
+  border-color: transparent;
+  background: transparent;
+  color: var(--73-ink-muted);
+}

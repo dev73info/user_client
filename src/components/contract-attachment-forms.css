@@ -1,0 +1,169 @@
+.attachment-prepare {
+  margin-top: 8px;
+}
+
+.attachment-prepare__tabs {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  border-bottom: 1px solid var(--73-border);
+  padding-bottom: 10px;
+}
+
+.attachment-tab {
+  padding: 6px 14px;
+  border: 1px solid var(--73-ink-disabled);
+  border-radius: 999px;
+  background: var(--73-surface-strong);
+  color: var(--73-success);
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.attachment-tab--active {
+  background: var(--73-success);
+  border-color: var(--73-success);
+  color: var(--73-surface-strong);
+}
+
+.attachment-prepare__template {
+  margin-left: auto;
+}
+
+.attachment-prepare__hint {
+  margin: 10px 0;
+  color: var(--73-ink-muted);
+  font-size: 12.5px;
+  line-height: 1.7;
+}
+
+.attachment-upload {
+  display: grid;
+  gap: 10px;
+  justify-items: start;
+  margin-top: 12px;
+}
+
+.attachment-upload__picker {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 13px;
+  color: var(--73-ink);
+}
+
+.attachment-upload__picker input[type='file'] {
+  font-size: 13px;
+}
+
+.attachment-upload__file {
+  margin: 0;
+  font-size: 13px;
+  color: var(--73-ink-soft);
+  font-weight: 600;
+}
+
+.attachment-draft {
+  display: grid;
+  gap: 12px;
+  margin-top: 12px;
+  justify-items: start;
+}
+
+.attachment-field {
+  display: grid;
+  gap: 6px;
+  width: 100%;
+  font-size: 13px;
+  color: var(--73-ink-soft);
+}
+
+.attachment-field small {
+  color: var(--73-ink-muted);
+  font-size: 12px;
+}
+
+.attachment-field input[type='text'],
+.attachment-field input[type='number'],
+.attachment-field textarea {
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid var(--73-ink-disabled);
+  border-radius: 8px;
+  background: var(--73-surface-strong);
+  color: var(--73-ink);
+  font: inherit;
+  font-size: 13px;
+  line-height: 1.6;
+  resize: vertical;
+}
+
+.attachment-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 34px;
+  padding: 6px 16px;
+  border: 1px solid var(--73-ink-disabled);
+  border-radius: 8px;
+  background: var(--73-surface-strong);
+  color: var(--73-ink-soft);
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.attachment-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.attachment-btn--primary {
+  border-color: var(--73-success);
+  background: var(--73-success);
+  color: var(--73-surface-strong);
+}
+
+.attachment-btn--ghost {
+  border-color: var(--73-ink-disabled);
+  color: var(--73-success);
+}
+
+.attachment-btn--danger {
+  border-color: var(--73-danger-soft);
+  color: var(--73-danger);
+}
+
+.attachment-msg {
+  margin: 12px 0 0;
+  padding: 8px 10px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.attachment-msg--success {
+  background: var(--73-success-soft);
+  border: 1px solid var(--73-success);
+  color: var(--73-success);
+}
+
+.attachment-msg--error {
+  background: var(--73-danger-soft);
+  border: 1px solid var(--73-danger-soft);
+  color: var(--73-danger);
+}
+
+/* R047 断点收敛：原档位 600px → 640px */
+@media (max-width: 640px) {
+  .attachment-card__facts > div {
+    grid-template-columns: 1fr;
+    gap: 2px;
+  }
+
+  .attachment-prepare__template {
+    margin-left: 0;
+  }
+}

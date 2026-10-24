@@ -1,7 +1,8 @@
-# 只在 WSL（linux）/ x64 上构建：不再装 win32 侧的原生包（rolldown / lightningcss / oxlint）。
+# 同时装 win32 与 linux 两侧的原生包（rolldown / lightningcss / oxlint）：Windows 侧开发要跑前端。
 # pnpm 10 起 package.json 里的 pnpm 字段不再被读取，设置只能写在这里。
 supportedArchitectures:
   os:
+    - win32
     - linux
   cpu:
     - x64

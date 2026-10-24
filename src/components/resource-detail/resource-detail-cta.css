@@ -1,0 +1,194 @@
+/* 摘要卡底部主操作行的样式：主按钮 / 接口资源引导 / 下载进度 / 点赞 / 分享入口。
+   随模板节点从 `ResourceDetailPanel.vue` 搬来，类名与声明未改。 */
+.resource-detail-page__cta-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.resource-detail-page__primary-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.resource-detail-page__cta-row {
+  margin-top: auto;
+  padding-top: 18px;
+  border-top: 1px solid color-mix(in srgb, var(--73-accent-soft) 82%, transparent);
+}
+
+/* 主按钮的描边 / 光标 / 过渡（版本下载按钮已搬进 ResourceVersionList，它那份在子组件里） */
+.resource-detail-page__primary-btn {
+  border: 0;
+  cursor: pointer;
+  transition:
+    transform 180ms ease,
+    box-shadow 180ms ease,
+    background-color 180ms ease;
+}
+
+.resource-detail-page__primary-btn:hover {
+  transform: translateY(-1px);
+}
+
+.resource-detail-page__primary-btn {
+  border: 0;
+  border-radius: 12px;
+  min-height: 44px;
+  padding: 0 16px;
+  color: var(--73-surface-strong);
+  background: var(--73-accent-gradient);
+  font-weight: 700;
+  box-shadow: 0 14px 26px color-mix(in srgb, var(--73-accent) 20%, transparent);
+}
+
+.resource-detail-page__primary-btn:disabled {
+  cursor: wait;
+  opacity: 0.78;
+}
+
+/* BUG-020：接口资源的引导文案。接口资源没有平台内购买入口（后端会以 409 拒掉），
+   这里只说明「到开发者站点下单」，不做成按钮，避免用户点进一个必然失败的支付流程。
+   色值取本文件的 `--rdp-*` 色板（同 `raw-color` 门禁口径，不在这里新写裸色值）。 */
+.resource-detail-page__api-hint {
+  margin: 0;
+  padding: 12px 16px;
+  border: 1px solid var(--rdp-card-border);
+  border-radius: 12px;
+  background: var(--rdp-card-surface);
+  color: var(--rdp-body);
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.6;
+}
+
+.resource-detail-page__download-progress {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 200px;
+  min-height: 44px;
+  padding: 0 14px;
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--73-surface-strong) 96%, transparent);
+  border: 1px solid color-mix(in srgb, var(--73-accent-soft) 82%, transparent);
+}
+
+.resource-detail-page__download-progress__track {
+  position: relative;
+  flex: 1;
+  height: 8px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--73-accent-soft) 90%, transparent);
+  overflow: hidden;
+}
+
+.resource-detail-page__download-progress__bar {
+  position: absolute;
+  inset: 0 auto 0 0;
+  height: 100%;
+  border-radius: 999px;
+  background: var(--73-app-grad-accent-07);
+  transition: width 120ms linear;
+}
+
+.resource-detail-page__download-progress__label {
+  flex: 0 0 auto;
+  min-width: 42px;
+  text-align: right;
+  font-size: 13px;
+  font-weight: 800;
+  color: var(--73-accent);
+  font-variant-numeric: tabular-nums;
+}
+
+/* 点赞：心形图标 + 赞数（与资源卡片上的点赞同一读法：数字跟在图标后面）。
+   未点赞是中性描边心，点赞后实心红心。
+   红色取资源卡片点赞的既有值（ResourceCatalog `.portal-resource-browser__like--active`），
+   悬停底色取首页点赞控件的既有值（home.css `.portal-spotlight-card__likes:hover`）。
+   原来只管一个图标，所以是 44px 正方形；现在带数字，改成 44px 高、左右 12px 的胶囊，
+   宽度跟着数字走，单个图标时也不会比原来窄。 */
+.resource-detail-page__like-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-width: 44px;
+  height: 44px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 12px;
+  background: transparent;
+  color: var(--73-ink-muted);
+  cursor: pointer;
+  transition:
+    color 180ms ease,
+    background-color 180ms ease,
+    transform 180ms ease;
+}
+
+.resource-detail-page__like-count {
+  font-size: 13px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+
+.resource-detail-page__like-icon {
+  width: 20px;
+  height: 20px;
+  transition: transform 180ms ease;
+}
+
+.resource-detail-page__like-btn:hover:not(:disabled) {
+  color: var(--73-danger);
+  background: color-mix(in srgb, var(--73-danger) 8%, transparent);
+}
+
+.resource-detail-page__like-btn:hover:not(:disabled) .resource-detail-page__like-icon {
+  transform: scale(1.08);
+}
+
+.resource-detail-page__like-btn--active {
+  color: var(--73-danger);
+}
+
+.resource-detail-page__like-btn:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--73-accent) 45%, transparent);
+  outline-offset: 2px;
+}
+
+.resource-detail-page__like-btn:disabled {
+  cursor: wait;
+  opacity: 0.72;
+}
+
+.resource-detail-page__primary-actions :deep(.share-card-generator__start) {
+  min-height: 44px;
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--73-accent-soft) 90%, transparent);
+  box-shadow: none;
+}
+
+.resource-detail-page__primary-actions :deep(.share-card-generator__start:hover:not(:disabled)) {
+  background: var(--73-surface-strong);
+  box-shadow: 0 10px 22px color-mix(in srgb, var(--73-accent) 12%, transparent);
+}
+
+@media (max-width: 640px) {
+  .resource-detail-page__cta-row,
+  .resource-detail-page__primary-actions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .resource-detail-page__primary-btn,
+  .resource-detail-page__primary-actions :deep(.share-card-generator),
+  .resource-detail-page__primary-actions :deep(.share-card-generator__start) {
+    width: 100%;
+  }
+}

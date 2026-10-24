@@ -1,0 +1,174 @@
+.tip-dialog__body {
+  display: grid;
+  gap: 14px;
+}
+
+.tip-dialog__thanks {
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--73-accent-soft) 80%, transparent);
+  color: var(--73-ink-soft);
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.tip-dialog__channels {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.tip-dialog__channel {
+  padding: 8px 12px;
+  border: 1px solid var(--73-accent-soft);
+  border-radius: 10px;
+  background: var(--73-surface-strong);
+  color: var(--73-ink-soft);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+  transition:
+    border-color 0.18s ease,
+    background 0.18s ease,
+    color 0.18s ease;
+}
+
+.tip-dialog__channel.is-active {
+  border-color: var(--73-accent);
+  background: var(--73-accent-soft);
+  color: var(--73-accent);
+}
+
+.tip-dialog__tiers {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.tip-dialog__tier {
+  min-width: 76px;
+  padding: 8px 12px;
+  border: 1px solid var(--73-accent-soft);
+  border-radius: 10px;
+  background: var(--73-surface-strong);
+  color: var(--73-ink);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+  transition:
+    border-color 0.18s ease,
+    background 0.18s ease,
+    color 0.18s ease;
+}
+
+.tip-dialog__tier.is-active {
+  border-color: var(--73-accent);
+  background: var(--73-accent-soft);
+  color: var(--73-accent);
+}
+
+.tip-dialog__custom-toggle {
+  justify-self: start;
+  padding: 4px 10px;
+  border: 1px dashed var(--73-accent-soft);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--73-accent);
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.tip-dialog__custom-toggle.is-active {
+  border-style: solid;
+  background: var(--73-accent-soft);
+}
+
+.tip-dialog__field {
+  display: grid;
+  gap: 6px;
+}
+
+.tip-dialog__label {
+  color: var(--73-ink-soft);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.tip-dialog__hint {
+  color: var(--73-ink-placeholder);
+  font-size: 12px;
+}
+
+.tip-dialog__summary {
+  margin: 0;
+  color: var(--73-ink-soft);
+  font-size: 13px;
+}
+
+.tip-dialog__summary strong {
+  color: var(--73-danger-text);
+  font-size: 16px;
+}
+
+.tip-dialog__notice {
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid color-mix(in srgb, var(--73-accent-soft) 85%, transparent);
+  background: color-mix(in srgb, var(--73-surface-strong) 90%, transparent);
+  color: var(--73-ink-muted);
+  font-size: 12px;
+  line-height: 1.7;
+}
+
+.tip-dialog__error {
+  margin: 0;
+  padding: 8px 12px;
+  border-radius: 10px;
+  border: 1px solid color-mix(in srgb, var(--73-danger) 85%, transparent);
+  background: color-mix(in srgb, var(--73-danger-soft) 90%, transparent);
+  color: var(--73-danger);
+  font-size: 13px;
+  line-height: 1.6;
+  word-break: break-word;
+}
+
+.tip-dialog__pay {
+  display: grid;
+  justify-items: center;
+  gap: 12px;
+  padding: 8px 0;
+  text-align: center;
+}
+
+.tip-dialog__pay-amount {
+  margin: 0;
+  color: var(--73-danger-text);
+  font-size: 26px;
+  font-weight: 800;
+}
+
+.tip-dialog__qr {
+  border: 1px solid var(--73-border);
+  border-radius: 12px;
+  background: var(--73-surface-strong);
+}
+
+.tip-dialog__pay-tip {
+  margin: 0;
+  color: var(--73-ink-soft);
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.tip-dialog__pay-link {
+  display: inline-flex;
+  align-items: center;
+  padding: 8px 16px;
+  border-radius: 10px;
+  background: var(--73-accent);
+  color: var(--73-surface-strong);
+  font-weight: 700;
+  text-decoration: none;
+}

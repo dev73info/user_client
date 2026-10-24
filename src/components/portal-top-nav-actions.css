@@ -1,0 +1,226 @@
+.portal-text-btn {
+  padding: 9px 10px;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--ptn-ink-strong);
+  font-weight: 700;
+  font-size: 13px;
+  line-height: 1.2;
+  transition:
+    background-color 160ms ease,
+    color 160ms ease,
+    box-shadow 160ms ease,
+    transform 160ms ease;
+}
+
+.portal-text-btn:hover {
+  color: var(--ptn-accent-ink);
+  background: color-mix(in srgb, var(--73-accent-soft) 92%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--73-accent) 34%, transparent);
+  transform: translateY(-1px);
+}
+
+.portal-text-btn:active {
+  transform: translateY(0);
+}
+
+.portal-solid-btn {
+  padding: 9px 14px;
+  border-radius: 10px;
+  background: var(--ptn-accent-gradient);
+  color: var(--ptn-inverse);
+  font-weight: 700;
+  font-size: 13px;
+  box-shadow: 0 10px 20px color-mix(in srgb, var(--73-accent) 22%, transparent);
+  line-height: 1.2;
+  transition:
+    background 180ms ease,
+    box-shadow 180ms ease,
+    filter 180ms ease,
+    transform 160ms ease;
+}
+
+.portal-solid-btn:hover {
+  background: var(--73-app-grad-accent-04);
+  box-shadow: 0 14px 26px color-mix(in srgb, var(--73-accent) 30%, transparent);
+  filter: saturate(1.06);
+  transform: translateY(-1px);
+}
+
+.portal-solid-btn:active {
+  box-shadow: 0 8px 16px color-mix(in srgb, var(--73-accent) 24%, transparent);
+  transform: translateY(0);
+}
+
+.portal-text-btn:focus-visible,
+.portal-solid-btn:focus-visible {
+  outline: 3px solid var(--ptn-focus-halo);
+  outline-offset: 2px;
+}
+
+@media (max-width: 1180px) {
+  .portal-header {
+    grid-template-columns: auto max-content minmax(0, 1fr);
+    grid-template-areas: 'brand nav tools';
+    gap: 10px 12px;
+    padding: 10px 14px;
+  }
+
+  .portal-brand {
+    grid-area: brand;
+  }
+
+  /* 导航是子组件的根元素，这里带 `.portal-header` 前缀把布局约束压在它自己的样式之上，
+     不依赖两个文件的注入顺序 */
+  .portal-header .portal-nav {
+    grid-area: nav;
+    gap: 6px;
+    justify-content: space-between;
+  }
+
+  .portal-header__tools {
+    grid-area: tools;
+    justify-content: flex-end;
+    width: 100%;
+    min-width: 0;
+  }
+}
+
+/* 再窄就放不下单行，退回「品牌+导航 / 工具栏」两行 */
+/* R047 断点收敛：原档位 960px → 900px */
+@media (max-width: 900px) {
+  .portal-header {
+    grid-template-columns: auto minmax(0, 1fr);
+    grid-template-areas:
+      'brand nav'
+      'tools tools';
+    gap: 10px 14px;
+  }
+
+  .portal-header--dev {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .portal-header__tools {
+    width: 100%;
+  }
+}
+
+/* R047 断点收敛：原档位 780px → 640px */
+@media (max-width: 640px) {
+  .portal-header {
+    top: 0;
+    margin: 0 0 12px;
+    padding: 12px 16px;
+  }
+
+  .portal-header__tools {
+    width: 100%;
+    flex-wrap: wrap;
+  }
+}
+
+/* 移动端首页：顶栏收成一行的搜索条，其余入口交给页面里的宫格。
+   这一档的卡片形态由 styles/unified-top-card.css 的 !important 规则压成白色通栏，
+   所以这里不再重复写 top / margin / padding ——写了也是被覆盖。 */
+@media (max-width: 900px) {
+  .portal-header.app-top-nav--home .portal-brand,
+  .portal-header.app-top-nav--home .portal-nav,
+  .portal-header.app-top-nav--home .portal-subscription,
+  .portal-header.app-top-nav--home .portal-text-btn,
+  .portal-header.app-top-nav--home .portal-solid-btn,
+  .portal-header.app-top-nav--home .portal-user {
+    display: none;
+  }
+
+  .portal-header.app-top-nav--home .portal-header__tools {
+    width: 100%;
+    min-width: 0;
+    flex-wrap: nowrap;
+    justify-content: stretch;
+    gap: 8px;
+  }
+
+  /* 移动端首页入口宫格里已有「社区交流」，顶栏不再重复放社区按钮 */
+  .portal-header.app-top-nav--home .portal-search-menu {
+    display: none;
+  }
+
+  .portal-header.app-top-nav--home .portal-search {
+    flex: 1 1 0;
+    width: auto;
+    min-width: 0;
+    min-height: 42px;
+    background: color-mix(in srgb, var(--73-accent-soft) 96%, transparent);
+  }
+
+  .portal-header.app-top-nav--home :deep(.portal-search-scope) {
+    display: none;
+  }
+}
+
+/* 遗留的独立 /dev 页面（开发者入驻协议等）用紧凑版式 */
+@media (max-width: 1180px) {
+  .portal-header--dev {
+    gap: 8px;
+    margin: 0 0 8px;
+    padding: 8px 10px;
+  }
+
+  .portal-header--dev .portal-brand {
+    min-width: 0;
+  }
+
+  .portal-header--dev .portal-brand__mark {
+    width: 32px;
+    height: 32px;
+    border-radius: 10px;
+    font-size: 13px;
+  }
+
+  .portal-header--dev .portal-brand__copy {
+    min-width: 0;
+  }
+
+  .portal-header--dev .portal-brand__copy strong {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 14px;
+  }
+
+  .portal-header--dev .portal-header__tools {
+    width: 100%;
+    min-width: 0;
+    justify-content: flex-end;
+    flex-wrap: nowrap;
+  }
+
+  .portal-header--dev .portal-icon-btn {
+    width: 32px;
+    height: 32px;
+  }
+
+  /* 用户胶囊是子组件，规则挂在带 `.portal-header` 前缀的选择器上（特异性压过子组件自己的
+     1180 档），保证「dev 版式更紧」这一档仍然生效 */
+  .portal-header.portal-header--dev :deep(.portal-user__trigger) {
+    max-width: 190px;
+    padding: 4px 10px 4px 4px;
+    font-size: 12px;
+  }
+
+  .portal-header.portal-header--dev :deep(.portal-user__avatar) {
+    width: 24px;
+    height: 24px;
+  }
+
+  .portal-header.portal-header--dev :deep(.portal-user__name) {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .portal-header.portal-header--dev :deep(.portal-user__caret) {
+    display: none;
+  }
+}

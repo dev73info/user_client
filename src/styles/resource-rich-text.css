@@ -1,0 +1,153 @@
+/* 资源详情页富文本正文的排版（`v-html` 产物：发布说明、历史版本补充说明）。
+ *
+ * 这些规则原来写在 `ResourceDetailPanel.vue` 的 scoped 样式里，靠 `:deep()` 才命中：
+ * `v-html` 渲染出来的节点不带 `data-v-*`，组件自己的作用域选择器够不到它们。
+ * 现在容器不动（仍在该模板的同一位置、同一串 class），只把规则搬成普通后代选择器——
+ * `.resource-detail-page__rich-text` 是富文本正文的容器，后代就是正文，归属关系本来就该这么写。
+ *
+ * 色值不写在这里：本仓 `raw-color` 门禁按文件聚合，新建的样式文件里出现裸色值就是新增违规。
+ * 页面色板以 `--rdp-rich-*` 自定义属性写在组件里（挂在同一个容器上），由继承传进来，
+ * 这里只取 `var()`——见 `ResourceDetailPanel.vue` 的「富文本正文色板」注释。
+ */
+
+/* 正文默认字色 / 行高（原来与 `.resource-detail-page__meta` 等组件内选择器共用一条规则，
+   搬迁时按归属拆开：外层那 4 个选择器留在组件里，正文这 5 个放这里，声明完全一致） */
+.resource-detail-page__rich-text p,
+.resource-detail-page__rich-text blockquote,
+.resource-detail-page__rich-text ul,
+.resource-detail-page__rich-text ol,
+.resource-detail-page__rich-text td {
+  margin: 0;
+  color: var(--rdp-rich-muted);
+  line-height: 1.8;
+}
+
+/* 文本块级元素占满整行；行内媒体（如 badge 图片）可并排同行 */
+.resource-detail-page__rich-text p,
+.resource-detail-page__rich-text h2,
+.resource-detail-page__rich-text h3,
+.resource-detail-page__rich-text h4,
+.resource-detail-page__rich-text ul,
+.resource-detail-page__rich-text ol,
+.resource-detail-page__rich-text blockquote,
+.resource-detail-page__rich-text pre,
+.resource-detail-page__rich-text hr,
+.resource-detail-page__rich-text table {
+  flex: 0 0 100%;
+}
+
+.resource-detail-page__rich-text h2 {
+  margin: 0 0 12px;
+  color: var(--rdp-rich-ink);
+  font-size: 22px;
+  line-height: 1.35;
+}
+
+.resource-detail-page__rich-text h1 {
+  margin: 0 0 14px;
+  color: var(--rdp-rich-ink);
+  font-size: 28px;
+  line-height: 1.2;
+}
+
+.resource-detail-page__rich-text h3 {
+  margin: 0 0 12px;
+  color: var(--rdp-rich-ink);
+  font-size: 18px;
+  line-height: 1.4;
+}
+
+.resource-detail-page__rich-text blockquote {
+  margin: 0 0 12px;
+  padding-left: 14px;
+  border-left: 3px solid var(--rdp-rich-quote-border);
+}
+
+.resource-detail-page__rich-text ul,
+.resource-detail-page__rich-text ol {
+  margin: 0 0 12px;
+  padding-left: 22px;
+}
+
+.resource-detail-page__rich-text a {
+  color: var(--rdp-rich-link);
+}
+
+.resource-detail-page__rich-text .rich-editor-media {
+  display: block;
+  max-width: 100%;
+  margin: 12px 0;
+  border: 1px solid var(--rdp-rich-media-border);
+  border-radius: 14px;
+  background: var(--rdp-rich-media-bg);
+}
+
+.resource-detail-page__rich-text .rich-editor-image {
+  display: inline-block;
+  vertical-align: middle;
+  height: auto;
+}
+
+.resource-detail-page__rich-text img {
+  display: inline-block;
+  vertical-align: middle;
+  max-width: 100%;
+  height: auto;
+}
+
+.resource-detail-page__rich-text .rich-editor-video {
+  width: 100%;
+  min-height: 220px;
+}
+
+.resource-detail-page__rich-text .rich-editor-attachment {
+  display: inline-flex;
+  align-items: center;
+  max-width: 100%;
+  margin: 10px 0;
+  padding: 9px 12px;
+  border: 1px solid var(--rdp-rich-attachment-border);
+  border-radius: 10px;
+  background: var(--rdp-rich-attachment-bg);
+  color: var(--rdp-rich-attachment-ink);
+  font-weight: 800;
+  text-decoration: none;
+  overflow-wrap: anywhere;
+}
+
+.resource-detail-page__rich-text hr {
+  margin: 18px 0;
+  border: 0;
+  border-top: 1px solid var(--rdp-rich-hairline);
+}
+
+.resource-detail-page__rich-text .rich-table-scroll {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  margin: 0 0 14px;
+  max-width: 100%;
+}
+
+.resource-detail-page__rich-text table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 0 0 14px;
+}
+
+.resource-detail-page__rich-text .rich-table-scroll > table {
+  width: max-content;
+  min-width: 100%;
+  margin: 0;
+}
+
+.resource-detail-page__rich-text th,
+.resource-detail-page__rich-text td {
+  padding: 10px 12px;
+  border: 1px solid var(--rdp-rich-hairline);
+  text-align: left;
+}
+
+.resource-detail-page__rich-text th {
+  color: var(--rdp-rich-ink);
+  background: var(--rdp-rich-th-bg);
+}
