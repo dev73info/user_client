@@ -51,6 +51,7 @@ export {
   listRequirementAcceptances,
   submitRequirementAcceptance,
   type RequirementAcceptancePayload,
-  type RequirementAcceptanceRecord,
+  type RequirementAcceptanceHistoryItem,
+  type RequirementAcceptanceList,
   type RequirementAcceptanceResult,
 } from './acceptance'

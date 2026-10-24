@@ -7,8 +7,12 @@
  */
 import { ref, watch } from 'vue'
 
-import type { AdapayAcceptanceRecord, AdapayAcceptanceResult } from '@/api/adapay'
-import { listRequirementAcceptances, submitRequirementAcceptance } from '@/api/requirements'
+import type { AdapayAcceptanceResult } from '@/api/adapay'
+import {
+  listRequirementAcceptances,
+  submitRequirementAcceptance,
+  type RequirementAcceptanceHistoryItem,
+} from '@/api/requirements'
 import { formatCnDateTime } from '@/shared/requirementDisplay'
 import { TMessage } from 'ui_73info'
 
@@ -28,7 +32,7 @@ const emit = defineEmits<{
 const result = ref<AdapayAcceptanceResult>('passed')
 const note = ref('')
 const submitting = ref(false)
-const records = ref<AdapayAcceptanceRecord[]>([])
+const records = ref<RequirementAcceptanceHistoryItem[]>([])
 const recordsLoading = ref(false)
 
 /** 每次打开都回到「验收通过 + 空说明」，并重新拉一遍历史留档。 */
@@ -52,7 +56,9 @@ async function loadRecords() {
 
   recordsLoading.value = true
   try {
-    records.value = await listRequirementAcceptances(props.token, props.requirementId)
+    // 契约 AcceptanceListResponse 的 history：每次验收的历史（含打回），按时间倒序。
+    const list = await listRequirementAcceptances(props.token, props.requirementId)
+    records.value = list.history ?? []
   } catch (error) {
     // 历史留档只是辅助信息，取不到不挡本次验收。
     TMessage.error(error instanceof Error ? error.message : '加载验收记录失败')
@@ -174,13 +180,10 @@ async function submit() {
                 <strong :class="record.result === 'passed' ? 'is-passed' : 'is-rejected'">
                   {{ record.result === 'passed' ? '验收通过' : '验收不通过' }}
                 </strong>
-                <time>{{ formatCnDateTime(record.createdAt) }}</time>
+                <time>{{ formatCnDateTime(record.recorded_at) }}</time>
               </div>
-              <p class="acceptance-modal__record-version">
-                交付版本：{{ record.resourceVersion?.trim() || '未记录' }}
-              </p>
               <p v-if="record.note">{{ record.note }}</p>
-              <small>提交人：{{ record.submittedBy }}</small>
+              <small>提交人：{{ record.actor }}</small>
             </li>
           </ul>
         </div>

@@ -50,16 +50,44 @@ describe('验收接口（2.0 新路径）', () => {
     expect(path).toBe('/requirements/a%2Fb%20c/acceptance')
   })
 
-  it('验收留档走 GET /requirements/{id}/acceptances', async () => {
-    requestJson.mockResolvedValueOnce([
-      { id: 1, result: 'passed', submittedBy: 'u', note: '', createdAt: '' },
-    ])
+  it('验收留档走 GET，返回契约的 {items, history} 形状', async () => {
+    requestJson.mockResolvedValueOnce({
+      requirement_id: 'R-1',
+      items: [
+        {
+          accepted_at: '2026-10-24 15:00:00',
+          accepted_after_due: false,
+          accepted_by: 'u',
+          basis: 'manual',
+          basis_label: '人工验收',
+          delivered_at: null,
+          note: '',
+          acceptance_due_at: null,
+        },
+      ],
+      history: [
+        {
+          id: 1,
+          result: 'rejected',
+          result_label: '打回',
+          basis: 'manual',
+          basis_label: '人工验收',
+          actor: 'u',
+          note: '接口没按文档实现',
+          recorded_at: '2026-10-24 15:00:00',
+        },
+      ],
+    })
 
-    const rows = await listRequirementAcceptances('t', 'R-1')
+    const list = await listRequirementAcceptances('t', 'R-1')
 
     const [path, init] = requestJson.mock.calls[0] as [string, { method?: string }]
     expect(path).toBe('/requirements/R-1/acceptances')
     expect(init.method).toBeUndefined()
-    expect(rows).toHaveLength(1)
+    expect(list.history).toHaveLength(1)
+    expect(list.history[0]?.result).toBe('rejected')
+    expect(list.history[0]?.note).toBe('接口没按文档实现')
+    expect(list.history[0]?.actor).toBe('u')
+    expect(list.items).toHaveLength(1)
   })
 })

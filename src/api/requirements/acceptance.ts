@@ -14,15 +14,14 @@ export type RequirementAcceptancePayload = Schemas['AcceptanceRequest']
  */
 export type RequirementAcceptanceResult = Schemas['AcceptanceResultResponse']
 
-/** 一条验收留档：字段与旧  同形， 收窄成两值。 */
-export type RequirementAcceptanceRecord = {
-  id: number
-  result: 'passed' | 'rejected'
-  submittedBy: string
-  note: string
-  resourceVersion?: string | null
-  createdAt: string
-}
+/**
+ * 验收留档列表（契约 `AcceptanceListResponse`）：
+ * `items` 是「当前结论」（最多一条），`history` 是每次验收的历史（含打回，带谁/为什么）。
+ */
+export type RequirementAcceptanceList = Schemas['AcceptanceListResponse']
+
+/** 一条历史验收记录（契约 `AcceptanceHistoryItemResponse`）。 */
+export type RequirementAcceptanceHistoryItem = Schemas['AcceptanceHistoryItemResponse']
 
 /**
  * 提交验收结论（`POST /api/requirement/{id}/acceptance`）。
@@ -53,8 +52,8 @@ export async function submitRequirementAcceptance(
 export async function listRequirementAcceptances(
   token: string,
   requirementId: string,
-): Promise<RequirementAcceptanceRecord[]> {
-  return requestJson<RequirementAcceptanceRecord[]>(
+): Promise<RequirementAcceptanceList> {
+  return requestJson<RequirementAcceptanceList>(
     `/requirements/${encodeURIComponent(requirementId)}/acceptances`,
     { headers: authHeaders(token) },
     '加载验收记录失败',
