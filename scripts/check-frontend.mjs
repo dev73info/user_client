@@ -3,8 +3,8 @@
  * 前端仓标准化检查（四个前端仓通用，逐个仓跑）。
  *
  * 用法：
- *   node scripts/frontend/check-frontend.mjs user-client
- *   node scripts/frontend/check-frontend.mjs user-client --write-baseline
+ *   node scripts/frontend/check-frontend.mjs user_client
+ *   node scripts/frontend/check-frontend.mjs user_client --write-baseline
  *
  * 检查项：
  * 1. 行数预算：`src/views` / `src/pages` 下的 `.vue` ≤ 300 行，其它 `.vue` ≤ 400 行，`.ts` ≤ 300 行；

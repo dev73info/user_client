@@ -5,7 +5,7 @@ description: 从 develop 开分支、提交、推分支、开 PR（base=develop�
 
 # 开分支 → 门禁 → PR → 独立审阅 → 合并
 
-本仓（user-client）的集成分支是 `develop`，稳定线是 `master`。**改动一律走分支 + PR**。
+本仓（user_client）的集成分支是 `develop`，稳定线是 `master`。**改动一律走分支 + PR**。
 
 ## 一、开工前 30 秒
 

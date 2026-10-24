@@ -1,4 +1,4 @@
-# 工具链与质量门禁（user-client）
+# 工具链与质量门禁（user_client）
 
 本文只管**这个前端仓库自己的命令**。跨工程的端口表、后端重启、提交粒度、临时文件与收工清理，见根仓
 `docs/规则/` 下的 `dev-servers.md`、`sync-and-commit.md`、`temp-tools.md`——不要在这里重抄一遍。
@@ -9,7 +9,7 @@
 `vue-tsc --build` 之类的命令。**WSL bash 与 Windows Git Bash 都能直接跑**，`cd` 进仓库即可，不需要再包一层（下面以 WSL 路径为例）：
 
 ```bash
-cd /home/banch/dev73info/user-client && pnpm type-check
+cd /home/banch/dev73info/user_client && pnpm type-check
 ```
 
 - 工作区根在 Windows `E:\dev73info` / WSL `/home/banch/dev73info`；旧副本 `E:\yl73info` 已废弃，不要再把路径写回去。
@@ -55,10 +55,10 @@ Git Bash 完整路径，赋值写在 `-lc` 的字符串里：
 
 ```powershell
 # 需求方：5173，吃 .env.local 里的自动登录
-& 'C:\Program Files\Git\bin\bash.exe' -lc 'cd /e/dev73info/user-client && pnpm dev'
+& 'C:\Program Files\Git\bin\bash.exe' -lc 'cd /e/dev73info/user_client && pnpm dev'
 
 # 开发者：5175，用进程环境变量覆盖自动登录账号
-& 'C:\Program Files\Git\bin\bash.exe' -lc 'cd /e/dev73info/user-client && VITE_DEV_AUTO_LOGIN_USERNAME=dev_flow_03562487 VITE_DEV_AUTO_LOGIN_PASSWORD=Test@123456 pnpm dev --port 5175'
+& 'C:\Program Files\Git\bin\bash.exe' -lc 'cd /e/dev73info/user_client && VITE_DEV_AUTO_LOGIN_USERNAME=dev_flow_03562487 VITE_DEV_AUTO_LOGIN_PASSWORD=Test@123456 pnpm dev --port 5175'
 ```
 
 实测（2026-10-20，PowerShell 7）：这样起出来的 vite argv 是 `vite "--port" "5175"`，端口不会靠自增去凑。

@@ -1,4 +1,4 @@
-# user-client 文档
+# user_client 文档
 
 73Info 的用户端与开发者端（Vue 3 · Vite 8 · TypeScript · Pinia · 自研组件库 [`ui_73info`](../../ui_73info/README.md)），一个 SPA 同时承载需求方与开发者两种视角。
 

@@ -1,4 +1,4 @@
-# Vue / TypeScript 编码规范（user-client）
+# Vue / TypeScript 编码规范（user_client）
 
 `doc/README.md` 与 `doc/设计规范.md` 都把「Vue / TypeScript 编码规范（目录命名、SFC 元素顺序、禁 `any`）」指向本文件
 `doc/规则/vue-typescript-patterns.md`。本文按现有代码的实际口径整理。**它与 `doc/` 下的三份文档并列，
