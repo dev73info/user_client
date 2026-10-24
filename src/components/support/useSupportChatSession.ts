@@ -6,6 +6,7 @@
  */
 import { nextTick, ref } from 'vue'
 
+import { parseBackendDateTime } from '@/shared/datetime'
 import { useAuthStore } from '@/stores/auth'
 import {
   createSupportConversation,
@@ -46,7 +47,11 @@ export function useSupportChatSession() {
   let wsReconnectDelayMs = WS_RECONNECT_BASE_MS
 
   function formatTime(value: string): string {
-    const date = new Date(value)
+    // 后端时间是东八区墙钟串，口径见 shared/datetime.ts。
+    const date = parseBackendDateTime(value)
+    if (!date) {
+      return ''
+    }
     return date.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })
   }
 

@@ -5,6 +5,7 @@ import type { useDevHomeDashboard } from './useDevHomeDashboard'
 import { CHART_BUCKETS, type DevHomeIncomeBucket } from './useIncomeChart'
 import { DEMO_DEV_HOME_DAILY_INCOME } from '@/shared/devHomeMock'
 import { dayKey, pad2 } from '@/shared/devHomeTime'
+import { parseBackendDateTime } from '@/shared/datetime'
 
 type DashboardState = ReturnType<typeof useDevHomeDashboard>
 
@@ -59,8 +60,8 @@ export function useDevHomeIncomeChart(options: DevHomeIncomeChartOptions) {
       })
     } else {
       for (const item of recentIncome.value) {
-        const paidAt = new Date(item.paid_at)
-        if (Number.isNaN(paidAt.getTime())) {
+        const paidAt = parseBackendDateTime(item.paid_at)
+        if (!paidAt) {
           continue
         }
         byDay.set(dayKey(paidAt), (byDay.get(dayKey(paidAt)) ?? 0) + item.amount_cny)
