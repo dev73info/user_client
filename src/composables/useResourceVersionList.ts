@@ -16,6 +16,7 @@ import { isResourceArchiveLocked } from '@/shared/resourcePresentation'
 import { useAuthStore } from '@/stores/auth'
 
 import { TMessage } from 'ui_73info'
+import { parseBackendDateTime } from '@/shared/datetime'
 
 /**
  * 「版本管理」页的取数、筛选与分页：资源本身 + 全部版本、关键字搜索（版本号 / 备注 / 文件名）、
@@ -99,8 +100,9 @@ export function useResourceVersionList() {
   }
 
   function formatCreatedAt(value: string): string {
-    const date = new Date(value)
-    if (Number.isNaN(date.getTime())) {
+    // 后端时间是东八区墙钟串，解析口径见 shared/datetime.ts。
+    const date = parseBackendDateTime(value)
+    if (!date) {
       return value
     }
 

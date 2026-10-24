@@ -11,6 +11,7 @@ import { requirementPaymentModeLabel } from '@/shared/requirementDisplay'
 import { requirementStatusLabel } from '@/shared/requirementStatus'
 import { useAuthStore } from '@/stores/auth'
 import { TMessage } from 'ui_73info'
+import { parseBackendDateTime } from '@/shared/datetime'
 
 /** 「可操作需求」最多摆几条（读数条那格的数也要与它一致，别一处截断一处不截断）。 */
 const ACTIONABLE_LIMIT = 4
@@ -49,8 +50,8 @@ export function requirementTimeValue(value?: string | null) {
 }
 
 export function formatRequirementTime(value: string) {
-  const date = new Date(value)
-  if (Number.isNaN(date.getTime())) {
+  const date = parseBackendDateTime(value)
+  if (!date) {
     return '刚刚更新'
   }
   return date.toLocaleString('zh-CN', {
