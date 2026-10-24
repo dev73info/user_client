@@ -45,11 +45,16 @@
 
 ## 五、契约类型
 
-本仓**尚未接入契约生成物**（没有 `src/api/generated/`），`pnpm contract:check` 目前打印「未就绪」并放行。
+契约生成物已接入：`src/api/generated/openapi.json`（后端 `openapi.json` 的副本）+
+`src/api/generated/schema.d.ts`（`pnpm contract:write` 生成），`pnpm contract:check` 已是硬门禁
+（生成物与 spec 不一致直接红）。
 
-- **不要手写「像契约」的类型**，也不要自己造 schema 形状——接入后一次替换；
-- 接入步骤：把后端 `openapi.json` 放进 `src/api/generated/openapi.json` → `pnpm contract:write` → 按域把 `api/*.ts` 的返回类型换成生成物；
-- 接入前返回类型按既有 `api/` 层写法走，不要引入第二套风格。
+- **不要手写「像契约」的类型**：响应 / 请求体形状一律 `components['schemas'][...]`。
+  字段收窄（如 `status` 收窄成字面量联合）可以叠在生成物上写，但形状本身不许另抄一份。
+- 后端 spec 更新后：换 `openapi.json` → `pnpm contract:write` → 按域改调用点，别只换文件不改消费方。
+- 契约里**没有的能力**不要留调用点：要么删入口，要么在页面上明写「未上线」；
+  不许用 Mock 顶替，也不许把 401/403/500 吞成空列表。
+- 生成物与 `src/mock/**` 都算「跟着契约走」的代码：spec 变了要一起改，别只在 `api/*.ts` 里改一半。
 
 ## 六、单测
 
