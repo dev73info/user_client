@@ -9,13 +9,14 @@ import { ref } from 'vue'
 
 import { getMyPoints, type UserPerk } from '@/api/points'
 import { useAuthStore } from '@/stores/auth'
+import { parseBackendDateTime } from '@/shared/datetime'
 
 function ownsPerk(perks: UserPerk[], perkCode: string): boolean {
   return perks.some(
     (perk) =>
       perk.perk_code === perkCode &&
       perk.owned &&
-      (!perk.expires_at || new Date(perk.expires_at).getTime() > Date.now()),
+      (!perk.expires_at || (parseBackendDateTime(perk.expires_at)?.getTime() ?? 0) > Date.now()),
   )
 }
 
