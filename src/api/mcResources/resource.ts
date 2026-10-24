@@ -76,6 +76,29 @@ export async function deleteMcResource(token: string, resourceId: number): Promi
   )
 }
 
+/**
+ * 提交公开审核（`POST /api/resources/resources/{resource_id}/submit-review`）。
+ *
+ * 契约里的动作端点：`draft` / `rejected` → `review`，付费资源没勾版权声明回 400、
+ * 已上架或已在审核中回 409。2.0 新增，legacy 没有对应路径——所以不再用 PATCH
+ * `visibility: 'review'` 那套（PATCH 只做字段更新，不承担审核动作）。
+ */
+export async function submitMcResourceReview(
+  token: string,
+  resourceId: number,
+): Promise<McResourcePayload> {
+  return requestJson<McResourcePayload>(
+    `/dev/resources/resources/${resourceId}/submit-review`,
+    {
+      method: 'POST',
+      headers: {
+        ...authHeader(token),
+      },
+    },
+    '提交公开审核失败',
+  )
+}
+
 export async function updateMcResourceHomepage(
   token: string,
   resourceId: number,

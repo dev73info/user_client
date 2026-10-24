@@ -5,9 +5,9 @@ import type { CommentRequirementPayload, CreateRequirementPayload, RequirementIt
 export async function createRequirement(
   token: string,
   payload: CreateRequirementPayload,
-): Promise<void> {
-  await requestJson<unknown>(
-    '/requirements/',
+): Promise<RequirementItem> {
+  return requestJson<RequirementItem>(
+    '/requirements',
     {
       method: 'POST',
       headers: {
@@ -24,8 +24,8 @@ export async function commentRequirement(
   token: string,
   requirementId: string,
   payload: CommentRequirementPayload,
-): Promise<void> {
-  await requestJson<unknown>(
+): Promise<RequirementItem> {
+  return requestJson<RequirementItem>(
     `/requirements/${encodeURIComponent(requirementId)}/comment`,
     {
       method: 'POST',
@@ -55,6 +55,20 @@ export async function requestRequirementFinalPayment(
   )
 }
 
+export async function submitRequirementDelivery(
+  token: string,
+  requirementId: string,
+): Promise<RequirementItem> {
+  return requestJson<RequirementItem>(
+    `/requirements/${encodeURIComponent(requirementId)}/deliver`,
+    {
+      method: 'POST',
+      headers: authHeader(token),
+    },
+    '提交需求交付失败',
+  )
+}
+
 /** 开发者催告客户支付尾款（只通知，不动钱）。 */
 export async function requestRequirementFinalPayCure(
   token: string,
@@ -72,13 +86,22 @@ export async function requestRequirementFinalPayCure(
   )
 }
 
+/**
+ * 重新提交被驳回的需求。
+ *
+ * **两步，缺一不可**：契约里 `PATCH /{requirement_id}` 才是「保存修改」，而
+ * `PATCH /{requirement_id}/resubmit` 只做 `rejected → pending_review` 的状态流转（**不收请求体**，
+ * 后端 handler 根本不读 body）。早先这里把修改内容直接塞给 `resubmit`，后端收下后原样丢弃，
+ * 用户改的标题 / 预算 / 周期全部落不了库，而接口回 200——最难发现的那种「看起来成功了」。
+ */
 export async function resubmitRequirement(
   token: string,
   requirementId: string,
   payload: CreateRequirementPayload,
-): Promise<void> {
-  await requestJson<unknown>(
-    `/requirements/${encodeURIComponent(requirementId)}/resubmit`,
+): Promise<RequirementItem> {
+  const path = `/requirements/${encodeURIComponent(requirementId)}`
+  await requestJson<RequirementItem>(
+    path,
     {
       method: 'PATCH',
       headers: {
@@ -86,6 +109,17 @@ export async function resubmitRequirement(
         ...authHeader(token),
       },
       body: JSON.stringify(payload),
+    },
+    '保存修改失败',
+  )
+
+  return requestJson<RequirementItem>(
+    `${path}/resubmit`,
+    {
+      method: 'PATCH',
+      headers: {
+        ...authHeader(token),
+      },
     },
     '重新提交失败',
   )

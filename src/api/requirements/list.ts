@@ -17,10 +17,7 @@ export async function listRequirements(token: string): Promise<RequirementItem[]
 /**
  * 按需求编号读一条需求单详情（`GET /api/requirement/{requirement_id}`）。
  *
- * 权限：需求创建者本人、或绑定的开发者都能读（后端 `get_requirement_detail_for_operator`）。
- * **读取本身就是「访问触发」**：合同有效期届满的担保需求会在这一次读里被收口成
- * 锁定 / 清除态，所以返回的 `archive_*` 字段就是最新状态。合同页（`ContractSignView`）
- * 用它拿锁定 / 清除标记，不必再单独设计接口。
+ * 读取可能触发服务端按需收口期限，返回的是收口后的最新状态。
  */
 export async function fetchRequirementDetail(
   token: string,
@@ -42,15 +39,8 @@ export async function getWorkbenchRequirementHallItem(
   requirementId: string,
 ): Promise<RequirementItem> {
   const normalizedRequirementId = requirementId.trim()
-  const params = new URLSearchParams({
-    page: '1',
-    page_size: '20',
-    keyword: normalizedRequirementId,
-    sort_by: 'updated_at',
-    sort_order: 'desc',
-  })
-  const payload = await requestJson<{ items: RequirementItem[] }>(
-    `/dev/requirements/hall/query?${params.toString()}`,
+  const payload = await requestJson<RequirementItem[]>(
+    '/dev/requirements/hall/query',
     {
       headers: {
         ...authHeader(token),
@@ -58,7 +48,7 @@ export async function getWorkbenchRequirementHallItem(
     },
     '加载需求详情失败',
   )
-  const item = payload.items.find(
+  const item = payload.find(
     (requirement) => requirement.requirement_id === normalizedRequirementId,
   )
 

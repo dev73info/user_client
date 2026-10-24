@@ -1,227 +1,162 @@
-import { authHeader, requestJson } from '@/api/http'
+/**
+ * 接单收入池的接口层：钱包总览、提现单、提现额度、自动出款门禁、冻结明细。
+ *
+ * 契约里这一域只有 `GET /api/requirement/wallet/overview` 与 `/api/payment/**` 这几条，
+ * 全部按契约原样调用、原样返回：**不做 camelCase 投影，也不补契约没有的字段**
+ * （此前这里补过 `withdrawable_balance_cny` 这类浮点元读数和一条预付保证金分支，
+ * 两者在契约里都没有来源）。
+ *
+ * 金额一律整数分（`*_fen`）。只有 `DevWalletResponse` 这一条总览仍按契约给的是元（数值型），
+ * 它只用于展示，不参与任何提现计算——提现金额与上限的来源是 `WithdrawalBalanceResponse`。
+ */
+import type { components } from '@/api/generated/schema'
+import { authHeader, requestJson, requestVoid } from '@/api/http'
+import { formatFenAsCny } from '@/shared/money'
 
-export type DevWalletIncomeItem = {
-  payment_id: string
-  requirement_id: string
-  title: string
-  customer: string
-  /** 该里程碑分账**到账**多少（历史事实，不因后来的售后退款改写）。 */
-  gross_amount_cny: number
-  /** 售后按原分账份额从开发者处**收回**多少；未发生退款时为 0。 */
-  refund_developer_cny: number
-  /** 开发者**实际留下**多少 = `gross_amount_cny - refund_developer_cny`（可提现口径）。 */
-  amount_cny: number
-  paid_at: string
-  requirement_status: string
-  /** 收回发生的时间；未发生退款时为 null。 */
-  refunded_at: string | null
-  /**
-   * 该需求**累计退还给客户**多少（含平台按服务费承担的部分）。
-   *
-   * 与 `refund_developer_cny` 不是一回事：那个是「从开发者这里收回的份额」，
-   * 这个是「客户实收」。已结单需求的退款通常两者不相等，界面上要分开说。
-   */
-  requirement_refund_cny: number
+type Schemas = components['schemas']
+
+export type DevWalletIncomeItem = Schemas['DevIncomeResponse']
+export type DevWalletOverview = Schemas['DevWalletResponse']
+export type DevWithdrawalRecord = Schemas['WithdrawalResponse']
+export type DevWithdrawalBalance = Schemas['WithdrawalBalanceResponse']
+export type DevWithdrawalSetting = Schemas['WithdrawalSettingResponse']
+export type CreateDevWithdrawalRequest = Schemas['WithdrawalRequest']
+export type DevWithdrawalConfig = Schemas['WithdrawalConfig']
+export type DevAutoPayoutRun = Schemas['AutoPayoutRunResponse']
+export type DevFreezeDetailPage = Schemas['DepositFreezePageResponse']
+export type DevFreezeDetailItem = Schemas['DepositFreezeItemResponse']
+
+/** 提现单列表的查询参数：契约只支持按状态过滤与条数上限。 */
+export type DevWithdrawalQuery = { status?: string; limit?: number }
+
+/** 备注长度上限：后端按同一口径兜底校验（`WithdrawalRequest.note` 可选）。 */
+export const WITHDRAW_NOTE_MAX_LEN = 200
+
+export type WithdrawalValidationInput = {
+  payload: CreateDevWithdrawalRequest
+  /** 当前可提现（分）。不传则不校验上限，交给后端拦。 */
+  withdrawableFen?: number | null
+  /** 单笔上下限（分）：来自 `GET /api/payment/withdrawal-limits/system`，0 表示不设限。 */
+  limits?: Pick<DevWithdrawalConfig, 'min_fen' | 'max_fen'> | null
 }
 
-export type DevWalletOverview = {
-  total_income_cny: number
-  today_income_cny: number
-  today_income_change_rate: number
-  total_completed_orders: number
-  active_requirement_count: number
-  withdrawable_balance_cny: number
-  pending_withdraw_cny: number
-  paid_withdraw_cny: number
-  recent_income: DevWalletIncomeItem[]
-}
-
-export type DevWithdrawalRecord = {
-  withdrawal_id: string
-  creator: string
-  amount_cny: number
-  /** 出款渠道：接单收入与保证金退回都经 Adapay 出款，alipay / wechat 是历史数据的兼容取值 */
-  channel: 'adapay' | 'alipay' | 'wechat'
-  account_name: string
-  account_no: string
-  account_no_masked: string
-  status: 'pending_review' | 'approved' | 'payout_processing' | 'payout_failed' | 'rejected' | 'paid'
-  note?: string | null
-  review_note?: string | null
-  reviewed_by?: string | null
-  reviewed_at?: string | null
-  paid_reference?: string | null
-  paid_at?: string | null
-  /** 出款失败原因；出款中与已出款时为空 */
-  payout_failure_message?: string | null
-  payout_started_at?: string | null
-  payout_attempts?: number
-  created_at: string
-  updated_at: string
-}
-
-export type DevWithdrawalSummary = {
-  withdrawable_balance_cny: number
-  pending_withdraw_cny: number
-  paid_withdraw_cny: number
-  withdrawals: DevWithdrawalRecord[]
-}
-
-export type DevWithdrawalLimits = {
-  min_amount_cny: number
-  max_amount_cny: number
-  alipay_enabled: boolean
-  wechat_enabled: boolean
-  account_name_min_len: number
-  account_name_max_len: number
-  account_no_min_len: number
-  account_no_max_len: number
-  note_max_len: number
-}
-
-export type CreateDevWithdrawalRequest = {
-  amount_cny: number
-  channel: 'alipay' | 'wechat' | 'adapay'
-  account_name: string
-  account_no: string
-  note?: string | null
-}
-
-/** 收益提现偏好与出款通道状态（自动提现开关 + T+1 到账说明）。 */
-export type DevWithdrawalSetting = {
-  auto_withdraw_enabled: boolean
-  auto_withdraw_enabled_at?: string | null
-  payout_channel_ready: boolean
-  payout_channel_message?: string | null
-  payout_schedule_note: string
-  payout_account_no?: string | null
-}
-
-export function validateDevWithdrawalRequest(
-  payload: CreateDevWithdrawalRequest,
-  withdrawableBalance?: number | null,
-  limits?: DevWithdrawalLimits | null,
-  allowEmptyWechatAccount = false,
-  source: 'income' | 'developer_order_deposit' = 'income',
-): string | null {
-  const minAmount = limits?.min_amount_cny ?? 0.01
-  const maxAmount = limits?.max_amount_cny ?? 999999
-  const normalizedAmount = Math.round(payload.amount_cny * 100) / 100
-  if (!Number.isFinite(normalizedAmount) || normalizedAmount < minAmount || normalizedAmount > maxAmount) {
-    return `提现金额需在 ${minAmount.toFixed(2)} 元到 ${maxAmount.toFixed(2)} 元之间，最多保留两位小数`
+/**
+ * 提交前的本地校验：金额必须是大于 0 的整数分，且不超可提现与单笔上限。
+ *
+ * 只拦「必然失败」的输入，真正的扣减与门禁仍在后端；返回 null 表示可以提交。
+ */
+export function validateDevWithdrawalRequest(input: WithdrawalValidationInput): string | null {
+  const amountFen = input.payload.amount_fen
+  if (!Number.isSafeInteger(amountFen) || amountFen < 1) {
+    return '提现金额须为大于 0 的整数分'
   }
-
-  if (withdrawableBalance != null && normalizedAmount > withdrawableBalance) {
+  const minFen = input.limits?.min_fen ?? 0
+  if (minFen > 0 && amountFen < minFen) {
+    return `单笔提现不能少于 ¥${formatFenAsCny(minFen)}`
+  }
+  const maxFen = input.limits?.max_fen ?? 0
+  if (maxFen > 0 && amountFen > maxFen) {
+    return `单笔提现不能超过 ¥${formatFenAsCny(maxFen)}`
+  }
+  if (input.withdrawableFen != null && amountFen > input.withdrawableFen) {
     return '提现金额不能超过当前可提现余额'
   }
-
-  if (payload.channel !== 'alipay' && payload.channel !== 'wechat' && payload.channel !== 'adapay') {
-    return '收款方式仅支持支付宝或微信'
+  if ((input.payload.note?.trim().length ?? 0) > WITHDRAW_NOTE_MAX_LEN) {
+    return `申请备注不能超过 ${WITHDRAW_NOTE_MAX_LEN} 个字符`
   }
-
-  const note = payload.note?.trim() ?? ''
-  const noteMax = limits?.note_max_len ?? 200
-  if (note.length > noteMax) {
-    return `申请备注不能超过 ${noteMax} 个字符`
-  }
-  if (source === 'developer_order_deposit') {
-    return payload.channel === 'adapay' ? null : '保证金需通过原充值订单退回'
-  }
-
-  // 收益提现的出款由服务端按「开发者已绑定的 Adapay 收款账户」补全，前端不再采集收款信息，
-  // 因此这里只校验金额与备注。
-  if (source === 'income') {
-    return null
-  }
-
-  if (payload.channel === 'adapay') {
-    if (!payload.account_name.trim()) {
-      return '请填写收款户名：个人为实名姓名，企业为认证企业全称'
-    }
-    return null
-  }
-
-  if (payload.channel === 'alipay' && limits && !limits.alipay_enabled) {
-    return '当前未启用支付宝提现'
-  }
-  if (payload.channel === 'wechat' && limits && !limits.wechat_enabled) {
-    return '当前未启用微信提现'
-  }
-
-  const accountName = payload.account_name.trim()
-  const accountNameMin = limits?.account_name_min_len ?? 2
-  const accountNameMax = limits?.account_name_max_len ?? 40
-  if (accountName.length < accountNameMin || accountName.length > accountNameMax) {
-    return `收款人姓名长度需在 ${accountNameMin} 到 ${accountNameMax} 个字符之间`
-  }
-
-  const accountNo = payload.account_no.trim()
-  const accountNoMin = limits?.account_no_min_len ?? 6
-  const accountNoMax = limits?.account_no_max_len ?? 80
-  const canUseBoundWechatAccount = allowEmptyWechatAccount && payload.channel === 'wechat'
-  if ((!canUseBoundWechatAccount && accountNo.length < accountNoMin) || accountNo.length > accountNoMax) {
-    return `收款账号长度需在 ${accountNoMin} 到 ${accountNoMax} 个字符之间`
-  }
-
   return null
 }
 
+/** 钱包总览：接单收入池的累计 / 今日 / 可提现读数与最近到账。 */
 export async function getDevWalletOverview(token: string): Promise<DevWalletOverview> {
   return requestJson<DevWalletOverview>(
-    '/dev/requirements/wallet/overview',
-    {
-      headers: {
-        ...authHeader(token),
-      },
-    },
+    '/requirement/wallet/overview',
+    { headers: authHeader(token) },
     '加载钱包失败',
   )
 }
 
-export async function getDevWithdrawalSummary(token: string): Promise<DevWithdrawalSummary> {
-  return requestJson<DevWithdrawalSummary>(
-    '/dev/payments/withdrawals',
-    {
-      headers: {
-        ...authHeader(token),
-      },
-    },
+/** 提现额度（分）：收入、已提、可提三个数就是提现金额的上限来源。 */
+export async function getDevWithdrawalBalance(token: string): Promise<DevWithdrawalBalance> {
+  return requestJson<DevWithdrawalBalance>(
+    '/payment/withdrawals/balance',
+    { headers: authHeader(token) },
+    '加载提现额度失败',
+  )
+}
+
+/** 我的提现单（最新在前）。 */
+export async function listDevWithdrawals(
+  token: string,
+  query: DevWithdrawalQuery = {},
+): Promise<DevWithdrawalRecord[]> {
+  const params = new URLSearchParams()
+  const status = query.status?.trim()
+  if (status) {
+    params.set('status', status)
+  }
+  if (query.limit != null) {
+    params.set('limit', String(query.limit))
+  }
+  const search = params.toString()
+  return requestJson<DevWithdrawalRecord[]>(
+    `/payment/withdrawals${search ? `?${search}` : ''}`,
+    { headers: authHeader(token) },
     '加载提现记录失败',
   )
 }
 
-export async function getDevWithdrawalLimits(token: string): Promise<DevWithdrawalLimits> {
-  return requestJson<DevWithdrawalLimits>(
-    '/dev/payments/withdrawal-limits',
+/**
+ * 删除一张提现单（204，无响应体）。
+ *
+ * 后端只允许删「钱还没动过」的单（待审核 / 已驳回），其余回 409 并说明该先做什么；
+ * 前端不自己猜状态，后端的原因原样转达。
+ */
+export async function deleteDevWithdrawal(token: string, withdrawalId: string): Promise<void> {
+  return requestVoid(
+    `/payment/withdrawals/${encodeURIComponent(withdrawalId)}`,
     {
-      headers: {
-        ...authHeader(token),
-      },
+      method: 'DELETE',
+      headers: authHeader(token),
     },
-    '加载提现配置失败',
+    '删除提现申请失败',
   )
 }
 
-/** 读取收益提现偏好：自动提现开关、出款通道状态与 T+1 到账说明。 */
-export async function getDevWithdrawalSetting(token: string): Promise<DevWithdrawalSetting> {
-  return requestJson<DevWithdrawalSetting>(
-    '/dev/payments/withdrawal-setting',
+/** 申请提现：只发整数分与备注，收款账户取账号中心绑定的那一张。 */
+export async function createDevWithdrawalRequest(
+  token: string,
+  payload: CreateDevWithdrawalRequest,
+): Promise<DevWithdrawalRecord> {
+  return requestJson<DevWithdrawalRecord>(
+    '/payment/withdrawals',
     {
+      method: 'POST',
       headers: {
+        'Content-Type': 'application/json',
         ...authHeader(token),
       },
+      body: JSON.stringify(payload),
     },
+    '提交提现申请失败',
+  )
+}
+
+/** 自动出款门禁开关：关着（默认）时提现一律进人工审核，不是「每天批量打款」。 */
+export async function getDevWithdrawalSetting(token: string): Promise<DevWithdrawalSetting> {
+  return requestJson<DevWithdrawalSetting>(
+    '/payment/withdrawal-setting',
+    { headers: authHeader(token) },
     '加载自动提现设置失败',
   )
 }
 
-/** 开启或关闭收益自动提现（开启前必须在账号中心绑定 Adapay 收款银行卡）。 */
 export async function updateDevWithdrawalSetting(
   token: string,
   autoWithdrawEnabled: boolean,
 ): Promise<DevWithdrawalSetting> {
   return requestJson<DevWithdrawalSetting>(
-    '/dev/payments/withdrawal-setting',
+    '/payment/withdrawal-setting',
     {
       method: 'PATCH',
       headers: {
@@ -234,20 +169,34 @@ export async function updateDevWithdrawalSetting(
   )
 }
 
-export async function createDevWithdrawalRequest(
+/** 提现限额配置（分）：`auto_payout_max_fen = 0` 表示不限额。 */
+export async function getDevWithdrawalConfig(token: string): Promise<DevWithdrawalConfig> {
+  return requestJson<DevWithdrawalConfig>(
+    '/payment/withdrawal-limits/system',
+    { headers: authHeader(token) },
+    '加载提现限额失败',
+  )
+}
+
+/** 冻结明细（接单保证金的冻结 / 已释放 / 已扣划）：按需求或状态查。 */
+export async function getDevFreezeDetails(
   token: string,
-  payload: CreateDevWithdrawalRequest,
-): Promise<DevWithdrawalRecord> {
-  return requestJson<DevWithdrawalRecord>(
-    '/dev/payments/withdrawals',
-    {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        ...authHeader(token),
-      },
-      body: JSON.stringify(payload),
-    },
-    '提交提现申请失败',
+  query: { developer?: string; status?: string; requirement_id?: string; limit?: number } = {},
+): Promise<DevFreezeDetailPage> {
+  const params = new URLSearchParams()
+  for (const key of ['developer', 'status', 'requirement_id'] as const) {
+    const value = query[key]?.trim()
+    if (value) {
+      params.set(key, value)
+    }
+  }
+  if (query.limit != null) {
+    params.set('limit', String(query.limit))
+  }
+  const search = params.toString()
+  return requestJson<DevFreezeDetailPage>(
+    `/payment/freeze-details${search ? `?${search}` : ''}`,
+    { headers: authHeader(token) },
+    '加载冻结明细失败',
   )
 }

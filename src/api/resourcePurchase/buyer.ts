@@ -15,18 +15,13 @@ export async function createResourcePurchase(
   resourceId: number,
   payload: CreateResourcePurchasePayload,
 ): Promise<ResourcePurchaseOrder> {
-  const body =
-    payload.pay_channel === 'points'
-      ? { pay_channel: 'points' }
-      : {
-          pay_channel: toResourcePayChannel(payload.pay_channel),
-          client_platform: payload.client_platform ?? 'pc',
-          // 现金单才带推广码（积分单后端忽略该字段，前端也别带，免得看不懂）；
-          // 没有推广码时整个字段不下发，请求体里就不出现它。
-          ...(payload.promo_code ? { promo_code: payload.promo_code } : {}),
-        }
+  const body = {
+    ...payload,
+    pay_channel: toResourcePayChannel(payload.pay_channel),
+    client_platform: payload.client_platform ?? 'pc',
+  }
   return requestJson<ResourcePurchaseOrder>(
-    `/dev/resources/resources/${resourceId}/purchase`,
+    `/resource/resources/${resourceId}/purchase`,
     {
       method: 'POST',
       headers: authHeaders(token, { 'Content-Type': 'application/json' }),
@@ -64,7 +59,7 @@ export async function listMyResourcePurchases(
 ): Promise<ResourcePurchaseOrder[]> {
   const qs = buildMyResourcePurchasesQuery(query)
   return requestJson<ResourcePurchaseOrder[]>(
-    `/dev/resources/purchases/mine${qs ? `?${qs}` : ''}`,
+    `/resource/purchases/mine${qs ? `?${qs}` : ''}`,
     { method: 'GET', headers: authHeaders(token) },
     '加载已购资源失败',
   )
@@ -81,7 +76,7 @@ export async function listMyResourcePurchasesPage(
   query: ListMyResourcePurchasesQuery = {},
 ): Promise<MyResourcePurchasesPage> {
   const qs = buildMyResourcePurchasesQuery(query)
-  const response = await fetch(apiUrl(`/dev/resources/purchases/mine${qs ? `?${qs}` : ''}`), {
+  const response = await fetch(apiUrl(`/resource/purchases/mine${qs ? `?${qs}` : ''}`), {
     method: 'GET',
     headers: authHeaders(token),
     credentials: 'omit',
@@ -115,23 +110,22 @@ export async function getMyResourcePurchase(
   orderNo: string,
 ): Promise<ResourcePurchaseOrder> {
   return requestJson<ResourcePurchaseOrder>(
-    `/dev/resources/purchases/${encodeURIComponent(orderNo)}`,
+    `/resource/purchases/${encodeURIComponent(orderNo)}`,
     { method: 'GET', headers: authHeaders(token) },
     '加载购买订单失败',
   )
 }
 
 /**
- * POST /api/resource/open/checkout/exchange
+ * POST /api/resource/checkout/exchange
  *
- * 票据本身就是凭据，不带 `Authorization`。票据单次使用、10 分钟有效，
- * 失败由后端给出 400 / 404 / 409 / 410 与中文文案，这里原样透传。
+ * 票据本身就是凭据，不带 `Authorization`。票据单次使用、10 分钟有效，重复使用返回 403。
  */
 export async function exchangeCheckoutTicket(
   ticket: string,
 ): Promise<CheckoutTicketExchangeResult> {
   return requestJson<CheckoutTicketExchangeResult>(
-    '/resource/open/checkout/exchange',
+    '/resource/checkout/exchange',
     {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },

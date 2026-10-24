@@ -1,3 +1,7 @@
+import type { components } from '@/api/generated/schema'
+
+type Schemas = components['schemas']
+
 export type McResourceVisibility = 'draft' | 'review' | 'published'
 export type McResourcePlatform = string
 
@@ -39,8 +43,8 @@ export type CreateMcResourceRequest = {
   origin_url?: string | null
   origin_org?: string | null
   origin_note?: string | null
-  /** 售价（分）；0=免费；与 price_points 互斥 */
-  price_fen?: number | null
+  /** 买断价（分）；0 = 不卖买断。 */
+  buyout_price_fen?: number | null
   /** 积分售价；0=不走积分购；与 price_fen 互斥 */
   price_points?: number | null
   /** 版权声明勾选 */
@@ -77,7 +81,9 @@ export type McResourcePayload = {
   origin_url: string | null
   origin_org: string | null
   origin_note: string | null
-  /** 售价（分）；0=免费；与 price_points 互斥 */
+  /** 买断价（分）；0 = 不卖买断。 */
+  buyout_price_fen: number
+  /** 冻结的历史现金售价，不参与售卖判定。 */
   price_fen: number
   /** 积分售价；0=不走积分购；与 price_fen 互斥 */
   price_points: number
@@ -119,12 +125,14 @@ export type CreateMcResourceVersionRequest = {
   version: string
   file: File
   note?: string | null
+  price_fen?: number | null
 }
 
 export type UpdateMcResourceVersionRequest = {
   version: string
   note?: string | null
   file?: File
+  price_fen?: number | null
 }
 
 export type McResourceVersionPayload = {
@@ -139,6 +147,9 @@ export type McResourceVersionPayload = {
   delete_review_note?: string | null
   creator: string
   created_at: string
+  is_current: boolean
+  price_fen: number
+  purchasable: boolean
 }
 
 export type UpdateMcResourceHomepageRequest = {
@@ -157,8 +168,8 @@ export type UpdateMcResourceHomepageRequest = {
   origin_url?: string | null
   origin_org?: string | null
   origin_note?: string | null
-  /** 售价（分）；0=免费；已发布改价不强制重新审核；与 price_points 互斥 */
-  price_fen?: number | null
+  /** 买断价（分）；0 = 不卖买断。 */
+  buyout_price_fen?: number | null
   /** 积分售价；0=不走积分购；与 price_fen 互斥 */
   price_points?: number | null
   /** 版权声明勾选；付费提交审核时必须为 true */
@@ -170,31 +181,12 @@ export type UpdateMcResourceHomepageRequest = {
 }
 
 /**
- * R028 接口资源的渠道配置（`GET` 响应；`PUT` 响应同构）。
- * 「不在大厅展示」由后端固定为 `true`，前端只读展示，不给开关。
+ * R028 接口资源的渠道配置（`GET` 响应；`PUT` 响应同构），直接取契约 `ApiChannelResponse`。
+ *
+ * 契约只回 `allowed_origins` / `callback_url` / `has_secret` / `callback_secret_prefix`，
+ * 外加「本次生成的明文」`callback_secret_plain`（只有创建 / 轮换那一次有值）。
  */
-export type ResourceApiChannelPayload = {
-  resource_id: number
-  resource_kind: McResourceKind
-  repeat_purchasable: boolean
-  callback_url: string | null
-  /** 掩码，例如 sk***ab；明文任何响应都不回 */
-  callback_secret_masked: string | null
-  callback_secret_set: boolean
-  hidden_from_catalog: boolean
-  allowed_origins: string[]
-  updated_at: string | null
-  updated_by: string | null
-  /** 仅「后端首次生成密钥」的那一次 PUT 响应里有值，之后永远拿不到 */
-  callback_secret_plain?: string | null
-}
+export type ResourceApiChannelPayload = Schemas['ApiChannelResponse']
 
-export type UpdateResourceApiChannelRequest = {
-  /** 资源类别在创建时确定，创建后不可更改；传与当前值不同的值后端会拒绝 */
-  resource_kind?: McResourceKind
-  repeat_purchasable?: boolean
-  callback_url?: string | null
-  /** 省略或空串 = 不改；非空 = 覆盖 */
-  callback_secret?: string | null
-  allowed_origins?: string[]
-}
+/** `PUT` 请求体：契约只收这三项，渠道配置里没有可写资源类别与「重复购买」。 */
+export type UpdateResourceApiChannelRequest = Schemas['UpdateApiChannelRequest']

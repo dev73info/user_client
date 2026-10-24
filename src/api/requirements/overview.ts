@@ -20,7 +20,7 @@ export async function getRequirementOverview(token: string): Promise<Requirement
 
 export async function getPublicRequirementOverview(): Promise<RequirementOverviewResp> {
   return requestJson<RequirementOverviewResp>(
-    '/public/requirements/public-overview',
+    '/requirement/public-overview',
     {},
     '加载概览失败',
   )
@@ -39,7 +39,7 @@ export async function listPublicRequirementSpotlights(
     params.set('payment_mode', paymentMode)
   }
   return requestJson<PublicRequirementSpotlightPage>(
-    `/public/requirements/public-spotlight?${params.toString()}`,
+    `/requirement/public-spotlight?${params.toString()}`,
     {},
     '加载精选需求失败',
   )

@@ -1,4 +1,14 @@
+/**
+ * 公开用户档案（`GET /api/user/{username}`，免登录）。
+ *
+ * 契约 `PublicProfileResponse` **只有展示字段**：用户名、简介、头像、静态 / 动态主页背景与两处焦点。
+ * 不含邮箱、手机号、实名信息，也不含账号状态（是否被封禁 / 注销）——这个端点免登录，
+ * 多一个字段就等于多一份能被批量抓取的资料，所以类型上也只留白名单里的那几个键。
+ */
+import type { components } from '@/api/generated/schema'
 import { requestJson } from '@/api/http'
+
+type Schemas = components['schemas']
 
 /** 公开主页「最近留言」条目（后端的 `PublicTipMessage`）。 */
 export type PublicTipMessage = {
@@ -44,22 +54,26 @@ export type PublicTipBlock = {
   recent_messages?: PublicTipMessage[]
 }
 
-export type PublicUserProfile = {
-  username: string
-  profile_description: string
-  avatar_url: string | null
-  home_background_static: string | null
-  home_background_dynamic: string | null
-  home_background_static_focus: string | null
-  home_background_dynamic_focus: string | null
-  username_gradient: boolean
-  username_color: string | null
-  /** R010 打赏：公开主页打赏块；老后端没有该字段时为 undefined */
+/** 契约给的公开档案（白名单字段）。 */
+export type ContractPublicProfile = Schemas['PublicProfileResponse']
+
+/**
+ * 公开档案。
+ *
+ * ⚠️ 下面三个字段是 **1.x 的遗留**，2.0 的 `GET /api/user/{username}` 不再返回：
+ * `username_gradient` / `username_color`（权益域）与 `tip`（打赏块）。
+ * 它们仍留在类型里只为不打断 `useDevProfileData` / `DevProfileView` 的现有读法
+ * （读不到就是 `false` / `null`，页面不渲染对应块，不编造数据）；
+ * 等权益与打赏域把主页那两块一起拆掉时连字段一并删除。
+ */
+export type PublicUserProfile = ContractPublicProfile & {
+  username_gradient?: boolean
+  username_color?: string | null
   tip?: PublicTipBlock | null
 }
 
 /**
- * 公开用户档案：无需登录，任何人可读。用于用户主页展示头像、简介、背景与用户名渐变，
+ * 公开用户档案：无需登录，任何人可读。用于用户主页展示头像、简介与背景，
  * 不再依赖该用户是否发布过公开资源。
  */
 export async function getPublicUserProfile(username: string): Promise<PublicUserProfile> {

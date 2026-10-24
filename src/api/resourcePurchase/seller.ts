@@ -23,7 +23,7 @@ export async function listSellerResourcePurchases(
   }
   const qs = params.toString()
   return requestJson<ResourcePurchaseOrder[]>(
-    `/dev/resources/purchases/sold${qs ? `?${qs}` : ''}`,
+    `/resource/purchases/sold${qs ? `?${qs}` : ''}`,
     { method: 'GET', headers: authHeaders(token) },
     '加载售出订单失败',
   )
@@ -35,7 +35,7 @@ export async function getSellerResourcePurchase(
   orderNo: string,
 ): Promise<ResourcePurchaseOrder> {
   return requestJson<ResourcePurchaseOrder>(
-    `/dev/resources/purchases/sold/${encodeURIComponent(orderNo)}`,
+    `/resource/purchases/sold/${encodeURIComponent(orderNo)}`,
     { method: 'GET', headers: authHeaders(token) },
     '加载售出订单详情失败',
   )
@@ -52,7 +52,7 @@ export async function sellerRefundResourcePurchase(
     body.amount_fen = payload.amount_fen
   }
   return requestJson<ResourcePurchaseOrder>(
-    `/dev/resources/purchases/${encodeURIComponent(orderNo)}/seller-refund`,
+    `/resource/purchases/${encodeURIComponent(orderNo)}/seller-refund`,
     {
       method: 'POST',
       headers: authHeaders(token, { 'Content-Type': 'application/json' }),

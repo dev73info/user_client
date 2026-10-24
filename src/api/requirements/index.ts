@@ -38,6 +38,7 @@ export {
   requestRequirementFinalPayCure,
   requestRequirementFinalPayment,
   resubmitRequirement,
+  submitRequirementDelivery,
 } from './lifecycle'
 
 export {

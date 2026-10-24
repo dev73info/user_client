@@ -1,105 +1,23 @@
 import { authHeader, requestJson } from '@/api/http'
 
-export type RequirementStatus =
-  | 'pending_review'
-  | 'rejected'
-  | 'pending_deposit'
-  | 'deposit_paid'
-  | 'in_development'
-  | 'pending_final'
-  // 尾款已缴、等渠道分账完成；分账成功后才转 `completed`。
-  | 'pending_settlement'
-  | 'completed'
-  | 'cancelled'
+import type { RequirementItem } from './requirements'
 
-export type RequirementPaymentMode = 'platform_guarantee' | 'self_managed'
+export type {
+  RequirementItem,
+  RequirementPaymentMode,
+  RequirementStatus,
+} from './requirements'
 
-export type RequirementItem = {
-  id: number
-  requirement_id: string
-  bound_resource_id?: number | null
-  bound_resource_version_count?: number | null
-  resource_visibility?: 'public' | 'review' | 'private' | null
-  created_time: string
-  creator: string
-  title: string
-  budget?: number | null
-  description?: string | null
-  acceptance_criteria?: string | null
-  /** 客户侧评价（需求创建者提交） */
-  comment_rating?: number | null
-  comment_text?: string | null
-  commented_at?: string | null
-  /** 开发者侧评价（绑定开发者提交） */
-  developer_comment_rating?: number | null
-  developer_comment_text?: string | null
-  developer_commented_at?: string | null
-  payment_mode: RequirementPaymentMode
-  status: RequirementStatus
-  updated_at: string
-  /** 排队中分账里最晚的计划分账时间（东八区），没有排队分账时为空；前端据此算结算倒计时。 */
-  settlement_available_at?: string | null
-  /**
-   * 开发周期（天，R014）：担保需求（`platform_guarantee`）创建 / 编辑时必填，
-   * 等于合同自双方签署完成到截止的有效期天数；无担保需求或未填时为 `null`。
-   */
-  development_cycle_days?: number | null
-  /** 进入「超期锁定」（合同有效期届满后的 30 天资料保留期）的时间（东八区）；从未锁定为 `null`。 */
-  archive_locked_at?: string | null
-  /** 锁定到期时间 = `archive_locked_at` + 平台配置的锁定期天数；未锁定为 `null`。 */
-  archive_lock_expires_at?: string | null
-  /** 内容被清除的时间（东八区）；非空即「已清除」终态：资料下载不可用、写操作一律拒绝。 */
-  archive_cleared_at?: string | null
-  /** 锁定期内是否该引导需求方「把交付资源转为我的资源」；由后端判定。 */
-  archive_can_claim_resource?: boolean | null
-}
-
-export type RequirementPageResp = {
-  total: number
-  page: number
-  page_size: number
-  items: RequirementItem[]
-}
-
-export type RequirementHallQuery = {
-  page?: number
-  pageSize?: number
-  keyword?: string
-  creator?: string
-  sortBy?: 'created_time' | 'updated_at' | 'budget'
-  sortOrder?: 'asc' | 'desc'
-}
-
-export async function listRequirementHall(
-  token: string,
-  query: RequirementHallQuery,
-): Promise<RequirementPageResp> {
-  const params = new URLSearchParams()
-
-  if (query.page) {
-    params.set('page', String(query.page))
-  }
-  if (query.pageSize) {
-    params.set('page_size', String(query.pageSize))
-  }
-  if (query.keyword?.trim()) {
-    params.set('keyword', query.keyword.trim())
-  }
-  if (query.creator?.trim()) {
-    params.set('creator', query.creator.trim())
-  }
-  if (query.sortBy) {
-    params.set('sort_by', query.sortBy)
-  }
-  if (query.sortOrder) {
-    params.set('sort_order', query.sortOrder)
-  }
-
-  const suffix = params.toString()
-  const path = suffix ? `/dev/requirements/hall/query?${suffix}` : '/dev/requirements/hall/query'
-
-  return requestJson<RequirementPageResp>(
-    path,
+/**
+ * 需求大厅的候选单（契约 `GET /api/requirement/hall/query`）。
+ *
+ * 这条接口**不收查询参数**、一次回全量数组；关键词、排序与分页都在前端做（见
+ * `composables/useDevRequirementHall.ts`）。别照搬管理端那套 `page / page_size / keyword`
+ * 往这里塞——参数会被忽略，前端若还按「服务端已过滤」去渲染就会露馅。
+ */
+export async function listRequirementHall(token: string): Promise<RequirementItem[]> {
+  return requestJson<RequirementItem[]>(
+    '/dev/requirements/hall/query',
     {
       headers: {
         ...authHeader(token),
@@ -114,14 +32,8 @@ export async function getRequirementHallItem(
   requirementId: string,
 ): Promise<RequirementItem> {
   const normalizedRequirementId = requirementId.trim()
-  const payload = await listRequirementHall(token, {
-    page: 1,
-    pageSize: 20,
-    keyword: normalizedRequirementId,
-    sortBy: 'updated_at',
-    sortOrder: 'desc',
-  })
-  const item = payload.items.find(
+  const payload = await listRequirementHall(token)
+  const item = payload.find(
     (requirement) => requirement.requirement_id === normalizedRequirementId,
   )
 
@@ -132,10 +44,17 @@ export async function getRequirementHallItem(
   return item
 }
 
+/**
+ * 接单 / 关联资源（契约 `POST /api/requirement/{requirement_id}/bind-project`）。
+ *
+ * 请求体只有 `resource_id`（契约是 `integer | null`）：传 `null` 表示只接单、不关联资源。
+ * 担保单会在这里按需求预算冻结接单保证金，余额不足、未签入驻协议、已被别人接走等情况
+ * 后端回 403/409 并带中文说明，调用方照实转达即可。
+ */
 export async function bindRequirementProject(
   token: string,
   requirementId: string,
-  resourceId: number,
+  resourceId: number | null,
 ): Promise<RequirementItem> {
   return requestJson<RequirementItem>(
     `/dev/requirements/${encodeURIComponent(requirementId)}/bind-project`,
@@ -151,6 +70,7 @@ export async function bindRequirementProject(
   )
 }
 
+/** 我接的单（契约 `GET /api/requirement/dev/mine`）。 */
 export async function listMyRequirements(token: string): Promise<RequirementItem[]> {
   return requestJson<RequirementItem[]>(
     '/dev/requirements/mine',

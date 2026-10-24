@@ -1,9 +1,9 @@
 import { authHeader, requestJson } from '@/api/http'
 
-import type { UpdateProfileResp, UserProfileResp } from './types'
+import type { ProfileResponse, UpdateProfileRequest } from './types'
 
-export async function getProfile(token: string): Promise<UserProfileResp> {
-  return requestJson<UserProfileResp>(
+export async function getProfile(token: string): Promise<ProfileResponse> {
+  return requestJson<ProfileResponse>(
     '/settings/profile',
     {
       method: 'GET',
@@ -15,12 +15,18 @@ export async function getProfile(token: string): Promise<UserProfileResp> {
   )
 }
 
+/**
+ * 改我的档案（`PUT /system/settings/profile`）。
+ *
+ * **不接受自助改登录名**：契约允许的请求体只有 `profile_description`（`new_username`
+ * 传成与当前登录名不同的值会直接 400），改登录名走管理端 `POST /auth/users/username`。
+ * 所以这里只收简介，签名上就不给「传个用户名」的机会。
+ */
 export async function updateProfile(
   token: string,
-  newUsername: string,
-  profileDescription?: string,
-): Promise<UpdateProfileResp> {
-  return requestJson<UpdateProfileResp>(
+  payload: Pick<UpdateProfileRequest, 'profile_description'>,
+): Promise<ProfileResponse> {
+  return requestJson<ProfileResponse>(
     '/settings/profile',
     {
       method: 'PUT',
@@ -28,17 +34,17 @@ export async function updateProfile(
         'Content-Type': 'application/json',
         ...authHeader(token),
       },
-      body: JSON.stringify({ new_username: newUsername, profile_description: profileDescription }),
+      body: JSON.stringify({ profile_description: payload.profile_description ?? null }),
     },
-    '修改用户名失败',
+    '保存个人简介失败',
   )
 }
 
-export async function uploadProfileAvatar(token: string, file: File): Promise<UserProfileResp> {
+export async function uploadProfileAvatar(token: string, file: File): Promise<ProfileResponse> {
   const formData = new FormData()
   formData.append('file', file)
 
-  return requestJson<UserProfileResp>(
+  return requestJson<ProfileResponse>(
     '/settings/profile/avatar',
     {
       method: 'POST',
@@ -55,8 +61,8 @@ export async function updateProfileBackgroundStatic(
   token: string,
   imageUrl: string,
   focus?: string,
-): Promise<UserProfileResp> {
-  return requestJson<UserProfileResp>(
+): Promise<ProfileResponse> {
+  return requestJson<ProfileResponse>(
     '/settings/profile/background-static',
     {
       method: 'PUT',
@@ -70,11 +76,14 @@ export async function updateProfileBackgroundStatic(
   )
 }
 
-export async function uploadProfileBackground(token: string, file: File): Promise<UserProfileResp> {
+export async function uploadProfileBackground(
+  token: string,
+  file: File,
+): Promise<ProfileResponse> {
   const formData = new FormData()
   formData.append('file', file)
 
-  return requestJson<UserProfileResp>(
+  return requestJson<ProfileResponse>(
     '/settings/profile/background-static/upload',
     {
       method: 'POST',
@@ -91,8 +100,8 @@ export async function updateProfileBackgroundDynamic(
   token: string,
   imageUrl: string,
   focus?: string,
-): Promise<UserProfileResp> {
-  return requestJson<UserProfileResp>(
+): Promise<ProfileResponse> {
+  return requestJson<ProfileResponse>(
     '/settings/profile/background-dynamic',
     {
       method: 'PUT',
@@ -109,10 +118,10 @@ export async function updateProfileBackgroundDynamic(
 export async function uploadProfileBackgroundDynamic(
   token: string,
   file: File,
-): Promise<UserProfileResp> {
+): Promise<ProfileResponse> {
   const formData = new FormData()
   formData.append('file', file)
-  return requestJson<UserProfileResp>(
+  return requestJson<ProfileResponse>(
     '/settings/profile/background-dynamic/upload',
     {
       method: 'POST',
