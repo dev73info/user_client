@@ -1,4 +1,5 @@
 import type { TeamMemberResponse, TeamResponse } from '@/api/team'
+import { parseBackendDateTime } from '@/shared/datetime'
 
 /**
  * 团队页的展示层纯函数：角色文案、卡头元信息、头像首字、邀请时间与「我的团队」的排序 / 筛选。
@@ -104,10 +105,16 @@ export function filterTeamList(
   })
 }
 
-/** 邀请卡上的时间：`2026-10-21T12:00:00Z` → `2026/10/21 20:00`（按本机时区）；解析不了就原样回显。 */
+/**
+ * 邀请卡上的时间（`InvitationResponse.created_at`）。
+ *
+ * 后端给的是东八区墙钟串（不带偏移），一律走 `parseBackendDateTime` 解析，
+ * 不要 `new Date(str)`：那会按浏览器本地时区理解，非 +08:00 的设备整体偏移。
+ * 解析不了就原样回显，不编造时间。
+ */
 export function formatTeamInvitationTime(value: string): string {
-  const date = new Date(value)
-  if (Number.isNaN(date.getTime())) {
+  const date = parseBackendDateTime(value)
+  if (!date) {
     return value
   }
   return date.toLocaleString('zh-CN', {

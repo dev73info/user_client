@@ -1,21 +1,7 @@
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 
-import {
-  getAdapayDeveloperDepositPayment,
-  getAdapayPayment,
-  type AdapayDeveloperDepositPaymentResponse,
-  type AdapayPaymentResponse,
-} from '@/api/adapay'
-import {
-  confirmPayment as confirmPaymentApi,
-  listPaymentOrders as listPaymentOrdersApi,
-  type ConfirmPaymentResp,
-} from '@/api/payments'
-import {
-  normalizePaymentChannel,
-  type PaymentChannel,
-  type PaymentQueryContext,
-} from '@/shared/paymentQuery'
+import { getAdapayPayment, type PaymentOrderResponse } from '@/api/adapay'
+import { normalizePaymentChannel, type PaymentChannel, type PaymentQueryContext } from '@/shared/paymentQuery'
 import type { PaymentSession } from '@/composables/usePaymentSession'
 
 type UseAdapayOrderOptions = {
@@ -27,29 +13,31 @@ type UseAdapayOrderOptions = {
   session: PaymentSession
 }
 
+/** 已收款（终态）：契约 `PaymentOrderStatus` 只有 `created / pending / paid / failed / canceled`。 */
+function isPaidStatus(status: string): boolean {
+  return status === 'paid'
+}
+
 /**
  * Adapay 订单的加载 / 查单 / 轮询刷新。
  *
- * 两条订单域（需求定金、开发者保证金）字段不同但流程一致，所以内部按 `isDeveloperDeposit` 分叉、
- * 对外只暴露「这笔单的 payUrl / 状态 / 是否已拿到订单」。
+ * 契约里**没有「确认支付」接口**：支付结果只有一个来源——`GET /api/payment/orders/{order_no}`
+ * （这里的 `order_no` 就是下单回执里的 `payment_id`，也是支付页 query 上的 `payment_id`）。
+ * 所以「确认」= 查一次单，`status === 'paid'` 才算完成。
  *
  * 与视图的分工：这里只管「订单现在是什么状态」，要不要停轮询、要不要展示结果页由页面级 composable 决定。
  */
 export function useAdapayOrder(options: UseAdapayOrderOptions) {
-  const adapayPayment = ref<AdapayPaymentResponse | null>(null)
-  const developerDepositPayment = ref<AdapayDeveloperDepositPaymentResponse | null>(null)
+  const adapayPayment = ref<PaymentOrderResponse | null>(null)
   /** 正在查单（按钮文案与禁用态） */
   const confirming = ref(false)
 
-  const serverChannel = () =>
-    adapayPayment.value?.payChannel ?? developerDepositPayment.value?.payChannel ?? ''
-
   /** 实际渠道：订单建好后以服务端返回的渠道为准，没有订单才退回 query 上声明的渠道 */
   const resolvedChannel = computed<PaymentChannel>(
-    () => normalizePaymentChannel(serverChannel()) || options.ctx().channel,
+    () => normalizePaymentChannel(adapayPayment.value?.channel ?? '') || options.ctx().channel,
   )
 
-  const hasAdapayPayment = () => Boolean(adapayPayment.value || developerDepositPayment.value)
+  const hasAdapayPayment = () => Boolean(adapayPayment.value)
 
   async function loadAdapayPayment(paymentIdValue: string) {
     const ctx = options.ctx()
@@ -58,33 +46,17 @@ export function useAdapayOrder(options: UseAdapayOrderOptions) {
     }
 
     try {
-      if (ctx.isDeveloperDeposit) {
-        developerDepositPayment.value = await getAdapayDeveloperDepositPayment(
-          options.token(),
-          paymentIdValue,
-        )
-        adapayPayment.value = null
-      } else {
-        adapayPayment.value = await getAdapayPayment(options.token(), paymentIdValue)
-        developerDepositPayment.value = null
-      }
+      adapayPayment.value = await getAdapayPayment(options.token(), paymentIdValue)
     } catch {
       adapayPayment.value = null
-      developerDepositPayment.value = null
     }
   }
 
   watch(
-    [
-      () => options.ctx().paymentId,
-      () => options.token(),
-      () => options.ctx().isAdapay,
-      () => options.ctx().isDeveloperDeposit,
-    ],
+    [() => options.ctx().paymentId, () => options.token(), () => options.ctx().isAdapay],
     async ([id, token, isAdapay]) => {
       if (!id || !token || !isAdapay || options.ctx().isHandoff) {
         adapayPayment.value = null
-        developerDepositPayment.value = null
         return
       }
       await loadAdapayPayment(id)
@@ -94,19 +66,15 @@ export function useAdapayOrder(options: UseAdapayOrderOptions) {
     },
   )
 
-  /**
-   * 409 说明「订单状态已被别处改过」，此时列表里若已是 paid 就按已付处理，
-   * 避免确认接口与列表接口口径不一致时把用户卡在「正在确认支付结果」。
-   */
-  async function checkOrderPaidByList() {
-    const rows = await listPaymentOrdersApi(options.token())
-    const current = rows.find((item) => item.payment_id === options.ctx().paymentId)
-    return current?.status === 'paid'
-  }
-
   async function confirmPayment() {
     const ctx = options.ctx()
-    if (!ctx.paymentId || confirming.value || options.session.paid.value || ctx.isHandoff) {
+    if (
+      !ctx.isAdapay ||
+      !ctx.paymentId ||
+      confirming.value ||
+      options.session.paid.value ||
+      ctx.isHandoff
+    ) {
       return
     }
 
@@ -118,44 +86,11 @@ export function useAdapayOrder(options: UseAdapayOrderOptions) {
     confirming.value = true
     options.session.confirmationError.value = ''
     try {
-      if (ctx.isAdapay) {
-        const result = ctx.isDeveloperDeposit
-          ? await getAdapayDeveloperDepositPayment(options.token(), ctx.paymentId)
-          : await getAdapayPayment(options.token(), ctx.paymentId)
-        if (ctx.isDeveloperDeposit) {
-          developerDepositPayment.value = result as AdapayDeveloperDepositPaymentResponse
-        } else {
-          adapayPayment.value = result as AdapayPaymentResponse
-        }
-        if (result.status !== 'paid' && result.status !== 'confirmed') {
-          return
-        }
-
+      const order = await getAdapayPayment(options.token(), ctx.paymentId)
+      adapayPayment.value = order
+      if (isPaidStatus(order.status)) {
         options.session.markPaymentPaid()
-        return
       }
-
-      const channel = resolvedChannel.value === 'wechat' ? 'wechat' : 'alipay'
-      const result = await confirmPaymentApi(options.token(), channel, ctx.paymentId)
-
-      if (!result.ok) {
-        if (result.status === 409) {
-          const isPaid = await checkOrderPaidByList()
-          if (isPaid) {
-            options.session.markPaymentPaid()
-            return
-          }
-        }
-        return
-      }
-
-      const payload = result.data as ConfirmPaymentResp | undefined
-
-      if (payload?.status !== 'paid') {
-        return
-      }
-
-      options.session.markPaymentPaid()
     } catch (err) {
       options.session.confirmationError.value =
         err instanceof Error ? err.message : '支付结果暂时无法查询，请稍后重试'
@@ -169,11 +104,11 @@ export function useAdapayOrder(options: UseAdapayOrderOptions) {
     if (document.visibilityState === 'visible') void confirmPayment()
   }
 
-  // 服务端状态自己变成 paid / confirmed 时立刻切「支付结果」态（不必等用户点查询）
+  // 服务端状态自己变成 paid 时立刻切「支付结果」态（不必等用户点查询）
   watch(
-    () => adapayPayment.value?.status ?? developerDepositPayment.value?.status,
+    () => adapayPayment.value?.status,
     (status) => {
-      if (status === 'paid' || status === 'confirmed') options.session.markPaymentPaid()
+      if (status && isPaidStatus(status)) options.session.markPaymentPaid()
     },
   )
 
@@ -189,13 +124,12 @@ export function useAdapayOrder(options: UseAdapayOrderOptions) {
 
   return {
     adapayPayment,
-    developerDepositPayment,
     confirming,
-    serverChannel,
     resolvedChannel,
     hasAdapayPayment,
-    adapayPayUrl: () => adapayPayment.value?.payUrl ?? '',
-    developerDepositPayUrl: () => developerDepositPayment.value?.payUrl ?? '',
+    /** 订单上的支付动作（收银台地址 / 微信支付参数），前端据此跳转或渲二维码 */
+    adapayPayUrl: () =>
+      typeof adapayPayment.value?.client_action === 'string' ? adapayPayment.value.client_action : '',
     confirmPayment,
     refreshPaymentOnReturn,
   }

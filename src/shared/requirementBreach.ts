@@ -1,97 +1,76 @@
 /**
  * 解除合作案件的界面判定与文案（纯函数：不发请求、不碰 pinia）。
  *
+ * 只认契约里的 `BreachCaseItemResponse` / `CaseSummaryResponse` 字段：
+ * `status` / `status_label` / `is_open` / `filed_by` / `respondent` / `turn` / `turn_label`。
+ * 状态码到中文的映射**不在前端维护**——后端 `CaseStatus::label()` 已经通过 `status_label` 给出来了。
+ *
  * 为什么单拉一层：`MyRequirementsView` 没有挂载测试，这一域的行为回归全靠
- * `src/__tests__/requirementBreach.spec.ts`。同时凡是「是不是我」的判定一律收 `username` 参数，
+ * `src/__tests__/requirementBreach.spec.ts`。凡是「是不是我」的判定一律收 `username` 参数，
  * 由调用方注入当前登录人——组件与 composable 都不自己去 store 里再取一遍。
  */
-import type {
-  AdapayBreachCase,
-  AdapayBreachDecisionValue,
-  AdapayBreachVerdictParty,
-  AdapayBreachVerdictSource,
-} from '@/api/adapay'
+import type { RequirementBreachCaseItem } from '@/api/afterSales'
 
-/** 责任方文案。 */
-export function breachLiablePartyLabel(party: AdapayBreachVerdictParty) {
-  if (party === 'customer') return '客户（需求方）违约'
-  if (party === 'mutual') return '双方协商一致（无责退出）'
-  return '开发者违约'
-}
-
-/** 表态文案：`null` 表示该方尚未表态。 */
-export function breachDecisionText(decision?: AdapayBreachDecisionValue | null) {
-  if (!decision) {
-    return '未表态'
-  }
-  return decision === 'accepted' ? '已接受 AI 判定' : '不接受 AI 判定'
+/**
+ * 「能不能表态 / 能不能撤回」只读这四个字段，所以宽到两种响应都能直接喂：
+ * 需求页的 `BreachCaseItemResponse`（`is_open`）与列表的 `CaseSummaryResponse`（`open`，
+ * 调用方折成 `is_open` 再传）。判定只有一份，不按响应形状各写一套。
+ *
+ * `respondent` 写成 `string | null | undefined`：契约里它是**可选**字段
+ * （`respondent?: string | null`），窄成 `string | null` 会让整条链路的赋值全红。
+ */
+export type BreachActionSubject = {
+  status: string
+  is_open: boolean
+  filed_by: string
+  respondent?: string | null
 }
 
 /**
- * 判定来源文案：`mutual` 是双方在案件内自行协商一致结案（没经过客服），
- * 不能和 `support` 一起显示成「客服人工判定」。
+ * 后端状态机里「对方能表态」与「立案人能撤回」的窗口（见后端 `dispute::domain::case`）：
+ * 表态只能从 `filed` / `negotiating` 出发，撤回还多一个 `platform_review`。
+ * 前端照着这两条列，不凭状态名的字面意思猜。
  */
-export function breachVerdictSourceText(source?: AdapayBreachVerdictSource | null) {
-  if (source === 'ai') {
-    return '双方接受 AI 判定'
-  }
-  if (source === 'mutual') {
-    return '双方协商一致'
-  }
-  return '客服人工判定'
-}
+const RESPONDABLE_STATUSES = ['filed', 'negotiating']
+const WITHDRAWABLE_STATUSES = ['filed', 'negotiating', 'platform_review']
 
-/** 双方表态状态只在 AI 判定后才有意义。 */
-export function showBreachDecisions(item: AdapayBreachCase) {
+/** 已收口（结案 / 驳回）：结论不能翻案，同一需求可以另立新案。 */
+const SETTLED_STATUSES = ['closed', 'rejected']
+
+/**
+ * 能不能由本人对案件表态（同意 / 不同意）。
+ *
+ * 后端只放行「对方当事人」，且只在表态窗口内：`actor_of(operator)` 算出来的不是
+ * `Respondent` 一律 403。所以判据是「我是对方的那个账号」而不是「我不是立案人」——
+ * 无关账号也不是立案人，但它同样不能表态。
+ */
+export function canRespondBreachCase(item: BreachActionSubject | null, username: string): boolean {
   return (
-    item.status === 'ai_judged' || item.customerDecision != null || item.developerDecision != null
+    item != null &&
+    item.is_open &&
+    RESPONDABLE_STATUSES.includes(item.status) &&
+    item.respondent === username
   )
 }
 
-/**
- * AI 判定后该不该出「接受 / 不接受」：本人还没表态才有得选。
- *
- * `view` 决定「本人」是哪一方：需求方（甲方）看 `customerDecision`，开发者（乙方）看
- * `developerDecision`。默认取需求方——两个既有调用方（`MyRequirementsView` 与
- * `useRequirementBreach`）都是那一侧，加参数时不必回头改。
- *
- * 这一层必须带视角：开发者页照抄需求方的判据，就会出现「对方表过态所以我不必表态」的按钮消失。
- */
-export function canDecideBreachCase(
-  item: AdapayBreachCase | null,
-  view: 'creator' | 'dev' = 'creator',
-) {
-  const mine = view === 'dev' ? item?.developerDecision : item?.customerDecision
-  return item?.status === 'ai_judged' && mine == null
-}
-
-/** 只有协商中（`submitted`）才允许申请平台介入：AI 判定由这个动作触发，出结论后不再重复申请。 */
-export function canRequestPlatformReview(item: AdapayBreachCase | null) {
-  return item?.status === 'submitted'
-}
-
-/** 协商阶段：案件在 `submitted` 且双方都还没就「解除合作」表态。 */
-export function isTerminationNegotiating(item: AdapayBreachCase | null) {
-  return item?.status === 'submitted' && !item.mutualAgreedAt && !item.mutualRejectedAt
-}
-
-/** 能不能对「解除合作」表态：当事人里不是发起人的那一位。 */
-export function canRespondTermination(item: AdapayBreachCase | null, username: string) {
-  return isTerminationNegotiating(item) && item?.reportedBy !== username
-}
-
-/** 只有申请人本人能在 AI 判定与客服介入之前撤回自己的申请（后端同样按状态与申请人校验）。 */
-export function canWithdrawBreachCase(item: AdapayBreachCase | null, username: string) {
+/** 立案人本人在撤回窗口内能撤回自己的申请（后端 `CaseAction::Withdraw` 只给 `Filer`）。 */
+export function canWithdrawBreachCase(item: BreachActionSubject | null, username: string): boolean {
   return (
     item != null &&
-    ['submitted', 'ai_reviewing'].includes(item.status) &&
-    item.reportedBy === username
+    item.is_open &&
+    WITHDRAWABLE_STATUSES.includes(item.status) &&
+    item.filed_by === username
   )
 }
 
 /** 上一轮撤回人是不是本人：只有本人撤回才叫「重新申报」，对方撤回时本人是首次申报。 */
-export function breachWithdrawnByMe(item: AdapayBreachCase | null, username: string) {
-  return item?.status === 'withdrawn' && item.reportedBy === username
+export function breachWithdrawnByMe(item: BreachActionSubject | null, username: string): boolean {
+  return item?.status === 'withdrawn' && item.filed_by === username
+}
+
+/** 已结案 / 已驳回：结论定案不可翻案，新一轮申报会新建一条案件。 */
+export function isBreachCaseSettled(item: RequirementBreachCaseItem | null): boolean {
+  return item != null && SETTLED_STATUSES.includes(item.status)
 }
 
 /**
@@ -99,10 +78,10 @@ export function breachWithdrawnByMe(item: AdapayBreachCase | null, username: str
  * 标题与提交按钮都按这个口径措辞，避免出现「标题写新一轮、提示写沿用同一条」的自相矛盾。
  */
 export function breachDialogTitle(
-  item: AdapayBreachCase | null,
+  item: RequirementBreachCaseItem | null,
   newRound: boolean,
   withdrawnByMe: boolean,
-) {
+): string {
   if (!newRound && item) {
     return '解除合作进展'
   }
@@ -114,10 +93,10 @@ export function breachDialogTitle(
 
 /** 提交按钮文案：与 `breachDialogTitle` 同一口径（沿用同一条 vs 新建一条）。 */
 export function breachSubmitLabel(
-  item: AdapayBreachCase | null,
+  item: RequirementBreachCaseItem | null,
   newRound: boolean,
   withdrawnByMe: boolean,
-) {
+): string {
   if (item?.status === 'withdrawn') {
     return withdrawnByMe ? '重新发起' : '提交解除合作申请'
   }
@@ -130,7 +109,10 @@ export function breachSubmitLabel(
  * 撤回沿用同一条案件（编号不变），驳回 / 结案才新建；结案更狠一层——合同作废、需求退回大厅，
  * 所以不是「再提一条新案件」而是「重新接单并签约」（BUG-038）。这三句口径不能合并简化。
  */
-export function breachRoundHint(item: AdapayBreachCase | null, withdrawnByMe: boolean) {
+export function breachRoundHint(
+  item: RequirementBreachCaseItem | null,
+  withdrawnByMe: boolean,
+): string {
   if (!item) {
     return ''
   }
@@ -139,9 +121,9 @@ export function breachRoundHint(item: AdapayBreachCase | null, withdrawnByMe: bo
       ? '上一轮由你撤回，本次提交沿用同一条案件（案件编号不变），申请人与理由以本次提交为准，双方继续跟踪这一条。'
       : '上一轮由对方申请后撤回，本次提交沿用同一条案件（案件编号不变），按你本次提交的事实与依据重新判定。'
   }
-  // 结案（`succeeded`）会按「结案即自动解除」作废合同、把需求退回大厅：同一需求上已经没有
+  // 结案（`closed`）会按「结案即自动解除」作废合同、把需求退回大厅：同一需求上已经没有
   // 可裁决的合同，所以不是「再提一条新案件」而是「重新接单并签约」（BUG-038）。
-  if (item.status === 'succeeded') {
+  if (item.status === 'closed') {
     return '上一轮案件已结案，需求已退回大厅、原合同已作废；需重新接单并签约后才能再次发起解除合作。'
   }
   return '上一轮案件已驳回，结论不能翻案；本次提交会新建一条案件，只针对驳回之后新发生的事实。'

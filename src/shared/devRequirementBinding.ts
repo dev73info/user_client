@@ -5,9 +5,13 @@ import { requiresDepositGate, type RequirementDetailFacts } from '@/shared/devRe
 /**
  * 「接取需求」的资格闸门、资源方案与占位资源字段（全是纯函数）。
  *
- * 这一半回答的是「能不能接、接的时候交什么」：保证金 / 信用 / 入驻协议三道坎，
+ * 这一半回答的是「能不能接、接的时候交什么」：入驻协议一道坎，
  * 加上「关联已有资源」与「先建一个草稿资源」两条路的提交口径。
  * 展示口径（状态文案、预算、富文本）在 `shared/devRequirementDetail`，两边不混。
+ *
+ * 保证金与信用额度**不在这里判**：那两份读数（1.x 的预付保证金钱包与 `/credit/**`）
+ * 在当前后端契约里一条路径都没有。担保单接单时后端按开发者可提现收益冻结保证金，
+ * 不够会回 409 中文说明——前端不预判，也不用编出来的读数挡人。
  */
 
 /** 可绑定的开发项目只用到这五个字段（下拉文案与可用性判定）。 */
@@ -48,48 +52,15 @@ export function hasPendingBindableResources(
   return resources.some((item) => !item.requirement_id && item.visibility !== 'draft')
 }
 
-/* ------------------------------------------------------------------ 保证金 / 信用闸门 */
-
-/** 可用保证金读数：固定两位小数，避免 ¥1200 与 ¥1200.00 两处写法。 */
-export function availableDepositText(availableCny?: number | null): string {
-  return `¥${(availableCny ?? 0).toFixed(2)}`
-}
-
-/**
- * 接单信用上限：未开启「订单额度限制」时视为不限（`Infinity`），
- * 这样比较式不用处处判空。
- */
-export function orderCreditCap(
-  credit: { enforce_order_limit: boolean; max_order_amount_cny: number } | null,
-): number {
-  if (!credit || !credit.enforce_order_limit) {
-    return Number.POSITIVE_INFINITY
-  }
-
-  return credit.max_order_amount_cny
-}
-
-/** 预算是否在信用上限内（留 0.0001 的浮点余量，避免 999.99 vs 1000 这类误判）。 */
-export function isBudgetWithinCap(budget: number | null | undefined, creditCap: number): boolean {
-  return (budget ?? 0) <= creditCap + 0.0001
-}
+/* ------------------------------------------------------------------ 入驻协议闸门 */
 
 export type BindingGateInput = {
   requirement: RequirementDetailFacts | null
   /** 《开发者入驻协议》是否已签署（后端 `developer_agreement_signed`）。 */
   agreementSigned: boolean
-  /** 后端 `can_bind_requirement`：保证金余额是否够接单。 */
-  canBindRequirement: boolean
-  availableCny?: number | null
-  creditCap: number
 }
 
-/**
- * 关联需求前的阻塞原因（空串表示可以继续）。
- *
- * 顺序就是给用户看的顺序：先「没签协议」这种一步能补齐的，再「保证金不够」，
- * 最后才是信用额度——前一条没过时后面几条都是废话。
- */
+/** 关联需求前的阻塞原因（空串表示可以继续）。只有入驻协议一道坎。 */
 export function bindingBlockReason(input: BindingGateInput): string {
   const currentRequirement = input.requirement
   if (!currentRequirement || !requiresDepositGate(currentRequirement)) {
@@ -98,18 +69,6 @@ export function bindingBlockReason(input: BindingGateInput): string {
 
   if (!input.agreementSigned) {
     return '请先签署《开发者入驻协议》后再接取电签担保需求'
-  }
-
-  if (!input.canBindRequirement) {
-    return `当前可用保证金不足，当前可用：${availableDepositText(input.availableCny)}`
-  }
-
-  if ((currentRequirement.budget ?? 0) > (input.availableCny ?? 0)) {
-    return '当前需求预算高于可用保证金，请先补充保证金'
-  }
-
-  if (!isBudgetWithinCap(currentRequirement.budget, input.creditCap)) {
-    return `当前信用最高可接 ¥${input.creditCap.toFixed(2)} 的需求，无法绑定此预算`
   }
 
   return ''

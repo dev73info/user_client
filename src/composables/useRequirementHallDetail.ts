@@ -144,7 +144,6 @@ export function useRequirementHallDetail(sources: {
         budget: detail.budget ?? selectedRequirement.value.budget,
         payment_mode: detail.payment_mode,
         status: detail.status,
-        updated_at: detail.updated_at,
       }
     } catch {
       // 公共详情仍可展示精选列表已有信息；完整详情补齐失败时保持当前内容。

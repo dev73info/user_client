@@ -1,53 +1,42 @@
 import { computed } from 'vue'
 
-import type { AdapayBreachCase } from '@/api/adapay'
+import type { RequirementBreachCaseItem } from '@/api/afterSales'
 import {
   breachWithdrawnByMe as isBreachWithdrawnByMe,
-  canDecideBreachCase,
-  canRequestPlatformReview as canRequestPlatformReviewOf,
-  canRespondTermination as canRespondTerminationOf,
+  canRespondBreachCase,
   canWithdrawBreachCase,
-  isTerminationNegotiating,
+  isBreachCaseSettled,
 } from '@/shared/requirementBreach'
-import { BREACH_CLOSED_STATUSES, SETTLED_BREACH_STATUSES } from '@/shared/breachStatus'
 
 type BreachCaseSources = {
-  case: AdapayBreachCase | null
-  isDeveloper: boolean
+  case: RequirementBreachCaseItem | null
   currentUsername?: string
 }
 
 /**
  * 会话工具条里解除合作弹窗的派生判断与文案。
  *
- * 从 `RequirementConversationActions.vue` 抽出。判断口径尽量用 `shared/requirementBreach` 那组纯函数
- * （开发者页与需求方页共用同一套状态机）；只有这条工具条自己的两处文案——弹窗标题与「上一轮」
- * 说明——留在这里，措辞与另两个入口不完全一致，不合并以免改掉界面文案。
+ * 案件读数一律取契约字段（`status_label` / `turn_label` / `is_open`）；
+ * 「谁能表态 / 谁能撤回」的判定复用 `shared/requirementBreach`——三个入口共用同一套，
+ * 不在这里再写一份。只有在办 / 已收口 / 已撤回三种画面的切换与两处文案留在这里。
  */
 export function useConversationBreachFields(readSources: () => BreachCaseSources) {
   const currentCase = () => readSources().case
   const currentUsername = () => readSources().currentUsername ?? ''
-  const breachView = () => (readSources().isDeveloper ? 'dev' : 'creator')
 
-  /** 未结束的案件（已撤回 / 已驳回 / 已结案不再提供入口）。 */
-  const hasLiveBreachCase = computed(() => {
-    const item = currentCase()
-    return item != null && !BREACH_CLOSED_STATUSES.includes(item.status)
-  })
+  /** 在办案件（`is_open` 由后端按状态机算）。 */
+  const hasLiveBreachCase = computed(() => currentCase()?.is_open === true)
 
-  /** 已撤回 / 已驳回 / 已结案的案件不再展示明细，回到申报表单（与需求列表页一致）。 */
+  /** 在办的才展示进展与动作；已收口 / 已撤回回到申报表单。 */
   const activeBreachCase = computed(() => (hasLiveBreachCase.value ? currentCase() : null))
 
-  /** 已结案 / 已驳回的案件：结论在表单上方只读展示，入口回到「新一轮申报」。 */
+  /** 已结案 / 已驳回：结论在表单上方只读展示，入口回到「新一轮申报」。 */
   const settledBreachCase = computed(() => {
     const item = currentCase()
-    return item && SETTLED_BREACH_STATUSES.includes(item.status) ? item : null
+    return isBreachCaseSettled(item) ? item : null
   })
 
-  /**
-   * 上一轮已撤回的案件：撤回不等于没有案件，表单上方要把上一轮交代清楚，
-   * 否则用户看到「重新申报」也不知道自己重的是什么。
-   */
+  /** 上一轮已撤回的案件：撤回不等于没有案件，表单上方要把上一轮交代清楚。 */
   const withdrawnBreachCase = computed(() =>
     currentCase()?.status === 'withdrawn' ? currentCase() : null,
   )
@@ -57,41 +46,14 @@ export function useConversationBreachFields(readSources: () => BreachCaseSources
     isBreachWithdrawnByMe(currentCase(), currentUsername()),
   )
 
-  const canDecideBreach = computed(() => canDecideBreachCase(activeBreachCase.value, breachView()))
-
-  /**
-   * 协商阶段（解除合作的第一步）是否仍在等表态：案件在 `submitted` 且双方都没就「解除合作」表态。
-   *
-   * 表态用同一枚接口（`submitBreachDecision`）承担两段语义：协商阶段传 `accepted` = 同意解除、
-   * `rejected` = 不同意；判定阶段（`ai_judged`）传 `accepted` / `rejected` = 对 AI 判定的表态。
-   */
-  const terminationNegotiating = computed(() =>
-    Boolean(isTerminationNegotiating(activeBreachCase.value)),
-  )
-
-  /** 能不能由本人对「解除合作」表态：当事人里**不是发起人**的那一位。 */
+  /** 能不能由本人表态（同意 / 不同意）：我是对方当事人且在表态窗口内。 */
   const canRespondTermination = computed(() =>
-    canRespondTerminationOf(activeBreachCase.value, currentUsername()),
+    canRespondBreachCase(activeBreachCase.value, currentUsername()),
   )
 
-  const canRequestPlatformReview = computed(() =>
-    canRequestPlatformReviewOf(activeBreachCase.value),
-  )
-
-  /** 撤回是申请人的单方动作：待判定期间（还没有结论）只有本人能撤回自己的申请，与需求列表页一致。 */
+  /** 撤回是立案人的单方动作，只在撤回窗口内由本人发起。 */
   const canWithdrawBreach = computed(() =>
     canWithdrawBreachCase(activeBreachCase.value, currentUsername()),
-  )
-
-  /**
-   * 中间态：赔付要打给需求方，但需求方的渠道会员没有结算账户，钱落不下来。
-   *
-   * 这时案件不会转人工，而是停在 `awaiting_payer_settlement` 等需求方补收款账户——补齐后平台
-   * 会自动按原认定续做赔付与退款。所以这里必须把「下一步在谁手上」说清楚：需求方看到的是
-   * 一个去绑卡的入口，开发者看到的是「等对方补账户」，两边都不该干等。
-   */
-  const breachAwaitingPayerSettlement = computed(
-    () => activeBreachCase.value?.status === 'awaiting_payer_settlement',
   )
 
   const breachDialogTitle = computed(() => {
@@ -105,16 +67,15 @@ export function useConversationBreachFields(readSources: () => BreachCaseSources
   })
 
   /**
-   * 申请表单上方的「上一轮」说明：把歧义点讲清楚——结案 / 驳回的结论不能翻案、新一轮会新建案件，
+   * 申请表单上方的「上一轮」说明：结案 / 驳回的结论不能翻案、新一轮会新建案件，
    * 撤回则是沿用同一案件重新提交（案件编号不变，申请人与理由以本次提交为准）。
    */
   const breachRoundHint = computed(() => {
-    const settled = settledBreachCase.value
-    if (settled) {
-      // 结案（`succeeded`）会按「结案即自动解除」作废合同、把需求退回大厅：同一需求上已经没有
+    if (settledBreachCase.value) {
+      // 结案（`closed`）会按「结案即自动解除」作废合同、把需求退回大厅：同一需求上已经没有
       // 可裁决的合同，新一轮不是「再提一条新案件」而是「重新接单并签约」（BUG-038）。
       // 驳回不动合同，结论不能翻案，但需求仍在履约中，可以就新发生的事实再申报。
-      return settled.status === 'succeeded'
+      return settledBreachCase.value.status === 'closed'
         ? '上一轮案件已结案，需求已退回大厅、原合同已作废；需重新接单并签约后才能再次发起解除合作。'
         : '上一轮案件已驳回，结论不能翻案；下面提交的是新一轮申请，会新建一条案件，只针对驳回之后新发生的事实。'
     }
@@ -132,12 +93,8 @@ export function useConversationBreachFields(readSources: () => BreachCaseSources
     settledBreachCase,
     withdrawnBreachCase,
     breachWithdrawnByMe,
-    canDecideBreach,
-    terminationNegotiating,
     canRespondTermination,
-    canRequestPlatformReview,
     canWithdrawBreach,
-    breachAwaitingPayerSettlement,
     breachDialogTitle,
     breachRoundHint,
   }

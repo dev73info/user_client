@@ -6,7 +6,7 @@ import { useAuthStore } from '@/stores/auth'
 /**
  * 需求详情页的「这一单是什么」：路由里的需求号、需求单本身、加载态。
  *
- * 与接取侧的保证金 / 信用 / 资源清单分开取（见 `useDevOrderCapacity`、
+ * 与接取侧的准入读数 / 资源清单分开取（见 `useDevOrderGate`、
  * `useDevRequirementBinding`）：详情读失败就整页空态，接取侧读失败只影响右栏，
  * 两块生命周期不同，不该绑在一个加载态里。
  */

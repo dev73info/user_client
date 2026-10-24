@@ -1,9 +1,17 @@
 import { md5Hex } from './md5'
+import { buildAuthBody, type AuthPath } from './requestBody'
 
+/**
+ * 登录 / 注册 / 刷新的响应（契约 `AuthResponse`）。
+ *
+ * `role` 是主角色、`roles` 是全部角色；**权限判定不要用它们**——生效权限一律以
+ * `GET /auth/users/privileges` 的 `permissions` 为准（角色只是展示用的快照）。
+ */
 export type AuthPayload = {
   token: string
   username?: string
   role?: string
+  roles?: string[]
 }
 
 export type TwoFactorRequiredPayload = {
@@ -20,12 +28,15 @@ export function isTwoFactorRequiredPayload(
   return 'requires_two_factor' in payload && payload.requires_two_factor === true
 }
 
+/** 协议同意留痕的落库结果（契约 `AgreementAcceptanceResponse`）。 */
 export type AgreementAcceptancePayload = {
-  username: string | null
-  role: string | null
+  username: string
+  role: string
   agreement_code: string
-  agreement_version: string
+  /** 落库的协议版本是**自增整数**（1.x 这里是日期串）。 */
+  agreement_version: number
   client_platform: string
+  source: string
   agreed_at: string
 }
 
@@ -37,7 +48,8 @@ export type GiteeAuthUrlResp = {
   url: string
 }
 
-export type AuthPath = '/auth/login' | '/auth/register'
+export type { AuthPath } from './requestBody'
+
 /**
  * 客户端平台标识（协议同意留痕用）。
  *
@@ -68,12 +80,10 @@ type AuthApiDependencies = {
 
 type AuthApiOptions = {
   defaultRequestDevRole?: boolean
-  fallbackAgreementAcceptanceOn404?: boolean
 }
 
 export function createAuthApiClient(deps: AuthApiDependencies, options: AuthApiOptions = {}) {
   const defaultRequestDevRole = options.defaultRequestDevRole ?? false
-  const fallbackAgreementAcceptanceOn404 = options.fallbackAgreementAcceptanceOn404 ?? false
 
   async function authRequest(
     path: AuthPath,
@@ -97,19 +107,20 @@ export function createAuthApiClient(deps: AuthApiDependencies, options: AuthApiO
             'Content-Type': 'application/json',
             'X-Client-Platform': detectClientPlatform(),
           },
-          body: JSON.stringify({
-            username,
-            // 后端 2.0 只接受 md5(明文密码) 的 32 位小写十六进制，明文一律 400（见契约 LoginRequest）
-            password: md5Hex(password),
-            ...(requestDevRole ? { request_dev_role: true } : {}),
-            ...(email ? { email } : {}),
-            ...(emailCode ? { email_code: emailCode } : {}),
-            ...(twoFactorCode ? { two_factor_code: twoFactorCode } : {}),
-            ...(inviteCode ? { invite_code: inviteCode } : {}),
-            ...(shareType ? { share_type: shareType } : {}),
-            ...(shareTargetId ? { share_target_id: shareTargetId } : {}),
-            ...(turnstileToken ? { turnstile_token: turnstileToken } : {}),
-          }),
+          body: JSON.stringify(
+            buildAuthBody(path, {
+              username,
+              password,
+              email,
+              emailCode,
+              requestDevRole,
+              twoFactorCode,
+              inviteCode,
+              shareType,
+              shareTargetId,
+              turnstileToken,
+            }),
+          ),
         },
         '请求失败',
       )
@@ -231,50 +242,40 @@ export function createAuthApiClient(deps: AuthApiDependencies, options: AuthApiO
     )
   }
 
-  async function recordAgreementAcceptance(
+  /**
+   * 记录一次协议同意留痕（`POST /auth/agreement-acceptances`）。
+   *
+   * 请求体只有契约上的四个字段：`agreement_code` / `agreement_version` /
+   * `client_platform` / `source`。**`agreement_version` 留空表示「按模板当前版本落库」**，
+   * 所以读不到版本时干脆不传这个键，不要传空串充当版本。
+   *
+   * 契约里没有「重要条款提示的确认时间 / 提示版本」这两个字段，它们只留在本次会话
+   * （`components/legal/legalNotice.ts`），不进留痕表。
+   */
+  function recordAgreementAcceptance(
     token: string,
     agreementCode: string,
-    agreementVersion: string,
+    agreementVersion: string | number,
     clientPlatform: string,
     source = '',
-    noticeConfirmedAt = '',
-    noticeVersion = '',
   ): Promise<AgreementAcceptancePayload> {
-    try {
-      return await deps.requestJson<AgreementAcceptancePayload>(
-        '/auth/agreement-acceptances',
-        {
-          method: 'POST',
-          headers: deps.authHeaders(token, {
-            'Content-Type': 'application/json',
-          }),
-          body: JSON.stringify({
-            agreement_code: agreementCode,
-            agreement_version: agreementVersion,
-            client_platform: clientPlatform,
-            source,
-            // 重要条款提示的确认时间与提示版本（R043 任务-02/03）。
-            // 正文指纹不在这里传：指纹必须由服务端按当时的正文现算，信前端传的值。
-            notice_confirmed_at: noticeConfirmedAt || null,
-            notice_version: noticeVersion,
-          }),
-        },
-        '协议留痕失败',
-      )
-    } catch (err) {
-      if (fallbackAgreementAcceptanceOn404 && deps.isHttpError(err) && err.status === 404) {
-        return {
-          username: null,
-          role: null,
+    const version = String(agreementVersion).trim()
+    return deps.requestJson<AgreementAcceptancePayload>(
+      '/auth/agreement-acceptances',
+      {
+        method: 'POST',
+        headers: deps.authHeaders(token, {
+          'Content-Type': 'application/json',
+        }),
+        body: JSON.stringify({
           agreement_code: agreementCode,
-          agreement_version: agreementVersion,
-          client_platform: clientPlatform,
-          agreed_at: new Date().toISOString(),
-        }
-      }
-
-      throw err
-    }
+          ...(version ? { agreement_version: version } : {}),
+          ...(clientPlatform ? { client_platform: clientPlatform } : {}),
+          ...(source ? { source } : {}),
+        }),
+      },
+      '协议留痕失败',
+    )
   }
 
   return {

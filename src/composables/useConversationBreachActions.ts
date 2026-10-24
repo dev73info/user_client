@@ -1,64 +1,66 @@
 import { ref } from 'vue'
-import { useRouter } from 'vue-router'
 import { TMessage } from 'ui_73info'
 
 import {
-  reportAdapayTermination,
-  requestAdapayPlatformReview,
-  submitAdapayBreachDecision,
-  withdrawAdapayBreach,
-  type AdapayBreachCase,
-  type AdapayBreachDecisionValue,
-} from '@/api/adapay'
+  reportTermination,
+  respondAfterSalesCase,
+  withdrawAfterSalesCase,
+  type AfterSalesRespondAction,
+} from '@/api/afterSales'
 
 type BreachActionSources = {
   token: string
   requirementId: string
-  /** 当前在办的案件：撤回 / 表态 / 申请介入都作用在它上面。 */
-  activeCase: AdapayBreachCase | null
-  /** 提交拿到的新案件交回给持有它的组件。 */
-  onCaseChanged: (value: AdapayBreachCase) => void
+  /** 在办案件的案号：表态与撤回都作用在它上面（契约路径参数是 `case_no`，不是数字 id）。 */
+  caseNo: string | null
+  /** 提交成功后请外层重取案件（判据是后端算的，前端不留旧态）。 */
+  onRefreshed: () => void
   /** 与原来的 `changed` 一致：让外层刷新整条工具条。 */
   onChanged: () => void
   /** 申报成功后关窗。 */
   onClosed: () => void
 }
 
-/** 解除合作案件的三个可裁决动作与申报表单的动作。 */
+/**
+ * 会话工具条里解除合作案件的动作：申报、表态（同意 / 不同意）、撤回。
+ *
+ * 契约里只有这三个：`/api/requirement/{id}/termination` 与
+ * `/api/dispute/cases/{case_no}/respond|withdraw`。「申请平台介入」是客服在管理端的动作，
+ * 这里没有对应端点，也就不再包一层假动作。
+ */
 export function useConversationBreachActions(readSources: () => BreachActionSources) {
-  const router = useRouter()
-
   const breachReason = ref('')
   const breachDecisionNote = ref('')
-  const breachRejectPanel = ref(false)
   const breachSubmitting = ref(false)
   const breachActing = ref(false)
-
-  /** 去账号中心补收款银行卡（结算账户）：中间态的续做靠它，绑完平台自动按原认定赔付。 */
-  function goBindSettlementAccount(): void {
-    readSources().onClosed()
-    void router.push({ name: 'workbench-account', query: { settle: '1' } })
-  }
 
   function resetForm() {
     breachReason.value = ''
     breachDecisionNote.value = ''
-    breachRejectPanel.value = false
   }
 
   async function submitBreachReport() {
-    const { token, requirementId, onCaseChanged, onChanged, onClosed } = readSources()
+    const { token, requirementId, onRefreshed, onChanged, onClosed } = readSources()
     const reason = breachReason.value.trim()
     if (!reason) {
       TMessage.warning('请填写解除合作的事实与依据')
       return
     }
+    if (reason.length < 5) {
+      TMessage.warning('事实与依据至少 5 个字')
+      return
+    }
 
     breachSubmitting.value = true
     try {
-      onCaseChanged(await reportAdapayTermination(token, requirementId, reason))
-      TMessage.success('解除合作申请已提交，等待对方回应')
+      const result = await reportTermination(token, requirementId, reason)
+      TMessage.success(
+        result.existing
+          ? '该需求已有在办案件，已为你打开那一条'
+          : '解除合作申请已提交，等待对方表态',
+      )
       onClosed()
+      onRefreshed()
       onChanged()
     } catch (error) {
       TMessage.error(error instanceof Error ? error.message : '提交解除合作申请失败')
@@ -67,28 +69,28 @@ export function useConversationBreachActions(readSources: () => BreachActionSour
     }
   }
 
-  async function submitBreachDecision(decision: AdapayBreachDecisionValue) {
-    const current = readSources().activeCase
-    if (!current) {
+  async function submitBreachDecision(action: AfterSalesRespondAction) {
+    const { token, caseNo, onRefreshed, onChanged } = readSources()
+    if (!caseNo) {
       return
     }
 
     breachActing.value = true
     try {
-      readSources().onCaseChanged(
-        await submitAdapayBreachDecision(
-          readSources().token,
-          current.id,
-          decision,
-          breachDecisionNote.value.trim(),
-        ),
-      )
-      breachRejectPanel.value = false
+      const note = breachDecisionNote.value.trim()
+      if (note) {
+        await respondAfterSalesCase(token, caseNo, action, note)
+      } else {
+        await respondAfterSalesCase(token, caseNo, action)
+      }
       breachDecisionNote.value = ''
       TMessage.success(
-        decision === 'accepted' ? '已接受 AI 判定' : '已提交不接受，案件转客服人工判定',
+        action === 'approve'
+          ? '已同意解除合作，等待平台按协商一致处理'
+          : '已表示不同意，案件转平台裁决',
       )
-      readSources().onChanged()
+      onRefreshed()
+      onChanged()
     } catch (error) {
       TMessage.error(error instanceof Error ? error.message : '提交解除合作案件表态失败')
     } finally {
@@ -96,37 +98,18 @@ export function useConversationBreachActions(readSources: () => BreachActionSour
     }
   }
 
-  async function submitPlatformReview() {
-    const current = readSources().activeCase
-    if (!current) {
-      return
-    }
-
-    breachActing.value = true
-    try {
-      readSources().onCaseChanged(
-        await requestAdapayPlatformReview(readSources().token, current.id),
-      )
-      TMessage.success('已申请平台介入，等待平台判定')
-      readSources().onChanged()
-    } catch (error) {
-      TMessage.error(error instanceof Error ? error.message : '申请平台介入失败')
-    } finally {
-      breachActing.value = false
-    }
-  }
-
   async function submitBreachWithdraw() {
-    const current = readSources().activeCase
-    if (!current) {
+    const { token, caseNo, onRefreshed, onChanged } = readSources()
+    if (!caseNo) {
       return
     }
 
     breachActing.value = true
     try {
-      readSources().onCaseChanged(await withdrawAdapayBreach(readSources().token, current.id))
+      await withdrawAfterSalesCase(token, caseNo, '当事人撤回申请')
       TMessage.success('已撤回解除合作申请，如仍有争议可重新发起')
-      readSources().onChanged()
+      onRefreshed()
+      onChanged()
     } catch (error) {
       TMessage.error(error instanceof Error ? error.message : '撤回解除合作申请失败')
     } finally {
@@ -137,14 +120,11 @@ export function useConversationBreachActions(readSources: () => BreachActionSour
   return {
     breachReason,
     breachDecisionNote,
-    breachRejectPanel,
     breachSubmitting,
     breachActing,
-    goBindSettlementAccount,
     resetForm,
     submitBreachReport,
     submitBreachDecision,
-    submitPlatformReview,
     submitBreachWithdraw,
   }
 }

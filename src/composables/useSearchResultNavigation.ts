@@ -1,7 +1,6 @@
 import type { Ref } from 'vue'
 import { useRouter } from 'vue-router'
 
-import type { CommunityPost } from '@/api/community'
 import type { PublicMcResourceItem } from '@/api/resources'
 import type { PublicRequirementSpotlightItem } from '@/api/requirements'
 import type { McProcessedTagTree } from '@/api/resourceTags'
@@ -58,7 +57,7 @@ export function useSearchResultNavigation(options: {
         resourceId: resource.id,
         rootSlug: routeParams.rootSlug,
         entrySlug: routeParams.entrySlug,
-        sale: resourceListingSaleOf(resource.price_fen, resource.price_points),
+        sale: resourceListingSaleOf(resource.buyout_price_fen, resource.price_points),
       }),
     )
   }
@@ -71,18 +70,9 @@ export function useSearchResultNavigation(options: {
     })
   }
 
-  /** 帖子详情带上关键词，详情页的「返回」才能回到同一批结果。 */
-  function openCommunityPost(post: CommunityPost) {
-    void router.push({
-      name: 'community-post',
-      params: { postId: String(post.id) },
-      query: options.keyword.value ? { keyword: options.keyword.value } : {},
-    })
-  }
-
   function openHome() {
     void router.push({ name: 'home' })
   }
 
-  return { openResource, openRequirementWorkbench, openCommunityPost, openHome }
+  return { openResource, openRequirementWorkbench, openHome }
 }

@@ -2,8 +2,8 @@
  * 开发者公开主页（`/user/:username/profile`）的装配层。
  *
  * 视图只剩结构：头部 / 读数 / 收到打赏 / 公开资源 / 三个弹窗。
- * 取数、权益、背景、简介编辑、打赏入口各自在下面的 composable 里；
- * 这里负责把它们串成一条加载链（公开档案 + 徽章 + 资源 → 权益 → 背景类型），
+ * 取数、背景、简介编辑、打赏入口各自在下面的 composable 里；
+ * 这里负责把它们串成一条加载链（公开档案 + 资源 → 背景类型），
  * 以及三处共用的整页重载（简介保存、背景上传 / 移除、打赏成功）。
  */
 import { computed, onMounted, ref } from 'vue'
@@ -18,7 +18,6 @@ import { useAuthStore } from '@/stores/auth'
 import { useDevProfileBackground } from './useDevProfileBackground'
 import { useDevProfileData } from './useDevProfileData'
 import { useDevProfileEdit } from './useDevProfileEdit'
-import { useDevProfilePerks } from './useDevProfilePerks'
 import { useDevProfileTips } from './useDevProfileTips'
 
 /** 公开资源卡的展示口径：组件只吃这几个字段，不碰 api 与路由。 */
@@ -36,7 +35,6 @@ export function useDevProfilePage() {
   const router = useRouter()
 
   const data = useDevProfileData()
-  const perks = useDevProfilePerks()
   const loading = ref(false)
 
   async function reload() {
@@ -46,9 +44,7 @@ export function useDevProfilePage() {
     loading.value = true
     try {
       await data.load()
-      // 背景类型在权益之前同步：与原实现的顺序一致，积分接口失败也不会影响首屏背景
       background.syncBackgroundKind()
-      await perks.load(data.isSelf.value)
     } catch (err) {
       TMessage.error(err instanceof Error ? err.message : '加载开发者信息失败')
     } finally {
@@ -56,12 +52,7 @@ export function useDevProfilePage() {
     }
   }
 
-  const background = useDevProfileBackground({
-    profile: data.publicProfile,
-    canCustomizeStatic: perks.canCustomizeBackground,
-    canCustomizeDynamic: perks.canCustomizeDynamicBackground,
-    reload,
-  })
+  const background = useDevProfileBackground({ profile: data.publicProfile, reload })
   const edit = useDevProfileEdit({ reload })
   const tips = useDevProfileTips({ canTip: data.canTip, reload })
 
@@ -135,8 +126,6 @@ export function useDevProfilePage() {
     profileDescription: data.profileDescription,
     profileGradient: data.profileGradient,
     profileColor: data.profileColor,
-    wornBadges: data.wornBadges,
-    badgeCount: computed(() => data.userBadges.value.length),
     isSelf: data.isSelf,
     canTip: data.canTip,
     videoBackgroundUrl: background.videoBackgroundUrl,
@@ -152,7 +141,6 @@ export function useDevProfilePage() {
     // 收到打赏
     showReceivedTips: data.showReceivedTips,
     receivedCashText: data.receivedCashText,
-    receivedPointsText: data.receivedPointsText,
     recentTipMessages: data.recentTipMessages,
     // 公开资源
     resourceCards,

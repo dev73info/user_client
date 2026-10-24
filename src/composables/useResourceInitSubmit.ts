@@ -4,7 +4,7 @@ import { TMessage } from 'ui_73info'
 import {
   createMcResource,
   getMcResource,
-  updateMcResourceHomepage,
+  submitMcResourceReview,
   updateResourceApiChannel,
   uploadMcResourceCover,
   type McResourcePayload,
@@ -158,7 +158,7 @@ export function useResourceInitSubmit(options: {
           origin_url: form.originUrl.trim() || null,
           origin_org: form.originOrg.trim() || null,
           origin_note: form.originNote.trim() || null,
-          price_fen: priceParsed.fen,
+          buyout_price_fen: priceParsed.fen,
           price_points: isApiKind.value ? 0 : pointsParsed.points,
           copyright_declared: form.copyrightDeclared,
           resource_kind: formState.resourceKind.value,
@@ -189,8 +189,6 @@ export function useResourceInitSubmit(options: {
       if (isApiKind.value) {
         try {
           const saved = await updateResourceApiChannel(auth.token, resource.id, {
-            resource_kind: 'api',
-            repeat_purchasable: form.apiRepeatPurchasable,
             callback_url: form.apiCallbackUrl.trim() || null,
             // 留空 = 不改；首次留空时后端自动生成，明文只在这次响应里回显
             callback_secret: form.apiCallbackSecret.trim() || null,
@@ -207,26 +205,10 @@ export function useResourceInitSubmit(options: {
         }
       }
 
+      // 公开申请走契约里的审核动作端点（draft → review）；资源本体的字段在建资源那一步已经提交过，
+      // 不需要再用 PATCH visibility:'review' 把整页字段重发一遍。
       if (mode === 'public') {
-        resource = await updateMcResourceHomepage(auth.token, resource.id, {
-          title: resource.title,
-          author: resource.author,
-          description: resource.description,
-          cover_url: resource.cover_url,
-          docs_url: resource.docs_url,
-          visibility: 'review',
-          release_note: resource.release_note,
-          origin_type: effectiveOriginType.value,
-          origin_author: form.originAuthor.trim() || null,
-          origin_url: form.originUrl.trim() || null,
-          origin_org: form.originOrg.trim() || null,
-          origin_note: form.originNote.trim() || null,
-          price_fen: priceParsed.fen,
-          price_points: isApiKind.value ? 0 : pointsParsed.points,
-          copyright_declared: form.copyrightDeclared,
-          resource_kind: formState.resourceKind.value,
-          promo_share_bps: promoParsed.bps,
-        })
+        resource = await submitMcResourceReview(auth.token, resource.id)
       }
 
       TMessage.success(

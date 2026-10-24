@@ -13,14 +13,17 @@ import {
   updateMemberRole,
   updateTeam,
   uploadTeamAvatar,
-  type TeamDetailResponse,
   type TeamMemberResponse,
+  type TeamResponse,
 } from '@/api/team'
 import { teamMyRoleLabel } from '@/shared/teamDisplay'
 import { useAuthStore } from '@/stores/auth'
 
 /** 资料卡提交上来的两份字段（表单在组件内自己受控，这里只收值）。 */
 export type TeamProfileInput = { name: string; description: string }
+
+/** 页面用的团队视图模型：团队概要 + 成员列表摊平在一层。 */
+export type TeamDetailView = TeamResponse & { members: TeamMemberResponse[] }
 
 /**
  * 团队详情页的数据与动作。
@@ -33,7 +36,8 @@ export function useTeamDetail() {
   const router = useRouter()
   const auth = useAuthStore()
 
-  const team = ref<TeamDetailResponse | null>(null)
+  /** 契约的 `{team, members}` 在取数处摊平一次，视图与卡片只认这一层。 */
+  const team = ref<TeamDetailView | null>(null)
   const loading = ref(false)
   const inviting = ref(false)
   const inviteUsername = ref('')
@@ -70,7 +74,8 @@ export function useTeamDetail() {
     if (!token || !teamId.value) return
     loading.value = true
     try {
-      team.value = await getTeamDetail(token, teamId.value)
+      const detail = await getTeamDetail(token, teamId.value)
+      team.value = { ...detail.team, members: detail.members }
     } catch (e) {
       TMessage.warning(e instanceof Error ? e.message : '加载团队失败')
       router.push({ name: 'workbench-teams' })

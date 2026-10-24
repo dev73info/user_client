@@ -221,27 +221,15 @@ export function useMyRequirementsPage() {
     const oauthResult = typeof route.query.wechat_oauth === 'string' ? route.query.wechat_oauth : ''
     const oauthError =
       typeof route.query.wechat_oauth_error === 'string' ? route.query.wechat_oauth_error : ''
-    const unionOauthResult =
-      typeof route.query.union_oauth === 'string' ? route.query.union_oauth : ''
-    const unionOauthError =
-      typeof route.query.union_oauth_error === 'string' ? route.query.union_oauth_error : ''
     if (oauthResult === 'success') {
       TMessage.success('微信授权成功，请再次点击支付')
     } else if (oauthError) {
       TMessage.error(`微信授权失败：${oauthError}`)
     }
-    if (unionOauthResult === 'success') {
-      actions.payChannel.value = 'union'
-      TMessage.success('云闪付授权成功，请再次点击支付')
-    } else if (unionOauthError) {
-      TMessage.error(`云闪付授权失败：${unionOauthError}`)
-    }
-    if (oauthResult || oauthError || unionOauthResult || unionOauthError) {
+    if (oauthResult || oauthError) {
       const nextQuery = { ...route.query }
       delete nextQuery.wechat_oauth
       delete nextQuery.wechat_oauth_error
-      delete nextQuery.union_oauth
-      delete nextQuery.union_oauth_error
       void router.replace({ query: nextQuery })
     }
   })

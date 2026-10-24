@@ -10,10 +10,15 @@ import { requirementRichTextPreview } from '@/utils/requirementRichText'
 /** 表格与窄屏卡片里需求描述的预览长度：超出截断并补省略号。 */
 const REQUIREMENT_PREVIEW_MAX_LENGTH = 120
 
-/** 排序下拉的选项：服务端按这三个字段排，顺序即下拉里的顺序。 */
+/**
+ * 排序下拉的选项，顺序即下拉里的顺序。
+ *
+ * 只有这两个字段：契约 `RequirementResponse` 里**没有 `updated_at`**（后端 DTO 就没有这一列），
+ * 原先那个「最近更新」排序读的是不存在的字段，取到的永远是 `undefined`，
+ * 结果整页顺序按原始顺序排列却写着「最近更新」——比没有这个选项更误导。
+ */
 export const REQUIREMENT_HALL_SORT_OPTIONS = [
-  { value: 'updated_at', label: '最近更新' },
-  { value: 'created_time', label: '创建时间' },
+  { value: 'created_time', label: '发布时间' },
   { value: 'budget', label: '预算' },
 ] as const
 
@@ -35,50 +40,34 @@ export function isSelfManagedRequirement(
   return requirement.payment_mode === 'self_managed'
 }
 
-/** 要不要过保证金闸门：平台担保的需求才要，自管需求直接接。 */
-export function requiresDepositGate(requirement: Pick<RequirementItem, 'payment_mode'>): boolean {
+/** 要不要过入驻协议闸门：平台担保的需求才要，自管需求直接接。 */
+export function requiresAgreementGate(requirement: Pick<RequirementItem, 'payment_mode'>): boolean {
   return !isSelfManagedRequirement(requirement)
-}
-
-/** 预算是否在信用额度之内。留 0.0001 的余量，避免浮点比较把「刚好等于额度」判成超限。 */
-function isBudgetWithinCap(budget: number | null | undefined, cap: number): boolean {
-  return (budget ?? 0) <= cap + 0.0001
 }
 
 /** 判定「接单」按钮上那句话要用到的资格读数。 */
 export type RequirementBindGate = {
-  /** 开发者入驻协议是否已签署 */
+  /** 开发者入驻协议是否已签署（`GET /api/auth/dev-access-status` 的 `developer_agreement_signed`） */
   agreementSigned: boolean
-  /** 保证金够不够接单（后端给的 can_bind_requirement） */
-  canTakeOrders: boolean
-  /** 可用保证金（元） */
-  availableCny: number
-  /** 信用额度上限（元）；没有强制额度时传 `Number.POSITIVE_INFINITY` */
-  orderCap: number
 }
 
 /**
- * 「接单」按钮上的字：资格不够时说明卡在哪一步，够就写「接单」。
- * 判定顺序即提示优先级：协议 → 保证金 → 信用额度，与原来一致（先拦最早该办的那件事）。
+ * 「接单」按钮上的字：协议没签时说明卡在哪一步，签了就写「接单」。
+ *
+ * 保证金与信用额度**不再参与判定**：那两个读数在当前契约里没有端点（预付保证金与 `/credit/**`
+ * 都没上线），拿不到真值。担保单的保证金由后端在接单时按可提现收益冻结，不够会回 409 中文说明，
+ * 前端不预判——预判只能靠编数，编出来的「可接单」比不显示更糟。
  */
 export function bindButtonLabel(
-  requirement: Pick<RequirementItem, 'payment_mode' | 'budget'>,
+  requirement: Pick<RequirementItem, 'payment_mode'>,
   gate: RequirementBindGate,
 ): string {
-  if (!requiresDepositGate(requirement)) {
+  if (!requiresAgreementGate(requirement)) {
     return '接单'
   }
 
   if (!gate.agreementSigned) {
     return '需先签署协议'
-  }
-
-  if (!gate.canTakeOrders || (requirement.budget ?? 0) > gate.availableCny) {
-    return '保证金不足'
-  }
-
-  if (!isBudgetWithinCap(requirement.budget, gate.orderCap)) {
-    return '信用不足'
   }
 
   return '接单'

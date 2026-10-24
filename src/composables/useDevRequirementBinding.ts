@@ -18,19 +18,16 @@ import {
 import { requiresDepositGate } from '@/shared/devRequirementDetail'
 import { useAuthStore } from '@/stores/auth'
 
-/** 接单资格的三个读数（来自 `useDevOrderCapacity`，这里只读）。 */
+/** 接单资格的读数（来自 `useDevOrderGate`，这里只读）：只剩入驻协议这一项。 */
 export type BindingCapacityInput = {
   agreementSigned: Ref<boolean>
-  canBindRequirement: Ref<boolean>
-  availableCny: Ref<number>
-  creditCap: Ref<number>
 }
 
 /**
  * 「接取需求」右栏：关联方式、可绑定资源、两次确认、提交。
  *
  * 两道闸门都在这里收口：
- * 1. 资格闸门（协议 / 保证金 / 信用）——文案由 `shared/devRequirementDetail` 的纯函数出，
+ * 1. 资格闸门（入驻协议）——文案由 `shared/devRequirementBinding` 的纯函数出，
  *    页面只负责把它显示成提示条；
  * 2. 操作闸门（选没选资源、二次确认勾没勾）——决定按钮能不能点。
  *
@@ -74,22 +71,16 @@ export function useDevRequirementBinding(options: {
   const gate = computed<BindingGateInput>(() => ({
     requirement: options.requirement.value,
     agreementSigned: options.capacity.agreementSigned.value,
-    canBindRequirement: options.capacity.canBindRequirement.value,
-    availableCny: options.capacity.availableCny.value,
-    creditCap: options.capacity.creditCap.value,
   }))
 
   /** 接取资格没过的原因（空串表示可以继续填表）。 */
   const blockReason = computed(() => bindingBlockReason(gate.value))
-  /** 只差「签协议」这一件事时，提示条上的按钮是「去签署协议」而不是「去缴纳保证金」。 */
+  /** 只差「签协议」这一件事：提示条上的按钮因此是「去签署协议」。 */
   const agreementBlocked = computed(
     () =>
       Boolean(options.requirement.value) &&
       Boolean(options.requirement.value && requiresDepositGate(options.requirement.value)) &&
       !options.capacity.agreementSigned.value,
-  )
-  const requiresDeposit = computed(() =>
-    Boolean(options.requirement.value && requiresDepositGate(options.requirement.value)),
   )
 
   const canSubmit = computed(() =>
@@ -247,7 +238,6 @@ export function useDevRequirementBinding(options: {
     selectedResource,
     blockReason,
     agreementBlocked,
-    requiresDeposit,
     canSubmit,
     confirmLabel,
     loadResources,

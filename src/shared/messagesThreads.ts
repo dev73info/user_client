@@ -1,6 +1,7 @@
 import type { RequirementConversation } from '@/shared/conversations'
 import type { RequirementItem, RequirementPaymentMode, RequirementStatus } from '@/api/requirements'
 import { requirementStatusLabel } from '@/shared/requirementStatus'
+import { parseBackendDateTime } from '@/shared/datetime'
 
 /**
  * 消息中心的展示口径（纯函数，不碰 store / 路由 / 接口）。
@@ -74,16 +75,15 @@ export function parseTime(value?: string | null) {
   if (!value) {
     return 0
   }
-  const time = new Date(value).getTime()
-  return Number.isNaN(time) ? 0 : time
+  return parseBackendDateTime(value)?.getTime() ?? 0
 }
 
 export function formatMessageTime(value?: string | null) {
   if (!value) {
     return '暂无消息'
   }
-  const date = new Date(value)
-  if (Number.isNaN(date.getTime())) {
+  const date = parseBackendDateTime(value)
+  if (!date) {
     return '刚刚更新'
   }
   return date.toLocaleString('zh-CN', {
@@ -187,7 +187,7 @@ export function buildPendingThread(item: RequirementItem): MessageThread {
     description: '需求已接取但本地尚未拿到会话记录，打开后会自动同步。',
     actionLabel: '开启会话',
     unreadCount: 0,
-    sortTime: parseTime(item.updated_at),
+    sortTime: parseTime(item.created_time),
   }
 }
 

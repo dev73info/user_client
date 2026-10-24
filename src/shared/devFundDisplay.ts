@@ -1,36 +1,24 @@
 /**
- * 资金明细的纯展示层：类型/文案/金额格式，以及把四类台账**合成一张表**。
+ * 资金明细的纯展示层：类型/文案/金额格式，以及把两类台账**合成一张表**。
  *
  * 合成规则是这页最容易读错的地方，所以放在这里单独写清（见 `buildFundRecords`）：
  *
  * | 类型 | 数据来源 | 说明 |
  * | --- | --- | --- |
- * | 保证金充值 | `GET /dev/payments/developer-order-deposit/orders` | 已支付的充值单（未支付/失败/关闭的不算钱进来） |
- * | 保证金提现 | `GET /dev/payments/developer-order-deposit/withdrawals` | 保证金退回原充值订单的出款单 |
- * | 收入 | 父级传进来的到账凭据 | 每个里程碑分账到账一笔 |
- * | 收入提现 | `GET /dev/payments/withdrawals` | 接单收入的提现出款单 |
+ * | 收入 | 父级传进来的 `DevIncomeResponse[]` | 每个里程碑分账到账一笔 |
+ * | 退款冲减 | 同上，`refund_developer_cny > 0` 的行 | 售后按原分账份额从开发者收回的那部分 |
+ * | 收入提现 | `GET /api/payment/withdrawals` | 接单收入的提现出款单 |
+ *
+ * 只有这两类台账在契约里存在：1.x 的「保证金充值 / 保证金提现」是预付钱包，2.0 没有对应端点，
+ * 接单保证金改由后端从可提现收益里冻结（`POST` 接单时判，不够回 409）。
  *
  * 金额一律按**正数**展示、方向靠「类型」区分（与原来的收入记录同一口径），不做正负号——
- * 四类混排时符号容易被读成「同一笔钱的加减」，而它们分属两个互不相通的池子（保证金 / 接单收入）。
+ * 混排时符号容易被读成「同一笔钱的加减」。
  */
-import type {
-  DevOrderDepositOrderSummary,
-  DevOrderDepositWithdrawalRecord,
-  DevOrderDepositWithdrawalSummary,
-} from '@/api/devOrderDeposit'
-import type {
-  DevWalletIncomeItem,
-  DevWithdrawalRecord,
-  DevWithdrawalSummary,
-} from '@/api/devWallet'
+import type { DevWalletIncomeItem, DevWithdrawalRecord } from '@/api/devWallet'
 
-/** 四类资金动作：类型标签 + 金额着色 + 那一行的说明怎么拼。 */
-export type FundRecordKind =
-  | 'deposit_recharge'
-  | 'deposit_withdrawal'
-  | 'income'
-  | 'income_reversal'
-  | 'income_withdrawal'
+/** 三类资金动作：类型标签 + 金额着色 + 那一行的说明怎么拼。 */
+export type FundRecordKind = 'income' | 'income_reversal' | 'income_withdrawal'
 
 export type FundRecord = {
   key: string
@@ -47,8 +35,6 @@ export type FundRecord = {
 }
 
 export const KIND_LABELS: Record<FundRecordKind, string> = {
-  deposit_recharge: '保证金充值',
-  deposit_withdrawal: '保证金提现',
   income: '收入',
   income_reversal: '退款冲减',
   income_withdrawal: '收入提现',
@@ -62,34 +48,28 @@ export function money(value?: number | null) {
   return `¥${value.toFixed(2)}`
 }
 
-/** 接单收入提现的状态文案（与钱包页原来的口径一致）。 */
+/**
+ * 接单收入提现的状态文案：**兜底**用。
+ *
+ * 契约的 `WithdrawalResponse` 自带 `status_label`（后端下发的中文说明），显示一律以它为准；
+ * 这张 map 只在 `status_label` 为空时兜底，所以不写任何到账承诺（比如 1.x 页面里那句
+ * 「出款中（T+1）」的 T+1 后端并没有承诺，渠道打款时间不由前端规定）。
+ */
 export function incomeWithdrawalStatusText(status: DevWithdrawalRecord['status']) {
-  const map: Record<DevWithdrawalRecord['status'], string> = {
+  const map: Record<string, string> = {
     pending_review: '待审核',
     approved: '待出款',
-    payout_processing: '出款中（T+1）',
+    payout_processing: '出款中',
     payout_failed: '出款失败',
     rejected: '已驳回',
     paid: '已到账',
+    closed: '已关闭',
   }
-  return map[status]
-}
-
-/** 保证金提现（退回原充值订单）的状态文案（与保证金那一段原来的口径一致）。 */
-export function depositWithdrawalStatusText(status: DevOrderDepositWithdrawalRecord['status']) {
-  const map: Record<DevOrderDepositWithdrawalRecord['status'], string> = {
-    pending_review: '待审核',
-    approved: '待退回',
-    payout_processing: '退回处理中',
-    payout_failed: '退回需处理',
-    rejected: '已驳回',
-    paid: '已退回',
-  }
-  return map[status]
+  return map[status] ?? status
 }
 
 export function statusTagType(
-  status: DevWithdrawalRecord['status'] | DevOrderDepositWithdrawalRecord['status'],
+  status: DevWithdrawalRecord['status'],
 ): 'warning' | 'success' | 'danger' | 'info' {
   if (status === 'pending_review') {
     return 'warning'
@@ -103,9 +83,9 @@ export function statusTagType(
   return 'danger'
 }
 
-/** 钱进来的两类（保证金充值 / 收入）用同一种强调色，出款与冲减用中性色。 */
+/** 钱进来的那一类（收入）用同一种强调色，出款与冲减用中性色/警示色。 */
 export function isInflowKind(kind: FundRecordKind): boolean {
-  return kind === 'income' || kind === 'deposit_recharge'
+  return kind === 'income'
 }
 
 /** 「类型」列的标签色调：冲减是警示色，流入是成功色，出款是信息色。 */
@@ -120,52 +100,15 @@ export function kindTagTone(
 }
 
 export type FundRecordSources = {
-  depositOrders: DevOrderDepositOrderSummary[]
-  depositWithdrawals: DevOrderDepositWithdrawalRecord[]
   income: DevWalletIncomeItem[]
   incomeWithdrawals: DevWithdrawalRecord[]
 }
 
-/** 四类台账合成一段，按时间倒序。纯函数：不给入参就返回空表，方便单测。 */
+/** 两类台账合成一段，按时间倒序。纯函数：不给入参就返回空表，方便单测。 */
 export function buildFundRecords(sources: Partial<FundRecordSources> = {}): FundRecord[] {
-  const depositOrders = sources.depositOrders ?? []
-  const depositWithdrawals = sources.depositWithdrawals ?? []
   const income = sources.income ?? []
   const incomeWithdrawals = sources.incomeWithdrawals ?? []
   const merged: FundRecord[] = []
-
-  // 保证金充值：到账即一笔；充值单上没有收款账户（钱是从开发者自己的支付渠道进来的）。
-  for (const order of depositOrders) {
-    merged.push({
-      key: `deposit_recharge:${order.payment_id}`,
-      kind: 'deposit_recharge',
-      id: order.payment_id,
-      amount: order.amount_cny,
-      detail: '保证金充值',
-      account: '渠道：Adapay',
-      status: '已到账',
-      tag: 'success',
-      note: '-',
-      reference: order.payment_id,
-      time: order.created_at,
-    })
-  }
-
-  for (const record of depositWithdrawals) {
-    merged.push({
-      key: `deposit_withdrawal:${record.withdrawal_id}`,
-      kind: 'deposit_withdrawal',
-      id: record.withdrawal_id,
-      amount: record.amount_cny,
-      detail: `保证金提现 · ${record.account_name}`,
-      account: record.account_no_masked,
-      status: depositWithdrawalStatusText(record.status),
-      tag: statusTagType(record.status),
-      note: record.review_note || record.payout_failure_message || '-',
-      reference: record.paid_reference || '-',
-      time: record.created_at,
-    })
-  }
 
   for (const record of income) {
     // 「收入」行永远记**到账**了多少。此前这里取的是净额，一次售后退款就把那一行改写成
@@ -214,18 +157,23 @@ export function buildFundRecords(sources: Partial<FundRecordSources> = {}): Fund
       key: `income_withdrawal:${record.withdrawal_id}`,
       kind: 'income_withdrawal',
       id: record.withdrawal_id,
-      amount: record.amount_cny,
+      amount: record.amount_fen / 100,
       detail: `收入提现 · ${record.account_name}`,
-      account: record.account_no_masked,
-      status: incomeWithdrawalStatusText(record.status),
+      account: record.account_no_tail,
+      // 中文说明以后端下发的 `status_label` 为准，本地 map 只兜底
+      status: record.status_label || incomeWithdrawalStatusText(record.status),
       tag: statusTagType(record.status),
-      note: record.review_note || record.payout_failure_message || '-',
-      reference: record.paid_reference || '-',
-      time: record.created_at,
+      note: record.review_note || record.payout_failure_reason || '-',
+      reference: record.withdrawal_id,
+      time: record.created_time,
     })
   }
 
-  return merged.sort((first, second) => second.time.localeCompare(first.time))
+  // 时间缺失（契约里 nullable 的字段）不能让它抛 `Cannot read properties of undefined`：
+  // 缺时间的行按空串参与比较，落到表尾，其余行照常倒序。
+  return merged.sort((first, second) =>
+    String(second.time ?? '').localeCompare(String(first.time ?? '')),
+  )
 }
 
 /** 关键字过滤：与其它列表页的搜索同口径，跨「类型 / 来源 / 账户 / 状态 / 备注 / 参考号 / 时间」。 */
@@ -252,4 +200,4 @@ export function filterFundRecords(records: FundRecord[], keyword?: string | null
   )
 }
 
-export type { DevOrderDepositWithdrawalSummary, DevWalletIncomeItem, DevWithdrawalSummary }
+export type { DevWalletIncomeItem }

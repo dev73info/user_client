@@ -1,12 +1,11 @@
 import { computed, nextTick, onBeforeUnmount, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
-import { notificationsItem, overviewItem, ticketsItem } from '@/shared/workbenchMenu'
+import { notificationsItem, overviewItem } from '@/shared/workbenchMenu'
 import {
   isMessagesRouteName,
   messagesRouteNameFor,
   notificationsRouteNameFor,
-  ticketsRouteNameFor,
   workbenchBrandTitleFor,
 } from '@/shared/workbenchRoutes'
 
@@ -17,7 +16,7 @@ const MODE_SWITCH_SPIN_MS = 360
  * 工作台模式（用户 / 开发者）：跟着路由走，命中 `devArea` 路由就是开发者模式。
  *
  * 从 `views/UserWorkbenchView.vue` 抽出来。这里是**唯一**计算模式的地方：
- * 侧边栏换整条菜单、品牌标题、消息 / 工单 / 系统通知三条路由各自指向哪一端，都以它为准。
+ * 侧边栏换整条菜单、品牌标题、消息 / 系统通知两条路由各自指向哪一端，都以它为准。
  */
 export function useWorkbenchMode(options: { closeMobileMenu: () => void }) {
   const route = useRoute()
@@ -32,12 +31,10 @@ export function useWorkbenchMode(options: { closeMobileMenu: () => void }) {
   const workbenchModeKey = computed(() => (isDevWorkbenchMode.value ? 'dev' : 'user'))
   const workbenchBrandTitle = computed(() => workbenchBrandTitleFor(isDevWorkbenchMode.value))
 
-  // 消息中心 / 工单中心 / 系统通知：两种工作台各有一条路由，页面内的高亮与链接跟着当前模式走。
+  // 消息中心 / 系统通知：两种工作台各有一条路由，页面内的高亮与链接跟着当前模式走。
   const messagesRouteName = computed(() => messagesRouteNameFor(isDevWorkbenchMode.value))
   const isMessagesRoute = computed(() => isMessagesRouteName(route.name))
-  const ticketsRouteName = computed(() => ticketsRouteNameFor(isDevWorkbenchMode.value))
   const notificationsRouteName = computed(() => notificationsRouteNameFor(isDevWorkbenchMode.value))
-  const ticketsMenuItem = computed(() => ({ ...ticketsItem, name: ticketsRouteName.value }))
   const notificationsMenuItem = computed(() => ({
     ...notificationsItem,
     name: notificationsRouteName.value,
@@ -85,9 +82,7 @@ export function useWorkbenchMode(options: { closeMobileMenu: () => void }) {
     workbenchBrandTitle,
     messagesRouteName,
     isMessagesRoute,
-    ticketsRouteName,
     notificationsRouteName,
-    ticketsMenuItem,
     notificationsMenuItem,
     modeSwitching,
     modeSwitchSpinning,

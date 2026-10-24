@@ -10,11 +10,9 @@ import { usePaymentRedirect } from '@/composables/usePaymentRedirect'
 import { useAdapayOrder } from '@/composables/useAdapayOrder'
 import { usePaymentContext } from '@/composables/usePaymentContext'
 import { useWechatJsapiPay } from '@/composables/useWechatJsapiPay'
-import { useWechatSilentAuth } from '@/composables/useWechatSilentAuth'
 import { useIntentAdapayOrder } from '@/composables/useIntentAdapayOrder'
 import { useWechatMiddlePage } from '@/composables/useWechatMiddlePage'
 import { useWechatPaymentFlow } from '@/composables/useWechatPaymentFlow'
-import { useAlipayPageFrame } from '@/composables/useAlipayPageFrame'
 import type { ResourcePurchaseOrder } from '@/api/resourcePurchase'
 import type { TipOrder } from '@/api/tips'
 
@@ -68,7 +66,6 @@ export function usePaymentPage() {
     tipPayInfo: () => backfill.tip.payInfoRaw.value,
     resourcePayInfo: () => backfill.resource.payInfoRaw.value,
     adapayPayUrl: adapayOrder.adapayPayUrl,
-    developerDepositPayUrl: adapayOrder.developerDepositPayUrl,
     hasAdapayPayment: adapayOrder.hasAdapayPayment,
     resourceOrder: () => backfill.resource.detail.value,
     tipOrder: () => backfill.tip.detail.value,
@@ -95,41 +92,13 @@ export function usePaymentPage() {
     backfill,
   )
 
-  /**
-   * 静默授权成功后继续下单。用函数声明（会提升）：`silentAuth` 先建、`intentOrder` 后建，
-   * 这里只是把两者接起来，真正调用发生在授权回调之后。
-   */
-  async function continueAfterSilentAuth() {
-    if (
-      context.flags.value.isIntentMode &&
-      !context.wechatPayInfo.value &&
-      !intentOrder.creatingIntentOrder.value
-    ) {
-      session.wechatAuthChecked.value = true
-      intentOrder.intentOrderAttempted.value = false
-      await intentOrder.createIntentAdapayOrder()
-    }
-  }
-
-  const silentAuth = useWechatSilentAuth({
-    session,
-    token: () => auth.token,
-    refreshProfile: async () => {
-      await auth.fetchProfile(true).catch(() => undefined)
-    },
-    onAuthorized: continueAfterSilentAuth,
-  })
-
   const intentOrder = useIntentAdapayOrder({
     session,
     ctx: () => ctx.value,
     flags: () => context.flags.value,
     token: () => auth.token,
     isWechatBrowser: () => context.isWechatBrowser.value,
-    silentAuthWaiting: () => silentAuth.silentAuthWaiting.value,
-    startSilentWechatAuth: silentAuth.startSilentWechatAuth,
     adapayPayment: adapayOrder.adapayPayment,
-    developerDepositPayment: adapayOrder.developerDepositPayment,
   })
 
   const middleCreating = computed(
@@ -159,18 +128,8 @@ export function usePaymentPage() {
     creatingIntentOrder: () => intentOrder.creatingIntentOrder.value,
     intentOrderAttempted: () => intentOrder.intentOrderAttempted.value,
     createIntentOrder: () => intentOrder.createIntentAdapayOrder(),
-    adapayStatus: () =>
-      adapayOrder.adapayPayment.value?.status ??
-      adapayOrder.developerDepositPayment.value?.status ??
-      '',
+    adapayStatus: () => adapayOrder.adapayPayment.value?.status ?? '',
     launchPayment: () => jsapi.launchWechatPayment(),
-  })
-
-  const alipayFrame = useAlipayPageFrame({
-    ctx: () => ctx.value,
-    resolvedChannel: () => adapayOrder.resolvedChannel.value,
-    isAdapay: () => ctx.value.isAdapay,
-    token: () => auth.token,
   })
 
   // 支付成功 → 3 秒自动返回（与顶部「返回」按钮同一个动作），逻辑在 usePaymentRedirect 里
@@ -237,17 +196,12 @@ export function usePaymentPage() {
     wechatMiddleBusy,
     wechatMiddleCreating,
     wechatAutoAuthRedirecting: session.wechatAutoAuthRedirecting,
-    silentAuthWaiting: silentAuth.silentAuthWaiting,
-    silentAuthQrDataUrl: silentAuth.silentAuthQrDataUrl,
     creatingIntentOrder: intentOrder.creatingIntentOrder,
     alipayPaymentUrl: context.alipayPaymentUrl,
     unionPaymentUrl: context.unionPaymentUrl,
     mismatched: computed(
       () => context.invalidAdapayPaymentContent.value || context.invalidUnionPaymentContent.value,
     ),
-    alipayPageHtml: alipayFrame.alipayPageHtml,
-    alipayPageLoading: alipayFrame.alipayPageLoading,
-    alipayIframeLoading: alipayFrame.alipayIframeLoading,
 
     // ---- 支付信息 ----
     displayOrderNo: context.displayOrderNo,
@@ -264,7 +218,6 @@ export function usePaymentPage() {
     launchWechatPayment: () => jsapi.launchWechatPayment(),
     retryMiddlePageAuth: middle.retryMiddlePageAuth,
     createIntentAdapayOrder: () => intentOrder.createIntentAdapayOrder(),
-    handleIframeLoad: alipayFrame.handleIframeLoad,
   }
 }
 

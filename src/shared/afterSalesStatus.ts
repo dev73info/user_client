@@ -1,108 +1,12 @@
 /**
- * 解除合作案件状态与诉求类型的中文文案。
+ * 争议 / 解除合作域在**列表页**用的两个纯函数。
  *
- * 取值与后端状态机一一对应（`backend_73info/src/modules/after_sales/service.rs`）。
+ * 案件的类型、状态、金额这些读数一律用契约里后端给好的字段
+ * （`kind_label` / `status_label` / `claim_amount_fen`），前端不再维护一份状态码到中文的映射：
+ * 后端 `CaseStatus::label()` 才是唯一的文案来源，两边各写一份必然会漂。
  *
- * 这里只做**短标签**（「待对方表态」「平台裁决中」这种）与**待办判定**（`isAwaitingViewerAction`，
- * 给列表行的「解除合作」入口挂角标），给系统通知卡与列表用；
- * 案件详情弹窗里另有一套更长的话术（按「现在到哪一步、你要做什么」组织），
- * 两者口径不同，不要互相抄。
- *
- * 四个前端各自维护一份同口径文案：它们是四个独立仓库，没有共享包，
- * 跨仓引用要新建构建产物，代价大于收益。
+ * 这里只剩「角标怎么画」与「角标数什么」两件事。
  */
-
-/** 解除合作案件状态（与后端状态机一致）。 */
-export type AfterSalesCaseStatus =
-  | 'submitted'
-  | 'support_reviewing'
-  | 'processing'
-  | 'agreed'
-  | 'rework_pending'
-  | 'manual_required'
-  | 'succeeded'
-  | 'rejected'
-  | 'withdrawn'
-
-/** 解除合作案件状态短标签（键集必须覆盖全部 `AfterSalesCaseStatus`）。 */
-export const AFTER_SALES_STATUS_LABELS: Record<AfterSalesCaseStatus, string> = {
-  submitted: '待对方表态',
-  support_reviewing: '平台裁决中',
-  processing: '资金执行中',
-  agreed: '待确认落实',
-  rework_pending: '返工中',
-  manual_required: '需人工处理',
-  succeeded: '已结案',
-  rejected: '已驳回',
-  withdrawn: '已撤回',
-}
-
-/** 取解除合作案件状态中文；空值给占位符，未知码回退原码便于发现漏配文案。 */
-export function afterSalesStatusLabel(status: string | null | undefined): string {
-  if (!status) return '—'
-  return AFTER_SALES_STATUS_LABELS[status as AfterSalesCaseStatus] ?? status
-}
-
-/**
- * 解除合作诉求的**期望**文案：发起人想要什么（要钱 / 返工 / 两者都要 / 只是反馈）。
- *
- * 不再是「四类诉求」——`refund` 与 `compensation` 描述的其实是资金来源（客户自己付过的钱 /
- * 开发者的接单保证金），那是平台认定的事；`repair` 是动作项，现在可以与要钱并存。
- * 这里只按期望组合出一个短标签，给系统通知卡与列表用。
- */
-export function afterSalesExpectationLabel(row: {
-  expectsMoney: boolean
-  expectsRework: boolean
-}): string {
-  if (row.expectsMoney && row.expectsRework) {
-    return '要钱 + 返工'
-  }
-  if (row.expectsMoney) {
-    return '要钱'
-  }
-  if (row.expectsRework) {
-    return '要返工'
-  }
-  return '反馈问题'
-}
-
-/** 判断待办所需的最小字段（两个页面传进来的正是 `AfterSalesCase`）。 */
-export type AfterSalesActionSubject = {
-  status: string
-  openerRole: string
-  viewerRole: string | null
-  customerDecision: string | null
-  developerDecision: string | null
-}
-
-/**
- * 案件是否**在等当前登录人动作** —— 需求列表行上的「解除合作」入口据此挂待办角标。
- *
- * 口径直接对齐后端的动作白名单，不要凭状态名猜：
- *   - 发起人（甲方）：`agreed`（待确认落实）与 `rework_pending`（待验收）只能由发起人收口
- *     （`confirm_agreed_case` 的 `complete` / `unfulfilled`），所以这两个状态算他的待办；
- *   - 对方（乙方）：`submitted` / `support_reviewing` 且自己还没表态 —— `respond_case`
- *     只在这两个状态、且本方表态列为空时放行；
- *   - 发起人在「待表态」阶段只能撤回，那是可选动作，不算待办；
- *   - `processing` / `manual_required` 在等渠道回调或客服，不是当事双方的待办。
- */
-export function isAwaitingViewerAction(row: AfterSalesActionSubject): boolean {
-  if (row.viewerRole === null) {
-    return false
-  }
-  if (row.status === 'agreed' || row.status === 'rework_pending') {
-    return row.viewerRole === row.openerRole
-  }
-  if (row.status !== 'submitted' && row.status !== 'support_reviewing') {
-    return false
-  }
-  if (row.viewerRole === row.openerRole) {
-    return false
-  }
-  return row.viewerRole === 'developer'
-    ? row.developerDecision === null
-    : row.customerDecision === null
-}
 
 /** 待办角标读数：超过 99 收成 `99+`，与工作台菜单角标同一口径。 */
 export function afterSalesBadgeText(count: number): string {
@@ -110,18 +14,20 @@ export function afterSalesBadgeText(count: number): string {
 }
 
 /**
- * 在等我动作的案件按需求计数（纯函数，单测见 `__tests__/afterSalesPendingBadge.spec.ts`）。
+ * 每条需求上的**在办案件数**：一次 `GET /api/dispute/cases` 就能拿到我参与的全部案件，
+ * 不必逐条需求发请求。
  *
- * 一次 `GET /api/dispute/cases` 就能拿到我参与的全部案件（含 `viewerRole`），
- * 不必逐条需求发请求；哪些算待办由上面的 `isAwaitingViewerAction` 定死。
+ * 只数 `open`（后端 `CaseStatus::is_open`）且已有对方当事人的案件——**不声称「在等我表态」**：
+ * `CaseSummaryResponse` 里没有「轮到谁」这个读数（那是 `BreachCaseItemResponse.turn` 才有的），
+ * 靠 `filed_by` / `respondent` 自己推算等于另造一套状态机，所以角标只表达「这条需求有争议在办」。
  */
-export function countAwaitingCasesByRequirement(
-  cases: ReadonlyArray<AfterSalesActionSubject & { requirementId: string }>,
+export function countOpenCasesByRequirement(
+  cases: ReadonlyArray<{ requirement_id: string; open: boolean; respondent?: string | null }>,
 ): Record<string, number> {
   const counts: Record<string, number> = {}
   for (const item of cases) {
-    if (isAwaitingViewerAction(item)) {
-      counts[item.requirementId] = (counts[item.requirementId] ?? 0) + 1
+    if (item.open && item.respondent) {
+      counts[item.requirement_id] = (counts[item.requirement_id] ?? 0) + 1
     }
   }
   return counts

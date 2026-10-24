@@ -3,10 +3,8 @@ import { useRoute, useRouter } from 'vue-router'
 import { TMessage } from 'ui_73info'
 
 import { getAdapayClientPlatform } from '@/api/adapay'
-import { getMyPoints } from '@/api/points'
 import { createResourcePurchase, type ResourcePurchaseOrder } from '@/api/resourcePurchase'
 import { useResourcePayment } from '@/composables/useResourcePayment'
-import { useWechatPayAuthorize } from '@/composables/useWechatPayAuthorize'
 import { describeBackendError } from '@/shared/backendErrorText'
 import {
   canReuseCashQrForChannel,
@@ -19,8 +17,6 @@ import { useAuthStore } from '@/stores/auth'
 export type UseResourcePurchaseOptions = {
   /** 当前资源编号（没有编号就不下单） */
   getResourceId: () => number | null
-  /** 是否积分单：积分单只走「确认兑换」，没有二维码与渠道 */
-  isPointsListing: () => boolean
   /** 资源当前的推广分成比例（bps），只用来决定要不要出推广轻提示 */
   getPromoShareBps: () => number
   /** 付款成功 / 后端回「已购买」后刷新详情（资源实体还在父级手里） */
@@ -28,7 +24,7 @@ export type UseResourcePurchaseOptions = {
 }
 
 /**
- * 资源购买（下单 / 渠道切换 / 支付面与轮询 / 积分余额）。三件**不能动**的东西原样搬进来：
+ * 资源购买（下单 / 渠道切换 / 支付面与轮询）。三件**不能动**的东西原样搬进来：
  * ①**下单串行队列** `submitChain`（同一时刻只跑一笔，避免并发抢改同一条 pending）；
  * ②**支付面世代号**（`useResourcePayment` 的 `generation`，作废即递增，下单 / 轮询 / 画码
  * 都持当前世代号、过期的整轮丢弃，旧渠道单不得挂回可付款面，R031）；
@@ -38,14 +34,12 @@ export function useResourcePurchase(options: UseResourcePurchaseOptions) {
   const route = useRoute()
   const router = useRouter()
   const auth = useAuthStore()
-  const { ensureAuthorized } = useWechatPayAuthorize()
 
   const panelOpen = ref(false)
   const submitting = ref(false)
   const channel = ref<ResourcePayChannelUi>('alipay')
   /** 购买失败原因：原样透传后端文案（toast 只停 2.6 秒，用户在弹窗里还要能再看到一次） */
   const error = ref('')
-  const buyerPointsBalance = ref<number | null>(null)
   /** 切换支付渠道防抖，避免连点支付宝/微信刷出一堆订单 */
   let channelSwitchTimer: ReturnType<typeof setTimeout> | null = null
   /** 下单串行队列：同一时刻只跑一笔，避免并发抢改同一条 pending */
@@ -74,14 +68,10 @@ export function useResourcePurchase(options: UseResourcePurchaseOptions) {
   const promoCode = computed(() => normalizePromoCode(route.query.promo))
 
   /**
-   * 推广轻提示：比例 > 0、带了推广码、且是现金单才提示（比例 0 后端不归因；
-   * 积分单不参与分成、后端也忽略 `promo_code`，提示它同样是错的）。
+   * 推广轻提示：比例 > 0 且本次带了推广码才提示（比例 0 时后端不归因，提示它同样是错的）。
    */
   const showPromoHint = computed(
-    () =>
-      !options.isPointsListing() &&
-      Number(options.getPromoShareBps() ?? 0) > 0 &&
-      Boolean(promoCode.value),
+    () => Number(options.getPromoShareBps() ?? 0) > 0 && Boolean(promoCode.value),
   )
 
   function clearChannelSwitchTimer() {
@@ -120,20 +110,8 @@ export function useResourcePurchase(options: UseResourcePurchaseOptions) {
     clearChannelSwitchTimer()
     panelOpen.value = true
     error.value = ''
-    buyerPointsBalance.value = null
-    if (options.isPointsListing() && auth.token?.trim()) {
-      order.value = null
-      qrDataUrl.value = ''
-      try {
-        const me = await getMyPoints(auth.token, { page: 1, page_size: 1 })
-        buyerPointsBalance.value = me.points_balance
-      } catch {
-        buyerPointsBalance.value = null
-      }
-      return
-    }
 
-    // 现金购：优先复用本页已有的待支付码；没有才按默认支付宝拉一次
+    // 优先复用本页已有的待支付码；没有才按默认支付宝拉一次
     if (hasReusableCashQr(channel.value)) {
       startReusePoll()
       return
@@ -181,12 +159,7 @@ export function useResourcePurchase(options: UseResourcePurchaseOptions) {
     order.value = paidOrder
     qrDataUrl.value = ''
     error.value = ''
-    // 买家侧只报金额，不报推广者是谁（推广者信息只给卖家与管理端）
-    TMessage.success(
-      paidOrder.promoter_fee_fen > 0
-        ? `购买成功，可以下载了（本单含推广分成 ¥${fenToYuanText(paidOrder.promoter_fee_fen)}）`
-        : '购买成功，可以下载了',
-    )
+    TMessage.success('购买成功，可以下载了')
     await options.refreshDetail()
     panelOpen.value = false
   }
@@ -203,7 +176,7 @@ export function useResourcePurchase(options: UseResourcePurchaseOptions) {
       return
     }
     // 排队执行到此时，若渠道已有可复用码则跳过，消化防抖期间的多余请求
-    if (!options.isPointsListing() && hasReusableCashQr(channel.value)) {
+    if (hasReusableCashQr(channel.value)) {
       startReusePoll()
       return
     }
@@ -213,37 +186,19 @@ export function useResourcePurchase(options: UseResourcePurchaseOptions) {
     submitting.value = true
     error.value = ''
     try {
-      if (options.isPointsListing()) {
-        const pointsOrder = await createResourcePurchase(auth.token, resourceId, {
-          pay_channel: 'points',
-        })
-        order.value = pointsOrder
-        if (pointsOrder.status === 'paid') {
-          await handlePaid(pointsOrder)
-          return
-        }
-        TMessage.warning('积分购买未完成，请稍后重试')
-        return
-      }
       // 排队间隙用户又切了渠道：以当前选择为准，避免为过期渠道再落单
       if (requestedGeneration !== surfaceGeneration.value) {
         return
       }
-      // 微信内先静默授权拿 openid；PC / 普通浏览器直接下单（后端回中间页 URL 供扫码）
-      if (channel.value === 'wechat') {
-        const authorized = await ensureAuthorized(auth.token)
-        if (!authorized.ok) {
-          error.value = authorized.message
-          return
-        }
-      }
+      // 2.0 没有「微信内先静默授权拿 openid」这一步（授权端点不在契约里），
+      // 微信渠道直接下单，缺 open_id 由后端报错、按真实错误展示。
       if (requestedGeneration !== surfaceGeneration.value) {
         return
       }
       const cashOrder = await createResourcePurchase(auth.token, resourceId, {
         pay_channel: channel.value,
-        client_platform: getAdapayClientPlatform(),
-        // R029：只有现金单带推广码（积分单不带，后端对积分单也忽略该字段）
+        client_platform: getAdapayClientPlatform() === 'mobile' ? 'mobile' : 'pc',
+        // R029：推广码随单下发，后端按比例归因
         ...(promoCode.value ? { promo_code: promoCode.value } : {}),
       })
       if (requestedGeneration !== surfaceGeneration.value) {
@@ -284,7 +239,6 @@ export function useResourcePurchase(options: UseResourcePurchaseOptions) {
     submitting,
     channel,
     error,
-    buyerPointsBalance,
     order,
     qrDataUrl,
     promoCode,

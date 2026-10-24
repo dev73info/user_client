@@ -94,6 +94,7 @@ export type RequirementConversationMessage = {
 export type RequirementConversationDetail = {
   conversation: RequirementConversation
   messages: RequirementConversationMessage[]
+  has_more: boolean
 }
 
 /** 标记已读的返回：推进到的最后已读消息 id。 */
@@ -121,7 +122,8 @@ export function createConversationApi(http: ConversationHttpClient) {
     token: string,
   ): Promise<RequirementConversation[]> {
     return http.requestJson<RequirementConversation[]>(
-      '/conversations/',
+      // 契约是 `/api/conversation`（**不带尾斜杠**）：actix 按路径逐字匹配，多一个 `/` 就是 404
+      '/conversation',
       { headers: { ...http.authHeader(token) } },
       '加载会话失败',
     )
@@ -132,7 +134,7 @@ export function createConversationApi(http: ConversationHttpClient) {
     requirementId: string,
   ): Promise<RequirementConversationDetail> {
     return http.requestJson<RequirementConversationDetail>(
-      `/conversations/requirement/${encodeURIComponent(requirementId)}`,
+      `/conversation/requirement/${encodeURIComponent(requirementId)}`,
       { headers: { ...http.authHeader(token) } },
       '加载会话失败',
     )
@@ -150,7 +152,7 @@ export function createConversationApi(http: ConversationHttpClient) {
       formData.append('file', attachment)
 
       return http.requestJson<RequirementConversationDetail>(
-        `/conversations/${encodeURIComponent(conversationId)}/messages/attachment`,
+        `/conversation/${encodeURIComponent(conversationId)}/messages/attachment`,
         {
           method: 'POST',
           headers: { ...http.authHeader(token) },
@@ -161,7 +163,7 @@ export function createConversationApi(http: ConversationHttpClient) {
     }
 
     return http.requestJson<RequirementConversationDetail>(
-      `/conversations/${encodeURIComponent(conversationId)}/messages`,
+      `/conversation/${encodeURIComponent(conversationId)}/messages`,
       {
         method: 'POST',
         headers: {
@@ -183,7 +185,7 @@ export function createConversationApi(http: ConversationHttpClient) {
     requirementId: string,
   ): Promise<RequirementConversationDetail> {
     return http.requestJson<RequirementConversationDetail>(
-      `/conversations/history-disclosures/requirement/${encodeURIComponent(requirementId)}`,
+      `/conversation/history-disclosures/requirement/${encodeURIComponent(requirementId)}`,
       {
         method: 'POST',
         headers: { ...http.authHeader(token) },
@@ -197,7 +199,7 @@ export function createConversationApi(http: ConversationHttpClient) {
     token: string,
   ): Promise<ConversationHistoryDisclosure[]> {
     return http.requestJson<ConversationHistoryDisclosure[]>(
-      '/conversations/history-disclosures',
+      '/conversation/history-disclosures',
       { headers: { ...http.authHeader(token) } },
       '加载历史沟通申请失败',
     )
@@ -210,7 +212,7 @@ export function createConversationApi(http: ConversationHttpClient) {
     decision: 'approved' | 'rejected',
   ): Promise<ConversationHistoryDisclosure> {
     return http.requestJson<ConversationHistoryDisclosure>(
-      `/conversations/history-disclosures/${disclosureId}/respond`,
+      `/conversation/history-disclosures/${disclosureId}/respond`,
       {
         method: 'POST',
         headers: {
@@ -233,7 +235,7 @@ export function createConversationApi(http: ConversationHttpClient) {
     conversationId: string,
   ): Promise<MarkConversationReadResponse> {
     return http.requestJson<MarkConversationReadResponse>(
-      `/conversations/${encodeURIComponent(conversationId)}/read`,
+      `/conversation/${encodeURIComponent(conversationId)}/read`,
       {
         method: 'POST',
         headers: { ...http.authHeader(token) },
@@ -247,7 +249,7 @@ export function createConversationApi(http: ConversationHttpClient) {
     callbacks: RequirementConversationEventCallbacks,
   ): () => void {
     return subscribeJsonEventStream<RequirementConversationDetail>(
-      http.apiUrl('/conversations/events'),
+      http.apiUrl('/conversation/events'),
       {
         headers: {
           Accept: 'text/event-stream',

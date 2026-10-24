@@ -7,17 +7,9 @@ import {
   getAdapayClientPlatform,
   type AdapayBusinessPayChannel,
 } from '@/api/adapay'
-import {
-  getUnionPaymentAuthorizeUrl,
-  isUnionPaymentAuthorizationRequired,
-  isWechatPaymentAuthorizationRequired,
-} from '@/api/auth'
 import type { RequirementPaymentMode, RequirementStatus } from '@/api/requirements'
 import { buildAdapayPaymentQuery } from '@/shared/paymentRoute'
-import {
-  calculateFinalDepositAmount,
-  calculateFinalPaymentAmount,
-} from '@/shared/requirementPayment'
+import { calculateDepositFen, calculateFinalPaymentFen } from '@/shared/requirementPayment'
 
 /** 支付弹窗只需需求单的这几个字段。 */
 type PayableRequirement = {
@@ -51,14 +43,15 @@ export function useConversationPayment(readSources: () => PaymentSources) {
   const payStage = computed<'deposit' | 'final'>(() =>
     readSources().requirement?.status === 'pending_final' ? 'final' : 'deposit',
   )
-  const payAmount = computed(() => {
+  /** 本次应付（**整数分**）：与「我的需求」页同一套口径（`shared/requirementPayment`）。 */
+  const payFen = computed(() => {
     const item = readSources().requirement
     if (!item) {
-      return 0.01
+      return 1
     }
     return payStage.value === 'final'
-      ? calculateFinalPaymentAmount(item, readSources().depositRatioPercent)
-      : calculateFinalDepositAmount(item, readSources().depositRatioPercent)
+      ? calculateFinalPaymentFen(item, readSources().depositRatioPercent)
+      : calculateDepositFen(item, readSources().depositRatioPercent)
   })
 
   function openPayDialog() {
@@ -106,52 +99,16 @@ export function useConversationPayment(readSources: () => PaymentSources) {
       await router.push({
         name: 'payment',
         query: buildAdapayPaymentQuery({
-          paymentId: created.paymentId,
-          requirementId: created.requirementId,
+          paymentId: created.payment_id,
+          requirementId: created.requirement_id,
           channel,
           clientPlatform,
-          amountCny: created.amountCny,
-          qrContent: created.payUrl,
+          amountCny: created.amount_cny,
+          qrContent: created.pay_url,
         }),
       })
     } catch (error) {
-      // 微信 / 云闪付要先在支付页拿授权（未绑定 open_id 时渠道会拒单）。
-      // 与「我的需求」页同一套兜底：微信直接跳支付页的意图模式，由支付页在微信内
-      // 静默授权后自动下单；云闪付只支持移动端，PC 上提示换一种支付方式。
-      if (isWechatPaymentAuthorizationRequired(error)) {
-        payVisible.value = false
-        await router.push({
-          name: 'payment',
-          query: buildAdapayPaymentQuery({
-            requirementId: item.requirement_id,
-            milestone: payStage.value,
-            channel: 'wechat',
-            clientPlatform,
-            amountCny: payAmount.value,
-            intent: true,
-          }),
-        })
-        return
-      }
-      if (isUnionPaymentAuthorizationRequired(error)) {
-        if (clientPlatform !== 'mobile') {
-          TMessage.warning('云闪付授权仅适用于移动端，请重新选择支付方式')
-          return
-        }
-        try {
-          const authorization = await getUnionPaymentAuthorizeUrl(token, window.location.href)
-          if (!authorization.url.trim()) {
-            throw new Error('云闪付授权地址为空')
-          }
-          window.location.assign(authorization.url)
-          return
-        } catch (authorizationError) {
-          TMessage.error(
-            authorizationError instanceof Error ? authorizationError.message : '发起云闪付授权失败',
-          )
-          return
-        }
-      }
+      // 契约里没有微信 / 云闪付的授权地址端点，所以「未授权」只能原话提示，不再改道授权链路。
       TMessage.error(error instanceof Error ? error.message : '支付失败')
     } finally {
       payLoading.value = false
@@ -164,7 +121,7 @@ export function useConversationPayment(readSources: () => PaymentSources) {
     depositPolicyAccepted,
     payChannel,
     payStage,
-    payAmount,
+    payFen,
     openPayDialog,
     updatePayChannel,
     submitPayment,

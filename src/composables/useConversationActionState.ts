@@ -1,6 +1,6 @@
 import { computed, ref } from 'vue'
 
-import { getAdapayBreachCase, type AdapayBreachCase } from '@/api/adapay'
+import { getRequirementBreachCase, type RequirementBreachCaseItem } from '@/api/afterSales'
 import {
   fetchContractSigningStatus,
   fetchDevContractSigningStatus,
@@ -17,7 +17,6 @@ import {
   type RequirementStatus,
 } from '@/api/requirements'
 import { getDepositRatio } from '@/api/settings'
-import { BREACH_CLOSED_STATUSES } from '@/shared/breachStatus'
 
 export type ViewerRole = 'customer' | 'developer'
 
@@ -48,7 +47,7 @@ type ActionStateSources = {
 export function useConversationActionState(readSources: () => ActionStateSources) {
   const requirement = ref<ActionRequirement | null>(null)
   const signing = ref<ContractSigningStatus | null>(null)
-  const breachCase = ref<AdapayBreachCase | null>(null)
+  const breachCase = ref<RequirementBreachCaseItem | null>(null)
   const depositRatioPercent = ref(20)
   const loadFailed = ref(false)
 
@@ -138,10 +137,8 @@ export function useConversationActionState(readSources: () => ActionStateSources
       hasBoundResource.value &&
       (status.value === 'in_development' || status.value === 'pending_final'),
   )
-  /** 未结束的解除合作案件（已撤回 / 已驳回 / 已结案不再提供入口）。 */
-  const hasLiveBreachCase = computed(
-    () => breachCase.value != null && !BREACH_CLOSED_STATUSES.includes(breachCase.value.status),
-  )
+  /** 在办的解除合作案件（`is_open` 由后端按状态机算，前端不自己列终态表）。 */
+  const hasLiveBreachCase = computed(() => breachCase.value?.is_open === true)
   /** 开发者在待付尾款阶段可催告付款（只通知，不动钱）。 */
   const canCureFinalPay = computed(
     () =>
@@ -231,7 +228,9 @@ export function useConversationActionState(readSources: () => ActionStateSources
       ).catch(() => null),
       getDepositRatio(token).catch(() => null),
       item && item.payment_mode === 'platform_guarantee'
-        ? getAdapayBreachCase(token, requirementId).catch(() => null)
+        ? getRequirementBreachCase(token, requirementId)
+            .then((response) => (response.has_case ? (response.case ?? null) : null))
+            .catch(() => null)
         : Promise.resolve(null),
     ])
 
@@ -248,9 +247,9 @@ export function useConversationActionState(readSources: () => ActionStateSources
     if (!item) {
       return
     }
-    breachCase.value = await getAdapayBreachCase(readSources().token, item.requirement_id).catch(
-      () => null,
-    )
+    breachCase.value = await getRequirementBreachCase(readSources().token, item.requirement_id)
+      .then((response) => (response.has_case ? (response.case ?? null) : null))
+      .catch(() => null)
   }
 
   return {

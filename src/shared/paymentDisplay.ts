@@ -6,12 +6,15 @@
  * 不再散落在模板的三元表达式里。
  */
 
+import { parseBackendDateTime } from '@/shared/datetime'
+import { formatFenAsCny } from '@/shared/money'
+
 /** 分 → 元；非法值给空串（模板按假值整行不渲染） */
 export function fenToCny(fen: number | null | undefined): string {
-  if (typeof fen !== 'number' || !Number.isFinite(fen)) {
+  if (typeof fen !== 'number' || !Number.isSafeInteger(fen)) {
     return ''
   }
-  return (fen / 100).toFixed(2)
+  return formatFenAsCny(fen)
 }
 
 /** 订单号：中间页优先用回填订单的号，退回到 query 上的 order_no；主通道用 payment_id，意图模式还没单号 */
@@ -70,11 +73,8 @@ export function pickSubjectId(input: {
 
 /** `expires_at` 解析成毫秒时间戳；空值 / 非法格式给 NaN（支付机构订单没回截止时间） */
 export function parseExpiresAtMs(raw: string): number {
-  const value = raw.trim()
-  if (!value) {
-    return NaN
-  }
-  return new Date(value.replace(' ', 'T')).getTime()
+  const parsed = parseBackendDateTime(raw)
+  return parsed ? parsed.getTime() : NaN
 }
 
 /** 剩余毫秒：时间戳非法给 NaN，已过期给 0 */

@@ -1,6 +1,7 @@
 import type { InvoiceRecord } from '@/api/invoices'
 import type { InvoiceGroup } from '@/shared/invoiceGroups'
 import { invoiceGroupTotalFen } from '@/shared/invoiceGroups'
+import { formatFenAsCny } from '@/shared/money'
 
 /**
  * 发票展示层的纯函数：状态文案、徽标修饰类、金额格式、文件名。
@@ -53,10 +54,15 @@ export function invoiceDisplayAmount(invoice: InvoiceRecord): string {
   return `${invoice.documentKind === 'red' ? '-' : ''}¥${invoice.amountCny}`
 }
 
-/** 卡头金额合计：同组里蓝票为正、红票为负，红冲后这一组会净减到实际开出去的净额。 */
+/**
+ * 卡头金额合计：同组里蓝票为正、红票为负，红冲后这一组会净减到实际开出去的净额。
+ *
+ * 分转元一律走 `formatFenAsCny`（不做 `fen / 100` 的浮点除法）：负号提到 `¥` 前面，
+ * 与逐票「-¥40.00」的写法保持一致。
+ */
 export function invoiceGroupAmountLabel(group: InvoiceGroup<InvoiceRecord>): string {
   const fen = invoiceGroupTotalFen(group)
-  return fen < 0 ? `-¥${(Math.abs(fen) / 100).toFixed(2)}` : `¥${(fen / 100).toFixed(2)}`
+  return fen < 0 ? `-¥${formatFenAsCny(-fen)}` : `¥${formatFenAsCny(fen)}`
 }
 
 export function invoiceRoleLabel(role: InvoiceRecord['invoiceRole']): string {

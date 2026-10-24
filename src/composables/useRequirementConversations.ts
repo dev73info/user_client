@@ -42,10 +42,15 @@ export function useRequirementConversations(options: { requirements: Ref<Require
     return requirementConversationMap.value[item.requirement_id] ?? null
   }
 
-  /** 会话排序口径：有消息按最后一条消息，没消息退回需求本身的更新时间。 */
+  /**
+   * 会话排序口径：有消息按最后一条消息，没消息退回需求的发布时间。
+   *
+   * 退回字段原本是 `updated_at`——契约 `RequirementResponse` 里没有这一列（后端 DTO 就没有），
+   * 取到的恒为 `undefined`，等于所有没消息的会话都排到最后。
+   */
   function conversationTimeValue(item: RequirementItem) {
     const conversation = conversationForRequirement(item)
-    return requirementTimeValue(conversation?.last_message_at ?? item.updated_at)
+    return requirementTimeValue(conversation?.last_message_at ?? item.created_time)
   }
 
   function conversationLastMessageText(item: RequirementItem) {

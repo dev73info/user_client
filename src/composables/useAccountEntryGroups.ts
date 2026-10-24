@@ -36,7 +36,6 @@ export type AccountEntryActions = {
   openSealDialog: () => void
   openEmailDialog: () => void
   openPasswordDialog: () => void
-  openUsernameDialog: () => void
   openTwoFactorDialog: () => void
   openAccountCloseDialog: () => void
   /** 微信绑定 / 解绑：已绑定时走解绑，未绑定时出二维码或跳授权页。 */
@@ -187,9 +186,6 @@ export function useAccountEntryGroups(options: AccountEntryGroupsOptions) {
         return
       case 'password':
         actions.openPasswordDialog()
-        return
-      case 'username':
-        actions.openUsernameDialog()
         return
       case 'twoFactor':
         actions.openTwoFactorDialog()

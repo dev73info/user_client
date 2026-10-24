@@ -20,7 +20,7 @@ export type HomeDepositCardOptions = {
  *
  * 状态、请求与分流仍在 `useDepositPayment`；这里只做两件视图层的事：
  *
- * 1. 把卡片要的 17 个 props 与 4 个 `v-model` / 4 个事件收成一个 `depositModalBindings`，
+ * 1. 把卡片要的 props 与 `v-model` / 事件收成一个 `depositModalBindings`，
  *    视图模板因此只有一行 `v-bind`（绑定键与拆出前的 `:prop` / `@event` 一一对应）；
  * 2. 「卡片该不该挂载」一起收进同一个返回值：拆出前是
  *    `v-if="depositVisible && depositRequirement"`，即「路由在 `modal=deposit` 且能按 id 找到人」，
@@ -40,20 +40,13 @@ export function useHomeDepositCard(options: HomeDepositCardOptions) {
     depositRequirement,
     isFinalPayment,
     paymentStageLabel,
-    availableCoupons,
-    amountCouponCode,
-    discountCouponCode,
-    couponLoading,
-    couponSummary,
-    couponFinalAmount,
+    payableFen,
     canOpenPayment,
-    selectCoupon,
     updateDepositChannel,
     markUnionAuthorized,
     openDepositPayment,
     closeDepositCard,
     loadDepositRatio,
-    loadAvailableCoupons,
     submitDepositPayment,
   } = useDepositPayment({
     isMounted: options.isMounted,
@@ -80,16 +73,11 @@ export function useHomeDepositCard(options: HomeDepositCardOptions) {
       formattedBudget: formatMoney(requirement.budget),
       paymentStageLabel: paymentStageLabel.value,
       depositChannel: depositChannel.value,
-      amountCouponCode: amountCouponCode.value,
-      discountCouponCode: discountCouponCode.value,
       isFinalPayment: isFinalPayment.value,
       depositRatioPercent: depositRatioPercent.value,
-      couponSummary: couponSummary.value,
-      availableCoupons: availableCoupons.value,
-      couponLoading: couponLoading.value,
       depositLoading: depositLoading.value,
       depositPayment: depositPayment.value,
-      couponFinalAmount: couponFinalAmount.value,
+      payableFen: payableFen.value,
       isEscrowPayment: requirement.paymentMode === 'platform_guarantee',
       depositPolicyAccepted: depositPolicyAccepted.value,
       contractSigningStatus: contractSigningStatus.value,
@@ -99,8 +87,6 @@ export function useHomeDepositCard(options: HomeDepositCardOptions) {
         depositPolicyAccepted.value = value
       },
       'onUpdate:depositChannel': updateDepositChannel,
-      onSelectCoupon: selectCoupon,
-      onLoadAvailableCoupons: loadAvailableCoupons,
     }
   })
 

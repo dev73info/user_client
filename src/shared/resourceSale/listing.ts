@@ -1,5 +1,6 @@
 import { fenToYuanText, type ResourcePurchaseOrderLike } from './price'
 
+/** 现金标价（分 > 0）。入参一律传买断价 `buyout_price_fen`：`price_fen` 是冻结的历史值。 */
 export function isPaidResource(priceFen: number | null | undefined): boolean {
   const fen = Number(priceFen ?? 0)
   return Number.isFinite(fen) && fen > 0
@@ -46,7 +47,7 @@ export function isFreeListingResource(
 }
 
 /**
- * 门户「付费资源」列表：仅现金标价（`price_fen > 0`），不含积分售价。
+ * 门户「付费资源」列表：仅现金标价（买断价 `buyout_price_fen > 0`），不含积分售价。
  */
 
 export function isCashPaidListingResource(

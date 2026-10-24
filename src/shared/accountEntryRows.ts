@@ -246,12 +246,6 @@ export function buildSecurityGroups(state: SecurityRowsState): AccountEntryGroup
         },
         { key: 'password', title: '修改密码', desc: '修改后其它设备需重新登录', icon: Lock },
         {
-          key: 'username',
-          title: '修改用户名',
-          desc: '用户名同时是登录名，修改后请用新用户名登录',
-          icon: User,
-        },
-        {
           key: 'twoFactor',
           title: '两步验证',
           desc: '登录时额外校验一次邮箱验证码',
@@ -269,8 +263,9 @@ export function buildSecurityGroups(state: SecurityRowsState): AccountEntryGroup
         {
           key: 'bind:wechat',
           title: '微信',
-          desc: state.wechatBound ? '已绑定，点击可解除绑定' : '绑定后可扫码快捷登录',
+          desc: state.wechatBound ? '已绑定' : '绑定后可扫码快捷登录',
           icon: Connection,
+          locked: state.wechatBound,
           status: {
             text: state.wechatBound ? '已绑定' : '未绑定',
             tone: state.wechatBound ? 'success' : 'info',

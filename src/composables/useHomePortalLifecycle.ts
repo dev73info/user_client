@@ -9,8 +9,6 @@ const AUTO_REFRESH_INTERVAL_MS = 300_000
 export type HomePortalLifecycleOptions = {
   /** 视图那一份卸载标记的写入口（`let isMounted = true` 由视图持有）。 */
   markUnmounted: () => void
-  /** 侧栏签到状态（`useHomeCheckin.load`）。 */
-  loadCheckin: () => Promise<void>
   /** 一次性授权回跳参数（登录 / 微信 / 云闪付）的消费。 */
   consumeAuthQuery: () => void
   /** 押金比例（支付域）：首屏拉一次，轮询时只有已登录才拉。 */
@@ -29,8 +27,8 @@ export type HomePortalLifecycleOptions = {
  * （各 composable 只收只读 getter），这里通过 `markUnmounted` 回写，不另存一个标记。
  *
  * 时序与拆出前逐条一致：
- * - `onMounted`：SEO → `auth.hydrate()` → 签到 → 消费授权回跳参数 → 四批数据并发 → 起轮询；
- * - `watch(auth.isAuthed)`：签到与被点赞状态重拉（`loadPublicPortalData(true)`）；
+ * - `onMounted`：SEO → `auth.hydrate()` → 消费授权回跳参数 → 四批数据并发 → 起轮询；
+ * - `watch(auth.isAuthed)`：被点赞状态重拉（`loadPublicPortalData(true)`）；
  * - 轮询：页面不可见、或有写在途时整轮跳过；同一轮不重入（`autoRefreshInFlight`）；
  * - `onBeforeUnmount`：置卸载标记、恢复 SEO、停轮询（表单状态由 `useHomePortalAuth` 自己清）。
  */
@@ -79,7 +77,6 @@ export function useHomePortalLifecycle(options: HomePortalLifecycleOptions) {
   watch(
     () => auth.isAuthed,
     () => {
-      void options.loadCheckin()
       // 登录态变化后重拉公开资源，补齐 / 清空 liked_by_me。
       void options.loadPublicPortalData(true)
     },
@@ -89,12 +86,11 @@ export function useHomePortalLifecycle(options: HomePortalLifecycleOptions) {
     setSeoMeta({
       title: '73Info 柒叁信息 - 资源与需求协作平台',
       description:
-        '73Info 柒叁信息面向网站开发和小工具场景提供免费资源浏览、需求发布、开发者协作、沟通记录、工单跟进与合规说明服务。',
+        '73Info 柒叁信息面向网站开发和小工具场景提供免费资源浏览、需求发布、开发者协作、沟通记录与合规说明服务。',
       path: '/',
     })
 
     auth.hydrate()
-    void options.loadCheckin()
 
     // 紧接登录态：先消费一次性的授权回跳参数（登录 / 微信 / 云闪付），并清掉地址栏上的那份。
     options.consumeAuthQuery()

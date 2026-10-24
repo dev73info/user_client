@@ -7,11 +7,11 @@ import {
   type RequirementPaymentMode,
   type RequirementStatus,
 } from '@/api/requirements'
+import { parseBackendDateTime } from '@/shared/datetime'
 import { requirementPaymentModeLabel } from '@/shared/requirementDisplay'
 import { requirementStatusLabel } from '@/shared/requirementStatus'
 import { useAuthStore } from '@/stores/auth'
 import { TMessage } from 'ui_73info'
-import { parseBackendDateTime } from '@/shared/datetime'
 
 /** 「可操作需求」最多摆几条（读数条那格的数也要与它一致，别一处截断一处不截断）。 */
 const ACTIONABLE_LIMIT = 4
@@ -45,8 +45,7 @@ export function requirementTimeValue(value?: string | null) {
   if (!value) {
     return 0
   }
-  const time = new Date(value).getTime()
-  return Number.isNaN(time) ? 0 : time
+  return parseBackendDateTime(value)?.getTime() ?? 0
 }
 
 export function formatRequirementTime(value: string) {
@@ -200,7 +199,7 @@ export function useRequirementOverview() {
   const sortedRequirements = computed(() =>
     [...myRequirements.value].sort(
       (left, right) =>
-        requirementTimeValue(right.updated_at) - requirementTimeValue(left.updated_at),
+        requirementTimeValue(right.created_time) - requirementTimeValue(left.created_time),
     ),
   )
 
@@ -220,7 +219,7 @@ export function useRequirementOverview() {
       status: item.status,
       statusText: formatRequirementDisplayStatus(contractSigningStatusMap.value, item),
       budgetText: formatBudget(item.budget),
-      timeText: formatRequirementTime(item.updated_at),
+      timeText: formatRequirementTime(item.created_time),
       requirement: item,
       contractStatus: contractSigningStatusMap.value[item.requirement_id] ?? null,
     })),

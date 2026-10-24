@@ -1,27 +1,20 @@
 /**
- * 收益钱包页的纯展示口径：金额规整、环比文案与提现门档的兜底值。
+ * 收益钱包页的纯展示口径：环比文案与提现门档的兜底值。
  *
  * 金额格式化**不在这里另写一份**——`money()` 统一走 `shared/devFundDisplay`，
- * 与资金明细、开发者首页资金卡同一份实现（原来本页自带一份一模一样的 `money`）。
+ * 元↔分统一走 `shared/money`（`parseCnyToFen` / `formatFenAsCny`）。本文件不再提供
+ * 「按元收两位小数」那种浮点规整函数：提现金额一律在提交前换成整数分，
+ * 浮点元不参与任何请求体与上限比较。
  *
  * 这里只放「页内多处要用、且与请求无关」的几条：
  * | 名称 | 用途 |
  * | --- | --- |
- * | `normalizeCnyAmount` | 提交前把金额收成两位小数（后端也校验，这里先收一次避免 0.30000000000000004） |
+ * | `MIN_WITHDRAW_FEN` | 提现下限兜底（分）：真正的上下限来自 `GET /api/payment/withdrawal-limits/system` |
  * | `rateText` | 今日入账环比：正数带 `+`、缺值按 `0.0%`（页面固定占一格，不留空白） |
- * | `MIN_WITHDRAW_CNY` / `MAX_WITHDRAW_CNY` / `WITHDRAW_NOTE_MAX_LEN` | 提现门档兜底值 |
  */
 
-/** 提现门档兜底：本页没接 `getDevWithdrawalLimits`，这三个数与 `validateDevWithdrawalRequest`
- *  的默认值同源（原来视图里挂着一个永远为 null 的 `withdrawalLimits`，口径全靠 `?? 0.01` 这类兜底）。 */
-export const MIN_WITHDRAW_CNY = 0.01
-export const MAX_WITHDRAW_CNY = 999999
-export const WITHDRAW_NOTE_MAX_LEN = 200
-
-/** 金额收两位小数：避免浮点尾数（`19.99 * 3` 这类）带进请求体与展示。 */
-export function normalizeCnyAmount(value: number): number {
-  return Math.round(value * 100) / 100
-}
+/** 提现下限兜底：拿不到 `withdrawal-limits` 时按 1 分判断「有没有可提的钱」。 */
+export const MIN_WITHDRAW_FEN = 1
 
 /**
  * 环比百分比文案：正数显式带 `+`，负数自带 `-`。

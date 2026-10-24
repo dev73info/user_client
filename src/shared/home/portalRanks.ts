@@ -40,14 +40,6 @@ export type TeamRank = {
   resourceCount: number
 }
 
-/** 徽章只需要这几个字段（`UserBadge` 结构上兼容），组件层因此不必 import `@/api/invite`。 */
-export type PortalDeveloperBadge = {
-  code: string
-  name: string
-  description: string
-  icon: string
-}
-
 /** 侧栏高度固定，两张榜单都只留前 4 名。 */
 export const RANK_LIMIT = 4
 

@@ -31,7 +31,7 @@ export function useDevRequirementHall() {
 
   const filters = reactive({
     keyword: '',
-    sortBy: 'updated_at' as RequirementHallSortBy,
+    sortBy: 'created_time' as RequirementHallSortBy,
     sortOrder: 'desc' as 'asc' | 'desc',
   })
 
@@ -58,15 +58,25 @@ export function useDevRequirementHall() {
 
     loading.value = true
     try {
-      const payload = await listRequirementHall(auth.token, {
-        page: page.value,
-        pageSize: pageSize.value,
-        keyword: filters.keyword,
-        sortBy: filters.sortBy,
-        sortOrder: filters.sortOrder,
+      const payload = await listRequirementHall(auth.token)
+      const keyword = filters.keyword.trim().toLowerCase()
+      const filtered = keyword
+        ? payload.filter((item) =>
+            [item.requirement_id, item.title, item.description, item.creator]
+              .filter(Boolean)
+              .some((value) => String(value).toLowerCase().includes(keyword)),
+          )
+        : payload
+      const direction = filters.sortOrder === 'asc' ? 1 : -1
+      const sorted = [...filtered].sort((left, right) => {
+        if (filters.sortBy === 'budget') {
+          return ((left.budget ?? 0) - (right.budget ?? 0)) * direction
+        }
+        return left.created_time.localeCompare(right.created_time) * direction
       })
-      rows.value = payload.items
-      total.value = payload.total
+      total.value = sorted.length
+      const offset = (page.value - 1) * pageSize.value
+      rows.value = sorted.slice(offset, offset + pageSize.value)
     } catch (error) {
       const message = describeBackendError(error, '加载资源关联列表失败')
       TMessage.error(message)

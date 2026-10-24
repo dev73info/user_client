@@ -1,4 +1,5 @@
 export type ResourceSaleLike = {
+  buyout_price_fen?: number | null
   price_fen?: number | null
   price_points?: number | null
   purchased_by_me?: boolean | null

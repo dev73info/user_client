@@ -1,12 +1,6 @@
-import type { CommunityPost, CommunityPostStatus } from '@/api/community'
 import { apiUrl } from '@/api/http'
 import type { PublicMcResourceItem } from '@/api/resources'
-import type {
-  PublicRequirementSpotlightItem,
-  RequirementItem,
-  RequirementPaymentMode,
-  RequirementStatus,
-} from '@/api/requirements'
+import type { PublicRequirementSpotlightItem, RequirementItem } from '@/api/requirements'
 import { normalizeTagName } from '@/api/resourceTags'
 import { requirementPaymentModeLabel } from '@/shared/requirementDisplay'
 import { requirementStatusLabel } from '@/shared/requirementStatus'
@@ -15,9 +9,8 @@ import { requirementRichTextPreview } from '@/utils/requirementRichText'
 /**
  * 搜索结果页的纯函数域（拆 `SearchResultsView` 时整块搬出，取值口径一字未改）。
  *
- * 这页的搜索是**前端过滤**：只有帖子把关键词交给接口（`listCommunityPosts` 带 `keyword`），
- * 资源与需求都是「接口取回结果集 → 拼一段可搜索文本 → `includes`」这条路，
- * 所以下面三支 `build*SearchText` 的字段清单本身就是搜索口径，加一个字段 = 扩大命中面。
+ * 这页的搜索是**前端过滤**：资源与需求都是「接口取回结果集 → 拼一段可搜索文本 → `includes`」
+ * 这条路，所以下面两支 `build*SearchText` 的字段清单本身就是搜索口径，加一个字段 = 扩大命中面。
  *
  * 状态与发布方式的文案走全站统一口径（`requirementStatusLabel` / `requirementPaymentModeLabel`）：
  * `deposit_paid` 一码两义（待付首款 / 待付尾款），所以状态文案必须把支付模式一起算进去。
@@ -60,19 +53,6 @@ export function buildRequirementSearchText(requirement: PublicRequirementSpotlig
     .toLowerCase()
 }
 
-/** 帖子卡片的可搜索文本：标题、作者、正文 HTML、状态与标签名。 */
-export function buildCommunitySearchText(post: CommunityPost): string {
-  return [
-    post.title,
-    post.author,
-    post.content_html,
-    communityStatusLabel(post.status),
-    ...post.tags.map((tag) => tag.name),
-  ]
-    .join(' ')
-    .toLowerCase()
-}
-
 /** 卡片上最多挂三枚标签：平台永远占第一枚，其余按出现顺序去重。 */
 export function resourceTags(resource: PublicMcResourceItem): string[] {
   const tags = resource.tag_selections.flatMap((selection) =>
@@ -105,16 +85,6 @@ export function requirementDescription(requirement: PublicRequirementSpotlightIt
   )
 }
 
-/** 帖子卡片副标题：有标签列标签（正文 HTML 不适合当摘要），没标签就引导进详情。 */
-export function communityDescription(post: CommunityPost): string {
-  const tags = post.tags.map((tag) => tag.name).filter(Boolean)
-  if (tags.length > 0) {
-    return previewText(`标签：${tags.join('、')}`)
-  }
-
-  return '进入社区查看帖子正文与评论。'
-}
-
 export function previewText(value: string, maxLength = 120): string {
   const text = value.replace(/\s+/g, ' ').trim()
   if (text.length <= maxLength) {
@@ -129,21 +99,8 @@ export function resourceCoverUrl(resource: PublicMcResourceItem): string {
   return resource.cover_url ? apiUrl(resource.cover_url) : ''
 }
 
-/** 帖子的三档审核状态：搜索结果只展示 `published`，另两档出现在自己的帖子上。 */
-export function communityStatusLabel(status: CommunityPostStatus): string {
-  const mapping: Record<CommunityPostStatus, string> = {
-    pending_review: '审核中',
-    published: '公开中',
-    rejected: '已驳回',
-  }
-  return mapping[status]
-}
-
 /** 状态文案走全站统一口径；`deposit_paid` 一码两义，拿到支付模式就传进去（见 `requirementStatusLabel`）。 */
-export function requirementStatusText(
-  status: RequirementStatus,
-  paymentMode?: RequirementPaymentMode,
-): string {
+export function requirementStatusText(status: string, paymentMode?: string): string {
   return requirementStatusLabel(status, paymentMode)
 }
 
@@ -163,6 +120,5 @@ export function mergeRequirementDetail(
     budget: detail.budget ?? current.budget,
     payment_mode: detail.payment_mode,
     status: detail.status,
-    updated_at: detail.updated_at,
   }
 }

@@ -117,13 +117,3 @@ export function formatExposureStatus(resource: McResourcePayload): string {
   }
   return parts.join(' · ')
 }
-
-/** 精选卡要用「点赞数 ≥ 门槛」，门槛来自后端配置；置顶卡不受限。 */
-export function isFeaturedCardDisabled(
-  card: { card_code: string },
-  resource: McResourcePayload | null,
-  threshold: number,
-): boolean {
-  if (!resource || card.card_code !== 'resource_featured_card') return false
-  return (resource.like_count ?? 0) < threshold
-}

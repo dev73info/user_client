@@ -51,10 +51,8 @@ export type AccountDialogKey =
   | 'seal'
   | 'email'
   | 'password'
-  | 'username'
   | 'twoFactor'
   | 'closeAccount'
-  | 'wechatQr'
 
 /** 宿主渲染用的域背包：每个弹窗读自己那一段（`page` 是本文件自持的零头）。 */
 export type AccountDialogDomains = ReturnType<typeof useAccountDialogRegistry>['domains']
@@ -86,10 +84,6 @@ export function useAccountDialogRegistry(deps: AccountDialogDeps) {
   const twoFactor = useAccountTwoFactorSettings({ profileEmail })
   const security = useAccountSecuritySettings({
     profileEmail,
-    // loadProfile 读到的两个「别人家的」状态，交给各自的域
-    applyWechatBound: (bound) => {
-      provider.wechatBound.value = bound
-    },
     applyTwoFactor: twoFactor.applyTwoFactor,
   })
   const asign = useAsignAccount()
@@ -165,11 +159,6 @@ export function useAccountDialogRegistry(deps: AccountDialogDeps) {
     startRealnameChange()
   }
 
-  /** `onMounted` 第一步里把用户名草稿对齐当前账号（`loadProfile` 之前）。 */
-  function primeUsername(name: string) {
-    security.newUsername.value = name
-  }
-
   // ── 可见性索引：key → 各域自己的那份 ref ──────────────────────────
   const visible: Record<AccountDialogKey, Ref<boolean>> = {
     realname: realnameDialogVisible,
@@ -180,16 +169,8 @@ export function useAccountDialogRegistry(deps: AccountDialogDeps) {
     seal: seal.sealDialogVisible,
     email: security.emailDialogVisible,
     password: security.passwordDialogVisible,
-    username: security.usernameDialogVisible,
     twoFactor: twoFactor.twoFactorDialogVisible,
     closeAccount: closeAccount.accountCloseDialogVisible,
-    // 微信二维码是 `reactive` 里的字段（轮询在本体里），折成可写 computed 与其它 key 同形
-    wechatQr: computed({
-      get: () => provider.wechatBindQr.visible,
-      set: (next: boolean) => {
-        provider.wechatBindQr.visible = next
-      },
-    }),
   }
 
   /** 宿主唯一的回写口：`:open` / `:visible` 的变化都落到这里，再写回正本 ref。 */
@@ -238,9 +219,6 @@ export function useAccountDialogRegistry(deps: AccountDialogDeps) {
     openPasswordDialog: () => {
       security.passwordDialogVisible.value = true
     },
-    openUsernameDialog: () => {
-      security.usernameDialogVisible.value = true
-    },
     openTwoFactorDialog: () => {
       twoFactor.twoFactorDialogVisible.value = true
     },
@@ -284,7 +262,6 @@ export function useAccountDialogRegistry(deps: AccountDialogDeps) {
     entryActions,
     /** `onMounted` 七步里属于本域的动作：调用顺序由视图决定，与拆分前一致。 */
     startMobileWatch,
-    primeUsername,
     loadProfile: security.loadProfile,
     loadBoundProviders: provider.loadBoundProviders,
     consumeWechatBindResult: provider.consumeWechatBindResult,

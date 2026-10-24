@@ -65,7 +65,7 @@ export function useTeamResourceRowActions(deps: {
         resourceId: resource.id,
         rootSlug,
         entrySlug,
-        sale: resourceListingSaleOf(resource.price_fen, resource.price_points),
+        sale: resourceListingSaleOf(resource.buyout_price_fen, resource.price_points),
       }),
     )
   }

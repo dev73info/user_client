@@ -1,3 +1,4 @@
+import { parseBackendDateTime } from '@/shared/datetime'
 import type { RequirementItem } from '@/api/requirements'
 
 /**
@@ -70,8 +71,8 @@ export function requirementLockRemainingDays(item: ArchiveLike, now: number = Da
   if (!isRequirementLocked(item) || !hasText(item.archive_lock_expires_at)) {
     return null
   }
-  const expiresAt = new Date(item.archive_lock_expires_at as string).getTime()
-  if (Number.isNaN(expiresAt)) {
+  const expiresAt = parseBackendDateTime(item.archive_lock_expires_at)?.getTime()
+  if (expiresAt === undefined) {
     return null
   }
   const remainingMs = expiresAt - now

@@ -15,7 +15,7 @@ import { TMessage } from 'ui_73info'
  * 三次「打开 → 关闭 → 联动」原先散在页面里，各有一对 `visible` / `target`，
  * 现在收在一处；页面只判「能不能出这个入口」（`canOpenAfterSales` / `canComment`），
  * 打开之后的状态与请求都在这里。交付版本与违约申报不在其中：
- * 前者是 `DeliverySubmitDialog` 的单值入口，后者由 `useBreachCase` 编排。
+ * 前者是 `DeliverySubmitDialog` 的单值入口，后者由 `useRequirementBreach` 编排。
  *
  * 会话摘要（`conversationStatusLabel`）也一并放这儿——卡上的「会话」格子读的就是它，
  * 与弹窗里发出的「已创建会话」是同一份记录，不该各存一份。

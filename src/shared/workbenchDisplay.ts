@@ -1,3 +1,4 @@
+import { parseBackendDateTime } from '@/shared/datetime'
 import type { RequirementConversation } from '@/api/conversations'
 
 /**
@@ -17,14 +18,13 @@ export function parseConversationTime(value?: string | null): number {
   if (!value) {
     return 0
   }
-  const time = new Date(value).getTime()
-  return Number.isNaN(time) ? 0 : time
+  return parseBackendDateTime(value)?.getTime() ?? 0
 }
 
 /** 「8/21 14:05」这一档：按月日 + 时分显示，跨年不显示年份（与拆分前同口径）。 */
 export function formatConversationTime(value: string): string {
-  const date = new Date(value)
-  if (Number.isNaN(date.getTime())) {
+  const date = parseBackendDateTime(value)
+  if (!date) {
     return '刚刚更新'
   }
 

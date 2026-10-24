@@ -1,8 +1,7 @@
-import { computed, ref, watch, type Ref } from 'vue'
+import { computed, ref, type Ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import type { McResourcePayload } from '@/api/mcResources'
 import { getTagRouteSlug } from '@/api/resourceTags'
-import { getTeamDetail } from '@/api/team'
 import { useAuthStore } from '@/stores/auth'
 import { resourceDetailLocation, resourceListingSaleOf } from '@/shared/resourceNavigation'
 import {
@@ -13,7 +12,7 @@ import { savedTagPathSegment } from '@/shared/resourceTagPath'
 
 /**
  * 「资源主页编辑」页的资源级状态：资源本身、只读/付费这类从资源算出来的口径、
- * 过户入口的可见性、返回与用户端预览地址。
+ * 返回与用户端预览地址。
  *
  * 这一块不碰表单，也不碰标签树与渠道配置：它就是「这次编辑的是哪个资源、它什么状态」。
  */
@@ -37,42 +36,6 @@ export function useResourceHomepageResource() {
   /** 绑定定制交付的资源不能改售价（定制单里已定价）。 */
   const boundToRequirement = computed(() => Boolean(resource.value?.requirement_id))
 
-  /* ---------- R015 资源过户：本页只在「我确实有权过户该资源」时露出入口 ---------- */
-  const transferDialogVisible = ref(false)
-  /** 当前用户在「资源所属团队」里的角色（团队资源时才有值）。 */
-  const resourceTeamRole = ref<string | null>(null)
-
-  // 团队资源的可操作性看团队成员角色，个人资源看 creator。团队资源只在加载后取一次该团队的成员；
-  // 403 的最终判定仍在后端，这里只是不把入口亮给明显无权的第三人。
-  const canTransferResource = computed(() => {
-    const current = resource.value
-    if (!current || !auth.username) {
-      return false
-    }
-
-    if (current.ownership_type !== 'team') {
-      return current.creator === auth.username
-    }
-
-    return resourceTeamRole.value === 'owner' || resourceTeamRole.value === 'admin'
-  })
-
-  watch(resource, async (current) => {
-    resourceTeamRole.value = null
-    if (!current || current.ownership_type !== 'team' || !current.team_id || !auth.token) {
-      return
-    }
-
-    try {
-      const detail = await getTeamDetail(auth.token, current.team_id)
-      resourceTeamRole.value =
-        detail.members.find((member) => member.username === auth.username)?.role ?? null
-    } catch {
-      // 取不到团队详情就不放行入口，由后端在真正发起时兜底判定。
-      resourceTeamRole.value = null
-    }
-  })
-
   /** 站内分享地址：独立详情页已废弃，统一指到列表页的页内详情态（`?resource=`）。 */
   function userClientResourceUrl(target: McResourcePayload): string {
     const rootSlug = getTagRouteSlug(savedTagPathSegment(0, target.tag_selections) || 'resources')
@@ -84,7 +47,7 @@ export function useResourceHomepageResource() {
         resourceId: target.id,
         rootSlug,
         entrySlug,
-        sale: resourceListingSaleOf(target.price_fen, target.price_points),
+        sale: resourceListingSaleOf(target.buyout_price_fen, target.price_points),
       }),
     )
 
@@ -115,8 +78,6 @@ export function useResourceHomepageResource() {
     resourceVisibilityLabel,
     archiveLocked,
     boundToRequirement,
-    transferDialogVisible,
-    canTransferResource,
     userClientPreviewUrl,
     goBack,
     userClientResourceUrl,

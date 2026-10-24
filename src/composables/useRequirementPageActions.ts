@@ -52,18 +52,16 @@ export function useRequirementPageActions(options: UseRequirementPageActionsOpti
 
   /**
    * 支付按钮的收尾：`useRequirementPayFlow` 只返回「去哪儿」——建单成功后返回支付页的 query，
-   * 云闪付授权返回要 assign 的授权地址；两种导航都在这里执行。
+   * 导航在这里执行。
+   *
+   * 没有「跳外部授权地址」这一支：那条是云闪付中间页的老链路，对应接口在当前契约里没有，
+   * 分支留着只会让人以为还有第二条支付路。
    */
   async function submitRequirementPayment() {
     const outcome = await pay.submitPayment()
 
     if (outcome.kind === 'redirect-page') {
       void router.push({ name: 'payment', query: outcome.query })
-      return
-    }
-
-    if (outcome.kind === 'external') {
-      window.location.assign(outcome.url)
     }
   }
 
@@ -114,11 +112,7 @@ export function useRequirementPageActions(options: UseRequirementPageActionsOpti
     username: () => auth.username,
     contractOf: (item) => data.signingStatusForRequirement(item),
   })
-  const breachBindings = useRequirementBreachModalBindings(breach, {
-    onGoSettlementAccount: () => {
-      void router.push({ name: 'workbench-account', query: { settle: '1' } })
-    },
-  })
+  const breachBindings = useRequirementBreachModalBindings(breach)
 
   // ---- 发布前的实名门禁：只取状态，两个跳转（登录 / 实名页）在这里 ----
   const publishRealnameGate = useRealnameApprovalGate({

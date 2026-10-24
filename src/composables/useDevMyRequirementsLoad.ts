@@ -11,7 +11,7 @@ import {
   type McResourcePayload,
   type McResourceVersionPayload,
 } from '@/api/mcResources'
-import { afterSalesBadgeText, isAwaitingViewerAction } from '@/shared/afterSalesStatus'
+import { afterSalesBadgeText } from '@/shared/afterSalesStatus'
 import { useAuthStore } from '@/stores/auth'
 
 import { TMessage } from 'ui_73info'
@@ -172,9 +172,9 @@ export function useDevMyRequirementsLoad(options: UseDevMyRequirementsLoadOption
     try {
       const list = await listMyAfterSalesCases(auth.token)
       const counts: Record<string, number> = {}
-      for (const item of list.items) {
-        if (isAwaitingViewerAction(item)) {
-          counts[item.requirementId] = (counts[item.requirementId] ?? 0) + 1
+      for (const item of list) {
+        if (item.open && item.respondent) {
+          counts[item.requirement_id] = (counts[item.requirement_id] ?? 0) + 1
         }
       }
       afterSalesPending.value = counts

@@ -7,14 +7,14 @@
  */
 
 /** 主视觉下方的一排信号词（首页唯一用途是渲染，顺序即展示顺序）。 */
-export const HOME_HERO_SIGNALS: readonly string[] = ['免费资源共享', '需求记录留痕', '工单沟通协作']
+export const HOME_HERO_SIGNALS: readonly string[] = ['免费资源共享', '需求记录留痕', '沟通全程留痕']
 
-/** 门户首页「免费资源 / 社区交流」两张快捷卡：`tone` 决定图标与配色 class。 */
+/** 门户首页「免费资源 / 需求大厅」两张快捷卡：`tone` 决定图标与配色 class。 */
 export type PortalQuickPanel = {
   title: string
   summary: string
   action: string
-  tone: 'gift' | 'briefcase'
+  tone: 'gift' | 'requirement'
 }
 
 export const HOME_QUICK_PANELS: readonly PortalQuickPanel[] = [
@@ -25,10 +25,10 @@ export const HOME_QUICK_PANELS: readonly PortalQuickPanel[] = [
     tone: 'gift',
   },
   {
-    title: '社区交流',
-    summary: '社区互动、动态分享与内容交流\n结识同好、展示成果与获取灵感',
-    action: '进入社区',
-    tone: 'briefcase',
+    title: '需求大厅',
+    summary: '浏览真实需求与开发进度\n找到合适的协作与接单机会',
+    action: '查看需求',
+    tone: 'requirement',
   },
 ]
 

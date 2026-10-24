@@ -13,7 +13,7 @@ import { TMessage } from 'ui_73info'
  *
  * 隐藏的原生 file input 仍旧留在页面里：一页共用一个（`v-for` 出来的按钮各带一个既看不见
  * 又互相抢焦点），这里只把它的 ref 与 change 处理交出去。登录身份由页面注入，
- * 与 `useBreachCase` 同一写法，composable 自己不去 store 里再取一次。
+ * 与 `useRequirementBreach` 同一写法，composable 自己不去 store 里再取一次。
  */
 export function useInvoiceUpload(options: { token: () => string; username: () => string }) {
   /**

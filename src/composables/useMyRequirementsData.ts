@@ -11,7 +11,7 @@ import { listRequirements, type RequirementItem } from '@/api/requirements'
 import { listPublicMcResourceVersions, type PublicMcResourceVersionItem } from '@/api/resources'
 import { getDepositRatio } from '@/api/settings'
 import { listMyAfterSalesCases } from '@/api/afterSales'
-import { afterSalesBadgeText, countAwaitingCasesByRequirement } from '@/shared/afterSalesStatus'
+import { afterSalesBadgeText, countOpenCasesByRequirement } from '@/shared/afterSalesStatus'
 import type { InvoiceSummaryMap } from '@/shared/invoiceAvailability'
 import { useAuthStore } from '@/stores/auth'
 import { TMessage } from 'ui_73info'
@@ -231,7 +231,7 @@ export function useMyRequirementsData(options: MyRequirementsDataOptions = {}) {
     }
     try {
       const list = await listMyAfterSalesCases(auth.token)
-      afterSalesPending.value = countAwaitingCasesByRequirement(list.items)
+      afterSalesPending.value = countOpenCasesByRequirement(list)
     } catch {
       // 不弹错、不阻塞列表。
       afterSalesPending.value = {}

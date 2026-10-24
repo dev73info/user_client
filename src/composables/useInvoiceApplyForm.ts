@@ -73,7 +73,6 @@ export function useInvoiceApplyForm(
     amountCny,
     invoiceGateNotice,
     existingInvoices,
-    staleInvoices,
     openSides,
   } = useInvoiceApplyView({ summary, role: options.role })
 
@@ -284,7 +283,6 @@ export function useInvoiceApplyForm(
     amountCny,
     invoiceGateNotice,
     existingInvoices,
-    staleInvoices,
     openSides,
     buyer,
     isOrganizationBuyer,
