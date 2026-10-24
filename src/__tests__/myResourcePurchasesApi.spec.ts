@@ -174,9 +174,7 @@ describe('我的已购资源：发起使用权转移', () => {
     await flushPromises()
     await flushPromises()
 
-    const openButton = wrapper
-      .findAll('button')
-      .find((button) => button.text() === '转移使用权')
+    const openButton = wrapper.findAll('button').find((button) => button.text() === '转移使用权')
     expect(openButton).toBeTruthy()
     await openButton!.trigger('click')
 
@@ -195,9 +193,7 @@ describe('我的已购资源：发起使用权转移', () => {
     await flushPromises()
     await flushPromises()
 
-    const openButton = wrapper
-      .findAll('button')
-      .find((button) => button.text() === '转移使用权')
+    const openButton = wrapper.findAll('button').find((button) => button.text() === '转移使用权')
     await openButton!.trigger('click')
 
     const inputs = wrapper.findAll('.purchases-transfer input')
@@ -217,16 +213,12 @@ describe('我的已购资源：发起使用权转移', () => {
   })
 
   it('后端拒绝（冷却中 / 已有待处理）时透出后端文案', async () => {
-    mocks.initiate.mockRejectedValue(
-      new Error('该订单在冷却期内，剩余 5 天才能再次转移'),
-    )
+    mocks.initiate.mockRejectedValue(new Error('该订单在冷却期内，剩余 5 天才能再次转移'))
     wrapper = mount(MyResourcePurchasesView)
     await flushPromises()
     await flushPromises()
 
-    const openButton = wrapper
-      .findAll('button')
-      .find((button) => button.text() === '转移使用权')
+    const openButton = wrapper.findAll('button').find((button) => button.text() === '转移使用权')
     await openButton!.trigger('click')
 
     const inputs = wrapper.findAll('.purchases-transfer input')
@@ -244,9 +236,7 @@ describe('我的已购资源：发起使用权转移', () => {
     await flushPromises()
     await flushPromises()
 
-    const openButton = wrapper
-      .findAll('button')
-      .find((button) => button.text() === '转移使用权')
+    const openButton = wrapper.findAll('button').find((button) => button.text() === '转移使用权')
     await openButton!.trigger('click')
 
     const inputs = wrapper.findAll('.purchases-transfer input')

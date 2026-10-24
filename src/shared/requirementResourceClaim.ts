@@ -10,7 +10,10 @@ import { readBackendErrorText } from '@/shared/backendErrorText'
  * 放在 shared 里是为了能单测，页面只做调用。
  */
 
-type ClaimableRequirement = Pick<RequirementItem, 'status' | 'bound_resource_id' | 'resource_claimed_at'>
+type ClaimableRequirement = Pick<
+  RequirementItem,
+  'status' | 'bound_resource_id' | 'resource_claimed_at'
+>
 
 /** 已转为需求方资源：`resource_claimed_at` 有值即算，不看其它字段。 */
 export function isRequirementResourceClaimed(item: ClaimableRequirement): boolean {

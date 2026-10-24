@@ -143,7 +143,9 @@ onMounted(() => {
             <span class="wb-item__meta">
               外部用户 ID：{{ item.external_user_ids.join('、') }}
             </span>
-            <span class="wb-item__meta">接口资源 {{ item.api_resource_count }} 个 · 授权于 {{ item.authorized_at }}</span>
+            <span class="wb-item__meta"
+              >接口资源 {{ item.api_resource_count }} 个 · 授权于 {{ item.authorized_at }}</span
+            >
           </div>
           <div class="wb-item__side">
             <TButton
