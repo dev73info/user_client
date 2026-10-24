@@ -1,9 +1,16 @@
+import { parseBackendDateTime } from '@/shared/datetime'
 import { computed, ref, type Ref } from 'vue'
 
 import { boostCommunityPost, type CommunityPost, type PostBoostKind } from '@/api/community'
 import { useAuthStore } from '@/stores/auth'
 
 import { TMessage } from 'ui_73info'
+
+/** 后端时间是东八区墙钟串，到期判断统一走 shared/datetime.ts 的解析口径。 */
+function isFuture(value?: string | null): boolean {
+  const date = parseBackendDateTime(value)
+  return date !== null && date.getTime() > Date.now()
+}
 
 /** 五档推广的价格与时长。视图只拿它铺下拉菜单，改价只改这一张表。 */
 const BOOST_OPTIONS: { kind: PostBoostKind; label: string; cost: number; desc: string }[] = [
@@ -57,10 +64,10 @@ export function useCommunityBoost(options: UseCommunityBoostOptions) {
     const post = options.selectedPost.value
     if (!post) return []
     const labels: string[] = []
-    if (post.highlight_until && new Date(post.highlight_until) > new Date()) labels.push('高亮')
-    if (post.homepage_until && new Date(post.homepage_until) > new Date()) labels.push('首页推荐')
-    if (post.section_until && new Date(post.section_until) > new Date()) labels.push('板块推荐')
-    if (post.hot_until && new Date(post.hot_until) > new Date()) labels.push('热门展示')
+    if (isFuture(post.highlight_until)) labels.push('高亮')
+    if (isFuture(post.homepage_until)) labels.push('首页推荐')
+    if (isFuture(post.section_until)) labels.push('板块推荐')
+    if (isFuture(post.hot_until)) labels.push('热门展示')
     return labels
   })
 

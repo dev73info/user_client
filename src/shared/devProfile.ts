@@ -9,6 +9,7 @@ import type { RouteLocationRaw } from 'vue-router'
 import type { PublicMcResourceItem } from '@/api/resources'
 import { getResourceDetailSlug, getTagRouteSlug } from '@/api/resourceTags'
 import { resourceDetailLocation, resourceListingSaleOf } from '@/shared/resourceNavigation'
+import { parseBackendDateTime } from '@/shared/datetime'
 
 /** 背景裁剪焦点：scale 是缩放，x / y 是 translate 百分比。 */
 export type BgFocus = { scale: number; x: number; y: number }
@@ -55,8 +56,8 @@ export function isVideoUrl(url: string): boolean {
 
 /** 打赏留言时间：能解析就本地化，解析不了原样返回（老数据是自由文本）。 */
 export function formatTipTime(value: string): string {
-  const date = new Date(value)
-  if (Number.isNaN(date.getTime())) {
+  const date = parseBackendDateTime(value)
+  if (!date) {
     return value
   }
   return date.toLocaleString('zh-CN')

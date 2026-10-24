@@ -1,4 +1,11 @@
 import type { CommunityPost } from '@/api/community'
+import { parseBackendDateTime } from '@/shared/datetime'
+
+/** 后端时间是东八区墙钟串；到期判断统一走这里，now 由调用方传入便于测试。 */
+function isFuture(value: string | null | undefined, now: number): boolean {
+  const at = parseBackendDateTime(value)?.getTime()
+  return at !== undefined && at > now
+}
 
 /**
  * 社区帖子「怎么显示」的纯函数：状态徽标文案、转载标记、推广标识。
@@ -50,19 +57,22 @@ export function repostLabel(post: CommunityPost): string {
 export function postBoostLabel(post: CommunityPost): string {
   const now = Date.now()
   const labels: string[] = []
-  if (post.bumped_at && new Date(post.bumped_at).getTime() > now - 2 * 24 * 60 * 60 * 1000) {
+  // 「2 天内顶过」要按东八区解析后的真实瞬时判断：直接 new Date(墙钟串) 在非 +08:00 的设备上
+  // 会把窗口算成 2 天 8 小时，这是误判而不只是显示偏差。
+  const bumpedAt = parseBackendDateTime(post.bumped_at)?.getTime()
+  if (bumpedAt !== undefined && bumpedAt > now - 2 * 24 * 60 * 60 * 1000) {
     labels.push('上浮')
   }
-  if (post.highlight_until && new Date(post.highlight_until) > new Date(now)) {
+  if (isFuture(post.highlight_until, now)) {
     labels.push('高亮')
   }
-  if (post.homepage_until && new Date(post.homepage_until) > new Date(now)) {
+  if (isFuture(post.homepage_until, now)) {
     labels.push('首页推荐')
   }
-  if (post.section_until && new Date(post.section_until) > new Date(now)) {
+  if (isFuture(post.section_until, now)) {
     labels.push('板块推荐')
   }
-  if (post.hot_until && new Date(post.hot_until) > new Date(now)) {
+  if (isFuture(post.hot_until, now)) {
     labels.push('热门展示')
   }
   return labels.join(' · ')
