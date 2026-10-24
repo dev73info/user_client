@@ -5,7 +5,7 @@ import { useRouter } from 'vue-router'
 import { TButton, TIcon, Refresh, TMessage } from 'ui_73info'
 
 import { listAvailableCoupons, type CouponItem } from '@/api/coupons'
-import { formatBackendDateTime } from '@/shared/datetime'
+import { formatCouponDiscount, formatCouponRange } from '@/shared/couponDisplay'
 import { formatFenAsCny } from '@/shared/money'
 import { useAuthStore } from '@/stores/auth'
 
@@ -32,55 +32,6 @@ const discountCoupons = computed(() =>
 )
 /** 读数条口径：可用券不含已核销的，与账户页「可用券」的说法一致。 */
 const usableCoupons = computed(() => coupons.value.filter((item) => item.status !== 'used'))
-
-/** 券的有效期展示：年份要留着（跨年券），时分可省。 */
-const COUPON_TIME_OPTIONS: Intl.DateTimeFormatOptions = {
-  year: 'numeric',
-  month: '2-digit',
-  day: '2-digit',
-  hour: '2-digit',
-  minute: '2-digit',
-}
-
-function formatCouponTime(value: string): string {
-  return formatBackendDateTime(value, COUPON_TIME_OPTIONS)
-}
-
-function formatRange(item: CouponItem) {
-  if (!item.starts_at && !item.ends_at) {
-    return '永久有效'
-  }
-
-  const parts: string[] = []
-  if (item.starts_at) {
-    parts.push(`起始：${formatCouponTime(item.starts_at)}`)
-  }
-  if (item.ends_at) {
-    parts.push(`截止：${formatCouponTime(item.ends_at)}`)
-  }
-  return parts.join('，')
-}
-
-/** 整数基点 → 百分数文本：2000 → 「20%」，1250 → 「12.5%」（不用浮点算钱）。 */
-function formatBpsPercent(bps: number | null | undefined): string {
-  const value = Math.max(0, Math.trunc(bps ?? 0))
-  const whole = Math.floor(value / 100)
-  const fraction = value % 100
-  if (fraction === 0) {
-    return `${whole}%`
-  }
-  const fractionText = String(fraction).padStart(2, '0').replace(/0+$/, '')
-  return `${whole}.${fractionText}%`
-}
-
-function formatDiscount(item: CouponItem) {
-  if (item.discount_type === 'amount') {
-    return `减免 ¥${formatFenAsCny(item.amount_off_fen)}`
-  }
-  const cap =
-    item.max_discount_fen != null ? `，上限 ¥${formatFenAsCny(item.max_discount_fen)}` : ''
-  return `优惠 ${formatBpsPercent(item.discount_bps)}${cap}`
-}
 
 async function copyCouponCode(code: string) {
   const value = code.trim()
@@ -189,9 +140,9 @@ onMounted(() => {
                 </span>
               </div>
               <small>{{ item.name }}</small>
-              <p>{{ formatDiscount(item) }}</p>
+              <p>{{ formatCouponDiscount(item) }}</p>
               <p class="coupon-item__meta">
-                门槛 ¥{{ formatFenAsCny(item.min_amount_fen) }} · {{ formatRange(item) }}
+                门槛 ¥{{ formatFenAsCny(item.min_amount_fen) }} · {{ formatCouponRange(item) }}
               </p>
             </button>
           </div>
@@ -218,9 +169,9 @@ onMounted(() => {
                 </span>
               </div>
               <small>{{ item.name }}</small>
-              <p>{{ formatDiscount(item) }}</p>
+              <p>{{ formatCouponDiscount(item) }}</p>
               <p class="coupon-item__meta">
-                门槛 ¥{{ formatFenAsCny(item.min_amount_fen) }} · {{ formatRange(item) }}
+                门槛 ¥{{ formatFenAsCny(item.min_amount_fen) }} · {{ formatCouponRange(item) }}
               </p>
             </button>
           </div>
