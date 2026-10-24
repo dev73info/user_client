@@ -71,6 +71,10 @@ Git Bash 完整路径，赋值写在 `-lc` 的字符串里：
 - **服务一律留在当前会话的终端里前台运行**，不要用 `nohup` / `&`（bash 的后台符，别和上面 PowerShell 的调用运算符 `&` 混了）/ `disown` /
   `setsid` / `screen` / `tmux` 之类撒手跑——脱离会话的进程看不到日志、停不掉，会话结束还占着端口。做法与理由见根仓 `docs/规则/dev-servers.md` 第一节。
 - 账号与口令见根仓 `docs/规则/dev-accounts.md`（本机开发库统一口令 `Test@123456`）；`.env.local` **不入库**。
+- **后端没起就直接开 mock，不要回头问用户**：起 server 前先探一句 `curl -sf http://127.0.0.1:8080/api/healthz`
+  （后端健康检查是 `/api/healthz`，**不是 `/api/health`**；`netstat -ano | grep ":8080"` 只当辅助，它会把 `:80800`
+  和 TIME_WAIT 一起匹配上来）。探不通就在地址上加 `?mock=1`，或把 `.env.local` 的 `VITE_MOCK` 改成 `true` 再起
+  （改 env 不热更新，**必须重启** dev server）。变量、生效标志与关闭方式见第五节。
 
 ## 四、依赖顺序有个前置
 
