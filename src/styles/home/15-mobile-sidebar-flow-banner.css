@@ -34,38 +34,6 @@
     border-radius: 999px;
   }
 
-  .portal-beta-invite {
-    grid-area: invite;
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) auto;
-    grid-template-areas:
-      'title cta'
-      'text cta';
-    align-items: center;
-    gap: 2px 12px;
-    margin-top: 0;
-    padding: 10px 12px;
-  }
-
-  .portal-beta-invite__title {
-    grid-area: title;
-    font-size: 13px;
-  }
-
-  .portal-beta-invite__text {
-    grid-area: text;
-    font-size: 12px;
-    line-height: 1.5;
-  }
-
-  .portal-beta-invite__cta,
-  .portal-checkin-card__cta {
-    grid-area: cta;
-    margin-top: 0;
-    padding: 7px 14px;
-    white-space: nowrap;
-  }
-
   /* —— 平台公告：每条一行，标题单行省略，标签与时间并到右侧 —— */
   .portal-card__header--notice {
     margin-bottom: 2px;

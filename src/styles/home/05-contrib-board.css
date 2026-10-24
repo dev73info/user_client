@@ -128,43 +128,6 @@
   white-space: nowrap;
 }
 
-.portal-contrib-item__badges {
-  display: flex;
-  align-items: center;
-  gap: 3px;
-  flex-shrink: 0;
-  min-width: 0;
-  overflow: hidden;
-}
-
-.portal-contrib-item__badge {
-  flex: none;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 20px;
-  height: 20px;
-  border-radius: 6px;
-  border: 1px solid color-mix(in srgb, var(--73-accent-soft) 72%, transparent);
-  background: color-mix(in srgb, var(--73-accent-soft) 90%, transparent);
-  color: var(--73-accent);
-  font-size: 11px;
-  line-height: 1;
-}
-
-.portal-contrib-item__badge-img {
-  width: 14px;
-  height: 14px;
-  object-fit: contain;
-}
-
-.portal-contrib-item__badge-more {
-  flex: none;
-  color: var(--73-ink-muted);
-  font-size: 10px;
-  font-weight: 800;
-}
-
 .portal-contrib-item__side {
   display: flex;
   align-items: center;

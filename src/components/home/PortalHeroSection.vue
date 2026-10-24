@@ -2,7 +2,7 @@
 /**
  * 门户首页主视觉 + 移动端入口宫格（R047 从 `views/HomeView.vue` 拆出）。
  *
- * 纯展示组件：两颗主按钮与宫格里的四个入口都只回抛事件，跳哪、是否已登录、
+ * 纯展示组件：两颗主按钮与宫格里的三个入口都只回抛事件，跳哪、是否已登录、
  * 开发者账号看到「发布资源」还是「发布需求」，全部由视图决定（本组件不碰 store / router）。
  * 样式仍在全局 `styles/home.css`（`.portal-hero*` / `.portal-entry*`），本组件不带 `<style>`。
  */
@@ -22,7 +22,6 @@ const emit = defineEmits<{
   (e: 'publish'): void
   (e: 'dev-workbench'): void
   (e: 'free-resources'): void
-  (e: 'community'): void
 }>()
 </script>
 
@@ -87,15 +86,6 @@ const emit = defineEmits<{
         </svg>
       </span>
       <span class="portal-entry__label">免费资源</span>
-    </button>
-    <button type="button" class="portal-entry portal-entry--community" @click="emit('community')">
-      <span class="portal-entry__icon" aria-hidden="true">
-        <svg viewBox="0 0 24 24" fill="none">
-          <path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12Z" />
-          <path d="M8.5 12h.01M12 12h.01M15.5 12h.01" />
-        </svg>
-      </span>
-      <span class="portal-entry__label">社区交流</span>
     </button>
   </nav>
 </template>

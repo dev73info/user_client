@@ -4,7 +4,7 @@ import { ArrowRight, TIcon } from 'ui_73info'
 import type { PortalQuickPanel } from '@/shared/home/portalSections'
 
 /**
- * 门户首页两张快捷卡（免费资源 / 社区交流）（R047 从 `views/HomeView.vue` 拆出）。
+ * 门户首页两张快捷卡（免费资源 / 需求大厅）（R047 从 `views/HomeView.vue` 拆出）。
  *
  * 纯展示组件：两个大图标是内联 SVG（`tone` 决定用哪一套），点击与回车 / 空格都只回抛
  * `open(panel)`，跳到哪个路由由视图决定。样式仍在全局 `styles/home.css`
@@ -67,11 +67,11 @@ const emit = defineEmits<{ (e: 'open', panel: PortalQuickPanel): void }>()
         </svg>
         <svg v-else class="portal-quick-card__svg" viewBox="0 0 96 96" focusable="false">
           <defs>
-            <linearGradient id="quickCaseOrange" x1="0" x2="1" y1="0" y2="1">
+            <linearGradient id="quickRequirementOrange" x1="0" x2="1" y1="0" y2="1">
               <stop offset="0%" stop-color="#ffb15c" />
               <stop offset="100%" stop-color="#f97316" />
             </linearGradient>
-            <filter id="quickCaseShadow" x="-30%" y="-20%" width="160%" height="160%">
+            <filter id="quickRequirementShadow" x="-30%" y="-20%" width="160%" height="160%">
               <feDropShadow
                 dx="0"
                 dy="9"
@@ -81,14 +81,24 @@ const emit = defineEmits<{ (e: 'open', panel: PortalQuickPanel): void }>()
               />
             </filter>
           </defs>
-          <g filter="url(#quickCaseShadow)">
+          <g filter="url(#quickRequirementShadow)">
+            <rect x="18" y="16" width="60" height="68" rx="14" fill="url(#quickRequirementOrange)" />
+            <rect x="32" y="12" width="32" height="14" rx="7" fill="#fff7ed" />
             <path
-              fill="url(#quickCaseOrange)"
-              d="M20 30a12 12 0 0 1 12-12h32a12 12 0 0 1 12 12v22a12 12 0 0 1-12 12H44l-14 10v-10h-6a12 12 0 0 1-4-23z"
+              d="M31 40h12m7 0h15M31 54h12m7 0h15M31 68h12m7 0h10"
+              fill="none"
+              stroke="#fff7ed"
+              stroke-linecap="round"
+              stroke-width="5"
             />
-            <circle cx="36" cy="44" r="4" fill="#fff7ed" />
-            <circle cx="48" cy="44" r="4" fill="#fff7ed" />
-            <circle cx="60" cy="44" r="4" fill="#fff7ed" />
+            <path
+              d="m25 40 3 3 5-6m-8 17 3 3 5-6m-8 17 3 3 5-6"
+              fill="none"
+              stroke="#fff7ed"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="3"
+            />
           </g>
         </svg>
       </div>

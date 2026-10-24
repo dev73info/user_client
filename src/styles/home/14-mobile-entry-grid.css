@@ -77,27 +77,7 @@
     white-space: nowrap;
   }
 
-  /* 四个入口各一支色：发布=主蓝、接单=靛紫、免费资源=暖橙（沿用原礼物卡的色）、社区=青绿 */
-  .portal-entry--publish .portal-entry__icon {
-    background: var(--73-accent-soft);
-    color: var(--73-accent);
   }
-
-  .portal-entry--take .portal-entry__icon {
-    background: var(--73-accent-soft);
-    color: var(--73-accent);
-  }
-
-  .portal-entry--free .portal-entry__icon {
-    background: var(--73-warning-soft);
-    color: var(--73-warning);
-  }
-
-  .portal-entry--community .portal-entry__icon {
-    background: var(--73-success-soft);
-    color: var(--73-success);
-  }
-}
 
 .portal-step-card__no {
   font-style: normal;

@@ -3,11 +3,11 @@ import { overviewItem, type MenuRouteContext, type WorkbenchMenuItem } from './w
 /**
  * 工作台外壳的路由名、条目高亮判定与标题文案（纯函数）。
  *
- * 消息中心 / 工单中心 / 系统通知三种工作台各有一条路由，侧边栏高亮与顶栏标题都从这些判定来。
+ * 消息中心 / 系统通知两种工作台各有一条路由，侧边栏高亮与顶栏标题都从这些判定来。
  * 都是「值 → 值」的映射，与菜单模型（`workbenchMenu.ts`）分开一个文件放，两边都在 300 行预算内。
  */
 
-/* ---------- 路由名：消息中心 / 工单中心 / 系统通知三种工作台各一条 ---------- */
+/* ---------- 路由名：消息中心 / 系统通知两种工作台各一条 ---------- */
 
 // 消息中心在两种工作台各有一条路由（开发者端走 devArea 路由，点进去不会切回用户工作台），
 // 页面内的高亮、会话链接与「查看全部消息」都跟着当前所处的那条走。
@@ -19,12 +19,6 @@ export function isMessagesRouteName(name: unknown): boolean {
 
 export function messagesRouteNameFor(isDevWorkbenchMode: boolean): string {
   return isDevWorkbenchMode ? 'dev-messages' : 'workbench-messages'
-}
-
-// 工单中心与消息中心同一套办法：两种工作台各有一条路由，开发者端那条带 devArea，
-// 侧边栏的高亮与链接都跟着当前模式走，点进去不会把菜单切回用户工作台。
-export function ticketsRouteNameFor(isDevWorkbenchMode: boolean): string {
-  return isDevWorkbenchMode ? 'dev-tickets' : 'workbench-tickets'
 }
 
 // 「系统通知」同理：两端共用同一个页面，各挂一条自己的路由（见 router/dev.ts 的 dev-notifications）。
@@ -39,7 +33,7 @@ export function workbenchBrandTitleFor(isDevWorkbenchMode: boolean): string {
 /**
  * 消息中心夹在分组之间、两端各只渲染一次，插在哪个位置两种工作台不一样：
  * 用户工作台插在第一个分组之后（我的需求与账户服务之间）；
- * 开发者工作台插在最后一个分组之后（团队服务之下、工单中心之上）。
+ * 开发者工作台插在最后一个分组之后（团队服务之下、系统通知之上）。
  * 开发者侧多出「财务中心」一组后，仍按原来那一档排，不落到两组中间。
  */
 export function messagesAnchorIndexFor(

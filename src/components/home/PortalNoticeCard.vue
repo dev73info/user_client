@@ -2,7 +2,7 @@
 import type { PortalNotice } from '@/shared/home/portalDisplay'
 
 /**
- * 首页侧栏「平台公告」卡片：公告 3 条 + 最新成交 / 公开资源 / 需求公告各最多 1 条（共 4 条）。
+ * 首页侧栏「平台公告」卡片：最新成交 / 公开资源 / 需求公告各最多 1 条（共 4 条）。
  *
  * 取数与截断在 `shared/home/portalDisplay.ts#buildPortalNotices`，这里只做渲染：
  * 每条公告的跳转目标（`notice.to`）由纯函数算好，组件只按有没有目标决定可点击样式并回抛事件。
@@ -10,10 +10,7 @@ import type { PortalNotice } from '@/shared/home/portalDisplay'
  */
 withDefaults(defineProps<{ notices: PortalNotice[] }>(), { notices: () => [] })
 
-const emit = defineEmits<{
-  (e: 'open-notice', notice: PortalNotice): void
-  (e: 'more'): void
-}>()
+const emit = defineEmits<{ (e: 'open-notice', notice: PortalNotice): void }>()
 </script>
 
 <template>
@@ -23,10 +20,6 @@ const emit = defineEmits<{
         <span class="portal-notice-head__icon" aria-hidden="true">◔</span>
         <h2>平台公告</h2>
       </div>
-      <button class="portal-link-btn portal-link-btn--notice" type="button" @click="emit('more')">
-        更多
-        <span aria-hidden="true">›</span>
-      </button>
     </div>
     <ul class="portal-notice-list">
       <li

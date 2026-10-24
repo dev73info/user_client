@@ -1,10 +1,10 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 
-import type { DeveloperRank, PortalDeveloperBadge } from '@/shared/home/portalRanks'
+import type { DeveloperRank } from '@/shared/home/portalRanks'
 
 /**
- * 首页侧栏「开发者贡献榜」卡片：前 4 名开发者 + 已装备徽章 + 页脚合计。
+ * 首页侧栏「开发者贡献榜」卡片：前 4 名开发者 + 页脚合计。
  *
  * 只吃 props：榜单聚合在 `composables/usePortalRanks.ts`（资源由视图传入，不在这里请求）。
  * 两处跟渲染强相关的状态留在组件内：
@@ -14,10 +14,8 @@ import type { DeveloperRank, PortalDeveloperBadge } from '@/shared/home/portalRa
  *
  * 样式仍在全局 `styles/home.css`（`.portal-contrib-*`），本组件不带 `<style>`。
  */
-const props = defineProps<{
+defineProps<{
   ranks: DeveloperRank[]
-  /** 用户名 → 已装备徽章（`usePortalRanks` 取好） */
-  badges: Record<string, PortalDeveloperBadge[]>
   /** 入榜开发者名下资源数之和（页脚「本周 N 个资源」） */
   totalResources: number
 }>()
@@ -37,10 +35,6 @@ function handleAvatarError(rank: DeveloperRank) {
 /** 失败过的头像给空串，模板据此回落到首字母。 */
 function avatarSrc(rank: DeveloperRank): string {
   return failedAvatarUrls.value.has(rank.avatarUrl) ? '' : rank.avatarUrl
-}
-
-function badgesOf(username: string): PortalDeveloperBadge[] {
-  return props.badges[username] ?? []
 }
 </script>
 
@@ -82,28 +76,6 @@ function badgesOf(username: string): PortalDeveloperBadge[] {
             :style="developer.userColor ? { color: developer.userColor } : {}"
             >{{ developer.name }}</strong
           >
-          <div v-if="badgesOf(developer.username).length > 0" class="portal-contrib-item__badges">
-            <span
-              v-for="badge in badgesOf(developer.username).slice(0, 3)"
-              :key="badge.code"
-              class="portal-contrib-item__badge"
-              :title="`${badge.name}：${badge.description}`"
-            >
-              <img
-                v-if="badge.icon.startsWith('badges/')"
-                :src="`/uploads/${badge.icon}`"
-                class="portal-contrib-item__badge-img"
-                alt=""
-              />
-              <template v-else>{{ badge.icon }}</template>
-            </span>
-            <span
-              v-if="badgesOf(developer.username).length > 3"
-              class="portal-contrib-item__badge-more"
-            >
-              +{{ badgesOf(developer.username).length - 3 }}
-            </span>
-          </div>
         </div>
         <div class="portal-contrib-item__side">
           <strong class="portal-contrib-item__count">{{ developer.resourceCount }} 个资源</strong>
