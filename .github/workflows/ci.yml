@@ -16,10 +16,11 @@ name: ci
 # 写成 `[dev, master]` 时，开向 `develop` 的 PR **一条都不会触发**——
 # 门禁看着齐全，实际全仓没有一道被跑过。改分支名先 `git ls-remote --heads origin` 核一遍。
 on:
-  pull_request:
-    branches: [develop, master]
+  # 只在**打 tag** 时自动跑：日常提交与 PR 不再消耗 Actions 额度。
+  # 需要临时全量校验时，到 Actions 页面手动触发（workflow_dispatch）。
   push:
-    branches: [develop]
+    tags: ["v*"]
+  workflow_dispatch:
 
 concurrency:
   group: ci-${{ github.ref }}
