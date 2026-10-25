@@ -22,7 +22,7 @@
     "gate": "run-s type-check lint:check test:ci check:frontend contract:check build",
     "format": "prettier --write --experimental-cli src/",
     "format:check": "prettier --check \"src/**/*.{ts,vue,css}\"",
-    "format:changed": "git diff --name-only --diff-filter=ACMR origin/develop...HEAD -- \"src/*.ts\" \"src/**/*.ts\" \"src/**/*.vue\" \"src/*.css\" \"src/**/*.css\" \"scripts/*.mjs\" \"scripts/**/*.mjs\" | xargs prettier --check",
+    "format:changed": "bash -c \"CHANGED=$(git diff --name-only --diff-filter=ACMR origin/master...HEAD -- 'src/*.ts' 'src/**/*.ts' 'src/**/*.vue' 'src/*.css' 'src/**/*.css' 'scripts/*.mjs' 'scripts/**/*.mjs') || exit $?; if [ -n \\\"$CHANGED\\\" ]; then printf '%s\\n' \\\"$CHANGED\\\" | xargs prettier --check; else echo '没有改动的 .ts / .vue / .css / .mjs 文件'; fi\"",
     "contract:check": "node scripts/contract-check.mjs",
     "contract:write": "node scripts/contract-check.mjs --write",
     "gate:quick": "run-s type-check lint:check test:ci check:frontend contract:check"
