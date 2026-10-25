@@ -6,9 +6,6 @@
  * 卡只画与 `emit`：读数来自 `useDevWalletOverview` 的投影，开关状态只由服务端的
  * `withdrawalSetting` 推导（点开关不本地翻转），提现弹窗与回刷都在页面。
  *
- * 版面与并排的「保证金余额」卡（`DevWalletDepositCard`）逐段对齐：
- * 卡头 → 大数 → 标签行（标签靠左、说明贴右）→ 分隔线 → 操作区（左开关 / 右主按钮）。
- *
  * 样式走全局 `styles/dev-wallet.css` 的 `.wallet-hero*` / `.wallet-payout*`，本组件不带 style 块。
  */
 import type { DevWalletOverview } from '@/api/devWallet'
@@ -79,24 +76,9 @@ const emit = defineEmits<{
         </div>
         <p class="wallet-hero__note">{{ props.payoutScheduleNote }}</p>
       </div>
-
-      <!-- 通道未就绪：开关点了也没用，所以先说清卡在哪，并给出唯一的下一步。
-           这一块留在**分隔线以上**——两张卡的底部操作区因此都是单独一行、高度一致，
-           分隔线与按钮才会左右齐平（放到分隔线以下会把这张卡的操作区撑高）。 -->
-      <div
-        v-if="props.withdrawalSettingLoaded && !props.payoutChannelReady"
-        class="wallet-payout__alert"
-        role="status"
-      >
-        <TIcon>
-          <WarningFilled />
-        </TIcon>
-        <span>{{ props.payoutChannelMessage || '出款通道暂未就绪，请先绑定收款银行卡' }}</span>
-        <TButton variant="text" tone="accent" @click="emit('bind-account')">去绑定</TButton>
-      </div>
     </div>
 
-    <!-- 自动提现与手动提现是并存的两条出款路径：并成一行（左开关 / 右主按钮） -->
+    <!-- 自动提现与手动提现是并存的两条出款路径：并成一行展示，说明折到行下方 -->
     <div class="wallet-payout">
       <div class="wallet-payout__paths">
         <div class="wallet-payout__path">
@@ -123,6 +105,17 @@ const emit = defineEmits<{
             <span>申请提现</span>
           </TButton>
         </div>
+      </div>
+      <div
+        v-if="props.withdrawalSettingLoaded && !props.payoutChannelReady"
+        class="wallet-payout__alert"
+        role="status"
+      >
+        <TIcon>
+          <WarningFilled />
+        </TIcon>
+        <span>{{ props.payoutChannelMessage || '出款通道暂未就绪，请先绑定收款银行卡' }}</span>
+        <TButton variant="text" tone="accent" @click="emit('bind-account')">去绑定</TButton>
       </div>
     </div>
   </TCard>
