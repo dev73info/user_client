@@ -12,6 +12,7 @@ import {
   contractPartyOf,
   hasCustomAttachment as contractHasCustomAttachment,
   signerIdentityReady as isSignerIdentityReady,
+  type SignerRealname,
   signingLogLabel,
 } from '@/shared/contractSign'
 import {
@@ -47,6 +48,13 @@ type UseContractSignDisplayOptions = {
   localDocumentFallback: Ref<boolean>
   /** 当前登录账号：决定本人是甲方还是乙方。 */
   username: () => string
+  /**
+   * 本人的实名资料（`/realname/me`）：签署身份的姓名与证件号唯一来源。
+   *
+   * 合同响应里没有这两项（后端 2.0 的 `ContractResponse` 不带实名字段），
+   * 没有它时签署身份会恒显示「未完成实名认证」、「开始签署」永久置灰。
+   */
+  selfRealname: Ref<SignerRealname | null>
   /** 需求编号：合同详情页没有 query 时，附件面板从合同上取。 */
   requirementId: string
   isWorkbenchSignature: Ref<boolean>
@@ -60,7 +68,12 @@ export function useContractSignDisplay(options: UseContractSignDisplayOptions) {
   const currentParty = computed(() => contractPartyOf(contract.value, options.username()))
   const currentSigner = computed(() =>
     currentParty.value
-      ? contractPartyDisplay(contract.value, currentParty.value, options.isPlatformAgreement.value)
+      ? contractPartyDisplay(
+          contract.value,
+          currentParty.value,
+          options.isPlatformAgreement.value,
+          options.selfRealname.value,
+        )
       : null,
   )
   const signerIdentityReady = computed(() => isSignerIdentityReady(currentSigner.value))

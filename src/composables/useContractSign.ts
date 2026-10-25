@@ -19,6 +19,7 @@ import { useAuthStore } from '@/stores/auth'
 import { useContractNoticeConfirm } from './useContractNoticeConfirm'
 import { useContractSignDisplay } from './useContractSignDisplay'
 import { useContractSignNavigation } from './useContractSignNavigation'
+import { useContractSignerRealname } from './useContractSignerRealname'
 import { useContractSignPolling } from './useContractSignPolling'
 
 /**
@@ -62,6 +63,8 @@ export function useContractSign(options: UseContractSignOptions) {
   // 借需求详情（`requireId`）读一次；读取即触发后端收口，返回的就是最新状态。
   const requirementArchive = ref<RequirementItem | null>(null)
 
+  // 本人实名资料：签署身份的姓名与证件号唯一来源（合同响应不带这两项）。
+  const { selfRealname, loadSelfRealname } = useContractSignerRealname()
   const platformNotice = useContractNoticeConfirm(nav)
 
   const {
@@ -93,6 +96,7 @@ export function useContractSign(options: UseContractSignOptions) {
     localDocumentFallback,
     noticeAccepted: platformNotice.noticeAccepted,
     username: () => auth.username,
+    selfRealname,
     requirementId: nav.requirementId,
     isWorkbenchSignature: nav.isWorkbenchSignature,
     isDeveloperAgreement: nav.isDeveloperAgreement,
@@ -119,9 +123,7 @@ export function useContractSign(options: UseContractSignOptions) {
       } else {
         contract.value = await fetchMyRequirementContract(auth.token, nav.requirementId)
       }
-      // 已发起爱签签署但本地仍是待签署（回调可能延迟/丢失）：主动向爱签同步状态。
-      // 用户从爱签签署页返回本页时，若已在爱签完成签署，这里会把本地合同更新为已签署。
-      // 若同步后仍未签署，则启动轮询持续同步，直到爱签侧完成或合同变为已签署。
+      // 已发起爱签签署但本地仍是待签署（回调可能延迟/丢失）：主动向爱签同步，仍未签则轮询。
       const item = contract.value
       if (item && item.status === CONTRACT_STATUS.signing) {
         const hasInitiated = (item.signing_logs ?? []).some(
@@ -138,7 +140,9 @@ export function useContractSign(options: UseContractSignOptions) {
           }
         }
       }
-      // R014：读一次需求详情拿「超期锁定 / 已清除」标记（读取即触发后端收口）。失败不阻断合同展示。
+      // 签署身份取本人实名资料（合同响应不带实名字段）；失败不阻断合同展示。
+      await loadSelfRealname(auth.token)
+      // R014：需求详情给出「超期锁定 / 已清除」标记，读取即触发后端收口；失败不阻断展示。
       const rid = contract.value?.requirement_id?.trim() || nav.requirementId
       if (!nav.isPlatformAgreement.value && rid) {
         try {
@@ -159,9 +163,7 @@ export function useContractSign(options: UseContractSignOptions) {
 
   /** 发起签署前的三道本地闸门（后端同样会拦，这里先给出可操作的中文说明）。 */
   function signBlockedReason(): string {
-    if (requirementArchived.value) {
-      return ARCHIVED_WRITE_BLOCKED_MESSAGE
-    }
+    if (requirementArchived.value) return ARCHIVED_WRITE_BLOCKED_MESSAGE
     if (!signerIdentityReady.value) {
       return '请先完成实名认证，签署身份必须包含真实姓名和身份证号'
     }
@@ -183,18 +185,16 @@ export function useContractSign(options: UseContractSignOptions) {
     error.value = ''
     try {
       const result = await initiateAsignSign(auth.token, contract.value.id, noticeSigner.value)
-      // 无论跳爱签还是短信通知后轮询，签完都要离开「签署页原地」；进爱签前先打标，
-      // 整页回跳后 sessionStorage 还在，同步到已签约即可继续走。
+      // 进爱签前先打标，整页回跳后 sessionStorage 还在，同步到已签约即可继续走。
       if (!nav.isPlatformAgreement.value) {
         nav.markRequirementSignPendingReturn()
         nav.rememberRequirementSignContext()
       }
       if (result.sign_url && !noticeSigner.value) {
-        // 未勾选短信通知时，跳转到爱签签署页面（整页跳转由视图执行）。
-        options.openPage(result.sign_url)
+        options.openPage(result.sign_url) // 未勾选短信通知：整页跳到爱签签署页
         return
       }
-      // 勾选了短信通知：不跳转页面，短信通知签署人，停留本页轮询状态。
+      // 勾选了短信通知：不跳页，停留本页轮询状态。
       successMsg.value = noticeSigner.value
         ? '已发起并短信通知签署人'
         : '已发起签署，请稍后刷新查看签署状态'

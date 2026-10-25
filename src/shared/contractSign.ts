@@ -48,15 +48,29 @@ export function contractPartyOf(
   return null
 }
 
+/** 本人实名资料（来自 `/realname/me`，是「本次签署身份」的唯一来源）。 */
+export type SignerRealname = {
+  /** 实名姓名。 */
+  realName: string
+  /** 脱敏证件号。 */
+  idCardNoMasked: string
+}
+
 /**
  * 签约方展示行。
  *
  * 平台内置协议（开发者入驻 / 接口使用）的甲方是平台，其余合同甲方是需求方。
+ *
+ * **签署身份的姓名与证件号只能取本人实名资料**（`selfRealname`），不能用合同里的
+ * `party_*_real_name`：那份是「按合同存下来给别人看的展示字段」，后端 2.0 的
+ * `ContractResponse` 根本没有这两项，拿它当判据会让签署页恒显示「未完成实名认证」、
+ * 「开始签署」永久置灰。实名资料本来就是本人自己的，也不必向合同响应里塞别人的证件号。
  */
 export function contractPartyDisplay(
   contract: ContractDetail | null,
   party: ContractParty,
   platformAgreement: boolean,
+  selfRealname?: SignerRealname | null,
 ): PartyDisplay | null {
   if (!contract) return null
 
@@ -65,8 +79,14 @@ export function contractPartyDisplay(
       party,
       label: '甲方',
       role: platformAgreement ? '平台' : '需求方',
-      legalName: displayText(contract.party_a_real_name ?? contract.party_a_name, '未完成实名认证'),
-      idCardNo: displayText(contract.party_a_id_card_no_masked, '未完成实名认证'),
+      legalName: displayText(
+        selfRealname?.realName || contract.party_a_real_name || contract.party_a_name,
+        '未完成实名认证',
+      ),
+      idCardNo: displayText(
+        selfRealname?.idCardNoMasked || contract.party_a_id_card_no_masked,
+        '未完成实名认证',
+      ),
       username: displayText(contract.party_a_username, '未绑定账号'),
       email: displayText(contract.party_a_account_email, '未绑定邮箱'),
       signedAt: contract.party_a_signed_at,
@@ -77,12 +97,43 @@ export function contractPartyDisplay(
     party,
     label: '乙方',
     role: '开发者',
-    legalName: displayText(contract.party_b_real_name ?? contract.party_b_name, '未完成实名认证'),
-    idCardNo: displayText(contract.party_b_id_card_no_masked, '未完成实名认证'),
+    legalName: displayText(
+      selfRealname?.realName || contract.party_b_real_name || contract.party_b_name,
+      '未完成实名认证',
+    ),
+    idCardNo: displayText(
+      selfRealname?.idCardNoMasked || contract.party_b_id_card_no_masked,
+      '未完成实名认证',
+    ),
     username: displayText(contract.party_b_username, '未绑定账号'),
     email: displayText(contract.party_b_account_email, '未绑定邮箱'),
     signedAt: contract.party_b_signed_at,
   }
+}
+
+/**
+ * 把 `/realname/me` 的响应换成签署身份要用的两项。
+ *
+ * 只有「已通过」的实名才算数：审核中 / 被驳回时姓名与证件号即使有值，渠道也建不出
+ * 可签署的签约用户，视作未认证更不容易误导。
+ */
+export function signerRealnameFrom(
+  verification: {
+    status?: string | null
+    real_name?: string | null
+    real_name_masked?: string | null
+    id_card_no_masked?: string | null
+  } | null,
+): SignerRealname | null {
+  if (!verification || verification.status !== 'approved') {
+    return null
+  }
+  const realName = (verification.real_name ?? verification.real_name_masked ?? '').trim()
+  const idCardNoMasked = (verification.id_card_no_masked ?? '').trim()
+  if (!realName || !idCardNoMasked) {
+    return null
+  }
+  return { realName, idCardNoMasked }
 }
 
 /** 签署身份是否可用于发起签署：实名姓名与身份证号都得有。 */
