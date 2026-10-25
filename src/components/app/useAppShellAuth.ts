@@ -9,6 +9,7 @@ import { TMessage } from 'ui_73info'
 
 import { useAuthStore } from '@/stores/auth'
 import { AUTH_UNAUTHORIZED_EVENT, type AuthUnauthorizedEventDetail } from '@/shared/api/authEvents'
+import { fetchTurnstileToken, isTurnstileEnabled } from '@/shared/turnstile'
 
 export function useAppShellAuth() {
   const auth = useAuthStore()
@@ -28,7 +29,16 @@ export function useAppShellAuth() {
     }
 
     try {
-      await auth.login(devAutoLoginCredentials.username, devAutoLoginCredentials.password)
+      // `/auth/login` 与手动登录是同一个端点：后端开着 `[turnstile] enabled` 时一律要 token，
+      // 不带就必然 403 `missing_token`。这里离屏取一枚，取不到就按「未登录」继续，
+      // 不把本地便利功能的失败抛到启动流程里。
+      const turnstileToken = isTurnstileEnabled() ? await fetchTurnstileToken('login') : ''
+      await auth.login(
+        devAutoLoginCredentials.username,
+        devAutoLoginCredentials.password,
+        undefined,
+        turnstileToken || undefined,
+      )
     } catch (error) {
       console.warn('开发模式自动登录失败', error)
     }
