@@ -1,7 +1,7 @@
 name: deploy
 
 # 打 tag 发布，例如 v1.0.1-20261019。**tag 一律打在 master 上**：
-# dev 是集成线，从 dev 打 tag 会把未发布的功能直接推上生产。
+# 本仓只有 master 基线，不要从其他分支打 tag 发布。
 on:
   push:
     tags:
@@ -27,7 +27,14 @@ permissions:
   contents: read
 
 jobs:
+  gate:
+    if: ${{ !inputs.rollback_to }}
+    uses: ./.github/workflows/ci.yml
+    with:
+      ref: ${{ inputs.tag || github.ref }}
+
   deploy:
+    needs: gate
     if: ${{ !inputs.rollback_to }}
     runs-on: ubuntu-latest
     steps:
@@ -153,14 +160,33 @@ jobs:
           ssh -i ~/.ssh/deploy_key -p "$SSH_PORT" -o BatchMode=yes -o StrictHostKeyChecking=yes \
             "$SSH_USER@$SSH_HOST" \
             "sudo -n /usr/local/bin/73info-switch-frontend 73info.cn '$TARGET'"
-          curl -sS -o /dev/null -w '回滚后首页：%{http_code}\n' https://73info.cn/
+          for ATTEMPT in 1 2 3; do
+            if STATUS=$(curl -sS -o /dev/null -w '%{http_code}' --connect-timeout 10 --max-time 30 https://73info.cn/); then
+              echo "回滚后首页（第 $ATTEMPT 次）：HTTP $STATUS"
+              if [ "$STATUS" = "200" ]; then
+                exit 0
+              fi
+            else
+              CURL_EXIT=$?
+              echo "回滚后首页第 $ATTEMPT 次请求发生 curl 网络/传输错误（exit $CURL_EXIT）。" >&2
+            fi
+            if [ "$ATTEMPT" -lt 3 ]; then
+              sleep 5
+            fi
+          done
+          echo "回滚后首页检查失败：最多重试 3 次，且只有 HTTP 200 才算成功。" >&2
+          exit 1
 
   notify:
-    needs: [deploy, rollback]
-    if: ${{ always() && (needs.deploy.result != 'skipped' || needs.rollback.result != 'skipped') }}
+    needs: [gate, deploy, rollback]
+    if: ${{ always() && (needs.gate.result != 'skipped' || needs.deploy.result != 'skipped' || needs.rollback.result != 'skipped') }}
     runs-on: ubuntu-latest
+    env:
+      OPERATION: ${{ inputs.rollback_to && '回滚' || (inputs.build_only && '构建验证' || '部署') }}
+      VERSION: ${{ inputs.rollback_to || inputs.tag || github.ref_name }}
+      RESULT: ${{ ((inputs.rollback_to && needs.rollback.result == 'success') || (!inputs.rollback_to && needs.gate.result == 'success' && needs.deploy.result == 'success')) && '成功' || '失败' }}
     steps:
-      # SMTP_PASSWORD 没配时这里会失败，但不该让部署结果变成失败
+      # SMTP_PASSWORD 没配时这里会失败，但不该覆盖门禁、部署或回滚结果
       - name: 发邮件
         continue-on-error: true
         uses: dawidd6/action-send-mail@v3
@@ -172,12 +198,16 @@ jobs:
           password: ${{ secrets.SMTP_PASSWORD }}
           from: 73Info 部署 <${{ secrets.SMTP_FROM }}>
           to: ${{ secrets.SMTP_TO }}
-          subject: "[73Info] user_client ${{ needs.deploy.result == 'success' && '部署成功' || '部署失败' }} ${{ inputs.tag || github.ref_name }}"
+          subject: "[73Info] user_client ${{ env.OPERATION }}${{ env.RESULT }} ${{ env.VERSION }}"
           body: |
             仓库：${{ github.repository }}
             站点：73info.cn
-            版本：${{ inputs.tag || github.ref_name }}
-            结果：${{ needs.deploy.result }}
+            操作：${{ env.OPERATION }}
+            版本：${{ env.VERSION }}
+            结果：${{ env.RESULT }}
+            门禁：${{ needs.gate.result }}
+            部署：${{ needs.deploy.result }}
+            回滚：${{ needs.rollback.result }}
 
             提交：${{ github.sha }}
             执行：${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
