@@ -14,12 +14,21 @@ export const signatureStateLabels: Record<SignatureState, string> = {
 /**
  * 「当前该谁签」不再由状态编码，而由签署时间推导：
  * 需求开发合同的甲乙双方**各自独立签署、不设先后**（2026-10-05 起），
- * 只有「签约中 1」可签——自己还没签就是「待我签署」，自己签完（连着平台那份）就是「等待他方」。
+ * 自己还没签就是「待我签署」，自己签完（连着平台那份）就是「等待他方」。
+ *
+ * 「等待签约 0」与「签约中 1」一样算可签：0 只是「还没有任何签署动作」，发起签署正是
+ * 那第一笔动作。判成 `unavailable` 会让列表里的按钮从「去签署」变成「查看详情」，
+ * 而详情页同样不给发起入口，合同就永远停在 0（见 `shared/contractSign.ts` 的说明）。
  */
 export function getSignatureState(contract: MyContractSummary, username: string): SignatureState {
   if (contract.status === CONTRACT_STATUS.voided) return 'void'
   if (contract.status === CONTRACT_STATUS.signed) return 'signed'
-  if (contract.status !== CONTRACT_STATUS.signing) return 'unavailable'
+  if (
+    contract.status !== CONTRACT_STATUS.awaiting &&
+    contract.status !== CONTRACT_STATUS.signing
+  ) {
+    return 'unavailable'
+  }
   if (!username) return 'unavailable'
   // 不看对方签没签：曾经有过一道「甲方必须等 party_b_signed_at 落库」的顺序门，它在真实爱签链路
   // 上会死锁（乙方在爱签签完后本地不落该时间戳，甲方永远等不到放行），且与「双方各自独立签署」的

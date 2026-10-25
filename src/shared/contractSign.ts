@@ -91,17 +91,31 @@ export function signerIdentityReady(signer: PartyDisplay | null): boolean {
 }
 
 /**
- * 是否能签：只有「签约中 1」可签，且本人这一方还没签。
+ * 是否能签：合同还没被任何一方签过，且本人这一方还没签。
  *
  * 双方各自独立签署，不设先后顺序（爱签侧同样是无序签约 signOrder=1）：
  * 谁还没签谁就能签，双方都签完后由爱签同步置为「已签约 2」。
+ *
+ * 「等待签约 0」**必须放行**：0 的含义是「合同已建出来、但还没有任何签署动作」，
+ * 而发起签署本身就是这个合同的第一笔签署动作，由签署流程把它推成「签约中 1」。
+ * 早先这里只认「签约中 1」，把唯一的发起入口（本函数为真的那个「开始签署」按钮）
+ * 自己藏掉了——合同停在 0 就永远推不到 1，担保模式的定金门禁又要求「已签约 2」，
+ * 主线在合同这一环整段断死。后端 `contract::domain::status::can_start_signing`
+ * 早就按同一口径放行 0，前端这一处是漏改。
+ *
+ * 终态（过期 3 / 拒签 4 / 作废 6 / 撤销 7）一律不可签。
  */
 export function canSignContract(
   contract: ContractDetail | null,
   currentParty: ContractParty | null,
 ): boolean {
   if (!contract || !currentParty) return false
-  if (contract.status !== CONTRACT_STATUS.signing) return false
+  if (
+    contract.status !== CONTRACT_STATUS.awaiting &&
+    contract.status !== CONTRACT_STATUS.signing
+  ) {
+    return false
+  }
   return currentParty === 'party_a' ? !contract.party_a_signed_at : !contract.party_b_signed_at
 }
 

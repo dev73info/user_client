@@ -34,11 +34,21 @@ describe('personal signing state', () => {
     expect(getSignatureState(signed, 'alice')).toBe('waiting')
     expect(getSignatureState(signed, 'bob')).toBe('waiting')
   })
+  it('offers signing while the contract still sits at "awaiting 0"', () => {
+    // 0 的含义是「合同已建出来、还没有任何签署动作」，发起签署正是那第一笔动作。
+    // 早先这里判成不可签，而唯一的发起入口又挂在这个判定上，合同就永远停在 0。
+    const awaiting = { ...contract, status: CONTRACT_STATUS.awaiting }
+    expect(getSignatureState(awaiting, 'alice')).toBe('pending')
+    expect(getSignatureState(awaiting, 'bob')).toBe('pending')
+    // 已经签过的一方在 0 状态下仍是「等待他方」，与「签约中 1」同一口径。
+    expect(getSignatureState({ ...awaiting, party_a_signed_at: '2026-09-09' }, 'alice')).toBe(
+      'waiting',
+    )
+  })
   it('never offers signing for terminal or unsupported states', () => {
     expect(getSignatureState({ ...contract, status: CONTRACT_STATUS.signed }, 'alice')).toBe('signed')
     expect(getSignatureState({ ...contract, status: CONTRACT_STATUS.voided }, 'alice')).toBe('void')
-    // 0 未发起 / 3 过期 / 4 拒签 / 7 撤销 / 未知码都不可签。
-    expect(getSignatureState({ ...contract, status: CONTRACT_STATUS.awaiting }, 'alice')).toBe('unavailable')
+    // 3 过期 / 4 拒签 / 7 撤销 / 未知码都不可签。
     expect(getSignatureState({ ...contract, status: CONTRACT_STATUS.expired }, 'alice')).toBe('unavailable')
     expect(getSignatureState({ ...contract, status: CONTRACT_STATUS.rejected }, 'alice')).toBe('unavailable')
     expect(getSignatureState({ ...contract, status: CONTRACT_STATUS.revoked }, 'alice')).toBe('unavailable')
