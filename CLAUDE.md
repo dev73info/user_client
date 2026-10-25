@@ -27,8 +27,9 @@
    **不要从过期基线开工**：已 squash 合入的改动会以另一个 SHA 再带一遍，PR 会平白多出别人的文件。
 6. 分支从最新 `develop` 切（`hotfix/` 从 `master` 切），命名 `feat/<需求号>-<简称>` / `fix/…` /
    `chore/…` / `docs/…`；跨仓库需求在各仓用**同名**分支，一条分支只做一件事。
-7. 做完的走向固定：分支 → 门禁绿 → PR(**base=`develop`**) → 独立审阅 PASS → squash 合并；
-   **AI 不给自己写 PASS，也不自己合并**（命令与检查单见 `.claude/skills/branch-and-merge/SKILL.md`）。
+7. 做完的走向固定：分支 → 门禁绿 → PR(**base=`develop`**) → squash 合并；
+   **日常 PR 不要求独立审阅**，独立审阅只在打 tag 发版前做（命令与检查单见
+   `.claude/skills/branch-and-merge/SKILL.md`）。执行代理永远不给自己写 `PASS`。
 
 ## 二、提交
 
@@ -45,8 +46,9 @@
 - base 写 `develop`；`hotfix/` 写 `master`。
 - 标题 `[需求号] 类型(范围): 中文简述`；正文按 `../docs/开发流程/PR模板.md` 五段填，
   写到仓库外的临时文件再 `--body-file` 传。
-- 门禁没跑绿前开 Draft；绿了、描述填全再请求审阅。
-- `develop` / `master` 只能经 PR 合入：不直推、不 `--force`，作者不自审自合，无审阅结论不合并。
+- 门禁没跑绿前开 Draft；绿了、描述填全即可合并（日常 PR 不要求独立审阅，审阅在打 tag 前做）。
+- `develop` / `master` 只能经 PR 合入：不直推、不 `--force`。合并看门禁，**审阅看发版**：
+  日常 PR 门禁绿即可合；打 tag 前必须有一轮独立审阅并给出 `PASS`。
 - 推稳定线、改别人的分支、改 PR 的目标分支之前**先问用户**。
 
 ## 四、本仓门禁
