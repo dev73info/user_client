@@ -68,7 +68,7 @@ const rechargeDepositDialog = ref<InstanceType<typeof DevDepositRechargeDialog> 
 const withdrawDepositDialog = ref<InstanceType<typeof DevWalletDepositWithdrawDialog> | null>(null)
 
 function goRechargeDeposit() {
-  rechargeDepositDialog.value?.show()
+  void rechargeDepositDialog.value?.open()
 }
 
 onMounted(async () => {
