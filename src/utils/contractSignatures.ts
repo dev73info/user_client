@@ -23,10 +23,7 @@ export const signatureStateLabels: Record<SignatureState, string> = {
 export function getSignatureState(contract: MyContractSummary, username: string): SignatureState {
   if (contract.status === CONTRACT_STATUS.voided) return 'void'
   if (contract.status === CONTRACT_STATUS.signed) return 'signed'
-  if (
-    contract.status !== CONTRACT_STATUS.awaiting &&
-    contract.status !== CONTRACT_STATUS.signing
-  ) {
+  if (contract.status !== CONTRACT_STATUS.awaiting && contract.status !== CONTRACT_STATUS.signing) {
     return 'unavailable'
   }
   if (!username) return 'unavailable'
@@ -56,10 +53,7 @@ export type WaitingMessageContract = Pick<
  * 这时说「等待某方完成签署」会让人误以为对方还没签（2026-10-04 线上就出现过这个误解）。
  * 不属于任何一个签约方（如旁观者）不提示。
  */
-export function contractWaitingMessage(
-  contract: WaitingMessageContract,
-  username: string,
-): string {
+export function contractWaitingMessage(contract: WaitingMessageContract, username: string): string {
   if (contract.status !== CONTRACT_STATUS.signing) return ''
   const isPartyA = contract.party_a_username === username
   const isPartyB = contract.party_b_username === username

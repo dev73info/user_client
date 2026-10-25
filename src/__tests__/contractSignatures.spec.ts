@@ -4,9 +4,18 @@ import { CONTRACT_STATUS } from '@/shared/contracts'
 import { getSignatureState, contractWaitingMessage } from '@/utils/contractSignatures'
 
 const contract: MyContractSummary = {
-  id: 1, contract_no: 'HT-001', title: 'Service contract', template_name: 'Service',
-  status: CONTRACT_STATUS.signing, party_a_name: 'Alice', party_a_username: 'alice', party_a_signed_at: null,
-  party_b_name: 'Bob', party_b_username: 'bob', party_b_signed_at: null, created_at: '2026-09-09 10:00:00',
+  id: 1,
+  contract_no: 'HT-001',
+  title: 'Service contract',
+  template_name: 'Service',
+  status: CONTRACT_STATUS.signing,
+  party_a_name: 'Alice',
+  party_a_username: 'alice',
+  party_a_signed_at: null,
+  party_b_name: 'Bob',
+  party_b_username: 'bob',
+  party_b_signed_at: null,
+  created_at: '2026-09-09 10:00:00',
 }
 
 /** 需求开发合同（带 requirement_id）：甲乙双方各自独立签署，不设先后。 */
@@ -46,12 +55,20 @@ describe('personal signing state', () => {
     )
   })
   it('never offers signing for terminal or unsupported states', () => {
-    expect(getSignatureState({ ...contract, status: CONTRACT_STATUS.signed }, 'alice')).toBe('signed')
+    expect(getSignatureState({ ...contract, status: CONTRACT_STATUS.signed }, 'alice')).toBe(
+      'signed',
+    )
     expect(getSignatureState({ ...contract, status: CONTRACT_STATUS.voided }, 'alice')).toBe('void')
     // 3 过期 / 4 拒签 / 7 撤销 / 未知码都不可签。
-    expect(getSignatureState({ ...contract, status: CONTRACT_STATUS.expired }, 'alice')).toBe('unavailable')
-    expect(getSignatureState({ ...contract, status: CONTRACT_STATUS.rejected }, 'alice')).toBe('unavailable')
-    expect(getSignatureState({ ...contract, status: CONTRACT_STATUS.revoked }, 'alice')).toBe('unavailable')
+    expect(getSignatureState({ ...contract, status: CONTRACT_STATUS.expired }, 'alice')).toBe(
+      'unavailable',
+    )
+    expect(getSignatureState({ ...contract, status: CONTRACT_STATUS.rejected }, 'alice')).toBe(
+      'unavailable',
+    )
+    expect(getSignatureState({ ...contract, status: CONTRACT_STATUS.revoked }, 'alice')).toBe(
+      'unavailable',
+    )
     expect(getSignatureState({ ...contract, status: 99 }, 'alice')).toBe('unavailable')
   })
   it('does not offer signing to outsiders or an empty account', () => {
@@ -83,7 +100,9 @@ describe('waiting message', () => {
     expect(contractWaitingMessage(bothSigned, 'bob')).toBe('正在同步签署状态')
   })
   it('stays silent for terminal states and for outsiders', () => {
-    expect(contractWaitingMessage({ ...contract, status: CONTRACT_STATUS.signed }, 'alice')).toBe('')
+    expect(contractWaitingMessage({ ...contract, status: CONTRACT_STATUS.signed }, 'alice')).toBe(
+      '',
+    )
     expect(contractWaitingMessage({ ...contract, status: CONTRACT_STATUS.voided }, 'bob')).toBe('')
     expect(contractWaitingMessage(contract, 'other')).toBe('')
     expect(contractWaitingMessage(contract, '')).toBe('')

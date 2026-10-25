@@ -110,10 +110,7 @@ export function canSignContract(
   currentParty: ContractParty | null,
 ): boolean {
   if (!contract || !currentParty) return false
-  if (
-    contract.status !== CONTRACT_STATUS.awaiting &&
-    contract.status !== CONTRACT_STATUS.signing
-  ) {
+  if (contract.status !== CONTRACT_STATUS.awaiting && contract.status !== CONTRACT_STATUS.signing) {
     return false
   }
   return currentParty === 'party_a' ? !contract.party_a_signed_at : !contract.party_b_signed_at

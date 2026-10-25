@@ -31,12 +31,8 @@ const contract: ContractDetail = {
 
 describe('canSignContract', () => {
   it('合同停在「等待签约 0」时也能发起签署', () => {
-    expect(canSignContract({ ...contract, status: CONTRACT_STATUS.awaiting }, 'party_b')).toBe(
-      true,
-    )
-    expect(canSignContract({ ...contract, status: CONTRACT_STATUS.awaiting }, 'party_a')).toBe(
-      true,
-    )
+    expect(canSignContract({ ...contract, status: CONTRACT_STATUS.awaiting }, 'party_b')).toBe(true)
+    expect(canSignContract({ ...contract, status: CONTRACT_STATUS.awaiting }, 'party_a')).toBe(true)
   })
 
   it('「签约中 1」未签的一方可以签', () => {
