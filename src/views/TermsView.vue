@@ -7,8 +7,7 @@ import {
   type UserServiceAgreement,
 } from '@/api/auth'
 import { useAuthStore } from '@/stores/auth'
-import KeyTermsNotice from '@/components/legal/KeyTermsNotice.vue'
-import { legalSectionHeadings, parseLegalText } from '@/components/legal/legalText'
+import { parseLegalText } from '@/components/legal/legalText'
 
 const router = useRouter()
 const auth = useAuthStore()
@@ -19,7 +18,6 @@ const staticTitle = '用户服务协议'
 
 /** 正文区块：统一按纯文本解析，章节标题带 id（重要条款提示要跳到这些位置）。 */
 const blocks = computed(() => parseLegalText(agreement.value?.content ?? ''))
-const headings = computed(() => legalSectionHeadings(blocks.value))
 
 function detectClientPlatform(): string {
   if (typeof navigator === 'undefined') return 'web'
@@ -85,14 +83,6 @@ onMounted(loadAgreement)
       <article class="content-block">
         <template v-if="agreement">
           <p><strong>生效日期：</strong>{{ formatEffectiveDate(agreement.effective_at) }}</p>
-
-          <!-- 提示组件直接用本页已取到的版本 / 生效日期，不再重复取一遍正文。 -->
-          <KeyTermsNotice
-            code="user_service_agreement"
-            :headings="headings"
-            :version="String(agreement.version)"
-            :effective-at="agreement.effective_at"
-          />
 
           <template v-for="(block, index) in blocks" :key="index">
             <h3 v-if="block.type === 'heading'" :id="block.id">{{ block.text }}</h3>

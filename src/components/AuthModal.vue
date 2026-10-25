@@ -2,18 +2,11 @@
 import { computed, ref, watch, type PropType } from 'vue'
 import { isQqBrowser, isWechatBrowser } from '@/shared/auth/browser'
 import { isTurnstileEnabled, type TurnstileSurfaceAction } from '@/shared/turnstile'
-import { detectClientPlatform, recordAgreementAcceptance } from '@/api/auth'
-import { useAuthStore } from '@/stores/auth'
 import AccountForm from '@/components/authModal/AccountForm.vue'
 import AuthModalHead from '@/components/authModal/AuthModalHead.vue'
 import InAppLoginPanel from '@/components/authModal/InAppLoginPanel.vue'
 import OtherLoginMethods from '@/components/authModal/OtherLoginMethods.vue'
 import type { AuthModalMode, InAppOauthProvider } from '@/components/authModal/types'
-import {
-  clearLegalNoticeConfirmedAt,
-  readLegalNoticeConfirmedAt,
-  rememberLegalNoticeConfirmedAt,
-} from '@/components/legal/legalNotice'
 
 type AuthMode = AuthModalMode
 /** 端内登录面板：一键授权 / 账号密码，互斥展示 */
@@ -172,76 +165,13 @@ const showOtherLoginMethods = computed(
   () => showGithubLogin.value || showWechatLogin.value || showQqLogin.value || showGiteeLogin.value,
 )
 
-// ── 重要条款提示与二次确认（R043 任务-03）─────────────────────────────────
-// 《民法典》第 496 条要求格式条款提供方对免责、责任限制等条款履行提示说明义务。
-// 现在只有一个「我已阅读并同意」的勾选框，重点条款没有任何单独提示，
-// 所以这里加一个**独立**的"已阅读并理解重要条款提示"勾选框，两个都勾上才能提交。
-const auth = useAuthStore()
-/** "已阅读并理解重要条款提示"的勾选状态；每次打开弹窗都要重新勾。 */
-const noticeAccepted = ref(false)
-/** 提示组件读到的协议版本号（留痕用；读不到时后端会回落到模板当前版本）。 */
-const noticeVersion = ref('')
-
-/** 勾选状态不跨会话：打开弹窗即重置，避免"上次勾过就一直算同意"。 */
-watch(
-  () => props.visible,
-  (visible) => {
-    if (visible) {
-      noticeAccepted.value = false
-      return
-    }
-    // 弹窗关闭：登录成功的话补记一次协议同意留痕
-    // （留痕接口要登录态，只能登录成功后再补）。
-    void recordLoginAcceptance()
-  },
-)
-
-/** 记录"已阅读重要条款提示"的时间到本次会话。 */
-function updateNoticeAccepted(value: boolean) {
-  noticeAccepted.value = value
-  if (noticeAccepted.value) {
-    rememberLegalNoticeConfirmedAt(new Date().toISOString())
-    return
-  }
-  clearLegalNoticeConfirmedAt()
-}
-
-function onNoticeLoaded(payload: { version: string; effective_at: string }) {
-  noticeVersion.value = payload.version
-}
-
-/** 登录 / 注册成功后补记一次协议同意留痕。 */
-async function recordLoginAcceptance() {
-  const confirmedAt = readLegalNoticeConfirmedAt()
-  if (!confirmedAt) return
-  if (!auth.token || !auth.isAuthed) return
-  // ⚠️ 已知缺口：第三方快捷登录（GitHub / 微信 / QQ / Gitee）与端内一键登录是**整页跳转**，
-  // 弹窗在跳转前就消失了，回来时用户已登录但这里没有再触发一次。
-  // 这条路径的提示确认时间仍留在本次会话里（sessionStorage 跨跳转保留），
-  // 用户之后打开协议页或签署页时会带上提示信息补记；真正的修法要在 OAuth 回跳处补一刀
-  // （router / HomeView），不在本次任务允许改动的文件范围内。
-  try {
-    await recordAgreementAcceptance(
-      auth.token,
-      'user_service_agreement',
-      noticeVersion.value,
-      detectClientPlatform(),
-      'auth',
-    )
-  } catch {
-    // 留痕失败不阻断登录流程：用户已经登录成功，留痕是补记。
-  } finally {
-    clearLegalNoticeConfirmedAt()
-  }
-}
-
 function requiresAgreement(): boolean {
   return props.authMode === 'login' || props.authMode === 'register'
 }
 
-/** 两个勾选都满足才允许提交（协议同意 + 已读重要条款提示）。 */
+/** 勾选同意协议才允许提交。 */
 function agreementSatisfied(): boolean {
-  return !requiresAgreement() || (props.acceptTerms && noticeAccepted.value)
+  return !requiresAgreement() || props.acceptTerms
 }
 
 function canSubmitAuth(): boolean {
@@ -274,10 +204,7 @@ function canSubmitAuth(): boolean {
         :wechat-login-loading="wechatLoginLoading"
         :qq-login-loading="qqLoginLoading"
         :accept-terms="acceptTerms"
-        :notice-accepted="noticeAccepted"
         @update:accept-terms="emit('update:acceptTerms', $event)"
-        @update:notice-accepted="updateNoticeAccepted"
-        @notice-loaded="onNoticeLoaded"
         @login-with-wechat="emit('loginWithWechat')"
         @login-with-qq="emit('loginWithQq')"
       />
@@ -293,7 +220,6 @@ function canSubmitAuth(): boolean {
         :auth-invite-code="authInviteCode"
         :login-requires-two-factor="loginRequiresTwoFactor"
         :accept-terms="acceptTerms"
-        :notice-accepted="noticeAccepted"
         :send-code-loading="sendCodeLoading"
         :send-code-countdown="sendCodeCountdown"
         :auth-loading="authLoading"
@@ -311,9 +237,7 @@ function canSubmitAuth(): boolean {
         @update:auth-email-code="emit('update:authEmailCode', $event)"
         @update:auth-invite-code="emit('update:authInviteCode', $event)"
         @update:accept-terms="emit('update:acceptTerms', $event)"
-        @update:notice-accepted="updateNoticeAccepted"
         @update:turnstile-token="emit('update:turnstileToken', $event)"
-        @notice-loaded="onNoticeLoaded"
       />
 
       <OtherLoginMethods
@@ -328,7 +252,6 @@ function canSubmitAuth(): boolean {
         :qq-login-loading="qqLoginLoading"
         :gitee-login-loading="giteeLoginLoading"
         :accept-terms="acceptTerms"
-        :notice-accepted="noticeAccepted"
         :prefer-in-app-oauth="preferInAppOauth"
         @login-with-github="emit('loginWithGithub')"
         @login-with-wechat="emit('loginWithWechat')"

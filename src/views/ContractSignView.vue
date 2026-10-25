@@ -3,7 +3,6 @@ import { TIcon, ArrowLeft, Refresh } from 'ui_73info'
 import ContractAttachmentPanel from '@/components/ContractAttachmentPanel.vue'
 import ContractArchiveBanner from '@/components/contract/ContractArchiveBanner.vue'
 import ContractMetaCard from '@/components/contract/ContractMetaCard.vue'
-import ContractNoticeConfirm from '@/components/contract/ContractNoticeConfirm.vue'
 import ContractSignPanel from '@/components/contract/ContractSignPanel.vue'
 import ContractSignatureFacts from '@/components/contract/ContractSignatureFacts.vue'
 import ContractSigningHistory from '@/components/contract/ContractSigningHistory.vue'
@@ -31,9 +30,6 @@ const {
   error,
   successMsg,
   noticeSigner,
-  noticeAccepted,
-  platformAgreementCode,
-  onNoticeLoaded,
   requirementArchived,
   archiveBanner,
   archiveSignBlockedMessage,
@@ -62,7 +58,6 @@ const {
   isWorkbenchSignature,
   isDeveloperAgreement,
   isApiUsageAgreement,
-  isPlatformAgreement,
 } = useContractSign({ openPage })
 </script>
 
@@ -135,14 +130,6 @@ const {
           :content="contract.content"
           :has-custom-attachment="hasCustomAttachment"
           :show-local-document="showLocalDocument"
-        />
-
-        <!-- 平台协议签署前的重要条款提示与二次确认（R043 任务-03）；需求合同不展示。 -->
-        <ContractNoticeConfirm
-          v-model:accepted="noticeAccepted"
-          :show="isPlatformAgreement && canSignContract"
-          :code="platformAgreementCode"
-          @loaded="onNoticeLoaded"
         />
 
         <ContractSignPanel

@@ -35,11 +35,6 @@ async function mountAuthModal(overrides: Record<string, unknown> = {}) {
 }
 
 /** 勾选"我已阅读并理解上述重要条款提示"（R043 任务-03 的二次确认）。 */
-async function checkNoticeAccepted(wrapper: Awaited<ReturnType<typeof mountAuthModal>>) {
-  const checkbox = wrapper.find('[data-testid="legal-notice-check"]')
-  await checkbox.setValue(true)
-}
-
 describe('AuthModal 端内一键登录布局', () => {
   afterEach(() => {
     vi.restoreAllMocks()
@@ -110,9 +105,9 @@ describe('AuthModal 端内一键登录布局', () => {
     wrapper.unmount()
   })
 
-  it('微信内只勾协议、未确认重要条款提示时一键登录按钮仍禁用', async () => {
+  it('微信内未勾协议时一键登录按钮禁用', async () => {
     vi.spyOn(window.navigator, 'userAgent', 'get').mockReturnValue('MicroMessenger/8.0.40')
-    const wrapper = await mountAuthModal({ acceptTerms: true })
+    const wrapper = await mountAuthModal({ acceptTerms: false })
     const btn = wrapper.find('.auth-inapp-login__btn')
     expect(btn.attributes('disabled')).toBeDefined()
     wrapper.unmount()
@@ -121,7 +116,6 @@ describe('AuthModal 端内一键登录布局', () => {
   it('微信内勾选协议后可触发 loginWithWechat', async () => {
     vi.spyOn(window.navigator, 'userAgent', 'get').mockReturnValue('MicroMessenger/8.0.40')
     const wrapper = await mountAuthModal({ acceptTerms: true })
-    await checkNoticeAccepted(wrapper)
     await wrapper.find('.auth-inapp-login__btn').trigger('click')
     expect(wrapper.emitted('loginWithWechat')).toHaveLength(1)
     wrapper.unmount()

@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import KeyTermsNotice from '@/components/legal/KeyTermsNotice.vue'
 
 import type { InAppOauthProvider } from './types'
 
@@ -10,13 +9,10 @@ const props = defineProps({
   wechatLoginLoading: { type: Boolean, default: false },
   qqLoginLoading: { type: Boolean, default: false },
   acceptTerms: { type: Boolean, default: false },
-  noticeAccepted: { type: Boolean, default: false },
 })
 
 const emit = defineEmits<{
   (e: 'update:acceptTerms', value: boolean): void
-  (e: 'update:noticeAccepted', value: boolean): void
-  (e: 'notice-loaded', payload: { version: string; effective_at: string }): void
   (e: 'loginWithWechat'): void
   (e: 'loginWithQq'): void
 }>()
@@ -27,23 +23,14 @@ const inAppOauthProvider = computed(() => props.provider)
 const wechatLoginLoading = computed(() => props.wechatLoginLoading)
 const qqLoginLoading = computed(() => props.qqLoginLoading)
 const acceptTerms = computed(() => props.acceptTerms)
-const noticeAccepted = computed(() => props.noticeAccepted)
 
-/** 两个勾选都满足才允许一键登录（协议同意 + 已读重要条款提示）。 */
+/** 勾选同意协议才允许一键登录。 */
 function agreementSatisfied(): boolean {
-  return props.acceptTerms && props.noticeAccepted
+  return props.acceptTerms
 }
 
 function updateAcceptTerms(event: Event) {
   emit('update:acceptTerms', (event.target as HTMLInputElement).checked)
-}
-
-function updateNoticeAccepted(event: Event) {
-  emit('update:noticeAccepted', (event.target as HTMLInputElement).checked)
-}
-
-function onNoticeLoaded(payload: { version: string; effective_at: string }) {
-  emit('notice-loaded', payload)
 }
 
 function emitInAppOauth() {
@@ -99,21 +86,6 @@ function emitInAppOauth() {
           与
           <router-link to="/payment-refund">支付说明</router-link>
         </span>
-      </label>
-    </div>
-
-    <KeyTermsNotice code="user_service_agreement" fallback-href="/terms" @loaded="onNoticeLoaded" />
-
-    <div class="auth-agreement-row auth-agreement-row--compact">
-      <label class="checkbox-label">
-        <input
-          class="checkbox-input"
-          type="checkbox"
-          data-testid="legal-notice-check"
-          :checked="noticeAccepted"
-          @change="updateNoticeAccepted"
-        />
-        <span class="auth-agreement-row__text">我已阅读并理解上述重要条款提示</span>
       </label>
     </div>
   </div>
