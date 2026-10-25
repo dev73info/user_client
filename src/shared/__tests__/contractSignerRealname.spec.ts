@@ -60,6 +60,16 @@ describe('signerRealnameFrom', () => {
     ).toBeNull()
   })
 
+  it('企业主体用经办人姓名与证件号，不会因为缺个人证件号被判成未实名', () => {
+    expect(
+      signerRealnameFrom({
+        status: 'approved',
+        operator_name: '经办人',
+        operator_id_card_no_masked: '******19880101****',
+      }),
+    ).toEqual({ realName: '经办人', idCardNoMasked: '******19880101****' })
+  })
+
   it('缺姓名或证件号时为 null，没有实名记录时也是 null', () => {
     expect(signerRealnameFrom({ status: 'approved', real_name: '张三' })).toBeNull()
     expect(

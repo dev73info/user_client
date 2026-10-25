@@ -123,13 +123,28 @@ export function signerRealnameFrom(
     real_name?: string | null
     real_name_masked?: string | null
     id_card_no_masked?: string | null
+    operator_name?: string | null
+    operator_id_card_no_masked?: string | null
+    company_name?: string | null
   } | null,
 ): SignerRealname | null {
   if (!verification || verification.status !== 'approved') {
     return null
   }
-  const realName = (verification.real_name ?? verification.real_name_masked ?? '').trim()
-  const idCardNoMasked = (verification.id_card_no_masked ?? '').trim()
+  // 企业 / 个体户主体签的是经办人：姓名的取值顺序与后端 `RealnameParties` 适配层一致
+  // （real_name → operator_name → company_name），证件在 `operator_id_card_no_masked`。
+  const realName = (
+    verification.real_name ??
+    verification.real_name_masked ??
+    verification.operator_name ??
+    verification.company_name ??
+    ''
+  ).trim()
+  const idCardNoMasked = (
+    verification.id_card_no_masked ??
+    verification.operator_id_card_no_masked ??
+    ''
+  ).trim()
   if (!realName || !idCardNoMasked) {
     return null
   }
