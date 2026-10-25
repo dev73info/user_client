@@ -75,7 +75,8 @@ export function useAsignAccount() {
     try {
       const res = await sendVerifyCode(auth.token, { mobile: asign.mobileByCode.mobile.trim() })
       if (res.success) {
-        asign.mobileByCode.ctoken = res.data?.codeToken ?? ''
+        // data 是 codeToken 字符串本身（见 api/asignAccount.ts 的说明）。
+        asign.mobileByCode.ctoken = res.data ?? ''
         TMessage.success('验证码已发送，请查收短信')
       }
     } catch (err) {

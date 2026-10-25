@@ -42,8 +42,12 @@ function post<T>(token: string, path: string, payload: unknown, fallback: string
   )
 }
 
+/**
+ * 发验证码。响应 `data` 是 **`codeToken` 字符串本身**（1.x 就是这个形状），
+ * 不是 `{ codeToken }` 对象。
+ */
 export async function sendVerifyCode(token: string, payload: SendVerifyCodePayload) {
-  return post<{ codeToken?: string }>(
+  return post<string>(
     token,
     '/realname/asign-account/send-verify-code',
     payload,
