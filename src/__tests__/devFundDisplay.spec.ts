@@ -30,6 +30,7 @@ const withdrawal = {
   account_name: '张三',
   account_no_tail: '1234',
   creator: '张三',
+  source: 'income' as const,
   status: 'pending_review',
   status_label: '待审核',
   note: '',

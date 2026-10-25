@@ -3,7 +3,7 @@ import type { ResourcePayChannelUi } from '@/shared/resourceSale'
 
 type Schemas = components['schemas']
 
-export type ResourcePurchaseOrder = Schemas['OrderResponse']
+export type ResourcePurchaseOrder = Schemas['ResourcePurchaseOrderResponse']
 
 export type CreateResourcePurchasePayload = Omit<
   Schemas['CreatePurchaseRequest'],

@@ -97,6 +97,7 @@ export const devPaymentRoutes: MockRoute[] = [
       const record = {
         withdrawal_id: `WD-${Date.now()}`,
         creator: DEV_USERNAME,
+        source: 'income' as const,
         amount_fen: amountFen,
         account_name: '开发者',
         account_no_tail: '3445',

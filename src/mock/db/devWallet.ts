@@ -31,6 +31,7 @@ function buildWithdrawal(
   return {
     withdrawal_id: `WD-DEMO-${id}`,
     creator: DEV_USERNAME,
+    source: 'income' as const,
     amount_fen: Math.round(amount * 100),
     account_name: DEV_NICKNAME,
     account_no_tail: accountNo.slice(-4),
