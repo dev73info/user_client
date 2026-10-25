@@ -7,11 +7,9 @@
   margin-bottom: 9px;
 }
 
-/* 主余额卡片排一行：原先这里是「接单收入」与「保证金余额」两张卡并排，
-   预付保证金那套端点契约里没有、整块已删，现在只剩接单收入一张，不再留半格空位。 */
 .wallet-hero {
   display: grid;
-  grid-template-columns: minmax(0, 1fr);
+  grid-template-columns: 1fr 1fr;
   gap: 16px;
 }
 
@@ -144,6 +142,49 @@
   width: 100%;
   font-size: 14px;
   color: var(--dev-ink-soft);
+}
+
+.dev-recharge-dialog__form {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 24px;
+}
+
+.dev-recharge-dialog__channels {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  width: 100%;
+}
+
+.dev-recharge-dialog__channel-icon {
+  display: block;
+  width: 22px;
+  height: 22px;
+  flex-shrink: 0;
+  object-fit: contain;
+}
+
+.dev-recharge-dialog__notes {
+  display: grid;
+  gap: 8px;
+  width: 100%;
+  margin-top: 14px;
+  padding: 0;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.dev-recharge-dialog__notes .dev-wallet-withdraw__note {
+  margin: 0;
+  color: var(--dev-muted);
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.dev-recharge-dialog__notes strong {
+  color: var(--dev-ink-soft);
+  font-weight: 800;
 }
 
 /* R047 断点收敛：原档位 720px → 640px */
