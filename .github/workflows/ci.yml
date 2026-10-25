@@ -12,15 +12,22 @@ name: ci
 #
 # 三个仓都是公开仓，用默认的 GITHUB_TOKEN 检出即可，不引 PAT——fork 来的 PR 也能跑。
 #
-# 分支名要跟着本仓的实际远端点：origin 上只有 `develop` 与 `master`（没有 `dev`）。
-# 写成 `[dev, master]` 时，开向 `develop` 的 PR **一条都不会触发**——
-# 门禁看着齐全，实际全仓没有一道被跑过。改分支名先 `git ls-remote --heads origin` 核一遍。
+# 本仓 origin 只有 `master`（没有 `develop`），PR 与 push 门禁都只监听 `master`。
+# 改分支名先 `git ls-remote --heads origin` 核一遍。
 on:
-  # 只在**打 tag** 时自动跑：日常提交与 PR 不再消耗 Actions 额度。
-  # 需要临时全量校验时，到 Actions 页面手动触发（workflow_dispatch）。
+  # tag 发布由 deploy.yml 通过 workflow_call 调用，避免这里再监听 tag 造成重复门禁。
+  pull_request:
+    branches: [master]
   push:
-    tags: ["v*"]
+    branches: [master]
   workflow_dispatch:
+  workflow_call:
+    inputs:
+      ref:
+        description: '要检出的 ref（留空则使用触发事件的 ref）'
+        type: string
+        required: false
+        default: ''
 
 concurrency:
   group: ci-${{ github.ref }}
@@ -37,6 +44,7 @@ jobs:
       - name: 取本仓
         uses: actions/checkout@v4
         with:
+          ref: ${{ inputs.ref || github.ref }}
           fetch-depth: 0
           path: user_client
 
@@ -147,7 +155,17 @@ jobs:
       - name: Format（仅改动文件）
         run: |
           BASE="${{ github.event.pull_request.base.sha || github.event.before }}"
-          CHANGED=$(git diff --name-only --diff-filter=ACMR "$BASE" HEAD -- 'src/*.ts' 'src/**/*.ts' 'src/**/*.vue' 'src/*.css' 'src/**/*.css' 'scripts/*.mjs' 'scripts/**/*.mjs' 'styles/*.css' || true)
+          if [ -z "$BASE" ] || [ "$BASE" = "0000000000000000000000000000000000000000" ]; then
+            if git rev-parse --verify HEAD^ >/dev/null 2>&1; then
+              BASE="HEAD^"
+            else
+              BASE=$(git hash-object -t tree /dev/null)
+            fi
+          fi
+          if ! CHANGED=$(git diff --name-only --diff-filter=ACMR "$BASE" HEAD -- 'src/*.ts' 'src/**/*.ts' 'src/**/*.vue' 'src/*.css' 'src/**/*.css' 'scripts/*.mjs' 'scripts/**/*.mjs' 'styles/*.css'); then
+            echo "✗ 无法计算改动文件列表（BASE=$BASE）。"
+            exit 1
+          fi
           if [ -n "$CHANGED" ]; then
             echo "$CHANGED" | xargs pnpm exec prettier --check
           else
