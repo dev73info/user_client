@@ -16,7 +16,6 @@ import { contractStatusTone } from '@/shared/contractSign'
 import { ARCHIVED_WRITE_BLOCKED_MESSAGE } from '@/shared/requirementArchive'
 import { useAuthStore } from '@/stores/auth'
 
-import { useContractNoticeConfirm } from './useContractNoticeConfirm'
 import { useContractSignDisplay } from './useContractSignDisplay'
 import { useContractSignNavigation } from './useContractSignNavigation'
 import { useContractSignPolling } from './useContractSignPolling'
@@ -27,7 +26,7 @@ import { useContractSignPolling } from './useContractSignPolling'
  * 页面有三种入口（工作台签署详情 / 需求合同 / 平台内置协议），数据来源各不相同，
  * 但签署闸门、附件放行、到期归档、爱签轮询是同一套。这里只做编排：展示口径在
  * `useContractSignDisplay`，路由身份在 `useContractSignNavigation`，轮询在
- * `useContractSignPolling`，平台协议的重要条款确认在 `useContractNoticeConfirm`，
+ * `useContractSignPolling`，
  * 纯展示换算在 `shared/contractSign`。**整页跳转留在视图**：去爱签签署 / 看爱签预览
  * 都是 `window.location` 级跳转，由视图注入 `openPage`，composable 只把 URL 交出去。
  */
@@ -62,8 +61,6 @@ export function useContractSign(options: UseContractSignOptions) {
   // 借需求详情（`requireId`）读一次；读取即触发后端收口，返回的就是最新状态。
   const requirementArchive = ref<RequirementItem | null>(null)
 
-  const platformNotice = useContractNoticeConfirm(nav)
-
   const {
     currentParty,
     currentSigner,
@@ -91,7 +88,6 @@ export function useContractSign(options: UseContractSignOptions) {
     requirementArchive,
     signing,
     localDocumentFallback,
-    noticeAccepted: platformNotice.noticeAccepted,
     username: () => auth.username,
     requirementId: nav.requirementId,
     isWorkbenchSignature: nav.isWorkbenchSignature,
@@ -161,9 +157,7 @@ export function useContractSign(options: UseContractSignOptions) {
   /** 发起签署前的三道本地闸门（后端同样会拦，这里先给出可操作的中文说明）。 */
   function signBlockedReason(): string {
     if (requirementArchived.value) return ARCHIVED_WRITE_BLOCKED_MESSAGE
-    if (!signerIdentityReady.value) {
-      return '请先完成实名认证，签署身份必须包含真实姓名和身份证号'
-    }
+    if (!signerIdentityReady.value) return '请先完成实名认证，签署身份必须包含真实姓名和身份证号'
     if (!attachmentApproved.value) {
       return attachmentGateMessage.value || '自定义合同附件待平台审核通过后才能发起签署'
     }
@@ -173,7 +167,7 @@ export function useContractSign(options: UseContractSignOptions) {
   async function handleSign() {
     if (!contract.value || signing.value) return
     // R043 任务-03：平台协议要先确认重要条款提示（放行时顺手留痕一次）。
-    const blocked = signBlockedReason() || (await platformNotice.confirmBeforeSign())
+    const blocked = signBlockedReason()
     if (blocked) {
       error.value = blocked
       return
@@ -182,6 +176,8 @@ export function useContractSign(options: UseContractSignOptions) {
     error.value = ''
     try {
       const result = await initiateAsignSign(auth.token, contract.value.id, noticeSigner.value)
+      // 成功后清掉上一次的失败文案（否则重试成功也还挂着旧错）。
+      error.value = ''
       // 无论跳爱签还是短信通知后轮询，签完都要离开「签署页原地」；进爱签前先打标，
       // 整页回跳后 sessionStorage 还在，同步到已签约即可继续走。
       if (!nav.isPlatformAgreement.value) {
@@ -258,9 +254,6 @@ export function useContractSign(options: UseContractSignOptions) {
     noticeSigner,
     localDocumentFallback,
     requirementArchive,
-    noticeAccepted: platformNotice.noticeAccepted,
-    platformAgreementCode: platformNotice.platformAgreementCode,
-    onNoticeLoaded: platformNotice.onNoticeLoaded,
     currentParty,
     currentSigner,
     signerIdentityReady,

@@ -2,7 +2,6 @@
 import { computed, ref } from 'vue'
 import TurnstileWidget from '@/components/TurnstileWidget.vue'
 import type { TurnstileSurfaceAction } from '@/shared/turnstile'
-import KeyTermsNotice from '@/components/legal/KeyTermsNotice.vue'
 
 import type { AuthModalMode } from './types'
 
@@ -16,7 +15,6 @@ const props = defineProps({
   authInviteCode: { type: String, default: '' },
   loginRequiresTwoFactor: { type: Boolean, default: false },
   acceptTerms: { type: Boolean, default: false },
-  noticeAccepted: { type: Boolean, default: false },
   sendCodeLoading: { type: Boolean, default: false },
   sendCodeCountdown: { type: Number, default: 0 },
   authLoading: { type: Boolean, default: false },
@@ -37,9 +35,7 @@ const emit = defineEmits<{
   (e: 'update:authEmailCode', value: string): void
   (e: 'update:authInviteCode', value: string): void
   (e: 'update:acceptTerms', value: boolean): void
-  (e: 'update:noticeAccepted', value: boolean): void
   (e: 'update:turnstileToken', value: string): void
-  (e: 'notice-loaded', payload: { version: string; effective_at: string }): void
 }>()
 
 const authMode = computed(() => props.authMode)
@@ -50,7 +46,6 @@ const authEmailCode = computed(() => props.authEmailCode)
 const authInviteCode = computed(() => props.authInviteCode)
 const loginRequiresTwoFactor = computed(() => props.loginRequiresTwoFactor)
 const acceptTerms = computed(() => props.acceptTerms)
-const noticeAccepted = computed(() => props.noticeAccepted)
 const sendCodeLoading = computed(() => props.sendCodeLoading)
 const sendCodeCountdown = computed(() => props.sendCodeCountdown)
 const turnstileEnabled = computed(() => props.turnstileEnabled)
@@ -74,7 +69,7 @@ function requiresAgreement(): boolean {
 }
 
 function agreementSatisfied(): boolean {
-  return !requiresAgreement() || (props.acceptTerms && props.noticeAccepted)
+  return !requiresAgreement() || props.acceptTerms
 }
 
 function canSubmitAuth(): boolean {
@@ -113,14 +108,6 @@ function updateInviteCode(event: Event) {
 
 function updateAcceptTerms(event: Event) {
   emit('update:acceptTerms', (event.target as HTMLInputElement).checked)
-}
-
-function updateNoticeAccepted(event: Event) {
-  emit('update:noticeAccepted', (event.target as HTMLInputElement).checked)
-}
-
-function onNoticeLoaded(payload: { version: string; effective_at: string }) {
-  emit('notice-loaded', payload)
 }
 </script>
 
@@ -315,25 +302,6 @@ function onNoticeLoaded(payload: { version: string; effective_at: string }) {
               <router-link to="/payment-refund">《支付与退款说明》</router-link>
             </span>
           </template>
-        </label>
-      </div>
-
-      <KeyTermsNotice
-        code="user_service_agreement"
-        fallback-href="/terms"
-        @loaded="onNoticeLoaded"
-      />
-
-      <div class="auth-agreement-row">
-        <label class="checkbox-label">
-          <input
-            class="checkbox-input"
-            type="checkbox"
-            data-testid="legal-notice-check"
-            :checked="noticeAccepted"
-            @change="updateNoticeAccepted"
-          />
-          <span class="checkbox-text">我已阅读并理解上述重要条款提示</span>
         </label>
       </div>
     </template>
