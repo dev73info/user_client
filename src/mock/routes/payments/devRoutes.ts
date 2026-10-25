@@ -15,6 +15,58 @@ export const devPaymentRoutes: MockRoute[] = [
   /* ---------------------------------------------------------------- 开发者侧 */
   {
     method: 'GET',
+    path: '/payment/developer-order-deposit',
+    note: '保证金预付账户总览（契约 `PrepaidAccountStatementResponse`）',
+    handler: () => {
+      const now = nowText()
+      return jsonResponse({
+        account: {
+          username: DEV_USERNAME,
+          balance_fen: 0,
+          frozen_fen: 0,
+          refunding_fen: 0,
+          total_recharged_fen: 0,
+          total_refunded_fen: 0,
+          total_withdrawn_fen: 0,
+          created_time: now,
+          updated_time: now,
+        },
+        ledger: [],
+        pending_withdrawal_fen: 0,
+        withdrawable_fen: 0,
+      })
+    },
+  },
+  {
+    method: 'POST',
+    path: '/payment/developer-order-deposit',
+    note: '保证金充值下单：只返回 mock 二维码内容，不连接支付渠道',
+    handler: (request) => {
+      const body = (request.body ?? {}) as { amount_fen?: number; channel?: string }
+      const orderNo = 'MOCK-DEPOSIT-001'
+      return jsonResponse({
+        order_no: orderNo,
+        biz_type: 'developer_deposit_recharge',
+        biz_no: orderNo,
+        payer: DEV_USERNAME,
+        amount_fen: Number(body.amount_fen) || 0,
+        channel: body.channel ?? 'alipay',
+        status: 'pending',
+        status_label: '待支付',
+        subject: '保证金充值',
+        provider_payment_id: null,
+        client_action: {
+          redirect_url: null,
+          qr_code: `https://pay.example.test/cashier/${orderNo}`,
+          sdk_payload: null,
+        },
+        paid_at: null,
+        created_time: nowText(),
+      })
+    },
+  },
+  {
+    method: 'GET',
     path: '/payment/withdrawals',
     note: '收益提现记录（契约 `WithdrawalResponse[]`）',
     handler: () => jsonResponse(devWithdrawals),

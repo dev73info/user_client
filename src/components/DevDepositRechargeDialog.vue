@@ -10,7 +10,8 @@
  *   查不到就不展示，也不阻断充值（真正的拦截在后端）；
  * - 支付方式只在「本机装了哪些渠道」里选，默认支付宝。
  *
- * 样式复用全局 `.dev-recharge-dialog*`（在 `styles/dev-wallet.css`），本组件不带 style 块。
+ * 表单样式复用全局 `.dev-recharge-dialog*`（在 `styles/dev-wallet.css`）；
+ * 二维码布局只服务本组件，保留在 scoped 样式中。
  */
 import { computed, ref } from 'vue'
 import QRCode from 'qrcode'
@@ -51,6 +52,7 @@ const qrDataUrl = ref('')
 const pendingOrderNo = ref('')
 
 const amountFen = computed(() => toFen(amount.value))
+const channelLabel = computed(() => (channel.value === 'wechat' ? '微信' : '支付宝'))
 /** 超过信用允许的额度：后端会拒绝，这里先说清原因，别等提交才报错 */
 const overCreditCap = computed(() => {
   const credit = creditInfo.value
@@ -65,6 +67,7 @@ async function open(): Promise<void> {
   amount.value = 100
   channel.value = 'alipay'
   creditInfo.value = null
+  backToForm()
   if (auth.token) {
     creditInfo.value = await getDevCreditSelf(auth.token).catch(() => null)
   }
@@ -86,31 +89,25 @@ async function submit(): Promise<void> {
       channel: channel.value,
       client_platform: 'pc',
     })
-    // 后端 `client_action` 的字段是 `redirect_url` / `qr_code` /
-    // `sdk_payload`（见 payment_provider 的 `ClientAction`）。
-    // 早先这里读的是 `pay_url`——那个字段不存在，所以支付页永远打不开。
-    //
-    // 拿到地址后**不跳转**，就地渲染成二维码：PC 端是「主扫」场景，
-    // 用户要的是拿手机扫屏幕上的码。直接 `location.href` 跳过去，
-    // 桌面浏览器打开的是支付宝的 H5 页（甚至只是它的首页），用户反而不知道在付什么。
-    const action = order.client_action as {
-      redirect_url?: string | null
-      qr_code?: string | null
-      sdk_payload?: { pay_info?: string } | null
-    } | null
-    const payUrl = action?.redirect_url || action?.sdk_payload?.pay_info || ''
+    const action = order.client_action
+    const sdkPayInfo =
+      action?.sdk_payload &&
+      typeof action.sdk_payload === 'object' &&
+      'pay_info' in action.sdk_payload &&
+      typeof action.sdk_payload.pay_info === 'string'
+        ? action.sdk_payload.pay_info
+        : ''
+    const payUrl = action?.qr_code || action?.redirect_url || sdkPayInfo
     if (!payUrl) {
-      TMessage.success('充值单已创建，请完成支付')
-      emit('succeeded')
-      return
+      throw new Error('充值单已创建，但支付渠道未返回支付内容，请联系客服')
     }
+    // PC 主扫只编码渠道返回的内容，留在当前弹窗，不跳转收银台。
     qrDataUrl.value = await QRCode.toDataURL(payUrl, {
       width: 220,
       margin: 1,
       errorCorrectionLevel: 'M',
     })
     pendingOrderNo.value = order.order_no
-    // 停在当前弹窗展示二维码，用户扫完由父级回刷余额。
   } catch (err) {
     TMessage.error(err instanceof Error ? err.message : '创建充值订单失败')
   } finally {
@@ -138,8 +135,12 @@ defineExpose({ open })
   <TDialog v-model:open="visible" title="保证金充值" width="520px" class="dev-recharge-dialog">
     <!-- 下单成功后：就地展示二维码（PC 主扫），不跳转 -->
     <div v-if="qrDataUrl" class="dev-recharge-dialog__qr">
-      <p class="dev-recharge-dialog__qr-hint">请用支付宝扫描下方二维码完成支付</p>
-      <img :src="qrDataUrl" alt="支付宝支付二维码" class="dev-recharge-dialog__qr-img" />
+      <p class="dev-recharge-dialog__qr-hint">请使用{{ channelLabel }}扫码完成支付</p>
+      <img
+        :src="qrDataUrl"
+        :alt="`${channelLabel}支付二维码`"
+        class="dev-recharge-dialog__qr-img"
+      />
       <p class="dev-recharge-dialog__qr-order">订单号：{{ pendingOrderNo }}</p>
       <p class="dev-recharge-dialog__qr-note">
         支付完成后点下方「我已支付」刷新余额；若余额未变，稍等片刻再刷新。
@@ -233,7 +234,7 @@ defineExpose({ open })
 
 <style scoped>
 /* 二维码视图：居中一张码 + 订单号 + 提示，用户扫完点「我已支付」。
-   尺寸固定 220px：支付宝码本身是 220×220，放大反而糊。 */
+   二维码按 220×220 输出，不再放大，避免模糊。 */
 .dev-recharge-dialog__qr {
   display: grid;
   justify-items: center;
@@ -253,7 +254,7 @@ defineExpose({ open })
   height: 220px;
   border: 1px solid var(--dev-line);
   border-radius: 12px;
-  background: #fff;
+  background: var(--dev-surface-strong);
 }
 
 .dev-recharge-dialog__qr-order,

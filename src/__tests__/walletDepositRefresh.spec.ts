@@ -6,9 +6,8 @@ import DevWalletView from '@/views/DevWalletView.vue'
 /**
  * 收益钱包页：自动提现开关必须由服务端确认后才动。
  *
- * 这个文件名保留着历史原因（原先还覆盖「保证金台账 5 秒轮询 / 回到页面节流」那一套）。
- * 预付保证金那套端点（`developer-order-deposit*`）在当前契约里不存在，整块功能已删除，
- * 相关用例随功能一起删；剩下这两条钉的是 `useDevWalletOverview` 的开关口径。
+ * 这个文件名保留着历史原因。预付保证金由 `useDevWalletDeposit` 与独立的弹窗用例覆盖；
+ * 这里只钉 `useDevWalletOverview` 的开关口径。
  */
 const mocks = vi.hoisted(() => ({
   overview: vi.fn(),

@@ -64,6 +64,13 @@ export type PrepaidAccountStatement = {
   withdrawable_fen: number
 }
 
+/** 渠道支付动作（契约 `ClientAction`）：SDK 参数包保持原始 JSON，由调用方按渠道收窄。 */
+export type PrepaidClientAction = {
+  redirect_url?: string | null
+  qr_code?: string | null
+  sdk_payload?: unknown
+}
+
 /** 一张充值单（契约 `PrepaidOrderResponse`）：`client_action` 是拉起支付要用的渠道动作。 */
 export type PrepaidOrder = {
   order_no: string
@@ -76,7 +83,7 @@ export type PrepaidOrder = {
   status_label: string
   subject: string
   provider_payment_id?: string | null
-  client_action?: unknown
+  client_action?: PrepaidClientAction | null
   paid_at?: string | null
   created_time: string
 }
