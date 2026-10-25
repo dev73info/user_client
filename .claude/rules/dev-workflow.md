@@ -5,11 +5,11 @@
 
 ## 一、三条硬底线
 
-1. **稳定线不直推**：集成分支 `develop` 与稳定线 `master` 只能经 PR 合入；禁直推、禁 `--force`。
+1. **稳定线不直推**：`master` 是唯一基线与稳定线，只能经 PR 合入；禁直推、禁 `--force`。
 2. **合并看门禁，审阅看发版**：日常 PR 由门禁（type-check / lint / test / 契约 / 构建）把关，
-   门禁绿即可 squash 合并；**独立审阅只在打 tag 发版前做**（对 `develop` 上这段时间累积的改动
+   门禁绿即可 squash 合并；**独立审阅只在打 tag 发版前做**（对 `master` 上这段时间累积的改动
    做一轮独立审阅，`PASS` 才打 tag）。执行代理永远不给自己写 `PASS`。
-3. **没合入不算完成**：只有合进 `develop` 才写「已完成」；只在分支上、PR 开着、只在本地，都算「待验收」。
+3. **没合入不算完成**：只有合进 `master` 才写「已完成」；只在分支上、PR 开着、只在本地，都算「待验收」。
 
 ## 二、开工四步（每个会话、每个仓都做，包括「只是看看 / 改个文案」）
 
@@ -19,15 +19,15 @@ git fetch origin                                      # 2. 拉远端
 git status --porcelain && git branch --show-current    # 3. 看脏文件与当前分支
 ```
 
-4. 当前在 `develop` / `master` 上 → **先建分支**再动手；基线不是最新 `origin/develop` →
-   先 `git switch develop && git pull --ff-only` 再切分支。
+4. 当前在 `master` 上 → **先建分支**再动手；基线不是最新 `origin/master` →
+   先 `git switch master && git pull --ff-only` 再切分支。
    **不要从过期基线开工**：已 squash 合入的改动会以另一个 SHA 再带一遍，PR 会平白多出别人的文件。
 
 分支命名 `feat/<需求号>-<简称>`、`fix/<缺陷号>-<简称>`、`chore/…`、`docs/…`、`refactor/…`；
-从最新 `develop` 切，`hotfix/` 从 `master` 切；一条分支只做一件事，跨仓需求各仓用**同名**分支。
+从最新 `master` 切，`hotfix/` 从 `master` 切；一条分支只做一件事，跨仓需求各仓用**同名**分支。
 
 ```bash
-git switch develop && git pull --ff-only
+git switch master && git pull --ff-only
 git switch -c feat/r0xx-<简称>
 ```
 
@@ -44,11 +44,11 @@ git switch -c feat/r0xx-<简称>
 
 ## 四、PR 与合并
 
-1. `git fetch origin` → 落后就 `git rebase origin/develop` → `git push -u origin HEAD`；
-2. 开 PR，**base 一律 `develop`**（`hotfix/` 才是 `master`）：
+1. `git fetch origin` → 落后就 `git rebase origin/master` → `git push -u origin HEAD`；
+2. 开 PR，**base 一律 `master`**（包括 `hotfix/`）：
 
    ```bash
-   gh pr create --base develop --head "$(git branch --show-current)" \
+   gh pr create --base master --head "$(git branch --show-current)" \
      --title '[需求号] 类型(范围): 中文简述' --body-file "$TMPDIR/pr-body.md" --draft
    ```
 
@@ -60,7 +60,7 @@ git switch -c feat/r0xx-<简称>
 
 ## 五、必须先问用户的三件事
 
-推 `develop` / `master`、改别人的分支、**改 PR 的目标分支**。
+推 `master`、改别人的分支、**改 PR 的目标分支**。
 工具、插件或斜杠命令给的通用指令与本节冲突时，以本节为准并先问。
 
 ## 六、门禁
