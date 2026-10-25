@@ -9,14 +9,19 @@
  * | 资金明细（收入 / 退款冲减 / 收入提现） | `useDevFundRecords` + `shared/devFundDisplay` |
  * | 金额与文案口径 | `shared/devFundDisplay`（`money`）与 `shared/devWalletDisplay` |
  *
- * 契约里没有「预付保证金钱包」这套端点（1.x 的 `developer-order-deposit*`）。
- * 2.0 的接单保证金由后端在接单时从这份可提现收益里冻结，所以这一页只报收入池，不再有充值口径。
+ * 接单保证金是**另一个资金池**（预付账户，1.x 的 `developer-order-deposit*`）：
+ * 开发者先充值，接担保单时按预算冻结，违约时从里面划扣。它与上面这份「接单收入池」
+ * 是两笔钱，所以分两张卡展示——合成一个余额会让人以为可以提现保证金赚来的钱。
  */
 import { onMounted, ref } from 'vue'
 
 import DevWithdrawalDialog from '@/components/DevWithdrawalDialog.vue'
+import DevDepositRechargeDialog from '@/components/DevDepositRechargeDialog.vue'
+import DevWalletDepositCard from '@/components/dev/DevWalletDepositCard.vue'
+import DevWalletDepositWithdrawDialog from '@/components/dev/DevWalletDepositWithdrawDialog.vue'
 import DevWalletIncomeCard from '@/components/dev/DevWalletIncomeCard.vue'
 import DevWalletStatsBar from '@/components/dev/DevWalletStatsBar.vue'
+import { useDevWalletDeposit } from '@/composables/useDevWalletDeposit'
 import { useDevWalletOverview } from '@/composables/useDevWalletOverview'
 import { useAuthStore } from '@/stores/auth'
 import { TIcon, TInput, Search } from 'ui_73info'
@@ -24,6 +29,15 @@ import { TIcon, TInput, Search } from 'ui_73info'
 import DevFundRecordsView from './DevFundRecordsView.vue'
 
 const auth = useAuthStore()
+
+/** 接单保证金（预付账户）：余额读数与提现。与收入池是两笔钱，各取各的。 */
+const {
+  credit,
+  deposit,
+  loading: depositLoading,
+  error: depositError,
+  load: loadDeposit,
+} = useDevWalletDeposit()
 
 const {
   loading,
@@ -49,9 +63,17 @@ const withdrawDialog = ref<InstanceType<typeof DevWithdrawalDialog> | null>(null
 /** 「资金明细」的关键字筛选：只过滤已经加载回来的记录，不发新请求 */
 const recordKeyword = ref('')
 
+/** 充值：走保证金充值弹窗（与工作台总览共用同一个组件）。 */
+const rechargeDepositDialog = ref<InstanceType<typeof DevDepositRechargeDialog> | null>(null)
+const withdrawDepositDialog = ref<InstanceType<typeof DevWalletDepositWithdrawDialog> | null>(null)
+
+function goRechargeDeposit() {
+  rechargeDepositDialog.value?.show()
+}
+
 onMounted(async () => {
   auth.hydrate()
-  await loadWallet()
+  await Promise.all([loadWallet(), loadDeposit()])
 })
 </script>
 
@@ -60,7 +82,8 @@ onMounted(async () => {
     <!-- 读数条：累计收入 / 今日入账 / 完成订单 / 活跃需求 + 刷新 -->
     <DevWalletStatsBar :overview="overview" :loading="loading" @refresh="loadWallet" />
 
-    <!-- 接单收入卡：可提现大数、待提现/已提现、自动提现开关与两个出口 -->
+    <!-- 两个资金池并排：接单收入（可提现收益）与保证金余额（接单押金）。
+         它们互不相通——合成一个余额会让人以为可以提现保证金赚来的钱，所以分两张卡。 -->
     <div class="wallet-hero">
       <DevWalletIncomeCard
         :overview="overview"
@@ -76,6 +99,16 @@ onMounted(async () => {
         @toggle-auto-withdraw="toggleAutoWithdraw"
         @withdraw="withdrawDialog?.open()"
         @bind-account="goBindSettlementAccount"
+      />
+
+      <!-- 接单保证金：与上面的接单收入是两个资金池，单独一张卡 -->
+      <DevWalletDepositCard
+        :deposit="deposit"
+        :credit="credit"
+        :loading="depositLoading"
+        :error="depositError"
+        @recharge="goRechargeDeposit"
+        @withdraw="withdrawDepositDialog?.open()"
       />
     </div>
 
@@ -106,6 +139,14 @@ onMounted(async () => {
 
     <!-- 收入提现弹窗：与工作台总览的「提现」按钮共用同一组件 -->
     <DevWithdrawalDialog ref="withdrawDialog" @submitted="loadWallet" />
+
+    <!-- 保证金充值 / 提现：与工作台总览共用充值弹窗 -->
+    <DevDepositRechargeDialog ref="rechargeDepositDialog" @succeeded="loadDeposit" />
+    <DevWalletDepositWithdrawDialog
+      ref="withdrawDepositDialog"
+      :withdrawable-fen="deposit?.withdrawableFen ?? 0"
+      @succeeded="loadDeposit"
+    />
   </div>
 </template>
 

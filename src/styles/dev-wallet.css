@@ -7,19 +7,37 @@
   margin-bottom: 9px;
 }
 
-/* 主余额卡片排一行：原先这里是「接单收入」与「保证金余额」两张卡并排，
-   预付保证金那套端点契约里没有、整块已删，现在只剩接单收入一张，不再留半格空位。 */
+/* 「接单收入」与「保证金余额」两张卡并排：两个资金池互不相通，但读法一样
+   （大数 → 标签行 → 分隔线 → 操作区），并排才好对照。窄屏落成一列，见文末断点。 */
 .wallet-hero {
   display: grid;
-  grid-template-columns: minmax(0, 1fr);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: stretch;
   gap: 16px;
 }
 
-.wallet-hero__card {
+/* 两张卡的卡身顺序一致（卡头 → 大数 → 标签行 → 分隔线 → 操作区），高度由 grid
+   stretch 拉平，剩下的就是让「操作区」落在同一条底边上。
+
+   两个坑：
+   1. TCard 的根是 `display:block`，且那条规则带 scoped 属性（`.t73-card[data-v-…]`，
+      特异性 0,2,0）。这里必须写到 0,3,0 才能压过它，光写 `.wallet-hero__card` 无效；
+   2. TCard 内部还包了一层 `.t73-card__body`，真正排内容的是那一层，所以纵向 flex
+      要下发给它，卡身的 `flex:1` 才有意义。 */
+.wallet-hero .wallet-hero__card.t73-card {
   display: flex;
   flex-direction: column;
 }
 
+.wallet-hero .wallet-hero__card.t73-card > .t73-card__body {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+}
+
+/* 卡身撑开：两张卡的底部操作区因此总能落在同一条底边（保证金卡的两颗按钮
+   与收入卡的开关 + 主按钮高度不同，靠这条 + footer 的 margin-top:auto 对齐）。 */
 .wallet-hero__body {
   flex: 1;
   margin-bottom: 20px;
@@ -62,11 +80,14 @@
   gap: 6px;
 }
 
+/* 卡底操作区：两张卡共用。收入的「自动提现 + 申请提现」与保证金的
+   「提现保证金 + 充值」都贴在同一条顶边线上。 */
 .wallet-hero__footer {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
   gap: 12px;
+  margin-top: auto;
   padding-top: 16px;
   border-top: 1px solid var(--dev-line);
 }
@@ -79,11 +100,13 @@
 .wallet-payout {
   display: grid;
   gap: 14px;
+  margin-top: auto;
   padding-top: 16px;
   border-top: 1px solid var(--dev-line);
 }
 
-/* 两条路径并成一行，说明折到行下方：比各占一行省一半高度，窄屏自动换行成两行 */
+/* 两条路径并成一行：左是自动提现开关、右是主按钮，说明折到行下方。
+   与保证金卡的 footer 同一条顶边线，两张并排时底部操作区齐平。 */
 .wallet-payout__paths {
   display: flex;
   flex-wrap: wrap;
@@ -114,11 +137,13 @@
 }
 
 /* 出款通道未就绪的提示：配色改用体系里的金（= 需要开发者先处理的提示那一支），
-   原来是 color-mix(in srgb, var(--73-warning) 8%, transparent) / var(--dev-gold) / var(--dev-gold) 这一套橙，与页内其它提示是两个色。 */
+   原来是 color-mix(in srgb, var(--73-warning) 8%, transparent) / var(--dev-gold) / var(--dev-gold) 这一套橙，与页内其它提示是两个色。
+   它留在分隔线以上（见 DevWalletIncomeCard 的注释），所以这里自带 margin-top。 */
 .wallet-payout__alert {
   display: flex;
   align-items: center;
   gap: 8px;
+  margin-top: 12px;
   padding: 10px 12px;
   border: 1px solid color-mix(in srgb, var(--73-warning) 24%, transparent);
   border-radius: var(--dev-radius-control);
@@ -146,10 +171,22 @@
   color: var(--dev-ink-soft);
 }
 
-/* R047 断点收敛：原档位 720px → 640px */
+/* R047 断点收敛：原档位 720px → 640px。
+   900px 以下两张卡并排会把「自动提现 + 申请提现」「提现保证金 + 充值」挤成两行，
+   读数说明也会被压成三行，所以并排只保留到 900px。 */
+@media (max-width: 900px) {
+  .wallet-hero {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 12px;
+  }
+
+  .wallet-hero__body {
+    margin-bottom: 12px;
+  }
+}
+
 @media (max-width: 640px) {
   .wallet-hero {
-    grid-template-columns: 1fr;
     gap: 10px;
   }
 
@@ -168,10 +205,6 @@
 
   .wallet-hero__card .dev-section-title {
     font-size: 15px;
-  }
-
-  .wallet-hero__body {
-    margin-bottom: 12px;
   }
 
   .wallet-hero__main {
