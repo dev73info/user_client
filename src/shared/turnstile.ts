@@ -54,6 +54,76 @@ export function isTurnstileEnabled(): boolean {
   return getTurnstileSiteKey().length > 0
 }
 
+/** 离屏取 token 的默认超时：官方挂件正常一两秒内回调，超过这个时间按失败处理。 */
+const OFFSCREEN_TOKEN_TIMEOUT_MS = 15_000
+
+/**
+ * 不渲染可见挂件，离屏取一枚一次性 token（本地开发自动登录用）。
+ *
+ * 自动登录走的就是 `/auth/login`，后端在 `[turnstile] enabled = true` 时一律要 token，
+ * 所以不带 token 的自动登录必然 403 `missing_token`。这里把挂件渲染到屏幕外再取一次，
+ * 拿到就把容器整个摘掉——不会在页面上留下任何可见痕迹。
+ *
+ * 失败（脚本加载不了、超时、官方回调 error）一律 resolve 空串：自动登录是本地便利功能，
+ * 取不到 token 时应当退回「未登录」而不是抛错打断启动。
+ */
+export async function fetchTurnstileToken(action: TurnstileSurfaceAction): Promise<string> {
+  if (!isTurnstileEnabled() || typeof document === 'undefined') {
+    return ''
+  }
+
+  const container = document.createElement('div')
+  container.setAttribute('aria-hidden', 'true')
+  container.style.cssText = 'position:fixed;left:-9999px;top:0;width:0;height:0;overflow:hidden'
+  document.body.appendChild(container)
+
+  let widgetId: string | undefined
+  let timer: number | undefined
+
+  const cleanup = () => {
+    if (timer !== undefined) {
+      window.clearTimeout(timer)
+      timer = undefined
+    }
+    if (widgetId && window.turnstile) {
+      try {
+        window.turnstile.remove(widgetId)
+      } catch {
+        // 挂件已经自行销毁时 remove 会抛，忽略即可。
+      }
+      widgetId = undefined
+    }
+    container.remove()
+  }
+
+  try {
+    const turnstile = await loadTurnstile()
+    return await new Promise<string>((resolve) => {
+      let settled = false
+      const settle = (token: string) => {
+        if (settled) return
+        settled = true
+        cleanup()
+        resolve(token)
+      }
+
+      timer = window.setTimeout(() => settle(''), OFFSCREEN_TOKEN_TIMEOUT_MS)
+      widgetId = turnstile.render(container, {
+        sitekey: getTurnstileSiteKey(),
+        action,
+        size: 'flexible',
+        callback: (token) => settle(token),
+        'error-callback': () => settle(''),
+        'expired-callback': () => settle(''),
+        'timeout-callback': () => settle(''),
+      })
+    })
+  } catch {
+    cleanup()
+    return ''
+  }
+}
+
 let scriptPromise: Promise<TurnstileApi> | null = null
 
 /**
