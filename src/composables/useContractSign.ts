@@ -97,9 +97,10 @@ export function useContractSign(options: UseContractSignOptions) {
     isWorkbenchSignature: nav.isWorkbenchSignature,
     isDeveloperAgreement: nav.isDeveloperAgreement,
     isPlatformAgreement: nav.isPlatformAgreement,
+    token: () => auth.token, // 取本人实名资料用
   })
 
-  /** 附件变更（上传/拟定/撤回）后把页面上的合同换成后端最新那份，避免停在旧审核态。 */
+  /** 附件变更后换成后端最新那份，避免停在旧审核态。 */
   function applyUpdatedContract(updated: ContractDetail) {
     contract.value = updated
     successMsg.value = ''
@@ -159,9 +160,7 @@ export function useContractSign(options: UseContractSignOptions) {
 
   /** 发起签署前的三道本地闸门（后端同样会拦，这里先给出可操作的中文说明）。 */
   function signBlockedReason(): string {
-    if (requirementArchived.value) {
-      return ARCHIVED_WRITE_BLOCKED_MESSAGE
-    }
+    if (requirementArchived.value) return ARCHIVED_WRITE_BLOCKED_MESSAGE
     if (!signerIdentityReady.value) {
       return '请先完成实名认证，签署身份必须包含真实姓名和身份证号'
     }

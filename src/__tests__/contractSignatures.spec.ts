@@ -37,12 +37,17 @@ describe('personal signing state', () => {
   it('never offers signing for terminal or unsupported states', () => {
     expect(getSignatureState({ ...contract, status: CONTRACT_STATUS.signed }, 'alice')).toBe('signed')
     expect(getSignatureState({ ...contract, status: CONTRACT_STATUS.voided }, 'alice')).toBe('void')
-    // 0 未发起 / 3 过期 / 4 拒签 / 7 撤销 / 未知码都不可签。
-    expect(getSignatureState({ ...contract, status: CONTRACT_STATUS.awaiting }, 'alice')).toBe('unavailable')
+    // 3 过期 / 4 拒签 / 7 撤销 / 未知码都不可签。
     expect(getSignatureState({ ...contract, status: CONTRACT_STATUS.expired }, 'alice')).toBe('unavailable')
     expect(getSignatureState({ ...contract, status: CONTRACT_STATUS.rejected }, 'alice')).toBe('unavailable')
     expect(getSignatureState({ ...contract, status: CONTRACT_STATUS.revoked }, 'alice')).toBe('unavailable')
     expect(getSignatureState({ ...contract, status: 99 }, 'alice')).toBe('unavailable')
+  })
+  it('offers signing while still awaiting the first signature', () => {
+    // 0 等待签约可签：平台协议（入驻 / 接口使用）建单时就是 0，
+    // 由第一次签署动作推成 1（后端 can_start_signing 只拦终态）。只认 1 会让这两类协议签不了。
+    expect(getSignatureState({ ...contract, status: CONTRACT_STATUS.awaiting }, 'alice')).toBe('pending')
+    expect(getSignatureState({ ...contract, status: CONTRACT_STATUS.awaiting }, 'bob')).toBe('pending')
   })
   it('does not offer signing to outsiders or an empty account', () => {
     expect(getSignatureState(contract, 'other')).toBe('unavailable')
