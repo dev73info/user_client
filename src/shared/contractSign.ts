@@ -15,6 +15,17 @@ import { ATTACHMENT_REVIEW_STATUS, CONTRACT_STATUS } from '@/shared/contracts'
 /** 签署主体：甲方（需求方 / 平台）/ 乙方（开发者）。 */
 export type ContractParty = 'party_a' | 'party_b'
 
+/**
+ * 本人实名资料（签署身份）。
+ *
+ * 合同响应**不带**实名姓名与脱敏证件号——那两个字段在合同 DTO 上不存在。
+ * 所以签署身份要从 `/api/realname/me` 取，由调用方传进 [`contractPartyDisplay`]。
+ */
+export type SignerRealname = {
+  legalName: string
+  idCardNo: string
+}
+
 /** 签约方展示行（甲方 / 乙方）。 */
 export type PartyDisplay = {
   party: ContractParty
@@ -57,17 +68,36 @@ export function contractPartyDisplay(
   contract: ContractDetail | null,
   party: ContractParty,
   platformAgreement: boolean,
+  /**
+   * 本人实名资料 + 本人是甲方还是乙方。
+   *
+   * 合同响应不带实名姓名与证件号，所以「我这一方」的签署身份只能从实名资料补；
+   * 对方那一方拿不到（也没有必要拿）——对方签没签由签署时间体现。
+   */
+  self?: { party: ContractParty; realname: SignerRealname | null } | null,
 ): PartyDisplay | null {
   if (!contract) return null
+  const myRealname = self && self.party === party ? self.realname : null
 
   if (party === 'party_a') {
+    // 平台协议的甲方是平台自己：它没有平台账号，也不该出现「未完成实名认证」——
+    // 平台以企业主体 + 印章盖章，签署由后端发起、不需要人到签署页。
+    const isPlatformParty = platformAgreement && !contract.party_a_username
     return {
       party,
       label: '甲方',
       role: platformAgreement ? '平台' : '需求方',
-      legalName: displayText(contract.party_a_real_name ?? contract.party_a_name, '未完成实名认证'),
-      idCardNo: displayText(contract.party_a_id_card_no_masked, '未完成实名认证'),
-      username: displayText(contract.party_a_username, '未绑定账号'),
+      // 合同若带了实名姓名（后端未来补字段）就用它；没有就从本人实名资料补。
+      legalName: displayText(
+        contract.party_a_real_name ?? contract.party_a_name ?? myRealname?.legalName,
+        '未完成实名认证',
+      ),
+      idCardNo: isPlatformParty
+        ? '平台盖章'
+        : displayText(contract.party_a_id_card_no_masked ?? myRealname?.idCardNo, '未完成实名认证'),
+      username: isPlatformParty
+        ? '平台盖章'
+        : displayText(contract.party_a_username, '未绑定账号'),
       email: displayText(contract.party_a_account_email, '未绑定邮箱'),
       signedAt: contract.party_a_signed_at,
     }
@@ -77,13 +107,20 @@ export function contractPartyDisplay(
     party,
     label: '乙方',
     role: '开发者',
-    legalName: displayText(contract.party_b_real_name ?? contract.party_b_name, '未完成实名认证'),
-    idCardNo: displayText(contract.party_b_id_card_no_masked, '未完成实名认证'),
+    legalName: displayText(
+      contract.party_b_real_name ?? contract.party_b_name ?? myRealname?.legalName,
+      '未完成实名认证',
+    ),
+    idCardNo: displayText(
+      contract.party_b_id_card_no_masked ?? myRealname?.idCardNo,
+      '未完成实名认证',
+    ),
     username: displayText(contract.party_b_username, '未绑定账号'),
     email: displayText(contract.party_b_account_email, '未绑定邮箱'),
     signedAt: contract.party_b_signed_at,
   }
 }
+
 
 /** 签署身份是否可用于发起签署：实名姓名与身份证号都得有。 */
 export function signerIdentityReady(signer: PartyDisplay | null): boolean {
@@ -91,7 +128,13 @@ export function signerIdentityReady(signer: PartyDisplay | null): boolean {
 }
 
 /**
- * 是否能签：只有「签约中 1」可签，且本人这一方还没签。
+ * 是否能签：本人这一方还没签、且合同没落在终态。
+ *
+ * **「等待签约 0」也能签**——平台协议（《开发者入驻协议》《接口使用协议》）与
+ * 需求合同一样，是后端**建单时就是 0**、由第一次签署动作推成 1 的：后端的
+ * `can_start_signing` 只拦终态（过期 3 / 拒签 4 / 作废 6 / 撤销 7）。
+ * 早先这里只认「签约中 1」，结果平台协议的签署按钮永远不出现——协议能查、
+ * 能看正文，就是签不了。
  *
  * 双方各自独立签署，不设先后顺序（爱签侧同样是无序签约 signOrder=1）：
  * 谁还没签谁就能签，双方都签完后由爱签同步置为「已签约 2」。
@@ -101,7 +144,12 @@ export function canSignContract(
   currentParty: ContractParty | null,
 ): boolean {
   if (!contract || !currentParty) return false
-  if (contract.status !== CONTRACT_STATUS.signing) return false
+  if (
+    contract.status !== CONTRACT_STATUS.awaiting &&
+    contract.status !== CONTRACT_STATUS.signing
+  ) {
+    return false
+  }
   return currentParty === 'party_a' ? !contract.party_a_signed_at : !contract.party_b_signed_at
 }
 

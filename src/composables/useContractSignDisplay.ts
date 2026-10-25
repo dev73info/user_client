@@ -3,6 +3,7 @@ import { computed, type Ref } from 'vue'
 import type { ContractDetail } from '@/api/contracts'
 import type { RequirementItem } from '@/api/requirements'
 import { CONTRACT_STATUS, contractEffectiveUntilLabel } from '@/shared/contracts'
+import { useContractSignerRealname } from '@/composables/useContractSignerRealname'
 import {
   archiveSignBlockedMessage as archiveSignBlockedText,
   attachmentApproved as isAttachmentApproved,
@@ -52,15 +53,26 @@ type UseContractSignDisplayOptions = {
   isWorkbenchSignature: Ref<boolean>
   isDeveloperAgreement: Ref<boolean>
   isPlatformAgreement: Ref<boolean>
+  /** 取当前登录 token（用于读取本人实名资料）；返回空串时不请求。 */
+  token: () => string | null | undefined
 }
 
 export function useContractSignDisplay(options: UseContractSignDisplayOptions) {
   const { contract, requirementArchive, signing, localDocumentFallback } = options
 
+  // 合同 DTO 不带实名姓名与脱敏证件号，本人这一方的签署身份只能从实名资料补。
+  // 缺了它，「实名认证审核通过后才能签署」那道闸门永远不放行——平台协议因此签不了。
+  const { selfRealname } = useContractSignerRealname(options.token)
+
   const currentParty = computed(() => contractPartyOf(contract.value, options.username()))
   const currentSigner = computed(() =>
     currentParty.value
-      ? contractPartyDisplay(contract.value, currentParty.value, options.isPlatformAgreement.value)
+      ? contractPartyDisplay(
+          contract.value,
+          currentParty.value,
+          options.isPlatformAgreement.value,
+          { party: currentParty.value, realname: selfRealname.value },
+        )
       : null,
   )
   const signerIdentityReady = computed(() => isSignerIdentityReady(currentSigner.value))
