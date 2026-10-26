@@ -1,0 +1,134 @@
+.share-card-generator {
+  display: inline-flex;
+  align-items: center;
+}
+.share-card-generator__start {
+  display: inline-flex;
+  min-height: 36px;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 0 14px;
+  border: 1px solid color-mix(in srgb, var(--73-accent) 28%, transparent);
+  border-radius: 999px;
+  background: var(--73-surface-strong);
+  color: var(--73-accent);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 800;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.share-card-generator__start:hover:not(:disabled) {
+  background: var(--73-accent-soft);
+}
+.share-card-generator__start:disabled {
+  cursor: not-allowed;
+  opacity: 0.58;
+}
+.share-card-generator__overlay {
+  position: fixed;
+  z-index: 3000;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  background: color-mix(in srgb, var(--73-ink) 44%, transparent);
+}
+.share-card-generator__dialog {
+  display: grid;
+  width: min(360px, calc(100vw - 32px));
+  max-height: calc(100dvh - 32px);
+  gap: 10px;
+  overflow: auto;
+  padding: 14px;
+  border: 1px solid var(--73-border);
+  border-radius: 8px;
+  background: var(--73-surface-strong);
+  box-shadow: 0 24px 70px color-mix(in srgb, var(--73-ink) 22%, transparent);
+}
+.share-card-generator__head,
+.share-card-generator__actions,
+.share-card-generator__footer {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.share-card-generator__head {
+  justify-content: space-between;
+}
+.share-card-generator__head h2 {
+  margin: 0;
+  color: var(--73-ink);
+  font-size: 20px;
+}
+.share-card-generator__actions button {
+  display: inline-grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border: 0;
+  border-radius: 8px;
+  background: var(--73-accent-soft);
+  color: var(--73-accent);
+  cursor: pointer;
+}
+.share-card-generator__footer {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin: 0;
+  padding: 2px 0 0;
+}
+.share-card-generator__footer button {
+  display: inline-flex;
+  min-width: 0;
+  min-height: 36px;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 0 10px;
+  border: 1px solid var(--73-border);
+  border-radius: 999px;
+  background: var(--73-accent-soft);
+  color: var(--73-accent);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 800;
+  cursor: pointer;
+}
+.share-card-generator__actions button:disabled,
+.share-card-generator__footer button:disabled {
+  cursor: not-allowed;
+  opacity: 0.48;
+}
+.share-card-generator__loading {
+  display: grid;
+  min-height: 120px;
+  place-items: center;
+  gap: 8px;
+  border: 1px dashed var(--73-border);
+  border-radius: 8px;
+  color: var(--73-ink-muted);
+  font-size: 14px;
+}
+.share-card-generator__canvas {
+  width: min(100%, 292px, 40vh);
+  justify-self: center;
+  border: 1px solid var(--73-border);
+  border-radius: 8px;
+  background: var(--73-surface-strong);
+}
+@media (max-width: 640px) {
+  .share-card-generator__overlay {
+    padding: 10px;
+  }
+  .share-card-generator__dialog {
+    width: calc(100vw - 20px);
+    max-height: calc(100dvh - 20px);
+    padding: 12px;
+  }
+  .share-card-generator__canvas {
+    width: min(100%, 280px, 38vh);
+  }
+}
