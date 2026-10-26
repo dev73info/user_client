@@ -101,6 +101,12 @@ export const workbenchRoutes: RouteRecordRaw[] = [
           description: '查看已购数字化资源（退款由卖家或平台发起）',
         },
       },
+      {
+        path: 'purchase-transfers',
+        name: 'workbench-purchase-transfers',
+        component: () => import('@/views/PurchaseTransfersView.vue'),
+        meta: { title: '过户与转移', description: '处理资源所有权与订单使用权申请' },
+      },
       // 团队服务已并入开发者工作台（路由见 router/dev.ts 的 devWorkbenchRoutes），旧路径保留重定向
       { path: 'teams', redirect: { name: 'workbench-teams' } },
       {

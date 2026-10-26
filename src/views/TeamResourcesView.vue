@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted } from 'vue'
+import { onMounted, ref } from 'vue'
 import WorkbenchBarSlot from '@/components/WorkbenchBarSlot.vue'
 import { useRouter } from 'vue-router'
 
@@ -7,6 +7,7 @@ import { apiUrl } from '@/api/http'
 import type { McResourcePayload } from '@/api/mcResources'
 import TeamResourcesTable from '@/components/dev/TeamResourcesTable.vue'
 import DevResourcePublishVersionDialog from '@/components/dev/DevResourcePublishVersionDialog.vue'
+import ResourceTransferDialog from '@/components/ResourceTransferDialog.vue'
 import { LIST_PAGE_SIZES } from '@/composables/useClientPagination'
 import { useDevResourcePublishVersion } from '@/composables/useDevResourcePublishVersion'
 import { useTeamResourceRowActions } from '@/composables/useTeamResourceRowActions'
@@ -35,16 +36,9 @@ import {
 
 const auth = useAuthStore()
 const router = useRouter()
+const transferOpen = ref(false)
+const transferResource = ref<McResourcePayload | null>(null)
 
-/**
- * 团队资源列表（工作台菜单页）。
- *
- * 这一页只负责排版与组合：
- * - 数据、筛选、客户端分页与顶栏读数 → `useTeamResources`；
- * - 「更多」菜单的动作（导航 / 申请公开 / 设为私有 / 删除）→ `useTeamResourceRowActions`；
- * - 「发布版本」弹窗 → `useDevResourcePublishVersion` + `DevResourcePublishVersionDialog`（与资源项目页共用）；
- * - 六列表格 → `TeamResourcesTable`。
- */
 const {
   isLoading,
   resources,
@@ -86,6 +80,15 @@ const {
 /** 封面取绝对地址：`apiUrl` 是 `@/api/http` 的路径前缀，表格组件不直接依赖 `@/api`。 */
 function resolveCoverUrl(resource: McResourcePayload): string {
   return resourceCoverUrl(resource, apiUrl)
+}
+
+function handleCommand(payload: { action: string; resource: McResourcePayload }) {
+  if (payload.action === 'transfer') {
+    transferResource.value = payload.resource
+    transferOpen.value = true
+    return
+  }
+  handleResourceCommand(payload)
 }
 
 function goCreate() {
@@ -201,7 +204,7 @@ onMounted(async () => {
         :deleting-id="deletingResourceId"
         :cover-url="resolveCoverUrl"
         @open="openResourceHomepage"
-        @command="handleResourceCommand"
+        @command="handleCommand"
       />
 
       <div class="dev-pager">
@@ -230,6 +233,11 @@ onMounted(async () => {
         :resource-title="selectedResource?.title ?? null"
         :submitting="publishingResourceId === selectedResource?.id"
         @submit="submitVersion"
+      />
+      <ResourceTransferDialog
+        v-model:open="transferOpen"
+        :resource="transferResource"
+        @submitted="loadResources"
       />
     </TCard>
   </div>

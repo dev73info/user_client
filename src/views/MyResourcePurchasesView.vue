@@ -3,18 +3,16 @@
  * 「我的已购资源」：搜索 + 状态筛选 + 列表 + 分页。
  *
  * 筛选与分页全部走服务端（`/api/resources/purchases/mine` 的 `status` / `keyword` /
- * `limit` / `offset`，总数在响应头 `X-Total-Count`），前端只负责控件与展示——
- * 订单多起来之后不再一次性把全部订单平铺出来。
- * 页面形态对齐「我的需求」（`MyRequirementsView.vue`）的工具栏 + 列表 + 分页器。
- *
- * 取数、统计、防抖与分页都在 `useMyResourcePurchases`，本页只剩控件与列表行。
- * 2.0 没有「使用权转移 / 资源过户」的契约端点，相关入口已随模块一起下线。
+ * `limit` / `offset`，总数在响应头 `X-Total-Count`），前端只负责控件与展示。
+ * 取数、统计、防抖与分页都在 `useMyResourcePurchases`。
  */
+import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 
 import type { ResourcePurchaseOrder } from '@/api/resourcePurchase'
 import { getResourceDetailSlug } from '@/api/resourceTags'
 import PurchaseStatsStrip from '@/components/payment/PurchaseStatsStrip.vue'
+import PurchaseTransferDialog from '@/components/payment/PurchaseTransferDialog.vue'
 import { LIST_PAGE_SIZES } from '@/composables/useClientPagination'
 import { useMyResourcePurchases } from '@/composables/useMyResourcePurchases'
 import {
@@ -22,6 +20,8 @@ import {
   isApiResourcePurchaseOrder,
   resourcePurchaseStatusLabel,
 } from '@/shared/resourceSale'
+import { canTransferPurchase } from '@/shared/resourceTransfer'
+import { useAuthStore } from '@/stores/auth'
 
 import {
   RefreshLeft,
@@ -35,6 +35,9 @@ import {
 } from 'ui_73info'
 
 const router = useRouter()
+const auth = useAuthStore()
+const transferOpen = ref(false)
+const transferTarget = ref<ResourcePurchaseOrder | null>(null)
 
 /** 状态筛选项：取值与文案一律沿用既有状态口径（`resourcePurchaseStatusLabel`），不自创状态名。 */
 const STATUS_FILTERS: { value: string; label: string }[] = [
@@ -70,6 +73,11 @@ function openResource(order: ResourcePurchaseOrder) {
     },
   })
 }
+
+function openTransfer(order: ResourcePurchaseOrder) {
+  transferTarget.value = order
+  transferOpen.value = true
+}
 </script>
 
 <template>
@@ -87,6 +95,9 @@ function openResource(order: ResourcePurchaseOrder) {
           <h3 class="wb-card-head__title">我的已购资源</h3>
         </div>
         <div class="wb-card-head__actions">
+          <TButton variant="outline" @click="router.push({ name: 'workbench-purchase-transfers' })">
+            过户与转移
+          </TButton>
           <TButton variant="outline" @click="router.push({ name: 'resources' })">
             浏览资源
           </TButton>
@@ -171,6 +182,13 @@ function openResource(order: ResourcePurchaseOrder) {
               </span>
             </div>
             <div class="wb-item__actions">
+              <TButton
+                v-if="canTransferPurchase(order)"
+                variant="outline"
+                @click="openTransfer(order)"
+              >
+                转移使用权
+              </TButton>
               <TButton variant="outline" @click="openResource(order)">查看资源</TButton>
             </div>
           </li>
@@ -198,6 +216,12 @@ function openResource(order: ResourcePurchaseOrder) {
         </div>
       </template>
     </section>
+    <PurchaseTransferDialog
+      v-model:open="transferOpen"
+      :order="transferTarget"
+      :token="auth.token"
+      @submitted="reload"
+    />
   </main>
 </template>
 
