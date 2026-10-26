@@ -160,6 +160,16 @@ export function buildMenuGroups(realnameApproved: boolean): WorkbenchMenuGroup[]
       icon: Box,
       items: [
         { label: '账户详情', name: 'workbench-account', description: '管理账户' },
+        {
+          label: '已授权应用',
+          name: 'workbench-authorized-apps',
+          description: '管理接口资源站点的授权',
+        },
+        {
+          label: '工单中心',
+          name: 'workbench-tickets',
+          description: '提交问题与查看回复',
+        },
         ...(realnameApproved
           ? [
               {

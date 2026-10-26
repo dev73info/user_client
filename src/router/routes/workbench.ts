@@ -66,6 +66,18 @@ export const workbenchRoutes: RouteRecordRaw[] = [
         },
       },
       {
+        path: 'account/authorized-apps',
+        name: 'workbench-authorized-apps',
+        component: () => import('@/views/AuthorizedAppsView.vue'),
+        meta: { title: '已授权应用', description: '查看并撤销对开发者站点的授权' },
+      },
+      {
+        path: 'tickets',
+        name: 'workbench-tickets',
+        component: () => import('@/views/TicketCenterView.vue'),
+        meta: { title: '工单中心', description: '提交问题与查看回复' },
+      },
+      {
         // 「我的背包」下的优惠券中心：券包与券码。
         path: 'coupons',
         name: 'workbench-coupons',

@@ -4736,6 +4736,46 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/oauth/authorizations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 本人已授权的开发者应用
+         * @description **需要登录 + `oauth.authorization.self.get`**。按开发者聚合当前账号在其 OAuth 客户端下关联的外部用户 ID；只返回本人的授权关系。
+         */
+        get: operations["oauth_provider_list_user_authorizations"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/oauth/authorizations/{developer_username}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * 撤销本人在某开发者应用下的授权
+         * @description **需要登录 + `oauth.authorization.self.delete`**。删除当前账号与该开发者全部客户端的外部用户映射，并立即吊销这些客户端下发给当前账号的 access / refresh token；已购订单不受影响。没有匹配关系时仍回 204（幂等）。
+         */
+        delete: operations["oauth_provider_revoke_user_authorization"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/oauth/authorize": {
         parameters: {
             query?: never;
@@ -18657,6 +18697,13 @@ export interface components {
             /** @description 权限码列表。 */
             permission_codes?: string[];
         };
+        /** @description 用户视角的开发者应用授权。 */
+        UserAuthorizationResponse: {
+            authorized_at: string;
+            developer_username: string;
+            external_user_ids: string[];
+            updated_at: string;
+        };
         UserBadgeResponse: {
             awarded_at: string;
             category: string;
@@ -32079,6 +32126,89 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["NotificationResponse"];
                 };
+            };
+        };
+    };
+    oauth_provider_list_user_authorizations: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 已授权应用 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UserAuthorizationResponse"][];
+                };
+            };
+            /** @description 未登录，或令牌无效 / 已吊销 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 没有 `oauth.authorization.self.get` */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 权限查询失败，或读库失败 */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    oauth_provider_revoke_user_authorization: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description 开发者平台账号 */
+                developer_username: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 已撤销（原本没有匹配关系也返回 204） */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 未登录，或令牌无效 / 已吊销 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 没有 `oauth.authorization.self.delete` */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 权限查询失败，或写库失败 */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };

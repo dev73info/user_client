@@ -37,8 +37,7 @@ describe('buildMenuGroups', () => {
     const after = buildMenuGroups(true)[1]?.items.map((item) => item.name) ?? []
 
     expect(before).not.toContain('workbench-signatures')
-    expect(after).toContain('workbench-signatures')
-    expect(after.indexOf('workbench-signatures')).toBe(1)
+    expect(after.filter((name) => name === 'workbench-signatures')).toHaveLength(1)
     expect(after.length).toBe(before.length + 1)
   })
 

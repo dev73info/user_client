@@ -12982,6 +12982,75 @@
         }
       }
     },
+    "/api/oauth/authorizations": {
+      "get": {
+        "tags": [
+          "oauth-provider"
+        ],
+        "summary": "本人已授权的开发者应用",
+        "description": "**需要登录 + `oauth.authorization.self.get`**。按开发者聚合当前账号在其 OAuth 客户端下关联的外部用户 ID；只返回本人的授权关系。",
+        "operationId": "oauth_provider_list_user_authorizations",
+        "responses": {
+          "200": {
+            "description": "已授权应用",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/UserAuthorizationResponse"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "未登录，或令牌无效 / 已吊销"
+          },
+          "403": {
+            "description": "没有 `oauth.authorization.self.get`"
+          },
+          "500": {
+            "description": "权限查询失败，或读库失败"
+          }
+        }
+      }
+    },
+    "/api/oauth/authorizations/{developer_username}": {
+      "delete": {
+        "tags": [
+          "oauth-provider"
+        ],
+        "summary": "撤销本人在某开发者应用下的授权",
+        "description": "**需要登录 + `oauth.authorization.self.delete`**。删除当前账号与该开发者全部客户端的外部用户映射，并立即吊销这些客户端下发给当前账号的 access / refresh token；已购订单不受影响。没有匹配关系时仍回 204（幂等）。",
+        "operationId": "oauth_provider_revoke_user_authorization",
+        "parameters": [
+          {
+            "name": "developer_username",
+            "in": "path",
+            "description": "开发者平台账号",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "已撤销（原本没有匹配关系也返回 204）"
+          },
+          "401": {
+            "description": "未登录，或令牌无效 / 已吊销"
+          },
+          "403": {
+            "description": "没有 `oauth.authorization.self.delete`"
+          },
+          "500": {
+            "description": "权限查询失败，或写库失败"
+          }
+        }
+      }
+    },
     "/api/oauth/authorize": {
       "get": {
         "tags": [
@@ -49076,6 +49145,33 @@
               "type": "string"
             },
             "description": "权限码列表。"
+          }
+        }
+      },
+      "UserAuthorizationResponse": {
+        "type": "object",
+        "description": "用户视角的开发者应用授权。",
+        "required": [
+          "developer_username",
+          "external_user_ids",
+          "authorized_at",
+          "updated_at"
+        ],
+        "properties": {
+          "authorized_at": {
+            "type": "string"
+          },
+          "developer_username": {
+            "type": "string"
+          },
+          "external_user_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "updated_at": {
+            "type": "string"
           }
         }
       },
