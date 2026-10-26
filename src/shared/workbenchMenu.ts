@@ -80,12 +80,6 @@ export const devWorkbenchItems: DevWorkbenchItem[] = [
     icon: DataAnalysis,
   },
   {
-    label: '实时看板',
-    name: 'dev-dashboard',
-    description: '订单、资金与交付实时动态',
-    icon: DataAnalysis,
-  },
-  {
     label: '资源项目',
     name: 'dev-resource-list',
     description: '管理主页、版本与资源状态',
