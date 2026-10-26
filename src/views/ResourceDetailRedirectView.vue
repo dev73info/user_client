@@ -1,13 +1,18 @@
 <script setup lang="ts">
-import { onMounted } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
+import { onMounted, ref } from 'vue'
+import { useRoute, useRouter, type LocationQueryRaw } from 'vue-router'
 
 import { HttpError } from '@/api/http'
 import { getPublicMcResource } from '@/api/resources'
-import { getTagRouteSlug, parseResourceIdFromSlug } from '@/api/resourceTags'
+import {
+  getMcPluginPlatformEntries,
+  getTagRouteSlug,
+  parseResourceIdFromSlug,
+} from '@/api/resourceTags'
 import { resourceListingSaleOf } from '@/shared/resourceNavigation'
 import { normalizePromoCode, type ResourceListingSale } from '@/shared/resourceSale'
 import { useAuthStore } from '@/stores/auth'
+import { useTagTreeStore } from '@/stores/tagTree'
 import { TMessage } from 'ui_73info'
 
 /**
@@ -19,9 +24,9 @@ import { TMessage } from 'ui_73info'
  * - `/resources/<作者>--<id>`：站外链接、资源列表静态快照页的 JS 引导（sitemap 里的详情地址）；
  * - `/<根分区>/<子分区>/<作者>--<id>`：三段式旧详情地址（浏览器历史、已分享的链接）。
  *
- * 这条路由只做一件事——解析出资源编号 → 拉一次资源拿到售卖类型与分类 → replace 到页内详情态。
- * 解析不到 / 资源不可见时退回「资源项目」列表（带分区），同样不 404、不白屏；
- * 但会给一句中文提示——访客点的是某条具体资源，只把列表塞给他而不说为什么，等于没有任何反馈。
+ * 这条路由先解析资源编号 → 拉一次资源拿到售卖类型与分类 → replace 到页内详情态。
+ * `/resources/<子分区>` 与旧详情地址冲突时，先按标签树识别分类别名；无效 slug 才回列表。
+ * 标签树获取失败保留原地址并给重试，不把可恢复异常伪装成资源不存在。
  *
  * R029：推广分享链接会带上 `?promo=<推广码>`，这一跳必须把它一起带到列表页的页内详情态，
  * 否则下单请求带不上 `promo_code`、后端永远归因不到（短链落在前端域名时走 router 的 `/r/:code` 兜底）。
@@ -29,6 +34,8 @@ import { TMessage } from 'ui_73info'
 const route = useRoute()
 const router = useRouter()
 const auth = useAuthStore()
+const tagTreeStore = useTagTreeStore()
+const catalogAliasError = ref('')
 
 /**
  * 打不开目标资源时的统一落点：仍回「资源项目」列表（不 404、不白屏）。
@@ -61,11 +68,48 @@ function paramSlug(value: unknown): string {
   return typeof value === 'string' ? value.trim() : ''
 }
 
+function categoryQuery(): LocationQueryRaw {
+  const query: LocationQueryRaw = { ...route.query }
+  const promoCode = normalizePromoCode(route.query.promo)
+  delete query.promo
+  if (promoCode) query.promo = promoCode
+  return query
+}
+
+async function redirectToResourceCategory(entrySlug: string): Promise<boolean> {
+  const tree = await tagTreeStore.ensure()
+  const isCategory = getMcPluginPlatformEntries(tree, 'resources').some(
+    (entry) => entry.slug === entrySlug,
+  )
+  if (!isCategory) return false
+
+  void router.replace({
+    name: 'resource-catalog',
+    params: { rootSlug: 'resources', entrySlug },
+    query: categoryQuery(),
+    // 分类别名与目标目录可能共用同一个 fullPath，也要切换到目录路由记录。
+    force: true,
+  })
+  return true
+}
+
 async function redirectToCatalog() {
+  catalogAliasError.value = ''
   // R029：分享短链把推广码写在 `?promo=` 上（后端 302 / 前端 `/r/:code` 兜底两条路都带）。
   // 先按 `normalizePromoCode` 校验格式再往下带，别把任意字符串写回地址栏。
   const promoCode = normalizePromoCode(route.query.promo)
   const resourceId = parseResourceId(route.params.resourceSlug)
+  if (!resourceId && route.name === 'resource-detail-direct') {
+    const entrySlug = paramSlug(route.params.resourceSlug)
+    if (entrySlug) {
+      try {
+        if (await redirectToResourceCategory(entrySlug)) return
+      } catch (error) {
+        catalogAliasError.value = error instanceof Error ? error.message : '加载资源目录失败'
+        return
+      }
+    }
+  }
   if (!resourceId) {
     fallbackToResourceList('free', '资源不存在或无权访问')
     return
@@ -127,6 +171,11 @@ onMounted(() => {
 </script>
 
 <template>
-  <!-- 重定向是即时的，这里只承载极短的过渡，不留白屏也不渲染旧详情页 -->
-  <main class="portal-page" aria-hidden="true"></main>
+  <!-- 重定向是即时的，这里只承载极短的过渡；标签树失败时保留地址并给重试。 -->
+  <main class="portal-page" :aria-hidden="catalogAliasError ? undefined : 'true'">
+    <section v-if="catalogAliasError" class="portal-page__empty portal-page__empty--stacked">
+      <p role="alert">{{ catalogAliasError }}</p>
+      <button class="portal-page__action" type="button" @click="redirectToCatalog">重新加载</button>
+    </section>
+  </main>
 </template>
