@@ -183,6 +183,11 @@ export function buildMenuGroups(realnameApproved: boolean): WorkbenchMenuGroup[]
           name: 'workbench-resource-purchases',
           description: '已购数字资源，退款由卖家或平台发起',
         },
+        {
+          label: '过户与转移',
+          name: 'workbench-purchase-transfers',
+          description: '处理资源所有权与订单使用权申请',
+        },
       ],
     },
   ]

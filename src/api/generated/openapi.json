@@ -23232,6 +23232,240 @@
         }
       }
     },
+    "/api/resources/purchase-transfers/incoming": {
+      "get": {
+        "tags": [
+          "resource-purchase"
+        ],
+        "summary": "待我接收的使用权转移",
+        "operationId": "purchase_transfer_incoming",
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/PurchaseTransferResponse"
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "没有权限"
+          }
+        }
+      }
+    },
+    "/api/resources/purchase-transfers/outgoing": {
+      "get": {
+        "tags": [
+          "resource-purchase"
+        ],
+        "summary": "我发起的使用权转移",
+        "operationId": "purchase_transfer_outgoing",
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/PurchaseTransferResponse"
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "没有权限"
+          }
+        }
+      }
+    },
+    "/api/resources/purchase-transfers/{transfer_id}/accept": {
+      "post": {
+        "tags": [
+          "resource-purchase"
+        ],
+        "summary": "接受使用权转移",
+        "operationId": "purchase_transfer_accept",
+        "parameters": [
+          {
+            "name": "transfer_id",
+            "in": "path",
+            "description": "转移申请编号",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PurchaseTransferResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "不是接收方"
+          },
+          "404": {
+            "description": "申请不存在"
+          },
+          "409": {
+            "description": "申请已处理或接收方已有权益"
+          }
+        }
+      }
+    },
+    "/api/resources/purchase-transfers/{transfer_id}/cancel": {
+      "post": {
+        "tags": [
+          "resource-purchase"
+        ],
+        "summary": "撤销使用权转移",
+        "operationId": "purchase_transfer_cancel",
+        "parameters": [
+          {
+            "name": "transfer_id",
+            "in": "path",
+            "description": "转移申请编号",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PurchaseTransferResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "不是发起方"
+          },
+          "404": {
+            "description": "申请不存在"
+          },
+          "409": {
+            "description": "申请已处理"
+          }
+        }
+      }
+    },
+    "/api/resources/purchase-transfers/{transfer_id}/reject": {
+      "post": {
+        "tags": [
+          "resource-purchase"
+        ],
+        "summary": "拒绝使用权转移",
+        "operationId": "purchase_transfer_reject",
+        "parameters": [
+          {
+            "name": "transfer_id",
+            "in": "path",
+            "description": "转移申请编号",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PurchaseTransferResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "不是接收方"
+          },
+          "404": {
+            "description": "申请不存在"
+          },
+          "409": {
+            "description": "申请已处理"
+          }
+        }
+      }
+    },
+    "/api/resources/purchases/{order_no}/transfer": {
+      "post": {
+        "tags": [
+          "resource-purchase"
+        ],
+        "summary": "发起接口资源使用权转移",
+        "operationId": "purchase_transfer_create",
+        "parameters": [
+          {
+            "name": "order_no",
+            "in": "path",
+            "description": "订单号",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreatePurchaseTransferRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PurchaseTransferResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "接收方不合法"
+          },
+          "403": {
+            "description": "不是当前买家"
+          },
+          "404": {
+            "description": "订单或接收方不存在"
+          },
+          "409": {
+            "description": "订单状态不允许转移或已有待处理申请"
+          }
+        }
+      }
+    },
     "/api/resources/resources": {
       "get": {
         "tags": [
@@ -23775,6 +24009,61 @@
         }
       }
     },
+    "/api/resources/resources/{resource_id}/transfers": {
+      "post": {
+        "tags": [
+          "resource-self"
+        ],
+        "summary": "发起资源过户",
+        "operationId": "resource_transfer_create",
+        "parameters": [
+          {
+            "name": "resource_id",
+            "in": "path",
+            "description": "资源编号",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateTransferRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResourceTransferResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "接收方不合法"
+          },
+          "403": {
+            "description": "不是资源所有者"
+          },
+          "404": {
+            "description": "资源或接收方不存在"
+          },
+          "409": {
+            "description": "资源被需求绑定或已有待处理申请"
+          }
+        }
+      }
+    },
     "/api/resources/resources/{resource_id}/versions": {
       "get": {
         "tags": [
@@ -24046,6 +24335,186 @@
           },
           "409": {
             "description": "单版本价不低于买断价"
+          }
+        }
+      }
+    },
+    "/api/resources/transfers/inbox": {
+      "get": {
+        "tags": [
+          "resource-self"
+        ],
+        "summary": "待我接收的资源过户",
+        "operationId": "resource_transfer_inbox",
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ResourceTransferResponse"
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "没有权限"
+          }
+        }
+      }
+    },
+    "/api/resources/transfers/mine": {
+      "get": {
+        "tags": [
+          "resource-self"
+        ],
+        "summary": "我发起的资源过户",
+        "operationId": "resource_transfer_mine",
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ResourceTransferResponse"
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "没有权限"
+          }
+        }
+      }
+    },
+    "/api/resources/transfers/{transfer_id}/accept": {
+      "post": {
+        "tags": [
+          "resource-self"
+        ],
+        "summary": "接受资源过户",
+        "operationId": "resource_transfer_accept",
+        "parameters": [
+          {
+            "name": "transfer_id",
+            "in": "path",
+            "description": "过户申请编号",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResourceTransferResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "不是接收方"
+          },
+          "404": {
+            "description": "申请不存在"
+          },
+          "409": {
+            "description": "申请已处理或归属已变化"
+          }
+        }
+      }
+    },
+    "/api/resources/transfers/{transfer_id}/cancel": {
+      "post": {
+        "tags": [
+          "resource-self"
+        ],
+        "summary": "撤销资源过户",
+        "operationId": "resource_transfer_cancel",
+        "parameters": [
+          {
+            "name": "transfer_id",
+            "in": "path",
+            "description": "过户申请编号",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResourceTransferResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "不是发起方"
+          },
+          "404": {
+            "description": "申请不存在"
+          },
+          "409": {
+            "description": "申请已处理"
+          }
+        }
+      }
+    },
+    "/api/resources/transfers/{transfer_id}/reject": {
+      "post": {
+        "tags": [
+          "resource-self"
+        ],
+        "summary": "拒绝资源过户",
+        "operationId": "resource_transfer_reject",
+        "parameters": [
+          {
+            "name": "transfer_id",
+            "in": "path",
+            "description": "过户申请编号",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResourceTransferResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "不是接收方"
+          },
+          "404": {
+            "description": "申请不存在"
+          },
+          "409": {
+            "description": "申请已处理"
           }
         }
       }
@@ -35050,6 +35519,23 @@
           }
         }
       },
+      "CreatePurchaseTransferRequest": {
+        "type": "object",
+        "required": [
+          "to_username"
+        ],
+        "properties": {
+          "message": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "to_username": {
+            "type": "string"
+          }
+        }
+      },
       "CreateRequirementRequest": {
         "type": "object",
         "description": "创建需求请求体。字段名与老接口一致；`budget` 仍以元为单位。",
@@ -35411,6 +35897,30 @@
           "message": {
             "type": "string",
             "description": "留言，最多 200 字。"
+          }
+        }
+      },
+      "CreateTransferRequest": {
+        "type": "object",
+        "properties": {
+          "message": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "to_team_id": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64"
+          },
+          "to_user": {
+            "type": [
+              "string",
+              "null"
+            ]
           }
         }
       },
@@ -41129,6 +41639,71 @@
         },
         "additionalProperties": false
       },
+      "PurchaseTransferResponse": {
+        "type": "object",
+        "required": [
+          "transfer_id",
+          "order_no",
+          "resource_id",
+          "resource_title",
+          "from_username",
+          "to_username",
+          "status",
+          "initiated_at"
+        ],
+        "properties": {
+          "cancelled_at": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "from_username": {
+            "type": "string"
+          },
+          "initiated_at": {
+            "type": "string"
+          },
+          "message": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "order_no": {
+            "type": "string"
+          },
+          "resource_id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "resource_title": {
+            "type": "string"
+          },
+          "responded_at": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "responded_by": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "status": {
+            "type": "string"
+          },
+          "to_username": {
+            "type": "string"
+          },
+          "transfer_id": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      },
       "QrConfirmRequest": {
         "type": "object",
         "description": "确认请求体。",
@@ -42531,12 +43106,12 @@
           "price_fen": {
             "type": "integer",
             "format": "int64",
-            "description": "冻结的历史现金售价（兼容旧前端，不参与售卖判定）。"
+            "description": "现金买断价的镜像字段，与 `buyout_price_fen` 同步。"
           },
           "price_points": {
             "type": "integer",
             "format": "int64",
-            "description": "冻结的历史积分售价（兼容旧前端）。"
+            "description": "积分买断价，参与售卖与下载鉴权。"
           },
           "promo_share_bps": {
             "type": "integer",
@@ -42650,6 +43225,99 @@
           "visibility": {
             "type": "string",
             "description": "可见性。"
+          }
+        }
+      },
+      "ResourceTransferResponse": {
+        "type": "object",
+        "required": [
+          "transfer_id",
+          "resource_id",
+          "resource_name",
+          "from_user",
+          "status",
+          "from_ownership_type",
+          "initiated_at"
+        ],
+        "properties": {
+          "cancelled_at": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "from_ownership_type": {
+            "type": "string"
+          },
+          "from_team_id": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64"
+          },
+          "from_team_name": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "from_user": {
+            "type": "string"
+          },
+          "initiated_at": {
+            "type": "string"
+          },
+          "message": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "resource_id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "resource_name": {
+            "type": "string"
+          },
+          "responded_at": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "responded_by": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "status": {
+            "type": "string"
+          },
+          "to_team_id": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64"
+          },
+          "to_team_name": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "to_user": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "transfer_id": {
+            "type": "integer",
+            "format": "int64"
           }
         }
       },
