@@ -15,6 +15,7 @@ import PortalWorkflowSection from '@/components/home/PortalWorkflowSection.vue'
 import SpotlightResourceSection from '@/components/home/SpotlightResourceSection.vue'
 import { useHomeAuthQuery } from '@/composables/useHomeAuthQuery'
 import { useHomeDepositCard } from '@/composables/useHomeDepositCard'
+import { useHomeCheckin } from '@/composables/useHomeCheckin'
 import { useHomePortalActions } from '@/composables/useHomePortalActions'
 import { useHomePortalAuth } from '@/composables/useHomePortalAuth'
 import {
@@ -50,6 +51,13 @@ const {
   applyLikeState,
 } = usePublicResources()
 const auth = useAuthStore()
+const {
+  status: checkinStatus,
+  saving: checkinSaving,
+  error: checkinError,
+  load: loadCheckin,
+  checkin,
+} = useHomeCheckin()
 
 /**
  * 卸载标记：**只在视图这一份**，往下传的是只读 getter（`isMounted: () => isMounted`），
@@ -231,6 +239,11 @@ const platformStats = computed<PortalMilestoneStat[]>(() =>
           :developer-ranks="developerRanks"
           :total-contrib-resources="totalContribResources"
           :team-ranks="teamRanks"
+          :checkin-status="checkinStatus"
+          :checkin-saving="checkinSaving"
+          :checkin-error="checkinError"
+          @checkin="checkin"
+          @checkin-reload="loadCheckin"
           @open-group="portalActions.openBetaGroup"
           @open-notice="portalActions.openPortalNotice"
           @open-resource-init="portalActions.openResourceInit"

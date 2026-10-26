@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import type { CheckinStatus } from '@/api/points'
 import DeveloperRankCard from '@/components/home/DeveloperRankCard.vue'
 import PortalBetaCard from '@/components/home/PortalBetaCard.vue'
 import PortalMilestoneCard from '@/components/home/PortalMilestoneCard.vue'
@@ -23,6 +24,9 @@ withDefaults(
     developerRanks: DeveloperRank[]
     totalContribResources: number
     teamRanks: TeamRank[]
+    checkinStatus?: CheckinStatus | null
+    checkinSaving?: boolean
+    checkinError?: string
   }>(),
   {
     notices: () => [],
@@ -30,6 +34,9 @@ withDefaults(
     developerRanks: () => [],
     totalContribResources: 0,
     teamRanks: () => [],
+    checkinStatus: null,
+    checkinSaving: false,
+    checkinError: '',
   },
 )
 
@@ -39,12 +46,21 @@ const emit = defineEmits<{
   (e: 'open-resource-init'): void
   (e: 'open-developer', username: string): void
   (e: 'open-team', teamId: number): void
+  (e: 'checkin'): void
+  (e: 'checkin-reload'): void
 }>()
 </script>
 
 <template>
   <aside class="portal-sidebar">
-    <PortalBetaCard @open-group="emit('open-group')" />
+    <PortalBetaCard
+      :status="checkinStatus"
+      :saving="checkinSaving"
+      :error="checkinError"
+      @open-group="emit('open-group')"
+      @checkin="emit('checkin')"
+      @reload="emit('checkin-reload')"
+    />
 
     <PortalNoticeCard :notices="notices" @open-notice="emit('open-notice', $event)" />
 

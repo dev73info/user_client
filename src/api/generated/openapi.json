@@ -26860,7 +26860,7 @@
           "profile"
         ],
         "summary": "设置动态主页背景",
-        "description": "**需要登录 + `system.profile.update.put`**。与静态背景同一套语义：传**已上传好的地址**，`image_url` 为空串表示清空，`focus` 最长 64 个字符。响应是更新后的完整档案。2.0 没有权益体系，因此不做 1.x 的背景权益校验。",
+        "description": "**需要登录 + `system.profile.update.put`**。与静态背景同一套语义：传**已上传好的地址**，`image_url` 为空串表示清空，`focus` 最长 64 个字符。响应是更新后的完整档案。设置背景前必须持有对应权益；清空背景不受限。",
         "operationId": "profile_set_background_dynamic",
         "requestBody": {
           "content": {
@@ -26955,7 +26955,7 @@
           "profile"
         ],
         "summary": "设置静态主页背景",
-        "description": "**需要登录 + `system.profile.update.put`**。传的是**已经上传好的地址**（先用 `POST .../background-static/upload` 传文件），不是文件本身。`image_url` 传空串表示**清空**背景，同时清掉焦点。`focus` 是前端裁切预览用的短描述，最长 64 个字符。响应是更新后的完整档案。与 1.x 的差别：1.x 设置背景前要校验 `home_background_static` 权益，2.0 没有权益 / 积分体系，因此不做这项校验。",
+        "description": "**需要登录 + `system.profile.update.put`**。传的是**已经上传好的地址**（先用 `POST .../background-static/upload` 传文件），不是文件本身。`image_url` 传空串表示**清空**背景，同时清掉焦点。`focus` 是前端裁切预览用的短描述，最长 64 个字符。响应是更新后的完整档案。设置背景前必须持有 `home_background_static` 权益；清空背景不受限。",
         "operationId": "profile_set_background_static",
         "requestBody": {
           "content": {
@@ -41353,7 +41353,8 @@
         "description": "公开档案响应。\n\n只有展示字段：不含邮箱、手机号、实名信息，也不含账号状态（是否被封禁 / 注销）。\n这个端点是免登录的，多一个字段就等于多一份可以被批量抓取的资料。",
         "required": [
           "username",
-          "profile_description"
+          "profile_description",
+          "username_gradient"
         ],
         "properties": {
           "avatar_url": {
@@ -41398,6 +41399,17 @@
           "username": {
             "type": "string",
             "description": "登录名。"
+          },
+          "username_color": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "用户名特定颜色；未启用时为空。"
+          },
+          "username_gradient": {
+            "type": "boolean",
+            "description": "是否使用用户名渐变展示。"
           }
         }
       },

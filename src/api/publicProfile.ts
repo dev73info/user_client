@@ -1,7 +1,7 @@
 /**
  * 公开用户档案（`GET /api/user/{username}`，免登录）。
  *
- * 契约 `PublicProfileResponse` **只有展示字段**：用户名、简介、头像、静态 / 动态主页背景与两处焦点。
+ * 契约 `PublicProfileResponse` **只有展示字段**：用户名、简介、头像、静态 / 动态主页背景与两处焦点，以及权益提供的用户名渐变 / 特定颜色。
  * 不含邮箱、手机号、实名信息，也不含账号状态（是否被封禁 / 注销）——这个端点免登录，
  * 多一个字段就等于多一份能被批量抓取的资料，所以类型上也只留白名单里的那几个键。
  */
@@ -58,17 +58,10 @@ export type PublicTipBlock = {
 export type ContractPublicProfile = Schemas['PublicProfileResponse']
 
 /**
- * 公开档案。
- *
- * ⚠️ 下面三个字段是 **1.x 的遗留**，2.0 的 `GET /api/user/{username}` 不再返回：
- * `username_gradient` / `username_color`（权益域）与 `tip`（打赏块）。
- * 它们仍留在类型里只为不打断 `useDevProfileData` / `DevProfileView` 的现有读法
- * （读不到就是 `false` / `null`，页面不渲染对应块，不编造数据）；
- * 等权益与打赏域把主页那两块一起拆掉时连字段一并删除。
+ * 公开档案包含权益域提供的用户名渐变 / 特定颜色，以及公开背景展示字段。
+ * `tip` 仍是独立打赏块，不在这里重复返回。
  */
 export type PublicUserProfile = ContractPublicProfile & {
-  username_gradient?: boolean
-  username_color?: string | null
   tip?: PublicTipBlock | null
 }
 

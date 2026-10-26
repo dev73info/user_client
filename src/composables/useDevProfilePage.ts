@@ -18,6 +18,7 @@ import { useAuthStore } from '@/stores/auth'
 import { useDevProfileBackground } from './useDevProfileBackground'
 import { useDevProfileData } from './useDevProfileData'
 import { useDevProfileEdit } from './useDevProfileEdit'
+import { useDevProfilePerks } from './useDevProfilePerks'
 import { useDevProfileTips } from './useDevProfileTips'
 
 /** 公开资源卡的展示口径：组件只吃这几个字段，不碰 api 与路由。 */
@@ -36,6 +37,7 @@ export function useDevProfilePage() {
 
   const data = useDevProfileData()
   const loading = ref(false)
+  const perks = useDevProfilePerks()
 
   async function reload() {
     if (!data.username.value) {
@@ -45,6 +47,7 @@ export function useDevProfilePage() {
     try {
       await data.load()
       background.syncBackgroundKind()
+      await perks.load(data.isSelf.value)
     } catch (err) {
       TMessage.error(err instanceof Error ? err.message : '加载开发者信息失败')
     } finally {
@@ -133,7 +136,27 @@ export function useDevProfilePage() {
     mediaStyle: background.mediaStyle,
     /** 头部点「编辑简介」：把当前简介带进弹窗草稿 */
     editProfile: () => edit.editProfile(data.profileDescription.value),
-    setBackground: background.openBackground,
+    setBackground: (nextMode: 'static' | 'dynamic') => {
+      if (perks.error.value) {
+        TMessage.error(perks.error.value)
+        return
+      }
+      const allowStatic = perks.canCustomizeBackground.value
+      const allowDynamic = perks.canCustomizeDynamicBackground.value
+      if (!allowStatic && !allowDynamic) {
+        TMessage.warning('请先兑换主页背景权益')
+        return
+      }
+      const mode =
+        nextMode === 'dynamic' && allowDynamic
+          ? 'dynamic'
+          : nextMode === 'static' && allowStatic
+            ? 'static'
+            : allowStatic
+              ? 'static'
+              : 'dynamic'
+      background.openBackground(mode)
+    },
     openTipDialog: tips.openTipDialog,
     openTipSettings: tips.openTipSettings,
     // 读数

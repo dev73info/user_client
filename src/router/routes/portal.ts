@@ -45,6 +45,12 @@ export const portalRoutes: RouteRecordRaw[] = [
     component: () => import('@/views/HomeView.vue'),
   },
   {
+    path: '/mall',
+    name: 'mall',
+    component: () => import('@/views/MallView.vue'),
+    meta: { title: '积分商城' },
+  },
+  {
     // 「资源项目」：原来是「免费资源」「付费资源」两个导航项，现在合并成一项，
     // 免费 / 付费在同一页内用分段控件切换（写 `?sale=`，见 ResourceCatalogView）。
     path: '/resources',
