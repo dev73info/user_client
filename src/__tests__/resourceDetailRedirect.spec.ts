@@ -5,6 +5,7 @@ const mocks = vi.hoisted(() => ({
   showToast: vi.fn(),
   replace: vi.fn(),
   getResource: vi.fn(),
+  ensure: vi.fn(),
   params: {} as Record<string, unknown>,
   query: {} as Record<string, unknown>,
 }))
@@ -15,6 +16,9 @@ vi.mock('vue-router', () => ({
 }))
 vi.mock('@/stores/auth', () => ({
   useAuthStore: () => ({ token: null, hydrate: vi.fn() }),
+}))
+vi.mock('@/stores/tagTree', () => ({
+  useTagTreeStore: () => ({ ensure: mocks.ensure }),
 }))
 vi.mock('ui_73info', async (importOriginal) => {
   const actual = await importOriginal<typeof import('ui_73info')>()
@@ -40,6 +44,7 @@ vi.mock('@/api/resources', () => ({
 // getTagRouteSlug 加 `tag-` 前缀，好在断言里一眼看出 slug 是「按标签名推出来的」还是「取别名的」；
 // 空名仍然回空串，与真实实现（`normalizeTagName`）一致——那正是「资源没有分类标签」的判据。
 vi.mock('@/api/resourceTags', () => ({
+  getMcPluginPlatformEntries: () => [],
   getTagRouteSlug: (name: string) => (name.trim() ? `tag-${name.trim()}` : ''),
   parseResourceIdFromSlug: (slug: string) => {
     const match = slug.match(/--(\d+)$/)
@@ -102,6 +107,7 @@ beforeEach(() => {
   mocks.showToast.mockReset()
   mocks.replace.mockReset()
   mocks.getResource.mockReset()
+  mocks.ensure.mockReset().mockResolvedValue({ roots: [] })
   mocks.params = {}
   mocks.query = {}
 })
