@@ -25,6 +25,7 @@ const mocks = vi.hoisted(() => ({
   updateStatic: vi.fn(),
   uploadDynamic: vi.fn(),
   updateDynamic: vi.fn(),
+  points: vi.fn(),
 }))
 
 vi.mock('vue-router', () => ({
@@ -65,6 +66,7 @@ vi.mock('@/api/settings', () => ({
   uploadProfileBackgroundDynamic: mocks.uploadDynamic,
   updateProfileBackgroundDynamic: mocks.updateDynamic,
 }))
+vi.mock('@/api/points', () => ({ getMyPoints: mocks.points }))
 
 import { buttonByText, profile, resources } from './helpers/devProfileFixtures'
 
@@ -73,6 +75,25 @@ import DevProfileView from '@/views/DevProfileView.vue'
 let wrapper: VueWrapper | null = null
 
 async function mountPage(): Promise<VueWrapper> {
+  mocks.points.mockResolvedValue({
+    username: 'dev_alice',
+    points_balance: 0,
+    logs: [],
+    logs_total: 0,
+    logs_page: 1,
+    logs_page_size: 10,
+    username_gradient_owned: false,
+    username_gradient: false,
+    perks: [
+      {
+        perk_code: 'home_background_static',
+        owned: true,
+        equipped: false,
+        expires_at: null,
+        created_at: null,
+      },
+    ],
+  })
   mocks.listResources.mockResolvedValue(resources)
   mocks.publicProfile.mockResolvedValue(profile)
   mocks.uploadStatic.mockResolvedValue({ home_background_static: '/uploads/new-bg.png' })

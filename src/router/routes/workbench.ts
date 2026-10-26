@@ -76,6 +76,18 @@ export const workbenchRoutes: RouteRecordRaw[] = [
         },
       },
       {
+        path: 'points',
+        name: 'workbench-points',
+        component: () => import('@/views/PointsCenterView.vue'),
+        meta: { title: '积分中心', description: '签到、积分明细与打赏' },
+      },
+      {
+        path: 'perks',
+        name: 'workbench-perks',
+        component: () => import('@/views/PerksCenterView.vue'),
+        meta: { title: '我的权益', description: '佩戴已解锁权益' },
+      },
+      {
         path: 'invite',
         name: 'workbench-invite',
         redirect: { name: 'workbench-badges' },

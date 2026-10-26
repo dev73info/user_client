@@ -9712,7 +9712,7 @@ export interface paths {
         get?: never;
         /**
          * 设置动态主页背景
-         * @description **需要登录 + `system.profile.update.put`**。与静态背景同一套语义：传**已上传好的地址**，`image_url` 为空串表示清空，`focus` 最长 64 个字符。响应是更新后的完整档案。2.0 没有权益体系，因此不做 1.x 的背景权益校验。
+         * @description **需要登录 + `system.profile.update.put`**。与静态背景同一套语义：传**已上传好的地址**，`image_url` 为空串表示清空，`focus` 最长 64 个字符。响应是更新后的完整档案。设置背景前必须持有对应权益；清空背景不受限。
          */
         put: operations["profile_set_background_dynamic"];
         post?: never;
@@ -9752,7 +9752,7 @@ export interface paths {
         get?: never;
         /**
          * 设置静态主页背景
-         * @description **需要登录 + `system.profile.update.put`**。传的是**已经上传好的地址**（先用 `POST .../background-static/upload` 传文件），不是文件本身。`image_url` 传空串表示**清空**背景，同时清掉焦点。`focus` 是前端裁切预览用的短描述，最长 64 个字符。响应是更新后的完整档案。与 1.x 的差别：1.x 设置背景前要校验 `home_background_static` 权益，2.0 没有权益 / 积分体系，因此不做这项校验。
+         * @description **需要登录 + `system.profile.update.put`**。传的是**已经上传好的地址**（先用 `POST .../background-static/upload` 传文件），不是文件本身。`image_url` 传空串表示**清空**背景，同时清掉焦点。`focus` 是前端裁切预览用的短描述，最长 64 个字符。响应是更新后的完整档案。设置背景前必须持有 `home_background_static` 权益；清空背景不受限。
          */
         put: operations["profile_set_background_static"];
         post?: never;
@@ -15458,6 +15458,10 @@ export interface components {
             profile_description: string;
             /** @description 登录名。 */
             username: string;
+            /** @description 用户名特定颜色；未启用时为空。 */
+            username_color?: string | null;
+            /** @description 是否使用用户名渐变展示。 */
+            username_gradient: boolean;
         };
         /** @description 公开详情响应（字段与 legacy `PublicRequirementDetailResponse` 一致）。 */
         PublicRequirementResponse: {
