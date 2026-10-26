@@ -1,0 +1,132 @@
+.assistant-page {
+  display: grid;
+  gap: 16px;
+}
+.assistant-grid {
+  display: grid;
+  grid-template-columns: minmax(180px, 230px) minmax(0, 1fr) minmax(220px, 300px);
+  gap: 16px;
+}
+.assistant-history h3,
+.assistant-draft h3,
+.assistant-chat h3 {
+  margin: 0;
+}
+.assistant-history ul {
+  display: grid;
+  gap: 8px;
+  padding: 0;
+  margin: 14px 0 0;
+  list-style: none;
+}
+.assistant-history button {
+  width: 100%;
+  display: grid;
+  gap: 4px;
+  padding: 9px;
+  border: 1px solid var(--73-border);
+  border-radius: 8px;
+  background: var(--73-surface-strong);
+  color: var(--73-ink);
+  text-align: left;
+  cursor: pointer;
+}
+.assistant-history button.active {
+  border-color: var(--73-accent);
+  background: var(--73-accent-soft);
+}
+.assistant-history span,
+.assistant-head p,
+.assistant-message time,
+.assistant-note {
+  color: var(--73-ink-muted);
+  font-size: 12px;
+}
+.assistant-head,
+.assistant-message header,
+.assistant-actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+}
+.assistant-messages {
+  display: grid;
+  gap: 10px;
+  max-height: 460px;
+  overflow-y: auto;
+  margin: 16px 0;
+}
+.assistant-message {
+  padding: 10px 12px;
+  border: 1px solid var(--73-border);
+  border-radius: 10px;
+  background: var(--73-surface-strong);
+}
+.assistant-message--ai {
+  background: var(--73-accent-soft);
+}
+.assistant-message--user {
+  margin-left: 40px;
+}
+.assistant-message p {
+  margin: 6px 0 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.assistant-compose textarea {
+  width: 100%;
+  padding: 9px 10px;
+  border: 1px solid var(--73-border);
+  border-radius: 8px;
+  font: inherit;
+}
+.assistant-actions {
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  margin-top: 8px;
+}
+.assistant-example {
+  padding: 4px 8px;
+  border: 1px solid var(--73-border);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--73-ink-muted);
+  cursor: pointer;
+}
+.assistant-draft dl {
+  display: grid;
+  gap: 10px;
+  margin: 16px 0;
+}
+.assistant-draft dl > div {
+  display: grid;
+  gap: 3px;
+}
+.assistant-draft dt {
+  color: var(--73-ink-muted);
+  font-size: 12px;
+}
+.assistant-draft dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+.assistant-draft :deep(.auth-btn) {
+  width: 100%;
+}
+@media (max-width: 1180px) {
+  .assistant-grid {
+    grid-template-columns: 200px minmax(0, 1fr);
+  }
+  .assistant-draft {
+    grid-column: 1 / -1;
+  }
+}
+@media (max-width: 900px) {
+  .assistant-grid {
+    grid-template-columns: 1fr;
+  }
+  .assistant-draft {
+    grid-column: auto;
+  }
+}

@@ -25,11 +25,13 @@ describe('buildMenuGroups', () => {
     expect(buildMenuGroups(false).map((group) => group.key)).toEqual(['collaboration', 'account'])
   })
 
-  it('「我的需求」只剩一个页面：整组收成一条一级条目', () => {
+  it('需求协作组包含我的需求和 AI 需求助手', () => {
     const [collaboration] = buildMenuGroups(false)
 
-    expect(collaboration?.items).toHaveLength(1)
-    expect(collaboration?.items[0]?.name).toBe('workbench-requirements')
+    expect(collaboration?.items.map((item) => item.name)).toEqual([
+      'workbench-requirements',
+      'workbench-assistant',
+    ])
   })
 
   it('实名未通过时没有「我的合同」，通过后出现在账户服务里', () => {
@@ -58,11 +60,12 @@ describe('buildMenuGroups', () => {
 })
 
 describe('开发者菜单', () => {
-  it('一级条目按动线平铺：总览 → 实时看板 → 资源 → 需求大厅 → 我的接单', () => {
+  it('一级条目按动线平铺，并保留 AI 需求助手入口', () => {
     expect(devWorkbenchItems.map((item) => item.label)).toEqual([
       '工作台总览',
       '实时看板',
       '资源项目',
+      'AI 需求助手',
       '需求大厅',
       '我的接单',
     ])

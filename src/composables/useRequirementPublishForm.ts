@@ -12,6 +12,7 @@ import {
   type RequirementPublishFormValues,
   type RequirementPublishPayload,
 } from '@/shared/requirementPublishForm'
+import { consumePendingAgentDraft } from '@/shared/requirementAssistant'
 
 /**
  * 「发布需求」与「重新编辑需求」两个 `PublishModal` 实例的一份共用逻辑。
@@ -89,7 +90,11 @@ export function useRequirementPublishForm(options: UseRequirementPublishFormOpti
   const modalRef = ref<InstanceType<typeof PublishModal> | null>(null)
   /** 编辑实例的目标需求；发布实例恒为 null。 */
   const requirement = ref<RequirementItem | null>(null)
-  const form = reactive<RequirementPublishFormValues>(emptyForm())
+  const pendingAgentDraft = options.mode === 'publish' ? consumePendingAgentDraft() : null
+  const form = reactive<RequirementPublishFormValues>({
+    ...emptyForm(),
+    ...(pendingAgentDraft ?? {}),
+  })
   const includeDevelopmentCycle = options.includeDevelopmentCycle ?? true
 
   const draftScope = computed(() => options.draftScope(requirement.value))

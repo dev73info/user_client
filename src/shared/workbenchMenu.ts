@@ -98,6 +98,12 @@ export const devWorkbenchItems: DevWorkbenchItem[] = [
     icon: Files,
   },
   {
+    label: 'AI 需求助手',
+    name: 'dev-assistant',
+    description: '对话梳理需求并生成草稿',
+    icon: Compass,
+  },
+  {
     label: '需求大厅',
     name: 'dev-requirement-hall',
     description: '浏览并关联可接需求',
@@ -157,6 +163,11 @@ export function buildMenuGroups(realnameApproved: boolean): WorkbenchMenuGroup[]
           label: '我的需求',
           name: 'workbench-requirements',
           description: '查看支付、交付与验收进度',
+        },
+        {
+          label: 'AI 需求助手',
+          name: 'workbench-assistant',
+          description: '对话梳理需求并生成草稿',
         },
       ],
     },
