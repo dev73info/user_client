@@ -45,7 +45,7 @@ function handleTagClick(section: FilterSectionView, tag: string) {
 </script>
 
 <template>
-  <section class="portal-resource-browser__filters">
+  <section v-if="props.sections.length > 0" class="portal-resource-browser__filters">
     <nav class="portal-resource-browser__menu" aria-label="标签筛选菜单">
       <section
         v-for="section in props.sections"
