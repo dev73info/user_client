@@ -24,6 +24,7 @@ import DevWalletStatsBar from '@/components/dev/DevWalletStatsBar.vue'
 import { useDevWalletDeposit } from '@/composables/useDevWalletDeposit'
 import { useDevWalletOverview } from '@/composables/useDevWalletOverview'
 import { useAuthStore } from '@/stores/auth'
+import { syncInflightRefunds } from '@/api/devWallet'
 import { TIcon, TInput, Search } from 'ui_73info'
 
 import DevFundRecordsView from './DevFundRecordsView.vue'
@@ -73,14 +74,22 @@ function goRechargeDeposit() {
 
 onMounted(async () => {
   auth.hydrate()
-  await Promise.all([loadWallet(), loadDeposit()])
+  await refreshWallet()
 })
+
+/** 进页面与手动刷新都先同步一次在途退款，再读余额与明细。 */
+async function refreshWallet() {
+  // 渠道回调可能丢件：先让后端主动回查在途退款，再读余额与明细。
+  // 同步失败不阻塞页面（渠道不可用时仍展示本地账）。
+  await syncInflightRefunds(auth.token).catch(() => undefined)
+  await Promise.all([loadWallet(), loadDeposit()])
+}
 </script>
 
 <template>
   <div class="dev-page dev-wallet-page">
     <!-- 读数条：累计收入 / 今日入账 / 完成订单 / 活跃需求 + 刷新 -->
-    <DevWalletStatsBar :overview="overview" :loading="loading" @refresh="loadWallet" />
+    <DevWalletStatsBar :overview="overview" :loading="loading" @refresh="refreshWallet" />
 
     <!-- 两个资金池并排：接单收入（可提现收益）与保证金余额（接单押金）。
          它们互不相通——合成一个余额会让人以为可以提现保证金赚来的钱，所以分两张卡。 -->
