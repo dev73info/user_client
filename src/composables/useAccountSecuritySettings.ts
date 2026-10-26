@@ -29,6 +29,8 @@ import { TMessage } from 'ui_73info'
 export type AccountSecuritySettingsOptions = {
   /** 当前绑定邮箱的**正本**（两步验证域也要读，所以由调用方持有，本域只写）。 */
   profileEmail: Ref<string>
+  /** 把 profile 里的当前登录名交给用户名设置域。 */
+  applyUsername?: (username: string) => void
   /** 把 profile 里带出来的两步验证初始开关交给两步验证域（两个开关位一起置）。 */
   applyTwoFactor: (enabled: boolean) => void
 }
@@ -61,6 +63,7 @@ export function useAccountSecuritySettings(options: AccountSecuritySettingsOptio
     try {
       const profile = await getProfile(auth.token)
       profileEmail.value = profile.email ?? ''
+      options.applyUsername?.(profile.username)
       options.applyTwoFactor(profile.two_factor_enabled)
       if (!newEmail.value) {
         newEmail.value = profile.email ?? ''

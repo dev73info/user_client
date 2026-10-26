@@ -58,6 +58,7 @@ vi.mock('ui_73info', async (importOriginal) => {
 
 vi.mock('@/api/settings', () => ({
   getProfile: mocks.getProfile,
+  updateProfile: vi.fn(),
   sendProfileEmailChangeCode: mocks.sendProfileEmailChangeCode,
   updateProfileEmail: mocks.updateProfileEmail,
   // 本文件用不到，但模块是整体 mock 的，视图 import 的名字都得在

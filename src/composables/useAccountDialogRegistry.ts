@@ -7,6 +7,7 @@ import { useAccountProviderBinding } from './useAccountProviderBinding'
 import { useAccountSeal } from './useAccountSeal'
 import { useAccountSecuritySettings } from './useAccountSecuritySettings'
 import { useAccountTwoFactorSettings } from './useAccountTwoFactorSettings'
+import { useAccountUsername } from './useAccountUsername'
 import type { AccountEntryActions, AccountEntryGroupsOptions } from './useAccountEntryGroups'
 import { useAsignAccount } from './useAsignAccount'
 import { useFaceidChallenge } from './useFaceidChallenge'
@@ -51,8 +52,10 @@ export type AccountDialogKey =
   | 'seal'
   | 'email'
   | 'password'
+  | 'username'
   | 'twoFactor'
   | 'closeAccount'
+  | 'wechatQr'
 
 /** 宿主渲染用的域背包：每个弹窗读自己那一段（`page` 是本文件自持的零头）。 */
 export type AccountDialogDomains = ReturnType<typeof useAccountDialogRegistry>['domains']
@@ -81,9 +84,11 @@ export function useAccountDialogRegistry(deps: AccountDialogDeps) {
 
   // ── 各弹窗的域（顺序即依赖顺序：后面几个要读前面几个的值） ────────────
   const provider = useAccountProviderBinding()
+  const username = useAccountUsername()
   const twoFactor = useAccountTwoFactorSettings({ profileEmail })
   const security = useAccountSecuritySettings({
     profileEmail,
+    applyUsername: username.applyUsername,
     applyTwoFactor: twoFactor.applyTwoFactor,
   })
   const asign = useAsignAccount()
@@ -169,8 +174,15 @@ export function useAccountDialogRegistry(deps: AccountDialogDeps) {
     seal: seal.sealDialogVisible,
     email: security.emailDialogVisible,
     password: security.passwordDialogVisible,
+    username: username.usernameDialogVisible,
     twoFactor: twoFactor.twoFactorDialogVisible,
     closeAccount: closeAccount.accountCloseDialogVisible,
+    wechatQr: computed({
+      get: () => provider.wechatBindQr.visible,
+      set: (next: boolean) => {
+        provider.wechatBindQr.visible = next
+      },
+    }),
   }
 
   /** 宿主唯一的回写口：`:open` / `:visible` 的变化都落到这里，再写回正本 ref。 */
@@ -197,6 +209,7 @@ export function useAccountDialogRegistry(deps: AccountDialogDeps) {
     wechatBound: provider.wechatBound,
     wechatBindingLoading: provider.wechatBindingLoading,
     providerBindingLoading: provider.providerBindingLoading,
+    providerError: provider.loadError,
     boundProviders: provider.boundProviders,
   }
 
@@ -219,6 +232,7 @@ export function useAccountDialogRegistry(deps: AccountDialogDeps) {
     openPasswordDialog: () => {
       security.passwordDialogVisible.value = true
     },
+    openUsernameDialog: username.openUsernameDialog,
     openTwoFactorDialog: () => {
       twoFactor.twoFactorDialogVisible.value = true
     },
@@ -235,7 +249,7 @@ export function useAccountDialogRegistry(deps: AccountDialogDeps) {
     faceid,
     submit,
     settle,
-    security,
+    security: { ...security, ...username },
     twoFactor,
     asign,
     provider,
@@ -264,6 +278,7 @@ export function useAccountDialogRegistry(deps: AccountDialogDeps) {
     startMobileWatch,
     loadProfile: security.loadProfile,
     loadBoundProviders: provider.loadBoundProviders,
+    providerLoadError: provider.loadError,
     consumeWechatBindResult: provider.consumeWechatBindResult,
     consumeProviderBindResult: provider.consumeProviderBindResult,
     refreshAdapayMember: settle.refreshAdapayMember,

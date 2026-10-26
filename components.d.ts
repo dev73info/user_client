@@ -255,6 +255,8 @@ declare module 'vue' {
     TransferApplicationList: typeof import('./src/components/TransferApplicationList.vue')['default']
     TurnstileWidget: typeof import('./src/components/TurnstileWidget.vue')['default']
     TwoFactorDialog: typeof import('./src/components/account/TwoFactorDialog.vue')['default']
+    UsernameDialog: typeof import('./src/components/account/UsernameDialog.vue')['default']
+    WechatBindQrModal: typeof import('./src/components/WechatBindQrModal.vue')['default']
     WechatLoginQrModal: typeof import('./src/components/WechatLoginQrModal.vue')['default']
     WorkbenchBarSlot: typeof import('./src/components/WorkbenchBarSlot.vue')['default']
     WorkbenchBrandRow: typeof import('./src/components/workbench/WorkbenchBrandRow.vue')['default']

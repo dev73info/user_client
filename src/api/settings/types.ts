@@ -10,25 +10,15 @@ type Schemas = components['schemas']
 /** 我的档案（`GET / PUT /system/settings/profile`）。 */
 export type ProfileResponse = Schemas['ProfileResponse']
 
-/** 改档案请求体。注意只有 `profile_description` 与 `new_username`（后者不接受自助改名）。 */
+/** 改档案请求体：可改简介与本人登录名。 */
 export type UpdateProfileRequest = Schemas['UpdateProfileRequest']
+
+/** 改名时另带新会话令牌。 */
+export type UpdateProfileResponse = Schemas['UpdateProfileResponse']
 
 /** 订阅开关响应。 */
 export type SubscriptionResponse = Schemas['SubscriptionResponse']
-
-/**
- * 我的消息订阅开关（读写同一形状）。
- *
- * ⚠️ **契约这里贴错了模型**：`GET / PUT /system/settings/profile/subscriptions` 声明回
- * `SubscriptionResponse{requirement_id, subscribe_status_change}`——那是「需求状态变更订阅」
- * 的形状，而同一端点的请求体 `UpdateSubscriptionsRequest` 与档案 `ProfileResponse` 都是
- * 这两个布尔开关。前端按布尔开关消费（与 `ProfileResponse.subscribe_*` 同源），
- * 后端把 schema 改对之后直接换成生成物。
- */
-export type ProfileSubscriptionsResp = {
-  subscribe_official_activity: boolean
-  subscribe_dev_hall_deposit_paid: boolean
-}
+export type ProfileSubscriptionsResp = Schemas['SubscriptionResponse']
 
 /** 改订阅开关请求体：`null` / 缺省表示不改该项。 */
 export type UpdateSubscriptionsRequest = Schemas['UpdateSubscriptionsRequest']

@@ -22,6 +22,8 @@ export type {
   OauthStatusResp,
   PrivilegesResponse,
   UserServiceAgreement,
+  WechatBindQrStatusResp,
+  WechatBindQrUrlResp,
   WechatLoginQrPollStatus,
   WechatLoginQrStatusResp,
   WechatLoginQrUrlResp,
@@ -35,7 +37,12 @@ export {
   unbindProvider,
 } from './oauth'
 
-export { getWechatLoginQrStatus, getWechatLoginQrUrl } from './wechat'
+export {
+  getWechatBindQrStatus,
+  getWechatBindQrUrl,
+  getWechatLoginQrStatus,
+  getWechatLoginQrUrl,
+} from './wechat'
 
 export { getQqLoginQrStatus, getQqLoginQrUrl } from './thirdPartyLogin'
 

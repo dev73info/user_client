@@ -1,6 +1,6 @@
 import { authHeader, requestJson } from '@/api/http'
 
-import type { ProfileResponse, UpdateProfileRequest } from './types'
+import type { ProfileResponse, UpdateProfileRequest, UpdateProfileResponse } from './types'
 
 export async function getProfile(token: string): Promise<ProfileResponse> {
   return requestJson<ProfileResponse>(
@@ -15,18 +15,12 @@ export async function getProfile(token: string): Promise<ProfileResponse> {
   )
 }
 
-/**
- * 改我的档案（`PUT /system/settings/profile`）。
- *
- * **不接受自助改登录名**：契约允许的请求体只有 `profile_description`（`new_username`
- * 传成与当前登录名不同的值会直接 400），改登录名走管理端 `POST /auth/users/username`。
- * 所以这里只收简介，签名上就不给「传个用户名」的机会。
- */
+/** 改我的档案与登录名；实际改名时响应带新会话令牌。 */
 export async function updateProfile(
   token: string,
-  payload: Pick<UpdateProfileRequest, 'profile_description'>,
-): Promise<ProfileResponse> {
-  return requestJson<ProfileResponse>(
+  payload: Pick<UpdateProfileRequest, 'profile_description' | 'new_username'>,
+): Promise<UpdateProfileResponse> {
+  return requestJson<UpdateProfileResponse>(
     '/settings/profile',
     {
       method: 'PUT',
@@ -34,9 +28,12 @@ export async function updateProfile(
         'Content-Type': 'application/json',
         ...authHeader(token),
       },
-      body: JSON.stringify({ profile_description: payload.profile_description ?? null }),
+      body: JSON.stringify({
+        profile_description: payload.profile_description ?? null,
+        new_username: payload.new_username ?? null,
+      }),
     },
-    '保存个人简介失败',
+    '保存个人资料失败',
   )
 }
 

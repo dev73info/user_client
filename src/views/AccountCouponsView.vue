@@ -29,7 +29,7 @@ import { useRealnameFormDraft } from '@/composables/useRealnameFormDraft'
 import { useRealnameIdentity } from '@/composables/useRealnameIdentity'
 import type { AdapayMemberStatus } from '@/composables/useSettlementAccount'
 import { shouldRecheckRealnameResult } from '@/shared/realnameRecheck'
-import { TCard } from 'ui_73info'
+import { TButton, TCard } from 'ui_73info'
 
 const auth = useAuthStore()
 const route = useRoute()
@@ -76,6 +76,7 @@ const dialogs = useAccountDialogRegistry({
   realnameDialogVisible,
   faceidDialogVisible,
 })
+const providerLoadError = dialogs.providerLoadError
 
 /**
  * 两张入口卡的行与点击分发：实名 / 核身两组读上面的域，结算与安全两组由注册表直接给
@@ -178,6 +179,10 @@ onMounted(async () => {
         <h3>账号与安全</h3>
       </div>
       <AccountEntryGrid :groups="accountEntryGroups" @open="openAccountEntry" />
+      <div v-if="providerLoadError" class="wb-empty" role="alert">
+        <span>{{ providerLoadError }}</span>
+        <TButton variant="outline" @click="dialogs.loadBoundProviders">重试</TButton>
+      </div>
     </section>
 
     <section id="account-realname" class="account-realname-section">
