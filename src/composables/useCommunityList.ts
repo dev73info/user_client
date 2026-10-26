@@ -1,4 +1,5 @@
 import { computed, onMounted, ref, watch } from 'vue'
+import { useRoute } from 'vue-router'
 
 import {
   listCommunityPosts,
@@ -14,10 +15,11 @@ import { describeCommunityError } from '@/shared/community'
 export type CommunityListMode = 'all' | 'mine' | 'favorites'
 
 export function useCommunityList() {
+  const route = useRoute()
   const { auth, requireLogin } = useCommunityAccess()
   const posts = ref<CommunityPost[]>([])
   const tags = ref<CommunityTag[]>([])
-  const mode = ref<CommunityListMode>('all')
+  const mode = ref<CommunityListMode>(route.name === 'workbench-favorites' ? 'favorites' : 'all')
   const keyword = ref('')
   const tag = ref('')
   const status = ref('')
