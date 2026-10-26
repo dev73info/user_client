@@ -11,6 +11,7 @@ import {
   listCommunityPosts,
   listCommunityTags,
   listFavoriteCommunityPosts,
+  listMyCommunityCommentWarnings,
   setCommunityCommentLike,
   setCommunityPostFavorite,
   setCommunityPostLike,
@@ -109,6 +110,14 @@ describe('社区 API 契约', () => {
     expect(call.init.method).toBe('POST')
     await setCommunityCommentLike('token', 11, false)
     expect(lastCall().init.method).toBe('DELETE')
+  })
+
+  it('本人评论警告使用真实 GET 路径和 Bearer 令牌', async () => {
+    await listMyCommunityCommentWarnings('token')
+    const call = lastCall()
+    expect(call.url).toContain('/api/community/comment-warnings')
+    expect(call.init.method).toBeUndefined()
+    expect((call.init.headers as Headers).get('Authorization')).toBe('Bearer token')
   })
 
   it('帖子点赞与收藏都提供取消动作', async () => {

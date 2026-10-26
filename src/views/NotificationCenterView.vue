@@ -7,9 +7,9 @@ import NotificationsToolbar from '@/components/notification/NotificationsToolbar
 import WorkbenchBarSlot from '@/components/WorkbenchBarSlot.vue'
 import { useNotificationCardActions } from '@/composables/useNotificationCardActions'
 import { useNotificationCenter } from '@/composables/useNotificationCenter'
-import { Bell, TIcon } from 'ui_73info'
+import { Bell, TButton, TIcon } from 'ui_73info'
 
-/* 「系统通知」：历史沟通公开申请、解除合作案件统一成同一种消息卡片。
+/* 「系统通知」：公开申请、解除合作案件与本人评论警告统一成同一种消息卡片。
    数据、筛选与动作在 composables 里（useNotificationCenter / useNotificationCardActions），
    本文件只摆版面：读数条 → 卡头 → 提示条 → 工具栏 → 列表 / 空态 / 分页。
 
@@ -20,6 +20,9 @@ const {
   isDevWorkbench,
   loading,
   cards,
+  cardsTotal,
+  commentWarningsError,
+  commentWarningsLoading,
   kindFilters,
   kindFilter,
   keyword,
@@ -33,6 +36,7 @@ const {
   emptyTitle,
   resetFilters,
   loadNotifications,
+  loadCommentWarnings,
   loadDisclosures,
 } = useNotificationCenter()
 
@@ -54,7 +58,7 @@ const { votingId, vote } = useNotificationCardActions({
     <WorkbenchBarSlot>
       <NotificationsOverviewStrip
         :loading="loading"
-        :total="cards.length"
+        :total="cardsTotal"
         :pending="pendingActions"
         @refresh="loadNotifications(true)"
       />
@@ -84,14 +88,24 @@ const { votingId, vote } = useNotificationCardActions({
         @reset="resetFilters"
       />
 
+      <section v-if="commentWarningsError" class="wb-empty notifications-load-error" role="alert">
+        <div class="notifications-load-error__copy">
+          <strong>评论警告加载失败</strong>
+          <p>{{ commentWarningsError }}</p>
+        </div>
+        <TButton variant="outline" :loading="commentWarningsLoading" @click="loadCommentWarnings">
+          重新加载
+        </TButton>
+      </section>
+
       <p v-if="loading && !cards.length" class="wb-empty" role="status">系统通知加载中…</p>
       <NotificationsEmptyState
-        v-else-if="!filteredCards.length"
+        v-else-if="!filteredCards.length && !commentWarningsError"
         :title="emptyTitle()"
         :active="filtersActive"
         @reset="resetFilters"
       />
-      <template v-else>
+      <template v-else-if="filteredCards.length">
         <ul class="wb-list" aria-label="系统通知列表">
           <NotificationCardItem
             v-for="card in displayCards"
@@ -118,6 +132,7 @@ const { votingId, vote } = useNotificationCardActions({
   --nc-accent-default: var(--73-ink-muted);
   --nc-accent-history-disclosure: var(--73-accent);
   --nc-accent-after-sales: var(--73-danger);
+  --nc-accent-comment-warning: var(--73-warning);
   --nc-surface: var(--73-surface-strong);
   --nc-text-sub: var(--profile-text-sub, var(--73-ink-muted));
   --nc-text-muted: var(--profile-text-sub, var(--73-ink-placeholder));
@@ -146,6 +161,19 @@ const { votingId, vote } = useNotificationCardActions({
   white-space: nowrap;
 }
 
+.notifications-load-error {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.notifications-load-error__copy p {
+  margin: 4px 0 0;
+  color: var(--73-danger);
+}
+
 /* 列表像会话一样贴底：面板撑满顶栏以下的一屏，搜索留在上方，通知压到底部，最新一条最靠近底边 */
 @media (max-width: 900px) {
   .notifications-panel {
@@ -165,6 +193,15 @@ const { votingId, vote } = useNotificationCardActions({
 @media (max-width: 640px) {
   .notifications-pending {
     display: none;
+  }
+
+  .notifications-load-error {
+    flex-direction: column;
+    text-align: center;
+  }
+
+  .notifications-load-error :deep(.t73-button) {
+    min-height: 44px;
   }
 }
 </style>

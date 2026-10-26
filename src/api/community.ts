@@ -5,6 +5,7 @@ type Schemas = components['schemas']
 
 export type CommunityPost = Schemas['CommunityPostPayload']
 export type CommunityComment = Schemas['CommunityCommentPayload']
+export type CommunityCommentWarning = Schemas['CommentWarningPayload']
 export type CommunityTag = Schemas['CommunityTagPayload']
 export type CommunityLike = Schemas['CommunityLikePayload']
 export type CommunityCommentLike = Schemas['CommunityCommentLikePayload']
@@ -86,6 +87,14 @@ export function updateCommunityPost(
     `/community/posts/${postId}`,
     { method: 'PATCH', headers: jsonHeaders(token), body: JSON.stringify(payload) },
     '保存帖子失败',
+  )
+}
+
+export function listMyCommunityCommentWarnings(token: string): Promise<CommunityCommentWarning[]> {
+  return requestJson<CommunityCommentWarning[]>(
+    '/community/comment-warnings',
+    { headers: authHeaders(token) },
+    '加载评论警告失败',
   )
 }
 

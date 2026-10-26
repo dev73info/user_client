@@ -48,6 +48,17 @@ function filteredPosts(request: MockRequest, username: string): CommunityPost[] 
 export const communityReadRoutes: MockRoute[] = [
   {
     method: 'GET',
+    path: '/community/comment-warnings',
+    note: '本人评论警告（mock 默认无警告）',
+    handler: (request) => {
+      if (!viewer(request)) {
+        return jsonResponse({ code: 'UNAUTHENTICATED', message: '请先登录' }, 401)
+      }
+      return jsonResponse([])
+    },
+  },
+  {
+    method: 'GET',
     path: '/community/tags',
     note: '社区标签',
     handler: () => jsonResponse(communityTags),

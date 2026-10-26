@@ -8,12 +8,13 @@ import {
   pendingActionCount,
   pendingVoteCount,
 } from '@/shared/notifications'
-import { afterSalesCase, disclosure, keys, kinds } from './helpers/notifications'
+import { afterSalesCase, commentWarning, disclosure, keys, kinds } from './helpers/notifications'
 
 describe('notification filtering and counts', () => {
   const cards = buildNotificationCards({
     disclosures: [disclosure()],
     afterSales: [afterSalesCase()],
+    commentWarnings: [commentWarning()],
     username: 'dev_old',
   })
 
@@ -34,12 +35,20 @@ describe('notification filtering and counts', () => {
     expect(keys(filterNotificationCards(cards, 'all', '  CUST  '))).toContain(
       'after-sales-AFTERSALES_1_abc',
     )
+    expect(kinds(filterNotificationCards(cards, 'comment-warning', ''))).toEqual([
+      'comment-warning',
+    ])
+    expect(keys(filterNotificationCards(cards, 'comment-warning', '广告'))).toEqual([
+      'comment-warning-2',
+    ])
+    expect(keys(filterNotificationCards(cards, 'all', '测试评论'))).toContain('comment-warning-2')
   })
 
   it('读数条与筛选胶囊的计数取自同一处', () => {
     expect(countByKind(cards)).toEqual({
       'history-disclosure': 1,
       'after-sales': 1,
+      'comment-warning': 1,
     })
     // 还在等我投票的公开申请
     expect(pendingVoteCount(cards)).toBe(1)

@@ -7,6 +7,7 @@ const mocks = vi.hoisted(() => ({
   disclosures: vi.fn(),
   respondDisclosure: vi.fn(),
   afterSales: vi.fn(),
+  warnings: vi.fn(),
 }))
 
 // 用户工作台这一侧：matched 里没有 devArea，资源过户整类不出现、两份过户列表也不该被请求
@@ -45,12 +46,16 @@ vi.mock('@/api/conversations', () => ({
 vi.mock('@/api/afterSales', () => ({
   listMyAfterSalesCases: mocks.afterSales,
 }))
+vi.mock('@/api/community', () => ({
+  listMyCommunityCommentWarnings: mocks.warnings,
+}))
 
 import type { NotificationCard } from '@/shared/notifications'
 import NotificationCardItem from '@/components/notification/NotificationCardItem.vue'
 import NotificationsToolbar from '@/components/notification/NotificationsToolbar.vue'
 import NotificationCenterView from '@/views/NotificationCenterView.vue'
 import { historyDisclosureFixture } from './notificationCenterFixtures'
+import { commentWarning } from './helpers/notifications'
 
 /**
  * 「系统通知」页（R047 拆分后）的挂载烟测：列表渲染、筛选切换、投票接口实参与跳转实参。
@@ -99,16 +104,18 @@ beforeEach(() => {
   mocks.disclosures.mockResolvedValue([historyDisclosureFixture()])
   // 契约 `GET /api/dispute/cases` 回的是数组本身，不是 `{ items }` 那种分页壳
   mocks.afterSales.mockResolvedValue([])
+  mocks.warnings.mockResolvedValue([])
   mocks.respondDisclosure.mockResolvedValue({})
 })
 
 describe('系统通知：渲染与筛选', () => {
-  it('两支请求都发、用户端不拉过户', async () => {
+  it('三支请求都发、用户端不拉过户', async () => {
     const wrapper = mountView()
     await flushPromises()
 
     expect(mocks.disclosures).toHaveBeenCalledWith('test-token')
     expect(mocks.afterSales).toHaveBeenCalledWith('test-token')
+    expect(mocks.warnings).toHaveBeenCalledWith('test-token')
 
     expect(state(wrapper).cards).toHaveLength(1)
     expect(cardTitles(wrapper)).toContain('企业官网改版')
@@ -122,8 +129,13 @@ describe('系统通知：渲染与筛选', () => {
     await flushPromises()
 
     const chips = wrapper.findAll('.wb-chip')
-    // 胶囊：全部 / 公开申请 / 解除合作案件
-    expect(chips.map((chip) => chip.text())).toEqual(['全部1', '公开申请1', '解除合作案件0'])
+    // 胶囊：全部 / 公开申请 / 解除合作案件 / 评论警告
+    expect(chips.map((chip) => chip.text())).toEqual([
+      '全部1',
+      '公开申请1',
+      '解除合作案件0',
+      '评论警告0',
+    ])
 
     await chips[1]!.trigger('click')
     expect(state(wrapper).kindFilter).toBe('history-disclosure')
@@ -179,10 +191,11 @@ describe('系统通知：卡片动作与跳转', () => {
     // 只重拉公开申请：另一支不会因为这一票变化，重拉会把列表滚回顶部
     expect(mocks.disclosures).toHaveBeenCalledTimes(2)
     expect(mocks.afterSales).toHaveBeenCalledTimes(1)
+    expect(mocks.warnings).toHaveBeenCalledTimes(1)
     wrapper.unmount()
   })
 
-  it('未登录：需要令牌的两支直接跳过', async () => {
+  it('未登录：需要令牌的三支直接跳过', async () => {
     const auth = await import('@/stores/auth')
     vi.spyOn(auth, 'useAuthStore').mockReturnValue({
       token: '',
@@ -195,6 +208,7 @@ describe('系统通知：卡片动作与跳转', () => {
 
     expect(mocks.disclosures).not.toHaveBeenCalled()
     expect(mocks.afterSales).not.toHaveBeenCalled()
+    expect(mocks.warnings).not.toHaveBeenCalled()
     expect(wrapper.findAll('.notifications-card')).toHaveLength(0)
     wrapper.unmount()
   })

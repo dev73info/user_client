@@ -1,4 +1,5 @@
 import type { AfterSalesCaseSummary } from '@/api/afterSales'
+import type { CommunityCommentWarning } from '@/api/community'
 import type { ConversationHistoryDisclosure } from '@/api/conversations'
 import type { NotificationCard } from '@/shared/notifications'
 
@@ -39,6 +40,21 @@ export function afterSalesCase(
     claim_amount: 10,
     created_time: '2026-04-01T09:00:00+08:00',
     updated_time: '2026-04-01T10:00:00+08:00',
+    ...overrides,
+  }
+}
+
+export function commentWarning(
+  overrides: Partial<CommunityCommentWarning> = {},
+): CommunityCommentWarning {
+  return {
+    id: 2,
+    comment_id: 5,
+    comment_type: 'community',
+    comment_snapshot: '含有联系方式的测试评论',
+    reason: '包含广告联系方式',
+    operator: 'admin',
+    created_at: '2026-05-01 10:00:00',
     ...overrides,
   }
 }

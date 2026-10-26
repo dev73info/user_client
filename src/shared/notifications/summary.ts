@@ -5,6 +5,7 @@ export function countByKind(cards: NotificationCard[]): Record<NotificationKind,
   return {
     'history-disclosure': cards.filter((card) => card.kind === 'history-disclosure').length,
     'after-sales': cards.filter((card) => card.kind === 'after-sales').length,
+    'comment-warning': cards.filter((card) => card.kind === 'comment-warning').length,
   }
 }
 

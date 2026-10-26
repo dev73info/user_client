@@ -1,17 +1,16 @@
 import type { ConversationHistoryDisclosure } from '@/api/conversations'
 import type { AfterSalesCaseSummary } from '@/api/afterSales'
+import type { CommunityCommentWarning } from '@/api/community'
 
 import { parseNoticeTime } from './time'
 import { NOTIFICATION_KIND_LABELS } from './types'
 import type { NotificationCard, NotificationSources } from './types'
 
 /**
- * 把两类来源合成一张按时间倒序的通知列表。
+ * 把三类来源合成一张按时间倒序的通知列表。
  *
  * 时间串都是东八区墙钟串，统一交给 `parseNoticeTime` 解析；解析失败的排在最后而不是排到最前——
  * 解析不出来当成「很早」，不要因为格式异常把一条旧通知顶到最上面。
- *
- * 资源过户那两类来源已整体下线（契约里没有 `/resources/transfers/**`）。
  */
 export function buildNotificationCards(sources: NotificationSources): NotificationCard[] {
   const cards = [
@@ -19,6 +18,7 @@ export function buildNotificationCards(sources: NotificationSources): Notificati
       buildHistoryDisclosureCard(item, sources.username),
     ),
     ...(sources.afterSales ?? []).map(buildAfterSalesCard),
+    ...(sources.commentWarnings ?? []).map(buildCommentWarningCard),
   ]
 
   return cards.sort((left, right) => right.sortTime - left.sortTime)
@@ -114,6 +114,21 @@ function buildAfterSalesCard(row: AfterSalesCaseSummary): NotificationCard {
     meta: `${row.created_time} 由 ${row.filed_by} 发起`,
     createdAt: row.created_time,
     sortTime: parseNoticeTime(row.created_time),
+    canVote: false,
+  }
+}
+
+/** 评论警告只读：源评论可能已删除，卡片直接展示保留的快照，不依赖原评论是否还存在。 */
+function buildCommentWarningCard(warning: CommunityCommentWarning): NotificationCard {
+  return {
+    key: `comment-warning-${warning.id}`,
+    kind: 'comment-warning',
+    kindLabel: NOTIFICATION_KIND_LABELS['comment-warning'],
+    title: `评论 #${warning.comment_id}`,
+    body: [`评论快照：${warning.comment_snapshot}`, `警告原因：${warning.reason}`],
+    meta: `${warning.created_at} 由 ${warning.operator} 发出警告`,
+    createdAt: warning.created_at,
+    sortTime: parseNoticeTime(warning.created_at),
     canVote: false,
   }
 }

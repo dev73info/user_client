@@ -1,11 +1,13 @@
 import { computed, nextTick, onMounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { listMyAfterSalesCases, type AfterSalesCaseSummary } from '@/api/afterSales'
+import { listMyCommunityCommentWarnings, type CommunityCommentWarning } from '@/api/community'
 import {
   listConversationHistoryDisclosures,
   type ConversationHistoryDisclosure,
 } from '@/api/conversations'
 import { useClientPagination } from '@/composables/useClientPagination'
+import { describeBackendError } from '@/shared/backendErrorText'
 import {
   NOTIFICATION_KIND_LABELS,
   buildNotificationCards,
@@ -21,21 +23,19 @@ import { TMessage } from 'ui_73info'
 /**
  * 「系统通知」页的数据层（R047 从 `views/NotificationCenterView.vue` 拆出）。
  *
- * 页面把两类系统消息统一成同一种卡片：历史沟通公开申请、解除合作案件。两支请求并行发、
- * 各自结算——某一支挂了只提示那一类，其余照常显示，一类接口抖动不该让整页变空。
- *
- * **来源只剩两类**：评论警告与平台公告走社区接口、资源过户走 `/resources/transfers/**`，
- * 这些能力在当前后端契约里一条路径都没有，已经从这一页摘掉（不是「暂无数据」，是没有这个能力）。
+ * 页面把三类系统消息统一成同一种卡片：历史沟通公开申请、解除合作案件、本人评论警告。
+ * 三支请求并行发、各自结算——某一支挂了只提示那一类，其余照常显示。
+ * 评论警告接口失败时保留持续可见的错误与重试入口，不把失败当成零条通知。
  *
  * 卡片映射与排序在 `shared/notifications` 里（纯函数），这里只管请求、结算、筛选与分页；
  * 卡片上的动作（公开申请投票）在 `useNotificationCardActions` 里。
  */
 
-/** 筛选胶囊的取值：全部 + 两个类别。 */
+/** 筛选胶囊的取值：全部 + 三个类别。 */
 export type NotificationKindFilter = 'all' | NotificationKind
 
-/** 胶囊顺序：先给要处理的公开申请，再给只读的解除合作。 */
-const KIND_ORDER: NotificationKind[] = ['history-disclosure', 'after-sales']
+/** 胶囊顺序保留原两类，评论警告追加为只读类别。 */
+const KIND_ORDER: NotificationKind[] = ['history-disclosure', 'after-sales', 'comment-warning']
 
 export function useNotificationCenter() {
   const route = useRoute()
@@ -50,6 +50,9 @@ export function useNotificationCenter() {
   const loading = ref(false)
   const disclosures = ref<ConversationHistoryDisclosure[]>([])
   const afterSales = ref<AfterSalesCaseSummary[]>([])
+  const commentWarnings = ref<CommunityCommentWarning[]>([])
+  const commentWarningsError = ref('')
+  const commentWarningsLoading = ref(false)
   const kindFilter = ref<NotificationKindFilter>('all')
   const keyword = ref('')
 
@@ -57,8 +60,12 @@ export function useNotificationCenter() {
     buildNotificationCards({
       disclosures: disclosures.value,
       afterSales: afterSales.value,
+      commentWarnings: commentWarnings.value,
       username: auth.username,
     }),
+  )
+  const cardsTotal = computed<number | null>(() =>
+    commentWarningsError.value && cards.value.length === 0 ? null : cards.value.length,
   )
 
   /** 各类别的条数：顶栏读数条与筛选胶囊上的数字共用一份。 */
@@ -118,16 +125,21 @@ export function useNotificationCenter() {
     if (!hasToken()) {
       disclosures.value = []
       afterSales.value = []
+      commentWarnings.value = []
+      commentWarningsError.value = ''
     }
 
     loading.value = true
-    // 这两支需要令牌，未登录时直接跳过，避免明知会 401 还发一次。
+    // 三支都需要令牌，未登录时直接跳过，避免明知会 401 还发一次。
     const authed = hasToken()
-    const [disclosuresResult, afterSalesResult] = await Promise.allSettled([
+    const [disclosuresResult, afterSalesResult, commentWarningsResult] = await Promise.allSettled([
       authed
         ? listConversationHistoryDisclosures(auth.token)
         : Promise.resolve<ConversationHistoryDisclosure[]>([]),
       authed ? listMyAfterSalesCases(auth.token) : Promise.resolve<AfterSalesCaseSummary[]>([]),
+      authed
+        ? listMyCommunityCommentWarnings(auth.token)
+        : Promise.resolve<CommunityCommentWarning[]>([]),
     ])
 
     if (disclosuresResult.status === 'fulfilled') {
@@ -150,9 +162,39 @@ export function useNotificationCenter() {
       )
     }
 
+    if (commentWarningsResult.status === 'fulfilled') {
+      commentWarnings.value = commentWarningsResult.value
+      commentWarningsError.value = ''
+    } else {
+      commentWarningsError.value = describeBackendError(
+        commentWarningsResult.reason,
+        '加载评论警告失败',
+      )
+    }
+
     loading.value = false
-    if (showSuccess) {
+    if (showSuccess && !commentWarningsError.value) {
       TMessage.success('系统通知已刷新')
+    }
+  }
+
+  /** 警告接口的局部重试：不影响其他两类卡片，也不在失败时清掉已有警告。 */
+  async function loadCommentWarnings() {
+    if (commentWarningsLoading.value) return
+    auth.hydrate()
+    if (!hasToken()) {
+      commentWarnings.value = []
+      commentWarningsError.value = ''
+      return
+    }
+    commentWarningsLoading.value = true
+    try {
+      commentWarnings.value = await listMyCommunityCommentWarnings(auth.token)
+      commentWarningsError.value = ''
+    } catch (error) {
+      commentWarningsError.value = describeBackendError(error, '加载评论警告失败')
+    } finally {
+      commentWarningsLoading.value = false
     }
   }
 
@@ -185,6 +227,9 @@ export function useNotificationCenter() {
     isDevWorkbench,
     loading,
     cards,
+    cardsTotal,
+    commentWarningsError,
+    commentWarningsLoading,
     kindFilters,
     kindFilter,
     keyword,
@@ -198,6 +243,7 @@ export function useNotificationCenter() {
     emptyTitle,
     resetFilters,
     loadNotifications,
+    loadCommentWarnings,
     loadDisclosures,
   }
 }

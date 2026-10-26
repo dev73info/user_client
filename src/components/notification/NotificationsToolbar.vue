@@ -5,12 +5,12 @@ import { RefreshLeft, Search, TButton, TIcon, TInput } from 'ui_73info'
 /**
  * 「系统通知」的筛选工具栏：类别胶囊 + 关键词搜索 + 命中计数 + 重置。
  *
- * 四类（开发者再加过户）都是一次全量取回，所以筛选纯在前端做，不打接口；
+ * 三类都是一次全量取回，所以筛选纯在前端做，不打接口；
  * 胶囊上的数字与顶栏读数条同源（`countByKind`），切了筛选也还是各类的总数。
  * 窄屏（900 以下）不展示类别胶囊：各类数量已在读数条里，列表只留搜索。
  */
 defineProps<{
-  /** 胶囊选项：全部 + 五个类别，带各自条数 */
+  /** 胶囊选项：全部 + 三个类别，带各自条数 */
   options: Array<{ value: NotificationKindFilter; label: string; count: number }>
   /** 未经筛选的总条数 */
   total: number

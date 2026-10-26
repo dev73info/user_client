@@ -1,23 +1,24 @@
 import type { ConversationHistoryDisclosure } from '@/api/conversations'
 import type { AfterSalesCaseSummary } from '@/api/afterSales'
+import type { CommunityCommentWarning } from '@/api/community'
 
 /**
  * 「系统通知」聚合层用到的类别、卡片与来源契约。
  *
- * 只剩两类。**评论警告、平台公告**走社区接口、**资源过户**走 `/resources/transfers/**`，
- * 这些能力在当前后端契约（`src/api/generated/openapi.json`）里一条路径都没有，整块下线了。
+ * 当前支持公开申请、解除合作案件与本人评论警告；平台公告与资源过户不在这份模型里。
  */
 
-export type NotificationKind = 'history-disclosure' | 'after-sales'
+export type NotificationKind = 'history-disclosure' | 'after-sales' | 'comment-warning'
 
 /** 卡片上的类别标签，与筛选胶囊一一对应。 */
 export const NOTIFICATION_KIND_LABELS: Record<NotificationKind, string> = {
   'history-disclosure': '公开申请',
   'after-sales': '解除合作案件',
+  'comment-warning': '评论警告',
 }
 
 export type NotificationCard = {
-  /** 跨类别唯一的键：两类来源的 id 各自从 1 开始，只拼 id 会撞在一起 */
+  /** 跨类别唯一的键：各类来源的 id 各自从 1 开始，只拼 id 会撞在一起 */
   key: string
   kind: NotificationKind
   /** 类别标签（胶囊筛选与卡片徽标共用同一份文案） */
@@ -30,7 +31,7 @@ export type NotificationCard = {
   meta: string
   /** 原始时间字符串，用于显示 */
   createdAt: string
-  /** 排序用的毫秒数：两类来源的时间串统一在聚合层解析一次 */
+  /** 排序用的毫秒数：各类来源的时间串统一在聚合层解析一次 */
   sortTime: number
   /** 公开申请：投票要用到的 id */
   disclosureId?: number
@@ -43,6 +44,7 @@ export type NotificationCard = {
 export type NotificationSources = {
   disclosures?: ConversationHistoryDisclosure[]
   afterSales?: AfterSalesCaseSummary[]
+  commentWarnings?: CommunityCommentWarning[]
   /** 当前登录用户名：判定公开申请里我是哪一方、是否轮到我投票 */
   username: string
 }

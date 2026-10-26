@@ -11,8 +11,8 @@ import { Refresh, TButton, TIcon } from 'ui_73info'
  */
 defineProps<{
   loading: boolean
-  /** 全部通知：首屏还没回来时显示占位横杠，不要显示「0 条」误导人 */
-  total: number
+  /** 全部通知：首屏或警告接口失败且没有已取得卡片时显示占位横杠 */
+  total: number | null
   /** 待我处理：还在等我投的那一票 */
   pending: number
 }>()
@@ -24,7 +24,7 @@ const emit = defineEmits<{ refresh: [] }>()
   <section class="wb-strip" aria-label="系统通知概览">
     <div class="wb-strip__item">
       <span class="wb-strip__label">全部通知</span>
-      <span class="wb-strip__value">{{ loading && !total ? '—' : total }}</span>
+      <span class="wb-strip__value">{{ total === null || (loading && !total) ? '—' : total }}</span>
     </div>
     <div class="wb-strip__divider" />
     <div class="wb-strip__item">
