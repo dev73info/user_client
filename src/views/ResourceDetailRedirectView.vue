@@ -41,9 +41,13 @@ const catalogAliasError = ref('')
  * 打不开目标资源时的统一落点：仍回「资源项目」列表（不 404、不白屏）。
  * 有 message 时补一句中文提示——访客点的是某条具体资源，只把列表塞给他、不说为什么，等于没有反馈。
  */
-function fallbackToResourceList(sale: ResourceListingSale, message?: string) {
+function fallbackToResourceList(
+  sale: ResourceListingSale,
+  message?: string,
+  messageDuration?: number,
+) {
   if (message) {
-    TMessage.error(message)
+    TMessage.error(message, messageDuration)
   }
   void router.replace({ name: 'resources', query: { sale } })
 }
@@ -111,7 +115,7 @@ async function redirectToCatalog() {
     }
   }
   if (!resourceId) {
-    fallbackToResourceList('free', '资源不存在或无权访问')
+    fallbackToResourceList('free', '资源不存在或无权访问', 0)
     return
   }
 
