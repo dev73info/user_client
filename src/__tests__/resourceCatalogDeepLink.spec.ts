@@ -1,7 +1,8 @@
 import { defineComponent } from 'vue'
 import { flushPromises, mount } from '@vue/test-utils'
 import { createMemoryHistory, createRouter, type Router } from 'vue-router'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { destroyMessageHosts } from 'ui_73info'
 
 import type { McProcessedTagTree } from '@/api/resourceTags'
 import type { PublicMcResourceItem } from '@/api/resources'
@@ -94,6 +95,11 @@ beforeEach(() => {
   mocks.ensure.mockResolvedValue(categoryTree)
 })
 
+afterEach(() => {
+  destroyMessageHosts()
+  vi.useRealTimers()
+})
+
 describe('资源目录分类深链与实际路由冲突', () => {
   it('分类别名首开保留 sale、resource 和合法 promo', async () => {
     const router = testRouter()
@@ -131,7 +137,8 @@ describe('资源目录分类深链与实际路由冲突', () => {
     wrapper.unmount()
   })
 
-  it('无效 slug 仍明确回退，不伪装成分类别名', async () => {
+  it('无效 slug 回退免费目录后保留可见错误反馈', async () => {
+    vi.useFakeTimers()
     const router = testRouter()
     const { wrapper } = await open(
       router,
@@ -141,6 +148,15 @@ describe('资源目录分类深链与实际路由冲突', () => {
     await waitForRoute(router, 'resources')
     expect(router.currentRoute.value.query).toEqual({ sale: 'free' })
     expect(mocks.getResource).not.toHaveBeenCalled()
+    const messageSelector = '.t73-message-host [role="alert"]'
+    expect(document.body.querySelector(messageSelector)?.textContent).toContain(
+      '资源不存在或无权访问',
+    )
+
+    await vi.advanceTimersByTimeAsync(3100)
+    expect(document.body.querySelector(messageSelector)?.textContent).toContain(
+      '资源不存在或无权访问',
+    )
     wrapper.unmount()
   })
 
