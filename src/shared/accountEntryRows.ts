@@ -4,13 +4,9 @@
  * 动作」，而这里的判断与响应式无关；摊在一个 `.ts` 里会顶过 300 行预算。入参一律是普通值，验文案不必挂载视图。
  */
 import {
-  Bell,
   CollectionTag,
-  Connection,
   CreditCard,
   Iphone,
-  Lock,
-  Message,
   OfficeBuilding,
   Postcard,
   Promotion,
@@ -20,8 +16,7 @@ import {
   Warning,
 } from 'ui_73info'
 
-import { providerLabel } from './accountEntries'
-import type { AccountEntry, AccountEntryGroup, AccountEntryStatus } from './accountEntries'
+import type { AccountEntry, AccountEntryStatus } from './accountEntries'
 import type { SettleAccountStage } from '@/shared/settleAccountStage'
 
 /** 实名认证这一组要看的状态：身份域（状态口径 / 文案 / 主体）与核身域（恢复中 / 撤回中）。 */
@@ -210,84 +205,5 @@ export function buildSettleEntries(state: SettleRowsState): AccountEntry[] {
   return entries
 }
 
-/** 「账号与安全」三组要看的状态：设置域的邮箱 / 两步验证，加上第三方绑定域的四个值。 */
-export type SecurityRowsState = {
-  profileEmail: string // 空串 = 未绑定，决定「修改邮箱」行的副说明
-  twoFactorEnabled: boolean
-  wechatBound: boolean
-  wechatBindingLoading: boolean
-  providerBindingLoading: boolean // GitHub / Gitee / QQ 三行共用一个加载位
-  boundProviders: readonly string[]
-}
-
-// 「账号与安全」卡片：登录凭证 / 第三方账号 / 危险操作三组入口
-export function buildSecurityGroups(state: SecurityRowsState): AccountEntryGroup[] {
-  const providerEntry = (provider: 'github' | 'gitee' | 'qq'): AccountEntry => {
-    const bound = state.boundProviders.includes(provider)
-    return {
-      key: `bind:${provider}`,
-      title: providerLabel(provider),
-      desc: bound ? '已绑定，点击可解除绑定' : '绑定后可扫码快捷登录',
-      icon: Connection,
-      status: { text: bound ? '已绑定' : '未绑定', tone: bound ? 'success' : 'info' },
-      loading: state.providerBindingLoading,
-    }
-  }
-
-  return [
-    {
-      title: '登录凭证',
-      entries: [
-        {
-          key: 'email',
-          title: '修改邮箱',
-          desc: state.profileEmail ? `当前邮箱：${state.profileEmail}` : '用于接收验证码与通知',
-          icon: Message,
-        },
-        { key: 'password', title: '修改密码', desc: '修改后其它设备需重新登录', icon: Lock },
-        {
-          key: 'twoFactor',
-          title: '两步验证',
-          desc: '登录时额外校验一次邮箱验证码',
-          icon: Bell,
-          status: {
-            text: state.twoFactorEnabled ? '已开启' : '未开启',
-            tone: state.twoFactorEnabled ? 'success' : 'info',
-          },
-        },
-      ],
-    },
-    {
-      title: '第三方账号',
-      entries: [
-        {
-          key: 'bind:wechat',
-          title: '微信',
-          desc: state.wechatBound ? '已绑定' : '绑定后可扫码快捷登录',
-          icon: Connection,
-          locked: state.wechatBound,
-          status: {
-            text: state.wechatBound ? '已绑定' : '未绑定',
-            tone: state.wechatBound ? 'success' : 'info',
-          },
-          loading: state.wechatBindingLoading,
-        },
-        providerEntry('github'),
-        providerEntry('gitee'),
-        providerEntry('qq'),
-      ],
-    },
-    {
-      title: '危险操作',
-      entries: [
-        {
-          key: 'close',
-          title: '注销账号',
-          desc: '注销后账号与数据不可恢复',
-          icon: Warning,
-          danger: true,
-        },
-      ],
-    },
-  ]
-}
+export { buildSecurityGroups } from './accountSecurityRows'
+export type { SecurityRowsState } from './accountSecurityRows'

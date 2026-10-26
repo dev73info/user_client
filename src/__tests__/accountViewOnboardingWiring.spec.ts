@@ -165,6 +165,21 @@ describe('账号与安全页挂载：要不要回查实名结果', () => {
   })
 })
 
+describe('账号与安全页：第三方绑定状态加载', () => {
+  it('读取失败显示持续错误，重试会重新请求而不是伪装未绑定', async () => {
+    mocks.getMyRealnameVerification.mockResolvedValue(record('approved'))
+    mocks.getBoundProviders.mockRejectedValueOnce(new Error('Forbidden'))
+    const wrapper = await renderAccountPage()
+
+    const alert = wrapper.get('[role="alert"]')
+    expect(alert.text()).toContain('加载第三方绑定状态失败')
+    expect(wrapper.text()).toContain('状态未知')
+    await alert.get('button').trigger('click')
+    await flushPromises()
+    expect(mocks.getBoundProviders).toHaveBeenCalledTimes(2)
+  })
+})
+
 describe('账号与安全页入口行：收款账户走到哪一步了', () => {
   beforeEach(() => {
     // 实名已通过：结算那一行才轮到「渠道那边怎么样、卡绑没绑」来说话。

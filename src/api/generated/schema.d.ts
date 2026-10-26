@@ -3031,7 +3031,7 @@ export interface paths {
         post?: never;
         /**
          * 解绑第三方渠道
-         * @description **需要登录**（`Authorization: Bearer <平台会话令牌>`），**不挂端点权限码**——只能解绑当前登录人自己的绑定，归属即权限。路径参数 `provider` 取 `github` 或 `gitee`（与 `/api/auth/providers` 返回的标识同值）；其它取值回 400 `OAUTH_PROVIDER_UNSUPPORTED`。解绑不存在的绑定不报错：没有记录也回 200，前端不必先查一遍。解绑后该第三方账号可以再绑到别的平台账号。
+         * @description **需要登录**（`Authorization: Bearer <平台会话令牌>`），**不挂端点权限码**——只能解绑当前登录人自己的绑定，归属即权限。路径参数 `provider` 取 `github` / `gitee` / `qq` / `wechat`（与 `/api/auth/providers` 同值）；其它取值回 400 `OAUTH_PROVIDER_UNSUPPORTED`。解绑不存在的绑定不报错：没有记录也回 200，前端不必先查一遍。解绑后该第三方账号可以再绑到别的平台账号。
          */
         delete: operations["auth_unbind"];
         options?: never;
@@ -9672,7 +9672,7 @@ export interface paths {
         get: operations["profile_get"];
         /**
          * 改我的档案
-         * @description **需要登录 + `system.profile.update.put`**。目前只能改**个人简介**（最多 300 个字符，首尾空白会被去掉）。`new_username` 仅做兼容接收：**与当前登录名不同时回 400**——1.x 允许用户自助改登录名并级联更新关联数据，2.0 没有那条级联（合同、需求单等按用户名文本关联），静默忽略会让前端以为改名成功，所以明确拒绝；变更登录名请走管理端`POST /api/auth/users/username`。两个字段都不带（或简介为 `null`）回 400 `INVALID_ARGUMENT`「没有需要修改的字段」。响应是改完之后的完整档案。
+         * @description **需要登录 + `system.profile.update.put`**。可改**个人简介**（最多 300 个字符）与本人登录名。改名在同一事务中更新需求、合同、订单、社区、积分等用户名关联，重名回 409 `USERNAME_TAKEN`，不会留下半套更新。实际改名后响应带新会话 `token`，原登录名对应的旧令牌不可再使用；只改简介时不返回 `token`。两个字段都不带（或简介为 `null`）回 400 `INVALID_ARGUMENT`「没有需要修改的字段」。
          */
         put: operations["profile_update"];
         post?: never;
@@ -18336,10 +18336,15 @@ export interface components {
         };
         /** @description 改档案请求体。 */
         UpdateProfileRequest: {
-            /** @description 登录名。**不接受自助改名**：与当前登录名不同时回 400，请走管理端。 */
+            /** @description 新登录名；修改时同步迁移关联数据并返回新会话。 */
             new_username?: string | null;
             /** @description 个人简介，最多 300 个字符。 */
             profile_description?: string | null;
+        };
+        /** @description 改档案响应；只有实际改了登录名才返回新会话令牌。 */
+        UpdateProfileResponse: components["schemas"]["ProfileResponse"] & {
+            /** @description 改名后的新会话；未改登录名时不返回。 */
+            token?: string | null;
         };
         /** @description 更新需求请求体。 */
         UpdateRequirementRequest: {
@@ -27404,7 +27409,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                /** @description 渠道标识，只支持 `github` / `gitee` */
+                /** @description 渠道标识，只支持 `github` / `gitee` / `qq` / `wechat` */
                 provider: string;
             };
             cookie?: never;
@@ -46471,16 +46476,16 @@ export interface operations {
             };
         };
         responses: {
-            /** @description 改完之后的档案 */
+            /** @description 改完之后的档案；改名时另带新会话 */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ProfileResponse"];
+                    "application/json": components["schemas"]["UpdateProfileResponse"];
                 };
             };
-            /** @description 简介超长、没有要改的字段，或请求改登录名 */
+            /** @description 简介、登录名不合法，或没有要改的字段 */
             400: {
                 headers: {
                     [name: string]: unknown;
@@ -46503,6 +46508,13 @@ export interface operations {
             };
             /** @description 账号不存在（`USER_NOT_FOUND`） */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 登录名已存在（`USERNAME_TAKEN`） */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };

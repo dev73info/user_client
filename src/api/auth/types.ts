@@ -59,6 +59,12 @@ export type WechatLoginQrStatusResp = {
   username?: string | null
 }
 
+/** 微信扫码绑定地址与轮询凭据。 */
+export type WechatBindQrUrlResp = Schemas['QrUrlResponse']
+
+/** 微信扫码绑定结果；`confirmed` 表示已绑定，`message` 是失败原因。 */
+export type WechatBindQrStatusResp = Schemas['QrStatusResponse']
+
 /** 用户服务协议与通用协议正文。 */
 export type UserServiceAgreement = Schemas['AgreementContentResponse']
 

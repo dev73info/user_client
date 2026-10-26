@@ -36,6 +36,7 @@ export type AccountEntryActions = {
   openSealDialog: () => void
   openEmailDialog: () => void
   openPasswordDialog: () => void
+  openUsernameDialog: () => void
   openTwoFactorDialog: () => void
   openAccountCloseDialog: () => void
   /** 微信绑定 / 解绑：已绑定时走解绑，未绑定时出二维码或跳授权页。 */
@@ -83,6 +84,7 @@ export type AccountEntryGroupsOptions = {
     wechatBound: Ref<boolean>
     wechatBindingLoading: Ref<boolean>
     providerBindingLoading: Ref<boolean>
+    providerError?: Ref<string>
     boundProviders: Ref<string[]>
   }
   /** 点击后做什么：全是视图侧的回调，本域不碰弹窗与草稿。 */
@@ -135,6 +137,7 @@ export function useAccountEntryGroups(options: AccountEntryGroupsOptions) {
       wechatBound: security.wechatBound.value,
       wechatBindingLoading: security.wechatBindingLoading.value,
       providerBindingLoading: security.providerBindingLoading.value,
+      providerError: security.providerError?.value,
       boundProviders: security.boundProviders.value,
     }),
   )
@@ -186,6 +189,9 @@ export function useAccountEntryGroups(options: AccountEntryGroupsOptions) {
         return
       case 'password':
         actions.openPasswordDialog()
+        return
+      case 'username':
+        actions.openUsernameDialog()
         return
       case 'twoFactor':
         actions.openTwoFactorDialog()

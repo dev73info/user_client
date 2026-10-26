@@ -1,14 +1,16 @@
+import WechatBindQrModal from '../WechatBindQrModal.vue'
 import AsignDialog from './AsignDialog.vue'
 import CloseAccountDialog from './CloseAccountDialog.vue'
 import EmailDialog from './EmailDialog.vue'
 import PasswordDialog from './PasswordDialog.vue'
 import SealDialog from './SealDialog.vue'
 import TwoFactorDialog from './TwoFactorDialog.vue'
+import UsernameDialog from './UsernameDialog.vue'
 import { dialog, type AccountDialogEntry } from './accountDialogBindings'
 
 /**
- * 弹窗绑定表之二：**账号设置与第三方绑定**六个弹窗（爱签账户维护 / 印章 / 改邮箱 / 改密码 /
- * 两步验证 / 注销账号）。改用户名那条已按契约删除（不接受自助改登录名）。
+ * 弹窗绑定表之二：**账号设置与第三方绑定**八个弹窗（爱签账户维护 / 印章 / 改邮箱 / 改密码 /
+ * 改用户名 / 两步验证 / 注销账号 / 微信扫码绑定）。
  *
  * 与 `accountDialogBindings.ts`（实名与收款那四条）分开只为一件事：`.ts` 的行数预算 300——
  * 一张表写满十二个弹窗会超，按域拆两半谁都不贴上限。表结构与 `dialog()` 在那一半里，
@@ -112,6 +114,20 @@ export const settingsDialogEntries: AccountDialogEntry[] = [
       submit: d.security.submitPasswordChange,
     }),
   ),
+  dialog(
+    'username',
+    UsernameDialog,
+    'visible',
+    (d) => ({
+      initial: d.security.newUsername.value,
+      saving: d.security.usernameLoading.value,
+      error: d.security.usernameError.value,
+    }),
+    (d) => ({
+      'update:value': (value: string) => (d.security.newUsername.value = value),
+      submit: d.security.updateUsername,
+    }),
+  ),
   // 两步验证：开关换成目标态时父级自动补发一次验证码（`toggle` 不是纯回写）
   dialog(
     'twoFactor',
@@ -146,6 +162,21 @@ export const settingsDialogEntries: AccountDialogEntry[] = [
     (d) => ({
       'update:value': (value: string) => (d.closeAccount.accountCloseConfirmation.value = value),
       submit: d.closeAccount.handleCloseAccount,
+    }),
+  ),
+  dialog(
+    'wechatQr',
+    WechatBindQrModal,
+    null,
+    (d) => ({
+      visible: d.provider.wechatBindQr.visible,
+      url: d.provider.wechatBindQr.url,
+      state: d.provider.wechatBindQr.state,
+      pollSecret: d.provider.wechatBindQr.pollSecret,
+    }),
+    (d) => ({
+      close: d.provider.closeWechatBindQr,
+      bound: d.provider.handleWechatBound,
     }),
   ),
 ]
