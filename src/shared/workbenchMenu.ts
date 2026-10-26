@@ -92,6 +92,12 @@ export const devWorkbenchItems: DevWorkbenchItem[] = [
     icon: Files,
   },
   {
+    label: '接入客户端',
+    name: 'dev-oauth-clients',
+    description: '创建与管理 OAuth 应用',
+    icon: Connection,
+  },
+  {
     label: 'AI 需求助手',
     name: 'dev-assistant',
     description: '对话梳理需求并生成草稿',

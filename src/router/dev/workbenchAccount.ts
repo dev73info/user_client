@@ -33,6 +33,17 @@ export const devWorkbenchAccountRoutes: RouteRecordRaw[] = [
     },
   },
   {
+    path: 'developer/oauth-clients',
+    name: 'dev-oauth-clients',
+    component: () => import('@/views/DevOAuthClientsView.vue'),
+    meta: {
+      title: '接入客户端',
+      description: '创建与管理 OAuth 应用，在自己的站点使用 73Info 账号登录',
+      devArea: true,
+      requiresDevAccess: true,
+    },
+  },
+  {
     path: 'developer/wallet',
     redirect: { name: 'dev-wallet' },
   },
