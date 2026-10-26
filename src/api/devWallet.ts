@@ -67,6 +67,28 @@ export function validateDevWithdrawalRequest(input: WithdrawalValidationInput): 
   return null
 }
 
+/** 在途退款主动同步的结果。 */
+export type RefundSyncOutcome = {
+  checked: number
+  settled: number
+  still_pending: number
+  errors: Array<{ refund_no: string; detail: string }>
+}
+
+/**
+ * 主动回查在途退款并补记本地状态。
+ *
+ * 渠道回调丢了的退款会永远停在「退款中」：用户明明已收到钱，页面却不同步。
+ * 钱包页加载时先调一次它，再读余额与明细，相当于给回调丢件加一道保险。
+ */
+export async function syncInflightRefunds(token: string): Promise<RefundSyncOutcome> {
+  return requestJson<RefundSyncOutcome>(
+    '/payment/refunds/sync',
+    { method: 'POST', headers: authHeader(token) },
+    '同步退款状态失败',
+  )
+}
+
 /** 钱包总览：接单收入池的累计 / 今日 / 可提现读数与最近到账。 */
 export async function getDevWalletOverview(token: string): Promise<DevWalletOverview> {
   return requestJson<DevWalletOverview>(
