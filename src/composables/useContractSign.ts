@@ -1,6 +1,7 @@
 import { computed, onMounted, ref } from 'vue'
 
 import {
+  createRequirementContract,
   fetchApiUsageAgreement,
   fetchAsignContractPreviewUrl,
   fetchDeveloperAgreement,
@@ -115,6 +116,11 @@ export function useContractSign(options: UseContractSignOptions) {
         contract.value = await fetchDeveloperAgreement(auth.token)
       } else {
         contract.value = await fetchMyRequirementContract(auth.token, nav.requirementId)
+        if (!contract.value) {
+          // 待签合同由当事人主动发起（后端幂等）：接单不再自动建合同，页面只读会停在
+          // 「暂无可签署的合同」，担保单就卡在缴定金之前。发起失败按加载失败处理。
+          contract.value = await createRequirementContract(auth.token, nav.requirementId)
+        }
       }
       // 已发起爱签签署但本地仍是待签署（回调可能延迟/丢失）：主动向爱签同步状态。
       // 用户从爱签签署页返回本页时，若已在爱签完成签署，这里会把本地合同更新为已签署。

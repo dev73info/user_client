@@ -10,18 +10,13 @@ import { useAuthStore } from '@/stores/auth'
 import ContractSignView from '@/views/ContractSignView.vue'
 
 /**
- * 合同签署页最小挂载烟测（拆分前这页零覆盖）。
- *
- * 只钉两件事：
- * 1. 合同信息真的渲染出来了（编号 / 标题 / 状态 / 指纹 / 签约方）；
- * 2. 点「开始签署」之后，爱签签署链接经**视图的整页跳转**交出去——跳转是
- *    `window.location.href`（离开 SPA），所以这里把 `window.location` 换成一个只记账的
- *    stub，断言「跳转函数被调用」而不是真的导航；反过来，附件未放行时按钮置灰、跳转不触发。
- *
- * 附件面板由另一处维护，这里 stub 掉：本页只负责把合同与身份传进去。
+ * 合同签署页最小挂载烟测：合同信息真的渲染出来、点「开始签署」后爱签链接经
+ * `window.location.href` 整页交出去（这里换成只记账的 stub，断言跳转被调用而非真的导航）、
+ * 按需求取不到合同时页面自己发起（后端幂等），附件未放行时按钮置灰不跳转。
  */
 const mocks = vi.hoisted(() => ({
   requirementContract: vi.fn(),
+  createRequirementContract: vi.fn(),
   requirementDetail: vi.fn(),
   initiateSign: vi.fn(),
   syncStatus: vi.fn(),
@@ -31,6 +26,7 @@ const mocks = vi.hoisted(() => ({
 vi.mock('@/api/contracts', async (orig) => ({
   ...(await orig<typeof import('@/api/contracts')>()),
   fetchMyRequirementContract: mocks.requirementContract,
+  createRequirementContract: mocks.createRequirementContract,
   initiateAsignSign: mocks.initiateSign,
   syncAsignSignStatus: mocks.syncStatus,
   fetchAsignContractPreviewUrl: mocks.previewUrl,
@@ -254,6 +250,26 @@ describe('合同签署页：最小挂载烟测', () => {
     expect(redirectTo).toHaveBeenCalledTimes(1)
     expect(redirectTo).toHaveBeenCalledWith(SIGN_URL)
 
+    wrapper.unmount()
+  })
+
+  it('没有合同时由页面主动发起，并直接进入可签署态', async () => {
+    const awaiting = contractDetail({ status: CONTRACT_STATUS.awaiting })
+    mocks.requirementContract.mockResolvedValueOnce(null)
+    mocks.createRequirementContract.mockResolvedValue(awaiting)
+    const { wrapper } = await render({ requirement_id: 'REQ-1' })
+
+    expect(mocks.createRequirementContract).toHaveBeenCalledWith('test-token', 'REQ-1')
+    expect(wrapper.find('.contract-meta').text()).toContain('HT-2026-0001')
+    expect(signButton(wrapper)?.attributes('disabled')).toBeUndefined()
+    wrapper.unmount()
+  })
+  it('已有合同（含待签）时不再重复发起', async () => {
+    const { wrapper } = await render(
+      { requirement_id: 'REQ-1' },
+      { status: CONTRACT_STATUS.awaiting },
+    )
+    expect(mocks.createRequirementContract).not.toHaveBeenCalled()
     wrapper.unmount()
   })
 
