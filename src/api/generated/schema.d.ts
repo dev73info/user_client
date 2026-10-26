@@ -8492,6 +8492,108 @@ export interface paths {
         patch: operations["resource_admin_comment_update_legacy_plural"];
         trace?: never;
     };
+    "/api/resources/purchase-transfers/incoming": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 待我接收的使用权转移 */
+        get: operations["purchase_transfer_incoming"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/resources/purchase-transfers/outgoing": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 我发起的使用权转移 */
+        get: operations["purchase_transfer_outgoing"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/resources/purchase-transfers/{transfer_id}/accept": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** 接受使用权转移 */
+        post: operations["purchase_transfer_accept"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/resources/purchase-transfers/{transfer_id}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** 撤销使用权转移 */
+        post: operations["purchase_transfer_cancel"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/resources/purchase-transfers/{transfer_id}/reject": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** 拒绝使用权转移 */
+        post: operations["purchase_transfer_reject"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/resources/purchases/{order_no}/transfer": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** 发起接口资源使用权转移 */
+        post: operations["purchase_transfer_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/resources/resources": {
         parameters: {
             query?: never;
@@ -8668,6 +8770,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/resources/resources/{resource_id}/transfers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** 发起资源过户 */
+        post: operations["resource_transfer_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/resources/resources/{resource_id}/versions": {
         parameters: {
             query?: never;
@@ -8734,6 +8853,91 @@ export interface paths {
          * @description 改版本元信息（版本号、说明、文件路径、单版本价、展示文件名），需要`resource.self_version_update.patch`；不传的字段不改。说明与展示文件名可以显式传空字符串来清空（`Some(None)` 与「不传」是两种语义）。单版本价不低于 0，且必须低于买断价（409）。版本不属于该资源时按不存在处理（404）。
          */
         patch: operations["resource_update_version"];
+        trace?: never;
+    };
+    "/api/resources/transfers/inbox": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 待我接收的资源过户 */
+        get: operations["resource_transfer_inbox"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/resources/transfers/mine": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 我发起的资源过户 */
+        get: operations["resource_transfer_mine"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/resources/transfers/{transfer_id}/accept": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** 接受资源过户 */
+        post: operations["resource_transfer_accept"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/resources/transfers/{transfer_id}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** 撤销资源过户 */
+        post: operations["resource_transfer_cancel"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/resources/transfers/{transfer_id}/reject": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** 拒绝资源过户 */
+        post: operations["resource_transfer_reject"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/api/resources/{resource_id}": {
@@ -12829,6 +13033,10 @@ export interface components {
              */
             version_id?: number | null;
         };
+        CreatePurchaseTransferRequest: {
+            message?: string | null;
+            to_username: string;
+        };
         /** @description 创建需求请求体。字段名与老接口一致；`budget` 仍以元为单位。 */
         CreateRequirementRequest: {
             /** @description 验收标准。 */
@@ -12963,6 +13171,12 @@ export interface components {
             developer: string;
             /** @description 留言，最多 200 字。 */
             message?: string;
+        };
+        CreateTransferRequest: {
+            message?: string | null;
+            /** Format: int64 */
+            to_team_id?: number | null;
+            to_user?: string | null;
         };
         /** @description 创建用户请求体。 */
         CreateUserRequest: {
@@ -15380,6 +15594,22 @@ export interface components {
              */
             wechat_oauth_redirect_url: string;
         };
+        PurchaseTransferResponse: {
+            cancelled_at?: string | null;
+            from_username: string;
+            initiated_at: string;
+            message?: string | null;
+            order_no: string;
+            /** Format: int64 */
+            resource_id: number;
+            resource_title: string;
+            responded_at?: string | null;
+            responded_by?: string | null;
+            status: string;
+            to_username: string;
+            /** Format: int64 */
+            transfer_id: number;
+        };
         /** @description 确认请求体。 */
         QrConfirmRequest: {
             /** @description 二维码上的 state。 */
@@ -15960,12 +16190,12 @@ export interface components {
             platform: string;
             /**
              * Format: int64
-             * @description 冻结的历史现金售价（兼容旧前端，不参与售卖判定）。
+             * @description 现金买断价的镜像字段，与 `buyout_price_fen` 同步。
              */
             price_fen: number;
             /**
              * Format: int64
-             * @description 冻结的历史积分售价（兼容旧前端）。
+             * @description 积分买断价，参与售卖与下载鉴权。
              */
             price_points: number;
             /**
@@ -16023,6 +16253,28 @@ export interface components {
             view_count: number;
             /** @description 可见性。 */
             visibility: string;
+        };
+        ResourceTransferResponse: {
+            cancelled_at?: string | null;
+            from_ownership_type: string;
+            /** Format: int64 */
+            from_team_id?: number | null;
+            from_team_name?: string | null;
+            from_user: string;
+            initiated_at: string;
+            message?: string | null;
+            /** Format: int64 */
+            resource_id: number;
+            resource_name: string;
+            responded_at?: string | null;
+            responded_by?: string | null;
+            status: string;
+            /** Format: int64 */
+            to_team_id?: number | null;
+            to_team_name?: string | null;
+            to_user?: string | null;
+            /** Format: int64 */
+            transfer_id: number;
         };
         /** @description 表态请求体。 */
         RespondCaseRequest: {
@@ -42499,6 +42751,241 @@ export interface operations {
             };
         };
     };
+    purchase_transfer_incoming: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PurchaseTransferResponse"][];
+                };
+            };
+            /** @description 没有权限 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    purchase_transfer_outgoing: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PurchaseTransferResponse"][];
+                };
+            };
+            /** @description 没有权限 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    purchase_transfer_accept: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description 转移申请编号 */
+                transfer_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PurchaseTransferResponse"];
+                };
+            };
+            /** @description 不是接收方 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 申请不存在 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 申请已处理或接收方已有权益 */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    purchase_transfer_cancel: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description 转移申请编号 */
+                transfer_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PurchaseTransferResponse"];
+                };
+            };
+            /** @description 不是发起方 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 申请不存在 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 申请已处理 */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    purchase_transfer_reject: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description 转移申请编号 */
+                transfer_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PurchaseTransferResponse"];
+                };
+            };
+            /** @description 不是接收方 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 申请不存在 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 申请已处理 */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    purchase_transfer_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description 订单号 */
+                order_no: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreatePurchaseTransferRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PurchaseTransferResponse"];
+                };
+            };
+            /** @description 接收方不合法 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 不是当前买家 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 订单或接收方不存在 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 订单状态不允许转移或已有待处理申请 */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     resource_self_list: {
         parameters: {
             query?: never;
@@ -43091,6 +43578,60 @@ export interface operations {
             };
         };
     };
+    resource_transfer_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description 资源编号 */
+                resource_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateTransferRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ResourceTransferResponse"];
+                };
+            };
+            /** @description 接收方不合法 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 不是资源所有者 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 资源或接收方不存在 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 资源被需求绑定或已有待处理申请 */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     resource_self_version_list: {
         parameters: {
             query?: never;
@@ -43367,6 +43908,187 @@ export interface operations {
                 content?: never;
             };
             /** @description 单版本价不低于买断价 */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    resource_transfer_inbox: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ResourceTransferResponse"][];
+                };
+            };
+            /** @description 没有权限 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    resource_transfer_mine: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ResourceTransferResponse"][];
+                };
+            };
+            /** @description 没有权限 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    resource_transfer_accept: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description 过户申请编号 */
+                transfer_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ResourceTransferResponse"];
+                };
+            };
+            /** @description 不是接收方 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 申请不存在 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 申请已处理或归属已变化 */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    resource_transfer_cancel: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description 过户申请编号 */
+                transfer_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ResourceTransferResponse"];
+                };
+            };
+            /** @description 不是发起方 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 申请不存在 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 申请已处理 */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    resource_transfer_reject: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description 过户申请编号 */
+                transfer_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ResourceTransferResponse"];
+                };
+            };
+            /** @description 不是接收方 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 申请不存在 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 申请已处理 */
             409: {
                 headers: {
                     [name: string]: unknown;

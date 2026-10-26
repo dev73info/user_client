@@ -224,6 +224,12 @@ function handleRowClick(event: MouseEvent) {
                 售出订单
               </TDropdownItem>
               <TDropdownItem
+                :command="{ action: 'transfer', resource: scope.row }"
+                :disabled="isResourceArchiveLocked(scope.row)"
+              >
+                资源过户
+              </TDropdownItem>
+              <TDropdownItem
                 :command="{ action: 'delete', resource: scope.row }"
                 :disabled="
                   isResourceArchiveLocked(scope.row) ||

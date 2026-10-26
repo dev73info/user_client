@@ -155,6 +155,12 @@ const emit = defineEmits<{
                 >编辑主页</TDropdownItem
               >
               <TDropdownItem
+                :command="{ action: 'transfer', resource: scope.row }"
+                :disabled="isResourceArchiveLocked(scope.row)"
+              >
+                资源过户
+              </TDropdownItem>
+              <TDropdownItem
                 :command="{ action: 'delete', resource: scope.row }"
                 :disabled="
                   isResourceArchiveLocked(scope.row) ||
