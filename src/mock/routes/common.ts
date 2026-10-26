@@ -7,7 +7,7 @@
  *
  * 路由按子域分在 `common/` 下（账号设置 / 实名认证 / 支付与优惠券，外加共用的
  * 假数据构造函数），本文件只按原顺序把它们拼成一张路由表：路径、note、处理逻辑都没动。
- * 积分与社区两组 mock 已随后端契约下线一并删除。
+ * 社区 mock 在独立的 community 路由表中，与当前后端契约同步。
  */
 
 import { defineRouteTable, type MockRoute } from '../router'

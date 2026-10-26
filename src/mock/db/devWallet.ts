@@ -34,6 +34,7 @@ function buildWithdrawal(
     amount_fen: Math.round(amount * 100),
     account_name: DEV_NICKNAME,
     account_no_tail: accountNo.slice(-4),
+    source: 'income',
     status,
     status_label: status,
     note: '',

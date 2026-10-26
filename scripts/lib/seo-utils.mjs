@@ -317,7 +317,7 @@ export async function fetchPublicRequirementSpotlights(apiBaseUrl, maxItems = 20
   return items.slice(0, maxItems)
 }
 
-// 帖子列表接口不返回正文（content_html 恒为空），需要单独取详情。
+// 详情快照统一取详情接口，不依赖列表返回的摘要或正文字段。
 export async function fetchCommunityPostDetail(apiBaseUrl, postId) {
   return fetchJson(apiBaseUrl, `/community/posts/${Number(postId)}`)
 }

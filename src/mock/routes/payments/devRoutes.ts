@@ -48,6 +48,7 @@ export const devPaymentRoutes: MockRoute[] = [
         amount_fen: amountFen,
         account_name: '开发者',
         account_no_tail: '3445',
+        source: 'income',
         status: 'pending_review' as const,
         status_label: '待审核',
         note: body.note ?? '',

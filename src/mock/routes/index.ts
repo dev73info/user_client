@@ -2,6 +2,7 @@ import type { MockRouteTable } from '../router'
 
 import { authRoutes } from './auth'
 import { commonRoutes } from './common'
+import { communityRoutes } from './community'
 import { contractRoutes } from './contracts'
 import { conversationRoutes } from './conversations'
 import { invoiceRoutes } from './invoices'
@@ -23,6 +24,7 @@ export const mockRouteTables: readonly MockRouteTable[] = [
   invoiceRoutes,
   resourceRoutes,
   conversationRoutes,
+  communityRoutes,
   commonRoutes,
   authRoutes,
 ]

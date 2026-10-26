@@ -56,6 +56,10 @@ function goResources() {
   void router.push({ name: 'resources' })
 }
 
+function goCommunity() {
+  void router.push({ name: 'community' })
+}
+
 function goProtectedTarget(target: { name: string; hash?: string }) {
   if (auth.isAuthed) {
     void router.push(target)
@@ -119,6 +123,15 @@ function goWorkbench() {
     </button>
     <button
       type="button"
+      class="portal-mobile-dock__item"
+      :class="{ active: ['community', 'community-post'].includes(routeName) }"
+      @click="goCommunity"
+    >
+      <span>◎</span>
+      <small>社区</small>
+    </button>
+    <button
+      type="button"
       class="portal-mobile-dock__item portal-mobile-dock__item--primary"
       @click="openPublish"
     >
@@ -163,7 +176,7 @@ function goWorkbench() {
   bottom: max(8px, env(safe-area-inset-bottom));
   z-index: 60;
   display: none;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  grid-template-columns: repeat(6, minmax(0, 1fr));
   gap: 4px;
   max-width: 720px;
   margin: 0 auto;

@@ -55,6 +55,7 @@ function createTestRouter() {
       { name: 'resources', path: '/resources', component: { template: '<div />' } },
       { name: 'resource-catalog', path: '/resource-catalog', component: { template: '<div />' } },
       { name: 'requirement-hall', path: '/requirements', component: { template: '<div />' } },
+      { name: 'community', path: '/community', component: { template: '<div />' } },
       { name: 'workbench', path: '/workbench', component: { template: '<div />' } },
     ],
   })
@@ -102,7 +103,7 @@ describe('门户顶栏最小挂载烟测', () => {
   it('按登录态铺出导航链接，当前路由那条是 active', async () => {
     const { wrapper } = await render()
 
-    expect(navLabels(wrapper)).toEqual(['首页', '资源项目', '需求大厅'])
+    expect(navLabels(wrapper)).toEqual(['首页', '资源项目', '需求大厅', '社区'])
     expect(wrapper.find('.portal-nav__link.active').text()).toBe('首页')
     // 未登录：只给登录 / 注册两个按钮
     expect(wrapper.find('.portal-text-btn').text()).toBe('登录')
@@ -114,7 +115,7 @@ describe('门户顶栏最小挂载烟测', () => {
   it('登录后追加「工作台」入口，并拉一次个人资料', async () => {
     const { wrapper } = await render({ authed: true })
 
-    expect(navLabels(wrapper)).toEqual(['首页', '资源项目', '需求大厅', '工作台'])
+    expect(navLabels(wrapper)).toEqual(['首页', '资源项目', '需求大厅', '社区', '工作台'])
     // 头像与两个订阅开关都来自这一次 GET /settings/profile
     expect(mocks.getProfile).toHaveBeenCalledWith('test-token')
 
