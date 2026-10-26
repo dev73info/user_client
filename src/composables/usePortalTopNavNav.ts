@@ -50,10 +50,14 @@ export function usePortalTopNavNav() {
         to: { name: 'requirement-hall' },
         active: allowActive && (currentName === 'requirement-hall' || currentName === 'payment'),
       },
+      {
+        label: '社区',
+        to: { name: 'community' },
+        active: allowActive && ['community', 'community-post'].includes(currentName),
+      },
     ]
 
     if (auth.isAuthed) {
-      // 登录后在工作台前追加一条「工作台」入口（原先插在「社区」之前，社区已撤）
       links.push({
         label: '工作台',
         to: { name: 'workbench' },

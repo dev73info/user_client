@@ -1,5 +1,5 @@
 /**
- * 门户主路由：首页、资源、需求大厅、支付与收银台、开发者与团队公开页、
+ * 门户主路由：首页、资源、需求大厅、社区、支付与收银台、开发者与团队公开页、
  * `/r/:code` 分享短链，以及 `/profile` 这一条旧地址的跳转。
  *
  * 路由表按域拆分（R047）后各模块只声明自己的条目；先后顺序仍按原 `index.ts` 里的排布，
@@ -31,7 +31,10 @@ export function buildPublicShareRedirectPath(
     return `/resources/resource--${targetId}${promoQuery}`
   }
 
-  // 社区帖分享短链的落地页已撤（契约里没有社区），旧链接统一回首页，不做 404 白屏。
+  if (shareType === 'community_post' && /^\d+$/.test(targetId)) {
+    return `/community/posts/${targetId}`
+  }
+
   return '/'
 }
 
@@ -71,6 +74,19 @@ export const portalRoutes: RouteRecordRaw[] = [
     path: '/requirement-hall',
     name: 'requirement-hall',
     component: () => import('@/views/RequirementHallView.vue'),
+  },
+  {
+    // 社区必须留在通用 `/:rootSlug/:entrySlug?` 资源路由之前。
+    path: '/community',
+    name: 'community',
+    component: () => import('@/views/CommunityListView.vue'),
+    meta: { title: '社区' },
+  },
+  {
+    path: '/community/posts/:id',
+    name: 'community-post',
+    component: () => import('@/views/CommunityPostDetailView.vue'),
+    meta: { title: '社区帖子' },
   },
   {
     path: '/search',

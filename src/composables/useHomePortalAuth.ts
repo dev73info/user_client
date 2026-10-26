@@ -92,8 +92,8 @@ export function useHomePortalAuth(options: HomePortalAuthOptions) {
     return raw && /^[A-Za-z0-9]{1,32}$/.test(raw) ? raw : ''
   })
 
-  // 分享类型白名单：`community_post` 是社区撤下之前发出的旧短链，留着只为让这类链接
-  // 仍然走「分享」分支（落到首页），不会被当成邀请码走注册分支。
+  // 分享类型白名单：`community_post` 继续走分享分支，由门户短链路由落到社区详情，
+  // 不会被当成邀请码走注册分支。
   const routeShareType = computed(() => {
     const raw = options.routeQueryValue('share_type')
     return ['requirement', 'portfolio', 'resource', 'community_post'].includes(raw) ? raw : ''

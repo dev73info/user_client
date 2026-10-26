@@ -6,6 +6,7 @@ import { fileURLToPath } from 'node:url'
 import {
   collectPublicProfiles,
   dateOnly,
+  fetchPublishedPosts,
   fetchPublishedResources,
   fetchPublicRequirementSpotlights,
   isCashPaidListingResource,
@@ -77,6 +78,12 @@ function buildStaticEntries({ resources, posts, requirements, profiles }) {
       changefreq: 'daily',
       priority: '0.8',
     },
+    {
+      path: '/community',
+      lastmod: latestOf(postDates) || today,
+      changefreq: 'daily',
+      priority: '0.8',
+    },
     { path: '/about', changefreq: 'monthly', priority: '0.5' },
     { path: '/terms', changefreq: 'monthly', priority: '0.4' },
     { path: '/privacy', changefreq: 'monthly', priority: '0.4' },
@@ -91,13 +98,12 @@ function latestOf(...groups) {
 }
 
 async function main() {
-  // 社区整块已随后端契约下线（`/community/**` 一条路径都没有），sitemap 不再收录帖子。
-  const posts = []
-  const [resources, requirements] = await Promise.all([
+  const [resources, requirements, posts] = await Promise.all([
     fetchPublishedResources(apiBaseUrl).catch((error) => handleFetchFailure('resources', error)),
     fetchPublicRequirementSpotlights(apiBaseUrl).catch((error) =>
       handleFetchFailure('requirement spotlight', error),
     ),
+    fetchPublishedPosts(apiBaseUrl).catch((error) => handleFetchFailure('community posts', error)),
   ])
 
   // 公开主页与快照脚本用同一份名单：只有「自己有公开资源 / 公开帖子，或填了主页简介」的人才会进 sitemap，

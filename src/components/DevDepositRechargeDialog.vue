@@ -253,7 +253,7 @@ defineExpose({ open })
   height: 220px;
   border: 1px solid var(--dev-line);
   border-radius: 12px;
-  background: #fff;
+  background: var(--73-surface-strong);
 }
 
 .dev-recharge-dialog__qr-order,

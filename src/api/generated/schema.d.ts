@@ -4,6 +4,23 @@
  */
 
 export interface paths {
+    "/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 平台首页 */
+        get: operations["api_home"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/adapay/requirements/{requirement_id}/deposit": {
         parameters: {
             query?: never;
@@ -38,6 +55,60 @@ export interface paths {
          * @description 需求方支付尾款，需要 `payment.deposit_pay.post`（与定金共用一个码）。前置：需求方本人、担保模式、状态「待付尾款」、已接单。金额由支付侧按资金条款算出（总额 − 定金），**不接受前端传入**——前端能自己定金额的接口等于送钱。响应结构与定金支付同一套，`milestone` 为 `final`。
          */
         post: operations["requirement_create_final_payment"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/adapay/union/callback": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 云闪付用户授权回调 */
+        get: operations["payment_union_oauth_callback"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/adapay/union/payment/url": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 生成云闪付用户授权地址 */
+        get: operations["payment_union_oauth_authorize_url"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/adapay/payments/{payment_id}/simulate-paid": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * `POST /api/admin/adapay/payments/{payment_id}/simulate-paid` —— 调试环境模拟收款。
+         * @description 仅 debug/test 且非生产环境可用。复用真实支付成功事件与业务消费链路；不能推进 failed/canceled 单。
+         */
+        post: operations["payment_admin_adapay_simulate_paid"];
         delete?: never;
         options?: never;
         head?: never;
@@ -228,6 +299,150 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/admin/community/comment-warnings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["community_admin_warning_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/community/comments/{comment_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete: operations["community_admin_comment_delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/community/posts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["community_admin_post_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/community/posts/{post_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["community_admin_post_detail"];
+        put?: never;
+        post?: never;
+        delete: operations["community_admin_post_delete"];
+        options?: never;
+        head?: never;
+        patch: operations["community_admin_post_update"];
+        trace?: never;
+    };
+    "/api/admin/community/posts/{post_id}/comments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["community_admin_comment_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/community/posts/{post_id}/featured": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["community_admin_post_featured"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/community/posts/{post_id}/review": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["community_admin_post_review"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/community/tags": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["community_admin_tag_list"];
+        put?: never;
+        post: operations["community_admin_tag_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/community/tags/{tag_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete: operations["community_admin_tag_delete"];
+        options?: never;
+        head?: never;
+        patch: operations["community_admin_tag_update"];
+        trace?: never;
+    };
     "/api/admin/conversations": {
         parameters: {
             query?: never;
@@ -328,6 +543,46 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/admin/dispute/cases/{case_no}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 管理端案件详情
+         * @description 按案件编号读取完整详情与表态流水，需要 `dispute.admin_detail.get`。
+         */
+        get: operations["dispute_admin_detail"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/dispute/cases/{case_no}/ai-verdict": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 保存 AI 裁决建议
+         * @description 需要 `adapay.breach_ai_verdict.post`。AI 建议与依据会追加留痕并出现在详情中，但不写正式裁决、不调用资金执行端口；后续仍须按状态机转平台介入并调用 decide。
+         */
+        post: operations["dispute_admin_ai_verdict"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/admin/dispute/cases/{case_no}/close": {
         parameters: {
             query?: never;
@@ -379,7 +634,7 @@ export interface paths {
         put?: never;
         /**
          * 转平台介入
-         * @description 客服把协商阶段的案件推进到平台裁决，需要 `dispute.case.decide.post`。平台不做超时扫描：对方迟迟不表态时，只有这里能把案件推下去，之后才轮到「裁决」。案件不在协商阶段回 409。
+         * @description 客服把协商阶段的案件推进到平台裁决，需要 `dispute.case.decide.post`。平台不做超时扫描：对方迟迟不表态时，只有这里能把案件推下去，之后才轮到「裁决」。案件不在协商阶段回 409。**请求体可省略**：不带说明就是直接转平台介入（1.x 的旧路径不带 body）。
          */
         post: operations["dispute_admin_escalate"];
         delete?: never;
@@ -422,6 +677,160 @@ export interface paths {
          * @description 客服在同一条案件上重新开一轮协商，需要 `dispute.case.reopen.post`——与「处置」分开一个码：能不能重开与能不能裁决是两件事。重开不新建案件，案件编号不变，之前的每轮表态都还在。案件未结案回 409；需求状态不允许重开这类案件、或该需求还有别的在办案件，同样回 409。本轮诉求说明必填。
          */
         post: operations["dispute_admin_reopen"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/growth/badges": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 管理端徽章目录 */
+        get: operations["growth_admin_badges"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/growth/badges/grant": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** 授予徽章 */
+        post: operations["growth_admin_grant_badge"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/growth/badges/revoke": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** 回收徽章 */
+        post: operations["growth_admin_revoke_badge"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/growth/badges/{code}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** 新增或更新徽章 */
+        put: operations["growth_admin_upsert_badge"];
+        post?: never;
+        /** 删除徽章 */
+        delete: operations["growth_admin_delete_badge"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/growth/badges/{code}/icon": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** 上传徽章图标 */
+        post: operations["growth_admin_upload_badge_icon"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/growth/invitations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 邀请归因记录 */
+        get: operations["growth_admin_invitations"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/growth/invite-codes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 邀请码列表 */
+        get: operations["growth_admin_invite_codes"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/growth/overview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 增长概览 */
+        get: operations["growth_admin_overview"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/growth/share-records": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 分享统计记录 */
+        get: operations["growth_admin_share_records"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -536,6 +945,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/admin/operation-logs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["operation_log_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/admin/payment/channel-status": {
         parameters: {
             query?: never;
@@ -590,6 +1015,50 @@ export interface paths {
         get: operations["payment_admin_list_settlement_accounts"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/payment/settlement-accounts/{username}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 管理端查某个账号的收款账户
+         * @description 按用户名读一条收款账户，需要 `payment.settlement.list.get`。列表是「全站 + 限量」，排查具体某个人时用这条直接查。账号从来没有开过户时回 404（不返回空壳快照）。响应与列表项同形：只带卡号后四位，不带完整卡号与证件号。
+         */
+        get: operations["payment_admin_get_settlement_account"];
+        put?: never;
+        post?: never;
+        /**
+         * 管理端解绑收款账户
+         * @description 客服替用户解绑收款账户，需要 `payment.settlement.manage.delete`。**破坏性动作**：解绑后该用户的合同款与分账都进不来，要收款必须重新开户。幂等：本来就没绑过时直接回当前快照，不报错。解绑前会校验在途资金与在办需求，有就回 409 并说清先做什么。与 1.x 的「删除渠道会员」不完全等价：2.0 保留账户行（记 `closed`），因为底账上还印着当时的账户号。
+         */
+        delete: operations["payment_admin_close_settlement_account"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/payment/settlement-accounts/{username}/open": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 管理端代用户开户（对私）
+         * @description 客服替指定用户提交对私进件资料，需要 `payment.settlement.manage.post`。请求体与用户自助开户一致：证件号与完整银行卡号**只在请求体里出现一次**，校验后即送渠道，不落库、不进日志，响应里只回后四位。账户已开通时回 409（账户号一变，在途分账就会打到旧账号上）。对公进件需要三张证照，不走本端点——本端点只做对私。
+         */
+        post: operations["payment_admin_open_settlement_account"];
         delete?: never;
         options?: never;
         head?: never;
@@ -807,13 +1276,193 @@ export interface paths {
         put?: never;
         /**
          * 审核提现
-         * @description 放行或驳回一张待审核的提现单，需要 `payment.withdrawal.manage`。通过即**立即发起一次出款**；驳回则释放占用的额度并通知申请人。只有「待审核」的单可以审（其他状态回 409）。大额提现默认都会走到这里——钱出去就回不来，必须有人再看一眼。
+         * @description 放行或驳回一张待审核的提现单，需要 `payment.withdrawal.manage`。通过即**立即发起一次出款**；驳回则释放占用的额度并通知申请人。只有「待审核」的单可以审（其他状态回 409）。申请人不能审核本人发起的提现单，无论通过还是驳回都回 403。大额提现默认都会走到这里——钱出去就回不来，必须由另一位审核人再看一眼。
          */
         post: operations["payment_admin_review_withdrawal"];
         delete?: never;
         options?: never;
         head?: never;
         patch?: never;
+        trace?: never;
+    };
+    "/api/admin/realname/asign-account/modify-company-info": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 管理端：修改指定用户的企业认证信息
+         * @description **需要登录 + `realname.application_review.post`**。字段与用户端一致，多一个 `username` 指定目标用户。改企业名称时 `data` 返回新的印章编号。
+         */
+        post: operations["realname_admin_asign_modify_company_info"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/realname/asign-account/modify-mobile-by-code": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 管理端：按验证码修改指定用户的手机号
+         * @description **需要登录 + `realname.application_review.post`**。`username` 指定目标用户，account 由后端从**该用户**的实名资料推导（1.x 同口径，不接受前端传 account）。成功时 `data` 为 `null`。
+         */
+        post: operations["realname_admin_asign_modify_mobile_by_code"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/realname/asign-account/modify-user-name": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 管理端：修改指定用户的实名姓名
+         * @description **需要登录 + `realname.application_review.post`**。与用户端的差别只有一条：**不做手机号回落**——运营必须显式给 `mobile`（核验方式 2）或 `bankCard`（核验方式 3）。这是 1.x `admin_modify_user_name` 的口径：代改是运营动作，凭证得由运营填，静默拿用户实名手机号去核验会让「谁发起的改动」变得不可追溯。
+         */
+        post: operations["realname_admin_asign_modify_user_name"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/realname/asign-account/re-auth-user": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 管理端：为指定用户重新认证主体
+         * @description **需要登录 + `realname.application_review.post`**。字段与用户端一致，多一个 `username` 指定目标用户。成功时 `data` 通常为 `null`。
+         */
+        post: operations["realname_admin_asign_re_auth_user"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/realname/asign-account/send-verify-code": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 管理端：发送修改手机号的短信验证码
+         * @description **需要登录 + `realname.application_review.post`**。与用户端同一条渠道能力，`data` 同样是 `codeToken` 字符串。**不需要 `username`**：发码只认手机号，与目标账号无关（1.x 同口径）。
+         */
+        post: operations["realname_admin_asign_send_verify_code"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/requirement-agent/config": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["requirement_agent_config_get"];
+        put: operations["requirement_agent_config_update"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/requirement-agent/conversations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["requirement_agent_admin_conversation_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/requirement-agent/conversations/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["requirement_agent_admin_conversation_detail"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/requirement-agent/skills": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["requirement_agent_skill_list"];
+        put?: never;
+        post: operations["requirement_agent_skill_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/requirement-agent/skills/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete: operations["requirement_agent_skill_delete"];
+        options?: never;
+        head?: never;
+        patch: operations["requirement_agent_skill_update"];
         trace?: never;
     };
     "/api/admin/requirement/deliveries": {
@@ -1180,6 +1829,90 @@ export interface paths {
         patch: operations["team_admin_update_member_role"];
         trace?: never;
     };
+    "/api/admin/tickets": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 全部工单列表
+         * @description 客服查看全部工单，可按状态、创建者、负责人、分类和关键字筛选。需要 `ticket.admin_list.get`。
+         */
+        get: operations["ticket_admin_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/tickets/ws": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 管理端工单实时事件
+         * @description SSE 长连接，沿用 legacy `/ws` 路径。需要 `ticket.admin_list.get`；每次创建、回复、关闭或更新后推送 `ticket.updated`，数据只含 `ticket_id`，客户端据此刷新。事件为进程内广播，多实例间不共享。
+         */
+        get: operations["ticket_admin_events"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/tickets/{ticket_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 管理端工单详情
+         * @description 客服可查看任意工单，响应包含内部留言。需要 `ticket.admin_detail.get`。
+         */
+        get: operations["ticket_admin_detail"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * 更新工单
+         * @description 更新状态、优先级、分类或负责人。无 `ticket.assign.any` 时只能指派自己；负责人必须有 `ticket.staff.access`。需要 `ticket.admin_update.patch`。
+         */
+        patch: operations["ticket_admin_update"];
+        trace?: never;
+    };
+    "/api/admin/tickets/{ticket_id}/messages": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 客服回复工单
+         * @description 回复 open 工单后进入 processing。`internal=true` 且拥有 `ticket.reply.internal` 时写内部留言，普通用户不可见。需要 `ticket.admin_reply.post`。
+         */
+        post: operations["ticket_admin_reply"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/admin/tips/{order_no}/refund": {
         parameters: {
             query?: never;
@@ -1323,6 +2056,26 @@ export interface paths {
          * @description **需要登录**（`Authorization: Bearer <平台会话令牌>`），但**不挂端点权限码**——只能注销当前登录的这个账号，归属即权限。注销是**不可逆**的：账号随即进入关闭状态，已签发的全部令牌当场失效，之后用这个账号登录回 403 `ACCOUNT_CLOSED`。唯一的超级管理员不允许注销（否则平台会失去最后一个能管配置的账号），回回 400`CANNOT_DELETE_SUPER_ADMIN`——只有一位超管时这条会命中，有多位时不影响。用户记录不存在（例如令牌指向的账号已被删）回 404 `USER_NOT_FOUND`。
          */
         delete: operations["auth_close_account"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/auth/admin-auto-login": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 本地开发自动登录主超级管理员
+         * @description 仅 debug 构建、配置显式开启、非生产且请求直接来自回环地址时可用；否则 404。
+         */
+        post: operations["auth_dev_admin_auto_login"];
+        delete?: never;
         options?: never;
         head?: never;
         patch?: never;
@@ -1537,7 +2290,7 @@ export interface paths {
         };
         /**
          * 各第三方登录渠道是否可用
-         * @description **免登录**：前端渲染登录页按钮之前先问这个接口，不需要带任何令牌。返回四个固定存在的键：`github` / `wechat` / `qq` / `gitee`。判据是「渠道启用且凭据齐全」，只填了 Client ID 没填 Secret 的渠道算不可用；GitHub 另外还要求回调地址与登录落地页都配好。微信与 QQ 在 2.0 尚未接管，恒为 `false`；字段保留是因为前端按这四个键决定渲染哪些按钮，删键会让前端少画一个按钮。
+         * @description **免登录**：前端渲染登录页按钮之前先问这个接口，不需要带任何令牌。返回四个固定存在的键：`github` / `wechat` / `qq` / `gitee`。判据是「渠道启用且凭据齐全」，只填了 Client ID 没填 Secret 的渠道算不可用；GitHub 另外还要求回调地址与登录落地页都配好；微信与 QQ 同样按启用状态与完整配置判定。
          */
         get: operations["auth_oauth_status"];
         put?: never;
@@ -1858,6 +2611,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/auth/support-auto-login": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 本地开发自动登录客服
+         * @description 仅 debug 构建、配置显式开启、非生产且请求直接来自回环地址时可用；否则 404。首次调用会确保 support_dev 账号存在。
+         */
+        post: operations["auth_dev_support_auto_login"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/auth/user-service-agreement": {
         parameters: {
             query?: never;
@@ -2039,6 +2812,46 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/auth/wechat/bind/qr/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 轮询微信扫码绑定状态
+         * @description **免登录**（凭 `state` + `poll_secret`）：PC 侧轮询，轮询凭据不对一律回 `expired`——错的凭据不该得到任何信息。`pending` 等着 → `confirmed` 表示已绑好（`username` 是绑定到的账号，`token` 恒为 `null`）→ `failed` 表示没绑成，`message` 里是原因 → `expired` 表示过期。绑定结果不「取走」，重复轮询读到的还是同一个结果（刷新页面不该把已绑好读成已失效）。
+         */
+        get: operations["auth_wechat_bind_qr_status"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/auth/wechat/bind/qr/url": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 取微信扫码绑定二维码地址
+         * @description **需要登录**（`Authorization: Bearer <平台会话令牌>`）：PC 侧已登录，要把微信绑到**当前账号**名下，于是把授权页开在手机侧、PC 只画二维码。与扫码登录同构（`state` + `poll_secret`、会话 5 分钟过期），两处差别：① 会话记的是**当前账号**，绑定完成后 PC 拿到的是结果，**不签发令牌**；② 手机扫完码在渠道回调里直接绑好——扫码的手机在微信内置浏览器里没有平台登录态，点不了「确认」。同一个微信已经挂在别的平台账号上时**拒绝绑定**（原因在轮询结果的 `message` 里），不会把它从那边悄悄挪过来。
+         */
+        get: operations["auth_wechat_bind_qr_url"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/auth/wechat/bind/url": {
         parameters: {
             query?: never;
@@ -2166,6 +2979,46 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/auth/wechat/payment/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 查询当前用户是否已完成微信支付授权
+         * @description 需要登录。只依据当前账号是否已经绑定微信，不暴露 openid。
+         */
+        get: operations["auth_wechat_payment_status"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/auth/wechat/payment/url": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 取当前用户微信支付授权地址
+         * @description 需要登录。授权 state 在数据库保留 10 分钟，回调只绑定当前账号的微信 openid。
+         */
+        get: operations["auth_wechat_payment_url"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/auth/{provider}/bind": {
         parameters: {
             query?: never;
@@ -2181,6 +3034,266 @@ export interface paths {
          * @description **需要登录**（`Authorization: Bearer <平台会话令牌>`），**不挂端点权限码**——只能解绑当前登录人自己的绑定，归属即权限。路径参数 `provider` 取 `github` 或 `gitee`（与 `/api/auth/providers` 返回的标识同值）；其它取值回 400 `OAUTH_PROVIDER_UNSUPPORTED`。解绑不存在的绑定不报错：没有记录也回 200，前端不必先查一遍。解绑后该第三方账号可以再绑到别的平台账号。
          */
         delete: operations["auth_unbind"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/badges": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 公开徽章目录 */
+        get: operations["badge_catalog"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/badges/my": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 我的徽章 */
+        get: operations["badge_my"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/badges/my/equipped": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** 设置佩戴徽章 */
+        put: operations["badge_equip"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/badges/user/{username}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 用户公开徽章 */
+        get: operations["badge_user"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/community/comment-warnings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["community_warning_mine"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/community/comments/{comment_id}/likes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["community_comment_like"];
+        delete: operations["community_comment_unlike"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/community/posts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["community_post_list"];
+        put?: never;
+        post: operations["community_post_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/community/posts/favorites": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["community_favorite_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/community/posts/{post_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["community_post_detail"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch: operations["community_post_update"];
+        trace?: never;
+    };
+    "/api/community/posts/{post_id}/boost": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["community_post_boost"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/community/posts/{post_id}/bounty/accept/{comment_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["community_bounty_accept"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/community/posts/{post_id}/bounty/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["community_bounty_cancel"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/community/posts/{post_id}/comments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["community_comment_list"];
+        put?: never;
+        post: operations["community_comment_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/community/posts/{post_id}/favorites": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["community_post_favorite"];
+        delete: operations["community_post_unfavorite"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/community/posts/{post_id}/likes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["community_post_like"];
+        delete: operations["community_post_unlike"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/community/tags": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["community_tag_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
         options?: never;
         head?: never;
         patch?: never;
@@ -2244,6 +3357,30 @@ export interface paths {
          * @description 电子签渠道把签署结果推到这里。**没有 Bearer 鉴权**：调用方是渠道，凭验签放行。报文的 JSON 对象与 form-urlencoded **两种都收**（渠道文档没把编码写死，实测两种都出现过），由适配器归一成键值表后交给端口验签；解析不出参数的报文按「验签失败」处理，不会因为读不出字段就放过去。**顺序是硬要求：先验签，再找合同，最后才落库**——验签失败一律 401，且一个字节都不落库，伪造回调最坏的结果只能是 401。验签通过后的回写与用户端主动同步走**同一条**路径（不是第二套状态机）：本地已签约 / 已作废不接受任何渠道改写，渠道说「签完了」时本地必须正处于「签约中」；判据不满足时**不改状态也不报错**，渠道重复回调是常态，报错只会让它一直重投。成功按渠道协议回**纯文本 `ok`**（不是 JSON 信封），渠道只看状态码与这个字符串。
          */
         post: operations["contract_callback_channel"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/contract/asign/system": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 查询电子签渠道凭据
+         * @description 内联私钥与渠道公钥都回显 `***`；平台印章相关的密钥不回显（见`/api/admin/asign/seals` 的说明）。
+         */
+        get: operations["contract_asign_config_get"];
+        /**
+         * 保存电子签渠道凭据
+         * @description `private_key` / `channel_public_key` 传 `***` 或空串表示**保持原值**。保存即写配置文件并替换运行期句柄，`restart_required` 恒为 `true`。
+         */
+        put: operations["contract_asign_config_put"];
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -3190,6 +4327,102 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/credit/credit/adjust": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["credit_adjust"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/credit/credit/developers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["credit_developer_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/credit/credit/developers/{username}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["credit_developer_detail"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/credit/credit/logs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["credit_log_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/credit/credit/me": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["credit_self_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/credit/credit/policy": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["credit_policy_get"];
+        put: operations["credit_policy_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/dispute/cases": {
         parameters: {
             query?: never;
@@ -3265,9 +4498,77 @@ export interface paths {
         put?: never;
         /**
          * 立案人撤回
-         * @description 只有立案人能撤回，且必须早于裁决——裁决之后的处置方案已是认定结果。撤回后这条需求的争议通道释放。非立案人回 403，已裁决 / 已结案回 409。
+         * @description 只有立案人能撤回，且必须早于裁决——裁决之后的处置方案已是认定结果。撤回后这条需求的争议通道释放。非立案人回 403，已裁决 / 已结案回 409。**请求体可省略**：不带说明就是直接撤回（1.x 的旧路径不带 body，这里要能接住）。
          */
         post: operations["dispute_withdraw"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/healthz": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 存活探针 */
+        get: operations["api_healthz"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/invite/leaderboard": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 邀请排行榜 */
+        get: operations["invite_leaderboard"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/invite/my-code": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 获取或创建我的邀请码 */
+        get: operations["invite_my_code"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/invite/my-stats": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 我的邀请统计 */
+        get: operations["invite_my_stats"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -3607,6 +4908,50 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/payment/adapay/system": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 查询 AdaPay 渠道凭据
+         * @description `api_key` 回显 `***`；路径字段用于运维核对，不返回任何私钥正文。
+         */
+        get: operations["payment_adapay_config_get"];
+        /**
+         * 保存 AdaPay 渠道凭据
+         * @description `api_key` 传 `***` 或空串表示**保持原值**。保存即写配置文件并替换运行期句柄，但响应里 `restart_required` 恒为 `true`：配置保存不等于生效，别改成假装热更新。
+         */
+        put: operations["payment_adapay_config_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/payment/adapay/system/probe": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * AdaPay 渠道连通性自检
+         * @description 只读自检：不改配置、不建单、不动钱。结论分三样——凭据齐不齐、渠道通不通、不通断在哪一环。凭据加载失败也回 200 + 结论（报 500 只会让人看不出缺的是哪一样）。
+         */
+        post: operations["payment_adapay_config_probe"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/payment/auto-withdrawals/run": {
         parameters: {
             query?: never;
@@ -3641,6 +4986,189 @@ export interface paths {
         get: operations["payment_availability"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/payment/developer-order-deposit": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["payment_prepaid_account_get"];
+        put?: never;
+        post: operations["payment_prepaid_recharge_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/payment/developer-order-deposit-accounts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["payment_admin_prepaid_account_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/payment/developer-order-deposit-orders": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["payment_admin_prepaid_order_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/payment/developer-order-deposit-orders/credit": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["payment_admin_prepaid_credit"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/payment/developer-order-deposit-orders/{payment_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete: operations["payment_admin_prepaid_order_delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/payment/developer-order-deposit-orders/{payment_id}/refund": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["payment_admin_prepaid_refund_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/payment/developer-order-deposit-orders/{payment_id}/refund/manual": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["payment_admin_prepaid_refund_manual"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/payment/developer-order-deposit-orders/{payment_id}/refund/query": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["payment_admin_prepaid_refund_query"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/payment/developer-order-deposit/orders": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["payment_prepaid_order_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/payment/developer-order-deposit/orders/{payment_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["payment_prepaid_order_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/payment/developer-order-deposit/withdrawals": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["payment_prepaid_withdrawal_list"];
+        put?: never;
+        /**
+         * `POST /api/payment/developer-order-deposit/withdrawals` —— 申请退回保证金。
+         * @description **走退款，不走取现。** 保证金是开发者自己充进来的钱，退回时原路退回充值时
+         *     的付款账户即可（1.x 的 `execute_dev_order_deposit_refund` 就是这个口径）。
+         *     走取现需要商户级的「结算取现」权限，而退款不需要——早先接在取现链路上
+         *     导致用户被 `cash_not_config：取现功能未开通` 拦住，是个错位。
+         */
+        post: operations["payment_prepaid_withdrawal_create"];
         delete?: never;
         options?: never;
         head?: never;
@@ -3750,6 +5278,26 @@ export interface paths {
          * @description 管理端硬删一张支付单记录（非退款语义），需要 `payment.order_delete.delete`。**只允许删没收到过钱的单**：已支付的支付单下面挂着退款单与分账单，删掉之后对账就答不出「这笔钱收在哪一单上」，这种单回 409。删记录会留审计（谁在什么时候删的）。
          */
         delete: operations["payment_admin_delete_order"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/payment/orders/{order_no}/refresh": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 主动查单并补记入账
+         * @description 向渠道查一次这笔单的真实状态，渠道确认已支付则按回调同一条链路入账。需要 `payment.order.list.get`，且只能查本人的单。渠道未支付回 409 并带渠道侧当前状态。
+         */
+        post: operations["payment_refresh_order"];
+        delete?: never;
         options?: never;
         head?: never;
         patch?: never;
@@ -4031,6 +5579,487 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/points/admin/adjust": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["points_admin_adjust"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/points/admin/list": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["points_admin_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/points/admin/logs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["points_admin_logs"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/points/admin/orders": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["points_admin_orders"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/points/admin/orders/{order_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch: operations["points_admin_handle_order"];
+        trace?: never;
+    };
+    "/api/points/admin/perks": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["points_admin_grant_perk"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/points/admin/perks/{username}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["points_admin_user_perks"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/points/admin/perks/{username}/{perk_code}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete: operations["points_admin_revoke_perk"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/points/admin/products": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["points_admin_products"];
+        put?: never;
+        post: operations["points_admin_create_product"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/points/admin/products/{product_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete: operations["points_admin_delete_product"];
+        options?: never;
+        head?: never;
+        patch: operations["points_admin_update_product"];
+        trace?: never;
+    };
+    "/api/points/admin/rules": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["points_admin_rules"];
+        put?: never;
+        post: operations["points_admin_upsert_rule"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/points/admin/special-reward": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["points_admin_special_reward"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/points/admin/transfers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["points_admin_transfers"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/points/admin/transfers/{transfer_id}/review": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["points_admin_review_transfer"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/points/appearance/username": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["points_username_appearance"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/points/checkin": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["points_checkin"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/points/checkin/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["points_checkin_status"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/points/mall/gradient": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["points_set_gradient"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/points/mall/orders": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["points_mall_orders"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/points/mall/products": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["points_mall_products"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/points/mall/redeem": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["points_mall_redeem"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/points/me": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["points_me"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/points/perks": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["points_my_perks"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/points/perks/{perk_code}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["points_set_perk"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/points/promo-cards": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["points_promo_cards"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/points/resource-promo-meta": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["points_resource_promo_meta"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/points/transfer": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["points_transfer"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/points/transfer/meta": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["points_transfer_meta"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/points/transfers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["points_my_transfers"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/readyz": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 就绪探针 */
+        get: operations["api_readyz"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/realname/": {
         parameters: {
             query?: never;
@@ -4133,6 +6162,106 @@ export interface paths {
          * @description **需要登录 + `realname.application_review.post`**。把一条待审核的实名记录判成通过或驳回。`approved=true` 走通过：同样会做年龄校验，未成年人缺监护人资料时不允许通过；`approved=false` 直接落驳回，`review_note` 会展示给用户看，最多 500 字（超了回 400）。响应里带审核人、审核时间与审核备注，列表页直接展示。账号没有实名记录回 404；渠道侧「通过」之后的副作用（企业入驻送审）只做一次，重复审核不会重复送审。
          */
         post: operations["realname_admin_review_application"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/realname/asign-account/modify-company-info": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 修改企业认证信息
+         * @description **需要登录 + `realname.mine.get`**。改企业名称 / 法人姓名 / 法人证件号，三个字段至少给一个（都不给回 400）。改企业名称时渠道会重建印章，`data` 返回**新的印章编号**；其余改动 `data` 为 `null`。只对企业主体有意义：个人主体走这条渠道侧会报错，回 502。
+         */
+        post: operations["realname_asign_modify_company_info"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/realname/asign-account/modify-mobile-by-code": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 按验证码修改手机号
+         * @description **需要登录 + `realname.mine.get`**。改的是本人爱签账号上绑定的手机号，成功后 `data` 为 `null`（1.x 同样没有返回值）。`ctoken` 必须是 `send-verify-code` 返回的那串，缺了回 400。还没通过实名认证回 404 `REALNAME_NOT_FOUND`——账号推导不出来就没法改渠道侧的东西。
+         */
+        post: operations["realname_asign_modify_mobile_by_code"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/realname/asign-account/modify-user-name": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 修改个人实名姓名
+         * @description **需要登录 + `realname.mine.get`**。只开放改姓名，核验方式与凭证由后端补齐：`identifyType` 缺省按 2（运营商三要素），`mobile` 未给时**回落用实名资料里的手机号**；`identifyType = 3`（银行卡四要素）时必须给 `bankCard`。实名资料里也没有手机号时回 400「实名资料里没有手机号，无法完成运营商三要素核验；请先在认证管理里补全实名资料」——这是 1.x 的原话。这么做是为了让改名必须与实名手机号是同一个人，等价于「原主体的更正」，而不是把主体换成他人。
+         */
+        post: operations["realname_asign_modify_user_name"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/realname/asign-account/re-auth-user": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 重新认证主体
+         * @description **需要登录 + `realname.mine.get`**。拿新的实名认证流水号（`serialNo`，从 `/api/realname/asign/start` 或企业认证入口拿到）更新渠道侧的主体。`contactName` / `contactIdCard` 可选，企业主体填经办人。成功时 `data` 通常为 `null`。
+         */
+        post: operations["realname_asign_re_auth_user"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/realname/asign-account/send-verify-code": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 发送修改手机号的短信验证码
+         * @description **需要登录 + `realname.mine.get`**。给新手机号发验证码，返回的 `data` 就是后续 `modify-mobile-by-code` 要回传的 `codeToken` **字符串**（1.x 就是这个形状，前端直接读 `res.data.codeToken` 的写法是历史遗留，2.0 不改成对象）。不要求已实名：改手机号之前先发码是正常流程。手机号格式不对回 400；渠道未启用回 503 `VERIFICATION_SERVICE_UNAVAILABLE`；渠道报错回 502 `ASIGN_CHANNEL_ERROR`。
+         */
+        post: operations["realname_asign_send_verify_code"];
         delete?: never;
         options?: never;
         head?: never;
@@ -4459,6 +6588,202 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/requirement-agent/agent/conversations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["requirement_agent_agent_conversation_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/requirement-agent/agent/conversations/{id}/messages": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["requirement_agent_agent_message_send"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/requirement-agent/agent/conversations/{id}/takeover": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["requirement_agent_agent_takeover"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/requirement-agent/agent/drafts/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch: operations["requirement_agent_agent_draft_update"];
+        trace?: never;
+    };
+    "/api/requirement-agent/agent/drafts/{id}/publish": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["requirement_agent_agent_draft_publish"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/requirement-agent/conversations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["requirement_agent_conversation_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/requirement-agent/conversations/mine": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["requirement_agent_conversation_mine"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/requirement-agent/conversations/ws": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 需求会话实时事件
+         * @description 保留 legacy 路径的 SSE 实时事件流。普通用户只收到本人会话，客服与管理员接收客服台会话；进程内广播，多实例部署需换跨进程通道。
+         */
+        get: operations["requirement_agent_conversation_stream"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/requirement-agent/conversations/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["requirement_agent_conversation_detail"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/requirement-agent/conversations/{id}/handoff": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["requirement_agent_handoff_request"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/requirement-agent/conversations/{id}/messages": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["requirement_agent_message_send"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/requirement-agent/drafts/{id}/adopt": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["requirement_agent_draft_adopt"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/requirement/all": {
         parameters: {
             query?: never;
@@ -4516,6 +6841,46 @@ export interface paths {
          * @description 写回 `config/local.toml` 的 `[breach]` 段，需要 `requirement.config.put`。落盘前先校验：两个值都必须在 1~720 小时之间，越界回 400——期限配错会让定金立刻到期、或让验收没有窗口，属于配置事故（0 小时等于不给人时间）。**保存不等于生效**：运行中的服务持有启动时的配置，响应里带 `restart_required: true`，不要把它改成假装热更新。写盘失败（权限、路径、磁盘）只进日志，对调用方回 500 且不带细节。
          */
         put: operations["requirement_put_breach"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/requirement/dev/dashboard": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 开发者订单与资金实时看板快照
+         * @description 读取登录开发者本人的订单、交付与期限事实、收益池、预付池、提现与最近动态。同时需要 `requirement.dev_wallet_overview.get` 与 `requirement.dev_workspace.access`。所有金额均为整数分，时间为东八区 `YYYY-MM-DD HH:MM:SS`。
+         */
+        get: operations["dev_dashboard_snapshot"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/requirement/dev/dashboard/ws": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 开发者看板 WebSocket 实时快照
+         * @description 使用 `?token=` 鉴权，需要 `requirement.dev_workspace.access`。连接后立即推送 `{"type":"snapshot","data":...}`；该开发者的看板变化后重查并推送完整快照，另有 `ping` 心跳与 `error` 消息。广播为进程内机制，多实例部署需换跨进程通道。
+         */
+        get: operations["dev_dashboard_stream"];
+        put?: never;
         post?: never;
         delete?: never;
         options?: never;
@@ -4672,7 +7037,7 @@ export interface paths {
         };
         /**
          * 开发者钱包概览
-         * @description 开发者视角的收入与提现口径，需要 `requirement.dev_wallet_overview.get`。主体同样只取自登录态。注意 `withdrawable_balance_cny` 是**净额**再减去已发起 / 已到账的提现与冻结中的保证金之后的余额，不是累计收入；毛额（`gross_amount_cny`）、售后收回（`refund_developer_cny`）与实收（`amount_cny`）三个数在最近收入明细里分开列，别混着加。
+         * @description 开发者视角的收入与提现口径，需要 `requirement.dev_wallet_overview.get`。主体同样只取自登录态。注意 `withdrawable_balance_cny` 是**净额**再减去已发起 / 已到账的提现、冻结中的保证金与已扣划的保证金之后的余额，不是累计收入；毛额（`gross_amount_cny`）、售后收回（`refund_developer_cny`）与实收（`amount_cny`）三个数在最近收入明细里分开列，别混着加。
          */
         get: operations["requirement_wallet_overview"];
         put?: never;
@@ -5230,7 +7595,7 @@ export interface paths {
         put?: never;
         /**
          * 收银台票据换平台登录态
-         * @description 开发者站点跳收银台时带的是**一次性票据**（10 分钟有效、只能换一次），这里把它换成一个普通会话，前端拿到 `token` 后照常用它调平台接口。换到的是普通会话，与 OAuth 令牌无关。票据无效 / 过期 / 已用过回 403。legacy 的 `/api/resource/open/checkout/exchange` 由同一处理函数接住，语义完全相同。
+         * @description 开发者站点跳收银台时带的是**一次性票据**（10 分钟有效、只能换一次），这里把它换成一个普通会话，前端拿到 `token` 后照常用它调平台接口。票据本身就是凭据，不需要 OAuth 或平台登录态。无效 / 过期 / 已用过回 410。`/api/resource/open/checkout/exchange` 是 1.x 的老路径，同样注册着（见`legacy.rs` 的兼容表），文档只记 2.0 的短路径。
          */
         post: operations["resource_open_checkout_exchange"];
         delete?: never;
@@ -5261,6 +7626,26 @@ export interface paths {
          * @description 改评论正文。**端点不挂权限码**：评论作者本人能改自己的，改别人的要具备`resource.admin_update.patch`，都不满足回 403。正文去首尾空白后不能为空、不超过 300 字。与 `/api/admin/resources/comments/{comment_id}` 同一处理函数。
          */
         patch: operations["resource_admin_comment_update_legacy"];
+        trace?: never;
+    };
+    "/api/resource/open/api-purchase": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 开发者站点下单
+         * @description 开发者站点售卖自己的资源，**不收平台会话**：凭 `Authorization: Bearer <OAuth access token>`（须有 `purchase` scope）或 `Authorization: Basic base64(client_id:client_secret)` 调用。Basic 模式必须带 `buyer_external_id`（兼容 `external_user_id`），外部用户还没绑平台账号回 409。只能卖客户端所属开发者名下的资源；金额取服务端资源价格，`amount_fen` 仅是防篡改声明，不一致回 409；支付渠道缺省 `alipay`、客户端形态缺省 `pc`。接口类资源还要求交付渠道已配置、请求来源命中允许列表、开发者已签署《接口使用协议》。返回订单与带一次性票据的收银台地址（票据 10 分钟有效）。`/api/resource/open/purchases` 是同语义的短路径别名。
+         */
+        post: operations["resource_open_purchase_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/api/resource/open/integration-guide": {
@@ -5297,26 +7682,6 @@ export interface paths {
         get: operations["resource_open_order_detail"];
         put?: never;
         post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/resource/open/purchases": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * 开发者站点下单
-         * @description 开发者站点售卖自己的资源，**不收平台会话**：凭 `Authorization: Bearer <OAuth access token>`（须有 `purchase` scope）或 `Authorization: Basic <client_id:secret>` 调用。Basic 模式必须带 `external_user_id`（客户端凭据只回答「谁在调」，「这笔单是谁买的」只能靠绑定表），外部用户还没绑平台账号回 409。只能卖客户端所属开发者名下的资源（否则 403）；接口类资源还要求交付渠道已配置、`origin` 在允许列表内、开发者已签署《接口使用协议》，任一不满足回 409 / 403。返回订单与带一次性票据的收银台地址（票据 10 分钟有效，换登录态见 `POST /api/resource/checkout/exchange`）。legacy 的 `/api/resource/open/api-purchase` 由同一处理函数接住，语义完全相同。
-         */
-        post: operations["resource_open_purchase_create"];
         delete?: never;
         options?: never;
         head?: never;
@@ -6487,6 +8852,328 @@ export interface paths {
         patch: operations["resource_admin_version_update_legacy_plural"];
         trace?: never;
     };
+    "/api/share/generate-card": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** 生成分享卡片 */
+        post: operations["share_generate_card"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/share/stats": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 我的分享统计 */
+        get: operations["share_stats"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/support/agents": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["support_list_agents"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/support/channels": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["support_list_channels"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/support/channels/public": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["support_list_public_channels"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/support/channels/{channel_key}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put: operations["support_update_channel"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/support/contracts/{contract_no}/asign/preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["support_preview_contract"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/support/conversations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["support_list_conversations"];
+        put?: never;
+        post: operations["support_create_conversation"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/support/conversations/mine": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["support_list_my_conversations"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/support/conversations/ws": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["support_stream_conversations"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/support/conversations/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["support_get_conversation"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/support/conversations/{id}/messages": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["support_send_message"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/support/conversations/{id}/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch: operations["support_update_conversation_status"];
+        trace?: never;
+    };
+    "/api/support/knowledge/articles": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["knowledge_article_list"];
+        put?: never;
+        post: operations["knowledge_article_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/support/knowledge/articles/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete: operations["knowledge_article_delete"];
+        options?: never;
+        head?: never;
+        patch: operations["knowledge_article_update"];
+        trace?: never;
+    };
+    "/api/support/knowledge/categories": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["knowledge_category_list"];
+        put?: never;
+        post: operations["knowledge_category_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/support/quick-replies": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["support_list_quick_replies"];
+        put?: never;
+        post: operations["support_create_quick_reply"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/support/quick-replies/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete: operations["support_delete_quick_reply"];
+        options?: never;
+        head?: never;
+        patch: operations["support_update_quick_reply"];
+        trace?: never;
+    };
+    "/api/support/users/search": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["support_search_users"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/support/users/{username}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["support_lookup_user"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/system/activity-campaigns": {
         parameters: {
             query?: never;
@@ -6527,6 +9214,26 @@ export interface paths {
             cookie?: never;
         };
         get: operations["system_activity_coupon_pack_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/system/adapay-app-public-key": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 取 AdaPay 商户应用公钥
+         * @description 返回由配置里那把商户私钥推导出的公钥正文（PKCS#8 / SubjectPublicKeyInfo 的 base64，去掉头尾与换行的一行），直接粘到 Adapay 商户后台即可。需要 `payment.config.get`。**没有可用私钥时回 503**：2.0 不在端点里生成密钥，私钥落盘属于部署动作。`generated` 恒为 `false`。
+         */
+        get: operations["adapay_app_public_key"];
         put?: never;
         post?: never;
         delete?: never;
@@ -6661,6 +9368,22 @@ export interface paths {
         get: operations["system_official_activity_list"];
         put?: never;
         post: operations["system_official_activity_publish"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/system/overview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["operation_system_overview"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -7071,6 +9794,54 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/tag/tag-groups": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["tag_group_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tag/tag-groups/{group_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete: operations["tag_group_delete"];
+        options?: never;
+        head?: never;
+        patch: operations["tag_group_update"];
+        trace?: never;
+    };
+    "/api/tag/tag-groups/{group_id}/move": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["tag_group_move"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/tag/tags": {
         parameters: {
             query?: never;
@@ -7084,7 +9855,71 @@ export interface paths {
          */
         get: operations["resource_tag_groups"];
         put?: never;
+        post: operations["tag_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tag/tags/export": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["tag_export"];
+        put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tag/tags/import": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["tag_import"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tag/tags/{tag_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete: operations["tag_delete"];
+        options?: never;
+        head?: never;
+        patch: operations["tag_update"];
+        trace?: never;
+    };
+    "/api/tag/tags/{tag_id}/move": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["tag_move"];
         delete?: never;
         options?: never;
         head?: never;
@@ -7347,6 +10182,90 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/ticket": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 本人工单列表
+         * @description 只列当前用户创建的工单；`/api/tickets` 是等价入口。需要 `ticket.list_mine.get`。
+         */
+        get: operations["ticket_list_mine"];
+        put?: never;
+        /**
+         * 创建工单
+         * @description 创建工单并写入首条公开留言；`/api/tickets` 是等价入口。需要 `ticket.create.post`。
+         */
+        post: operations["ticket_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/ticket/{ticket_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 本人工单详情
+         * @description 只有创建者本人可读；响应永不包含内部留言。`/api/tickets/{ticket_id}` 是等价入口。需要 `ticket.detail.get`。
+         */
+        get: operations["ticket_detail"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/ticket/{ticket_id}/close": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * 关闭本人工单
+         * @description 只有创建者本人可关闭；`/api/tickets/{ticket_id}/close` 是等价入口。需要 `ticket.close.patch`。
+         */
+        patch: operations["ticket_close"];
+        trace?: never;
+    };
+    "/api/ticket/{ticket_id}/messages": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 回复本人工单
+         * @description 只有创建者本人可回复；resolved 或 closed 状态会重新打开为 open。返回的详情不含内部留言。需要 `ticket.reply.post`。
+         */
+        post: operations["ticket_reply"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/tips": {
         parameters: {
             query?: never;
@@ -7423,6 +10342,66 @@ export interface paths {
          * @description **需要登录**，不挂权限码。**只有打赏人与被打赏的开发者能看**，其他人一律 404 `TIP_ORDER_NOT_FOUND`——403 会泄漏「这个单号真实存在」。若单据仍是 `pending`，本接口会顺手向渠道回查一次并推进状态（惰性回查，替代 1.x 的渠道回调；查到了 `paid` 会顺带发起分账）。
          */
         get: operations["tip_get_order"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tips/{order_no}/wechat-auth-url": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 取打赏单微信静默授权地址
+         * @description 公开中间页端点，凭 30 分钟订单凭证访问；凭证绑定订单与打赏人。已授权时 url 为空且 authorized=true。
+         */
+        get: operations["tip_wechat_auth_url"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tips/{order_no}/wechat-jsapi": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 创建打赏微信 JSAPI 支付
+         * @description 公开中间页端点，凭订单凭证访问。必须先完成本单微信授权；重复调用复用已保存的 pay_info，不重复下单。
+         */
+        post: operations["tip_wechat_jsapi"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tips/{order_no}/wechat-status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 查询打赏单与微信授权状态
+         * @description 公开中间页端点，凭订单凭证访问；待支付单会先向支付端口回查一次，不回显 openid。
+         */
+        get: operations["tip_wechat_status"];
         put?: never;
         post?: never;
         delete?: never;
@@ -7580,6 +10559,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/r/{code}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 记录分享访问并跳转 */
+        get: operations["invite_redirect"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -7675,6 +10671,13 @@ export interface components {
             /** @description 状态的中文说明。 */
             status_label: string;
         };
+        AccountResponse: {
+            created_at: string;
+            /** Format: int64 */
+            points_balance: number;
+            updated_at: string;
+            username: string;
+        };
         ActivityCampaignClaimRequest: {
             code: string;
         };
@@ -7686,6 +10689,11 @@ export interface components {
             claimed_at: string;
             coupon_name: string;
             coupon_type: string;
+            /**
+             * Format: int64
+             * @description 活动参与积分的发放额；未接入积分或发放失败时为 null（与 1.x 同名字段）。
+             */
+            points_awarded?: number | null;
             title: string;
         };
         ActivityCouponPackResponse: {
@@ -7709,6 +10717,34 @@ export interface components {
             /** Format: int64 */
             total_count: number;
         };
+        /**
+         * @description AdaPay 配置的对外形状。
+         *
+         *     私钥只给**文件路径**；`api_key` 是唯一落在配置里的密钥（渠道只在请求头 `authorization`
+         *     里认它，没有文件形态），所以它和私钥一样处理：**回显 `***`，PUT 传 `***` 或空串保持原值**。
+         *     路径本身也不该随便回显给非运维角色——权限码已经把它挡住了。
+         */
+        AdaPayView: {
+            /** @description 商户 api_key（回显为 `***`）。 */
+            api_key: string;
+            /** @description 商户 App ID。 */
+            app_id: string;
+            /** @description 是否启用。 */
+            enabled: boolean;
+            /** @description 环境。 */
+            environment: string;
+            /** @description 回调地址。 */
+            notify_url: string;
+            /** @description 商户私钥路径。 */
+            private_key_path: string;
+            /** @description 渠道公钥路径（留空 = 用内置的 AdaPay 平台公钥）。 */
+            public_key_path: string;
+            /**
+             * Format: int64
+             * @description 超时秒数。
+             */
+            timeout_secs: number;
+        };
         /** @description 添加企业签署人请求。 */
         AddEnterpriseUserRequest: {
             /** @description 企业账号（空串用统一社会信用代码）。 */
@@ -7725,6 +10761,33 @@ export interface components {
             mobile: string;
             /** @description 认证流水号（有则走「认证流水号添加」）。 */
             serial_no?: string | null;
+        };
+        AdjustCreditRequest: {
+            /** Format: double */
+            delta: number;
+            reason?: string | null;
+            username: string;
+        };
+        AdjustPointsRequest: {
+            /** Format: int64 */
+            delta: number;
+            reason?: string | null;
+            username: string;
+        };
+        AdminBadgeDefinitionItem: {
+            /** Format: int64 */
+            awarded_count: number;
+            category: string;
+            code: string;
+            description: string;
+            icon: string;
+            name: string;
+            /** Format: int32 */
+            tier: number;
+        };
+        AdminBadgeGrantRequest: {
+            badge_code: string;
+            username: string;
         };
         /** @description 管理端详情：元信息 + 历史沟通的原始记录（绑定与公开申请）。 */
         AdminConversationDetailResponse: {
@@ -7894,6 +10957,60 @@ export interface components {
             /** @description 创建者用户名。 */
             creator: string;
         };
+        AdminGrowthOverviewResponse: {
+            /** Format: int64 */
+            active_share_users: number;
+            /** Format: int64 */
+            invite_code_count: number;
+            /** Format: int64 */
+            total_badges_awarded: number;
+            /** Format: int64 */
+            total_invitations: number;
+            /** Format: int64 */
+            total_share_registrations: number;
+            /** Format: int64 */
+            total_share_visits: number;
+            /** Format: int64 */
+            weekly_invitations: number;
+        };
+        AdminInvitationItem: {
+            created_at: string;
+            invite_code: string;
+            invitee_avatar_url?: string | null;
+            invitee_username: string;
+            inviter_avatar_url?: string | null;
+            inviter_username: string;
+        };
+        AdminInvitationListResponse: {
+            items: components["schemas"]["AdminInvitationItem"][];
+            /** Format: int64 */
+            page: number;
+            /** Format: int64 */
+            page_size: number;
+            /** Format: int64 */
+            total: number;
+        };
+        AdminInviteCodeItem: {
+            avatar_url?: string | null;
+            code: string;
+            created_at: string;
+            /** Format: int64 */
+            invite_count: number;
+            /** Format: int32 */
+            registrations: number;
+            username: string;
+            /** Format: int32 */
+            visits: number;
+        };
+        AdminInviteCodeListResponse: {
+            items: components["schemas"]["AdminInviteCodeItem"][];
+            /** Format: int64 */
+            page: number;
+            /** Format: int64 */
+            page_size: number;
+            /** Format: int64 */
+            total: number;
+        };
         /** @description 管理端发票列表。 */
         AdminInvoiceListResponse: {
             /** @description 本页数据。 */
@@ -7931,6 +11048,55 @@ export interface components {
             /** @description 状态筛选：`requested` / `under_review` / `approved` / `rejected` / `reversed`。 */
             status?: string | null;
         };
+        /** @description 管理端改企业信息入参。 */
+        AdminModifyCompanyInfoBody: {
+            /** @description 企业名称。 */
+            companyName?: string | null;
+            /** @description 法人证件号。 */
+            idCard?: string | null;
+            /**
+             * Format: int32
+             * @description 法人证件类型（1 = 身份证）。
+             */
+            idCardType?: number | null;
+            /** @description 法人姓名。 */
+            name?: string | null;
+            /** @description 目标用户名。 */
+            username: string;
+        };
+        /**
+         * @description 管理端入参：在用户端同形请求体上多一个 `username`。
+         *
+         *     1.x 用的是 `#[serde(flatten)]` 的泛型 `AdminPayload<T>`；这里为每个端点各写一个
+         *     具名结构体，是因为 flatten 在 utoipa 里会生成 `allOf` 组合 schema，前端 codegen
+         *     出来的类型反而更绕（同一个字段出现两次的情况踩过）。字段名与 1.x 一致。
+         */
+        AdminModifyMobileByCodeBody: {
+            /** @description 短信验证码。 */
+            code: string;
+            /** @description 发码接口返回的 `codeToken`。 */
+            ctoken: string;
+            /** @description 新手机号。 */
+            mobile: string;
+            /** @description 目标用户名。 */
+            username: string;
+        };
+        /** @description 管理端改姓名入参。 */
+        AdminModifyUserNameBody: {
+            /** @description 银联卡号。 */
+            bankCard?: string | null;
+            /**
+             * Format: int32
+             * @description 核验方式：2 = 运营商三要素（缺省），3 = 银行卡四要素。
+             */
+            identifyType?: number | null;
+            /** @description 手机号。 */
+            mobile?: string | null;
+            /** @description 新姓名。 */
+            name: string;
+            /** @description 目标用户名。 */
+            username: string;
+        };
         /** @description 管理端列表筛选。 */
         AdminNotificationQuery: {
             /** @description 只看某个分类的。 */
@@ -7966,6 +11132,77 @@ export interface components {
             recipient: string;
             /** @description 标题。 */
             title: string;
+        };
+        /** @description 管理端重新认证入参。 */
+        AdminReAuthUserBody: {
+            /** @description 联系人证件号。 */
+            contactIdCard?: string | null;
+            /** @description 联系人姓名。 */
+            contactName?: string | null;
+            /** @description 实名认证流水号。 */
+            serialNo: string;
+            /** @description 目标用户名。 */
+            username: string;
+        };
+        /**
+         * @description 管理端单个收款账户的响应。
+         *
+         *     **字段名沿用 1.x**：1.x 把「渠道会员」与「结算账户」当成两个对象，
+         *     管理端页面读的是 `member_id` / `onboarding_status` / `settlement_ready` 这一组；
+         *     2.0 把两者并成一行（见 [`crate::domain::SettlementAccount`]），
+         *     如果这里换成 2.0 的字段名，旧管理端页面会「查得到但全是空」。
+         *
+         *     两组都给：`onboarding_status` / `settlement_ready` 是 1.x 口径，
+         *     `status` / `status_label` 是 2.0 口径——旧页面照旧读，新页面用得准。
+         */
+        AdminSettlementAccountResponse: {
+            /** @description 渠道侧会员号。还没进件时是空串（1.x 同样是空串，不是 `null`）。 */
+            member_id: string;
+            /** @description `personal` / `enterprise`。 */
+            member_type: string;
+            /**
+             * @description 进件状态（1.x 口径）：`pending` / `active` / `under_review` / `failed`。
+             *
+             *     2.0 的 `closed`（用户主动解绑）在 1.x 里没有这一档：
+             *     1.x 解绑只清掉结算账户号、会员行仍在，所以这里按「会员还在」记 `active`，
+             *     真正的「能不能收钱」由 `settlement_ready` 表达（解绑后为 false）。
+             */
+            onboarding_status: string;
+            /** @description 渠道侧失败原因（面向用户的中文文案）。 */
+            provider_error?: string | null;
+            /** @description 渠道侧状态原文。解绑后为 `closed`。 */
+            provider_status?: string | null;
+            /** @description 渠道侧结算账户号。没绑卡时为空。 */
+            settle_account_id?: string | null;
+            /** @description 是否已经可以收分账款（1.x 口径：`active` 且有结算账户号）。 */
+            settlement_ready: boolean;
+            /** @description 2.0 的状态原文。 */
+            status: string;
+            /** @description 2.0 的状态中文说明。 */
+            status_label: string;
+            /** @description 平台账号。 */
+            username: string;
+        };
+        AdminShareRecordItem: {
+            avatar_url?: string | null;
+            created_at: string;
+            /** Format: int32 */
+            registrations: number;
+            share_type: string;
+            target_id?: string | null;
+            updated_at: string;
+            username: string;
+            /** Format: int32 */
+            visits: number;
+        };
+        AdminShareRecordListResponse: {
+            items: components["schemas"]["AdminShareRecordItem"][];
+            /** Format: int64 */
+            page: number;
+            /** Format: int64 */
+            page_size: number;
+            /** Format: int64 */
+            total: number;
         };
         /** @description 管理端团队列表。 */
         AdminTeamListResponse: {
@@ -8015,6 +11252,134 @@ export interface components {
             /** @description 用户名。 */
             username: string;
         };
+        AgentConfigResponse: {
+            api_key: string;
+            api_key_configured: boolean;
+            base_url: string;
+            base_url_configured: boolean;
+            deployment_enabled: boolean;
+            effective_model: string;
+            enabled: boolean;
+            extraction_prompt: string;
+            /** Format: int32 */
+            history_message_limit: number;
+            /** Format: int32 */
+            max_rounds: number;
+            model: string;
+            /** Format: int32 */
+            per_user_daily_turns: number;
+            system_prompt: string;
+            /** Format: double */
+            temperature: number;
+            updated_at: string;
+            updated_by?: string | null;
+        };
+        AgentConfigUpdateRequest: {
+            api_key?: string | null;
+            base_url?: string | null;
+            deployment_enabled?: boolean | null;
+            enabled: boolean;
+            extraction_prompt: string;
+            /** Format: int32 */
+            history_message_limit: number;
+            /** Format: int32 */
+            max_rounds: number;
+            model: string;
+            /** Format: int32 */
+            per_user_daily_turns: number;
+            system_prompt: string;
+            /** Format: double */
+            temperature: number;
+        };
+        AgentConversationDetailResponse: {
+            conversation: components["schemas"]["AgentConversationResponse"];
+            draft?: null | components["schemas"]["AgentDraftResponse"];
+            messages: components["schemas"]["AgentMessageResponse"][];
+        };
+        AgentConversationListQuery: {
+            keyword?: string | null;
+            status?: string | null;
+        };
+        AgentConversationResponse: {
+            agent_username?: string | null;
+            /** Format: int64 */
+            ai_turns: number;
+            conversation_no: string;
+            created_at: string;
+            /** Format: int64 */
+            draft_id?: number | null;
+            draft_ready: boolean;
+            /** Format: int64 */
+            id: number;
+            last_message?: string | null;
+            last_message_at?: string | null;
+            last_message_by?: string | null;
+            status: string;
+            /** Format: int32 */
+            unread_agent: number;
+            /** Format: int32 */
+            unread_user: number;
+            updated_at: string;
+            user_role: string;
+            user_username: string;
+        };
+        AgentDraftResponse: {
+            acceptance_html: string;
+            /** Format: int64 */
+            budget_fen?: number | null;
+            /** Format: int64 */
+            conversation_id?: number | null;
+            created_at: string;
+            description_html: string;
+            /** Format: int32 */
+            development_cycle_days?: number | null;
+            /** Format: int64 */
+            id: number;
+            last_editor: string;
+            missing_fields: string[];
+            owner_username: string;
+            payment_mode: string;
+            published_requirement_id?: string | null;
+            source: string;
+            status: string;
+            title: string;
+            updated_at: string;
+        };
+        AgentMessageResponse: {
+            content: string;
+            /** Format: int64 */
+            conversation_id: number;
+            created_at: string;
+            /** Format: int64 */
+            id: number;
+            sender_role: string;
+            sender_username: string;
+        };
+        AgentSkillCreateRequest: {
+            content?: string;
+            is_active?: boolean | null;
+            name: string;
+            /** Format: int32 */
+            sort_order?: number | null;
+        };
+        AgentSkillResponse: {
+            content: string;
+            created_at: string;
+            /** Format: int64 */
+            id: number;
+            is_active: boolean;
+            name: string;
+            /** Format: int32 */
+            sort_order: number;
+            updated_at: string;
+        };
+        AgentSkillUpdateRequest: {
+            content?: string | null;
+            is_active?: boolean | null;
+            name?: string | null;
+            /** Format: int32 */
+            sort_order?: number | null;
+        };
         /** @description 同意记录请求体。字段与 1.x 一致（`agreement_version` 缺省时按模板当前版本落库）。 */
         AgreementAcceptanceRequest: {
             /** @description 协议代号，如 `user_service_agreement`。未知代号回 400。 */
@@ -8063,6 +11428,22 @@ export interface components {
              * @description 当前版本号（自增整数；1.x 这里是日期串，见模块注释）。
              */
             version: number;
+        };
+        /** @description AI 裁决建议回写。 */
+        AiVerdictRequest: {
+            /** @description `customer` / `developer` / `unknown`。 */
+            liable_party: string;
+            /** @description 基于案件证据得出的判定依据。 */
+            reasoning: string;
+        };
+        /** @description AI 建议响应。它不是正式裁决，不产生任何资金动作。 */
+        AiVerdictResponse: {
+            created_by: string;
+            created_time: string;
+            /** Format: int64 */
+            id: number;
+            liable_party: string;
+            reasoning: string;
         };
         /** @description 回调投递记录的查询参数。 */
         ApiCallbackLogQueryParams: {
@@ -8164,6 +11545,30 @@ export interface components {
             /** @description 单行 base64 公钥正文（不带 PEM 头尾）。 */
             public_key: string;
         };
+        /**
+         * @description 商户应用公钥的对外形状。
+         *
+         *     字段名沿用 1.x（`public_key` / `key_source` / `generated`）：老管理端页面不用改就能读。
+         */
+        AppPublicKeyView: {
+            /** @description 是否新生成私钥——2.0 恒为 `false`（私钥落盘是部署动作）。 */
+            generated: boolean;
+            /** @description 这把公钥来自哪把私钥，恒为 `private_key_path`。 */
+            key_source: string;
+            /** @description 单行 base64 公钥正文（不带 PEM 头尾）。 */
+            public_key: string;
+        };
+        AppearanceRequest: {
+            appearance: string;
+            color?: string | null;
+        };
+        AppearanceResponse: {
+            appearance?: string | null;
+            color?: string | null;
+            username: string;
+            username_gradient: boolean;
+            username_gradient_owned: boolean;
+        };
         /** @description 一次开票申请的结果。 */
         AppliedInvoicesResponse: {
             developer_invoice?: null | components["schemas"]["InvoiceResponse"];
@@ -8208,6 +11613,74 @@ export interface components {
             duration_days?: number | null;
             /** @description 申请说明。 */
             note?: string | null;
+        };
+        /** @description 改企业认证信息。 */
+        AsignModifyCompanyInfoRequest: {
+            /** @description 企业名称（改名称时渠道会重建印章并回新印章号）。 */
+            companyName?: string | null;
+            /** @description 法人证件号。 */
+            idCard?: string | null;
+            /**
+             * Format: int32
+             * @description 法人证件类型（1 = 身份证）。
+             */
+            idCardType?: number | null;
+            /** @description 法人姓名。 */
+            name?: string | null;
+        };
+        /** @description 改个人实名姓名。 */
+        AsignModifyUserNameRequest: {
+            /** @description 银联卡号（核验方式 3 的凭证）。 */
+            bankCard?: string | null;
+            /**
+             * Format: int32
+             * @description 核验方式：2 = 运营商三要素（缺省），3 = 银行卡四要素。
+             */
+            identifyType?: number | null;
+            /** @description 手机号（核验方式 2 的凭证）。 */
+            mobile?: string | null;
+            /** @description 新姓名。 */
+            name: string;
+        };
+        /** @description 重新认证。 */
+        AsignReAuthUserRequest: {
+            /** @description 联系人证件号。 */
+            contactIdCard?: string | null;
+            /** @description 联系人姓名。 */
+            contactName?: string | null;
+            /** @description 实名认证流水号。 */
+            serialNo: string;
+        };
+        /** @description 文档里用的信封形状：`data` 是字符串（`codeToken` 或新印章编号）或缺失。 */
+        AsignStringDataResponse: {
+            /** @description `codeToken` 字符串 / 新印章编号；没有返回值时整个键不出现。 */
+            data?: string | null;
+            /** @description 恒为 `true`。 */
+            success: boolean;
+        };
+        /** @description 爱签配置的对外形状（内联私钥掩码）。 */
+        AsignView: {
+            /** @description 应用 id。 */
+            app_id: string;
+            /** @description 回调地址前缀。 */
+            callback_base_url: string;
+            /** @description 渠道公钥 PEM（回显为 `***`）。 */
+            channel_public_key: string;
+            /** @description 是否启用。 */
+            enabled: boolean;
+            /** @description 环境。 */
+            environment: string;
+            /** @description 内联私钥（回显为 `***`）。 */
+            private_key: string;
+            /** @description 私钥文件路径。 */
+            private_key_path: string;
+            /** @description 认证完成后跳回地址。 */
+            redirect_url: string;
+            /**
+             * Format: int64
+             * @description 超时秒数。
+             */
+            timeout_secs: number;
         };
         AssignCouponRequest: {
             coupon_code: string;
@@ -8352,6 +11825,15 @@ export interface components {
             status: string;
             /** @description 中文说明，直接展示给用户。 */
             status_label: string;
+        };
+        BadgeDefinitionResponse: {
+            category: string;
+            code: string;
+            description: string;
+            icon: string;
+            name: string;
+            /** Format: int32 */
+            tier: number;
         };
         /**
          * @description 接单请求体（与 legacy `BindRequirementProjectRequest` 同形）。
@@ -8562,10 +12044,24 @@ export interface components {
         };
         /** @description 案件详情响应。 */
         CaseDetailResponse: components["schemas"]["CaseSummaryResponse"] & {
+            ai_verdict?: null | components["schemas"]["AiVerdictResponse"];
             /** @description 诉求说明。 */
             claim_note: string;
             /** @description 结案时间。 */
             closed_time?: string | null;
+            /**
+             * Format: double
+             * @description 赔付上限（元）。与分口径同源，只为展示方便。
+             */
+            compensation_cap?: number | null;
+            /**
+             * Format: int64
+             * @description 这条需求上开发者违约**最多能赔多少**（分）。
+             *
+             *     填赔付额前要看它：超过上限的赔付额在执行期必然失败，而那时钱已经退给客户了。
+             *     读不到时为 `null`（上限端口没装配或读库失败），**不阻断**查看详情。
+             */
+            compensation_cap_fen?: number | null;
             /**
              * @description 平台处置人（裁决 / 驳回的处理人）。未处置为 `null`。
              *
@@ -8632,6 +12128,14 @@ export interface components {
             /** @description 最近更新时间。 */
             updated_time: string;
         };
+        ChannelConfigResponse: {
+            channel_key: string;
+            description: string;
+            enabled: boolean;
+            label: string;
+            updated_at: string;
+            updated_by?: string | null;
+        };
         /**
          * @description 渠道文件 / 存证报告的响应（JSON + base64，与 legacy 一致）。
          *
@@ -8694,10 +12198,52 @@ export interface components {
             /** @description 状态的中文说明。 */
             status_label: string;
         };
+        ChannelUpdateRequest: {
+            description?: string | null;
+            enabled: boolean;
+        };
+        CheckinResponse: {
+            already_checked_in: boolean;
+            checkin_date: string;
+            /** Format: int64 */
+            month_bonus: number;
+            /** Format: int64 */
+            points_awarded: number;
+            /** Format: int64 */
+            streak_bonus: number;
+            /** Format: int64 */
+            streak_count: number;
+            /** Format: int64 */
+            total_awarded: number;
+            username: string;
+            /** Format: int64 */
+            week_bonus: number;
+        };
+        CheckinStatusResponse: {
+            /** Format: int64 */
+            streak_count: number;
+            today_checked_in: boolean;
+            /** Format: int64 */
+            today_potential: number;
+            username: string;
+        };
         /** @description 收银台票据换登录态请求体。 */
         CheckoutExchangeRequest: {
             /** @description 票据明文。 */
             ticket: string;
+        };
+        /** @description 收银台票据换登录态响应。 */
+        CheckoutExchangeResponse: {
+            /** @description 票据指向的订单号。 */
+            order_no: string;
+            /** @description 主角色（兼容旧客户端）。 */
+            role: string;
+            /** @description 全部角色。 */
+            roles: string[];
+            /** @description 平台会话令牌。 */
+            token: string;
+            /** @description 票据绑定的平台用户名。 */
+            username: string;
         };
         /** @description 客户端响应。 */
         ClientResponse: {
@@ -8752,6 +12298,110 @@ export interface components {
             /** @description 最近修改时间。 */
             updated_at: string;
         };
+        CommentWarningPayload: {
+            /** Format: int64 */
+            comment_id: number;
+            comment_snapshot: string;
+            comment_type: string;
+            created_at: string;
+            /** Format: int64 */
+            id: number;
+            operator: string;
+            reason: string;
+        };
+        CommunityCommentLikePayload: {
+            /** Format: int64 */
+            comment_id: number;
+            /** Format: int64 */
+            like_count: number;
+            liked_by_me: boolean;
+        };
+        CommunityCommentPayload: {
+            comment_text: string;
+            commenter: string;
+            commenter_avatar_url?: string | null;
+            commenter_username_color?: string | null;
+            commenter_username_gradient: boolean;
+            created_at: string;
+            /** Format: int64 */
+            id: number;
+            /** Format: int64 */
+            like_count: number;
+            liked_by_me: boolean;
+            /** Format: int64 */
+            parent_comment_id?: number | null;
+            parent_commenter?: string | null;
+            /** Format: int64 */
+            post_id: number;
+            updated_at: string;
+        };
+        CommunityFavoritePayload: {
+            favorited_by_me: boolean;
+            /** Format: int64 */
+            post_id: number;
+        };
+        CommunityLikePayload: {
+            /** Format: int64 */
+            like_count: number;
+            liked_by_me: boolean;
+            /** Format: int64 */
+            post_id: number;
+        };
+        CommunityPostPayload: {
+            author: string;
+            author_avatar_url?: string | null;
+            author_username_color?: string | null;
+            author_username_gradient: boolean;
+            /** Format: int64 */
+            bounty_accepted_comment_id?: number | null;
+            /** Format: int64 */
+            bounty_points: number;
+            bounty_status: string;
+            bumped_at?: string | null;
+            /** Format: int64 */
+            comment_count: number;
+            content_html: string;
+            favorited_by_me: boolean;
+            featured_at?: string | null;
+            highlight_until?: string | null;
+            homepage_until?: string | null;
+            hot_until?: string | null;
+            /** Format: int64 */
+            id: number;
+            is_featured: boolean;
+            /** Format: int64 */
+            like_count: number;
+            liked_by_me: boolean;
+            origin_author?: string | null;
+            origin_note?: string | null;
+            origin_org?: string | null;
+            origin_type: string;
+            origin_url?: string | null;
+            published_at: string;
+            review_note?: string | null;
+            reviewed_at?: string | null;
+            reviewed_by?: string | null;
+            section_until?: string | null;
+            status: string;
+            tags: components["schemas"]["CommunityTagPayload"][];
+            title: string;
+            updated_at: string;
+        };
+        CommunityTagAdminPayload: {
+            /** Format: int64 */
+            id: number;
+            name: string;
+            /** Format: int64 */
+            post_count: number;
+        };
+        CommunityTagPayload: {
+            /** Format: int64 */
+            id: number;
+            name: string;
+        };
+        CommunityTagRequest: {
+            name: string;
+        };
         /** @description 列表查询参数（管理端 `GET /api/contract/`）。 */
         ContractListQuery: {
             /** @description 关键词：模糊匹配合同编号 / 标题 / 甲乙方名称。 */
@@ -8774,6 +12424,9 @@ export interface components {
             requirement_id?: string | null;
             /** @description 状态筛选走文本入参（`?status=1`），空串表示不筛。 */
             status?: string | null;
+        };
+        ContractPreviewResponse: {
+            preview_url: string;
         };
         /** @description 合同详情响应（对齐 legacy `ContractResponse` 的核心字段）。 */
         ContractResponse: {
@@ -8993,6 +12646,12 @@ export interface components {
             /** @description 更新时间。 */
             updated_at: string;
         };
+        CouponCountsResponse: {
+            /** Format: int64 */
+            amount: number;
+            /** Format: int64 */
+            percent: number;
+        };
         CouponPackResponse: {
             coupon_type: string;
             name: string;
@@ -9018,6 +12677,10 @@ export interface components {
             starts_at?: string | null;
             status: string;
         };
+        CreateAgentConversationRequest: {
+            content: string;
+            user_role?: string | null;
+        };
         /** @description 创建密钥请求体。 */
         CreateApiKeyRequest: {
             /** @description 过期时间，`YYYY-MM-DD` 或 `YYYY-MM-DD HH:MM:SS`。 */
@@ -9035,6 +12698,29 @@ export interface components {
             redirect_uris: string[];
             /** @description 申请的 scope；省略 = profile。 */
             scopes?: string[];
+        };
+        CreateCommentWarningRequest: {
+            /** Format: int64 */
+            comment_id: number;
+            comment_type: string;
+            reason: string;
+        };
+        CreateCommunityCommentRequest: {
+            comment: string;
+            /** Format: int64 */
+            parent_comment_id?: number | null;
+        };
+        CreateCommunityPostRequest: {
+            /** Format: int64 */
+            bounty_points?: number;
+            content_html: string;
+            origin_author?: string | null;
+            origin_note?: string | null;
+            origin_org?: string | null;
+            origin_type?: string | null;
+            origin_url?: string | null;
+            tag_names: string[];
+            title: string;
         };
         /** @description 建单请求体（管理端 `POST /api/contract/`）。 */
         CreateContractRequest: {
@@ -9106,6 +12792,15 @@ export interface components {
             client_platform?: string | null;
             /** @description 支付渠道：`alipay` / `wechat`。缺省支付宝。 */
             pay_channel?: string | null;
+        };
+        CreateKnowledgeArticleRequest: {
+            category: string;
+            content: string;
+            summary?: string | null;
+            title: string;
+        };
+        CreateKnowledgeCategoryRequest: {
+            name: string;
         };
         /** @description 下单请求体（对应 legacy `CreateResourcePurchaseRequest`）。 */
         CreatePurchaseRequest: {
@@ -9205,6 +12900,23 @@ export interface components {
             /** @description 可见性。 */
             visibility: string;
         };
+        CreateSupportConversationRequest: {
+            content: string;
+            subject?: string;
+            user_role?: string | null;
+        };
+        CreateTagGroupRequest: {
+            alias?: string | null;
+            name: string;
+            /** Format: int64 */
+            parent_group_id?: number | null;
+        };
+        CreateTagRequest: {
+            alias?: string | null;
+            /** Format: int64 */
+            group_id: number;
+            name: string;
+        };
         /** @description 建团队。 */
         CreateTeamRequest: {
             /** @description 简介。 */
@@ -9220,6 +12932,12 @@ export interface components {
             name: string;
             /** @description 默认标题；留空时建单用模板名。 */
             title?: string;
+        };
+        CreateTicketRequest: {
+            category?: string | null;
+            content: string;
+            priority?: string | null;
+            subject: string;
         };
         /** @description 发起打赏的请求体。 */
         CreateTipRequest: {
@@ -9285,6 +13003,57 @@ export interface components {
             name: string;
             /** @description 备注。 */
             note?: string | null;
+        };
+        CreditAccountResponse: {
+            created_at: string;
+            /** Format: double */
+            credit_score: number;
+            /** Format: int64 */
+            max_deposit_fen: number;
+            /** Format: int64 */
+            max_order_amount_fen: number;
+            updated_at: string;
+            username: string;
+        };
+        CreditLogResponse: {
+            /** Format: double */
+            balance_after: number;
+            created_at: string;
+            /** Format: double */
+            delta: number;
+            /** Format: int64 */
+            id: number;
+            operator?: string | null;
+            reason?: string | null;
+            username: string;
+        };
+        CreditPolicyResponse: {
+            created_at: string;
+            /** Format: double */
+            default_initial_credit: number;
+            enforce_deposit_limit: boolean;
+            enforce_order_limit: boolean;
+            /** Format: int64 */
+            fen_per_credit: number;
+            /** Format: double */
+            min_credit_for_dev: number;
+            updated_at: string;
+            updated_by?: string | null;
+        };
+        CreditSelfResponse: {
+            /** Format: double */
+            credit_score: number;
+            enforce_deposit_limit: boolean;
+            enforce_order_limit: boolean;
+            /** Format: int64 */
+            fen_per_credit: number;
+            /** Format: int64 */
+            max_deposit_fen: number;
+            /** Format: int64 */
+            max_order_amount_fen: number;
+            /** Format: int64 */
+            remaining_deposit_cap_fen: number;
+            username: string;
         };
         /** @description 需求概览响应（字段与 legacy `UserDashboardOverviewResponse` 一致）。 */
         DashboardResponse: {
@@ -9431,6 +13200,9 @@ export interface components {
             /** @description 用户名。 */
             username: string;
         };
+        DeletedResponse: {
+            deleted: boolean;
+        };
         /** @description 队列里的一条。 */
         DeliveryQueueItemResponse: {
             /** @description 验收标准（客服判断该不该认验收时看这一段）。 */
@@ -9519,6 +13291,8 @@ export interface components {
             deducted_time?: string | null;
             /** @description 开发者。 */
             developer: string;
+            /** @description 资金来源：`income` / `prepaid`。 */
+            funding: string;
             /** @description 备注。 */
             note: string;
             /** @description 释放时间（东八区）。 */
@@ -9624,6 +13398,151 @@ export interface components {
             /** @description 实名是否已通过。 */
             realname_approved: boolean;
         };
+        DevDashboardDailyIncomeResponse: {
+            /** Format: int64 */
+            amount_fen: number;
+            /** @description 东八区日期，`YYYY-MM-DD`。 */
+            date: string;
+        };
+        DevDashboardDeadlineFactsResponse: {
+            acceptance_due_at?: string | null;
+            acceptance_overdue: boolean;
+            accepted_at?: string | null;
+            delivered_at?: string | null;
+            delivery_due_at?: string | null;
+            delivery_overdue: boolean;
+            developer_bound_at?: string | null;
+            final_pay_due_at?: string | null;
+            final_pay_overdue: boolean;
+            remediation_due_at?: string | null;
+            remediation_overdue: boolean;
+        };
+        DevDashboardDeliveryResponse: {
+            /** Format: int64 */
+            amount_fen?: number | null;
+            last_delivered_at?: string | null;
+            requirement_id: string;
+            requirement_title: string;
+            /** Format: int64 */
+            resource_id: number;
+            resource_title: string;
+            /** Format: int64 */
+            version_count: number;
+        };
+        DevDashboardDepositResponse: {
+            /**
+             * Format: int64
+             * @description 预付账户当前余额（尚未扣除在途提现）。
+             */
+            available_fen: number;
+            /** @description 任一资金池存在正的可接单额度；具体接单仍按需求预算足额校验。 */
+            can_bind_requirement: boolean;
+            /**
+             * Format: int64
+             * @description 预付账户冻结额；收益池冻结额在 `wallet.frozen_deposit_fen`。
+             */
+            frozen_fen: number;
+            has_paid_deposit: boolean;
+            /** Format: int64 */
+            pending_refund_fen: number;
+            /** Format: int64 */
+            pending_withdraw_fen: number;
+            /** Format: int64 */
+            total_paid_fen: number;
+            /** Format: int64 */
+            total_withdrawn_fen: number;
+            /**
+             * Format: int64
+             * @description 预付余额扣除在途预付提现后的可提额度。
+             */
+            withdrawable_fen: number;
+        };
+        DevDashboardFeedItemResponse: {
+            /**
+             * Format: int64
+             * @description 出账为负、入账为正；交付与状态动态为空。
+             */
+            amount_fen?: number | null;
+            at: string;
+            /** @description `income` / `delivery` / `status` / `withdrawal` / `deposit`。 */
+            kind: string;
+            requirement_id?: string | null;
+            title: string;
+        };
+        DevDashboardPipelineResponse: {
+            /** Format: int64 */
+            completed_this_month: number;
+            /** Format: int64 */
+            deposit_paid: number;
+            /** Format: int64 */
+            in_development: number;
+            /** Format: int64 */
+            pending_deposit: number;
+            /** Format: int64 */
+            pending_final: number;
+            /** Format: int64 */
+            pending_settlement: number;
+        };
+        DevDashboardProjectResponse: {
+            /** Format: int64 */
+            budget_fen: number;
+            deadlines: components["schemas"]["DevDashboardDeadlineFactsResponse"];
+            payment_mode: string;
+            requirement_id: string;
+            status: string;
+            title: string;
+            updated_at: string;
+        };
+        DevDashboardResourcesResponse: {
+            /** Format: int64 */
+            resource_count: number;
+            /** Format: int64 */
+            total_downloads: number;
+            /** Format: int64 */
+            total_views: number;
+        };
+        DevDashboardSnapshotMessage: {
+            data: components["schemas"]["DevDashboardSnapshotResponse"];
+            type: string;
+        };
+        DevDashboardSnapshotResponse: {
+            deliveries: components["schemas"]["DevDashboardDeliveryResponse"][];
+            deposit: components["schemas"]["DevDashboardDepositResponse"];
+            feed: components["schemas"]["DevDashboardFeedItemResponse"][];
+            /** @description 东八区 `YYYY-MM-DD HH:MM:SS`。 */
+            generated_at: string;
+            /** @description 最近 30 个东八区自然日，按日期升序；无收入日期补零。 */
+            income_daily: components["schemas"]["DevDashboardDailyIncomeResponse"][];
+            /** Format: int64 */
+            month_income_fen: number;
+            pipeline: components["schemas"]["DevDashboardPipelineResponse"];
+            projects: components["schemas"]["DevDashboardProjectResponse"][];
+            resources: components["schemas"]["DevDashboardResourcesResponse"];
+            wallet: components["schemas"]["DevDashboardWalletResponse"];
+        };
+        DevDashboardWalletResponse: {
+            /** Format: int64 */
+            active_requirement_count: number;
+            /**
+             * Format: int64
+             * @description 从收益池冻结的接单保证金，不与预付池合并。
+             */
+            frozen_deposit_fen: number;
+            /** Format: int64 */
+            paid_withdraw_fen: number;
+            /** Format: int64 */
+            pending_withdraw_fen: number;
+            /** Format: double */
+            today_income_change_rate: number;
+            /** Format: int64 */
+            today_income_fen: number;
+            /** Format: int64 */
+            total_completed_orders: number;
+            /** Format: int64 */
+            total_income_fen: number;
+            /** Format: int64 */
+            withdrawable_balance_fen: number;
+        };
         /** @description 一条收入明细。 */
         DevIncomeResponse: {
             /**
@@ -9702,7 +13621,7 @@ export interface components {
             total_income_cny: number;
             /**
              * Format: double
-             * @description 可提现（元，净额减去已发起与已支付的提现与冻结中的保证金）。
+             * @description 可提现（元，净额减去已发起与已支付的提现、冻结与已扣划的接单保证金）。
              */
             withdrawable_balance_cny: number;
         };
@@ -9994,6 +13913,20 @@ export interface components {
              */
             withdrawn_fen: number;
         };
+        GenerateShareCardRequest: {
+            share_type: string;
+            target_id?: string | null;
+        };
+        GrantPerkRequest: {
+            /** Format: int64 */
+            duration_days?: number;
+            perk_code: string;
+            username: string;
+        };
+        HandleOrderRequest: {
+            note?: string | null;
+            status: string;
+        };
         /** @description 历史沟通区段。 */
         HistorySegmentResponse: {
             /** @description 客户那一票。 */
@@ -10013,6 +13946,10 @@ export interface components {
             segment_start: string;
             /** @description `hidden` / `pending` / `approved` / `rejected`。 */
             status: string;
+        };
+        ImportTagsRequest: {
+            clear_existing?: boolean | null;
+            groups: components["schemas"]["TagImportGroup"][];
         };
         /** @description 发起签署请求体（用户端 `POST /api/contract/{id}/asign-sign`）。 */
         InitiateSignRequest: {
@@ -10041,6 +13978,43 @@ export interface components {
             team_id: number;
             /** @description 团队名称。 */
             team_name: string;
+        };
+        InviteCodeResponse: {
+            code: string;
+            /** Format: int64 */
+            invite_count: number;
+            invite_url: string;
+        };
+        InviteLeaderboardEntry: {
+            avatar_url?: string | null;
+            badges: string[];
+            /** Format: int64 */
+            count: number;
+            /** Format: int64 */
+            rank: number;
+            username: string;
+        };
+        InviteLeaderboardRank: {
+            /** Format: int64 */
+            count: number;
+            /** Format: int64 */
+            rank: number;
+        };
+        InviteLeaderboardResponse: {
+            leaderboard: components["schemas"]["InviteLeaderboardEntry"][];
+            my_rank?: null | components["schemas"]["InviteLeaderboardRank"];
+            period: string;
+        };
+        InviteStatsResponse: {
+            invite_code: string;
+            invitees: components["schemas"]["InviteeResponse"][];
+            /** Format: int64 */
+            total_invited: number;
+        };
+        InviteeResponse: {
+            avatar_url?: string | null;
+            joined_at: string;
+            username: string;
         };
         /** @description 一张发票。 */
         InvoiceResponse: {
@@ -10216,6 +14190,25 @@ export interface components {
             /** @description 签名密钥（回显为 `***`；PUT 时传 `***` 或空串表示保持原值）。 */
             jwt_secret: string;
         };
+        KnowledgeArticleResponse: {
+            category: string;
+            content: string;
+            created_at: string;
+            created_by: string;
+            /** Format: int64 */
+            id: number;
+            summary: string;
+            title: string;
+            updated_at: string;
+            updated_by: string;
+        };
+        KnowledgeCategoryResponse: {
+            /** Format: int64 */
+            article_count: number;
+            /** Format: int64 */
+            id: number;
+            name: string;
+        };
         /** @description 迟延履行违约金的响应体（客服在争议裁决时作依据）。 */
         LatePenaltyResponse: {
             /**
@@ -10285,6 +14278,20 @@ export interface components {
         ListUsersQuery: {
             /** @description 模糊关键字。 */
             keyword?: string | null;
+        };
+        LogResponse: {
+            /** Format: int64 */
+            balance_after: number;
+            created_at: string;
+            /** Format: int64 */
+            delta: number;
+            /** Format: int64 */
+            id: number;
+            operator?: string | null;
+            reason?: string | null;
+            source_id?: string | null;
+            source_type?: string | null;
+            username: string;
         };
         /**
          * @description 登录请求体。字段与老接口保持一致。
@@ -10407,6 +14414,27 @@ export interface components {
             /** @description 发送者身份：`customer` / `developer` / `platform`。 */
             sender_role: string;
         };
+        /** @description 改手机号入参。 */
+        ModifyMobileByCodeBody: {
+            /** @description 短信验证码。 */
+            code: string;
+            /** @description 发码接口返回的 `codeToken`。 */
+            ctoken: string;
+            /** @description 新手机号。 */
+            mobile: string;
+        };
+        MoveTagGroupRequest: {
+            /** Format: int64 */
+            target_index: number;
+            /** Format: int64 */
+            target_parent_group_id?: number | null;
+        };
+        MoveTagRequest: {
+            /** Format: int64 */
+            target_group_id: number;
+            /** Format: int64 */
+            target_index: number;
+        };
         /** @description 我的通知列表筛选。 */
         MyNotificationQuery: {
             /**
@@ -10508,19 +14536,15 @@ export interface components {
             /** @description 登录成功落地页。 */
             success_redirect_url: string;
         };
-        /**
-         * @description 各渠道可用性响应。
-         *
-         *     微信与 QQ 在 2.0 尚未接管，但字段必须保留：前端按这四个键决定渲染哪些登录按钮。
-         */
+        /** @description 各渠道可用性响应。 */
         OAuthStatusResponse: {
             /** @description Gitee 是否可用。 */
             gitee: boolean;
             /** @description GitHub 是否可用。 */
             github: boolean;
-            /** @description QQ 是否可用（暂未接管，固定 false）。 */
+            /** @description QQ 是否可用。 */
             qq: boolean;
-            /** @description 微信是否可用（暂未接管，固定 false）。 */
+            /** @description 微信是否可用。 */
             wechat: boolean;
         };
         OfficialActivityResponse: {
@@ -10544,13 +14568,17 @@ export interface components {
         OpenPurchaseRequest: {
             /**
              * Format: int64
-             * @description 买家声明的应付金额（分）。
+             * @description 买家声明的应付金额（分）；只用于与服务端价格对账，不作为定价依据。
              */
             amount_fen?: number | null;
-            /** @description 外部用户 ID：Basic 客户端凭据模式必填。 */
-            external_user_id?: string | null;
+            /** @description 外部用户 ID：Basic 客户端凭据模式必填；兼容旧字段 `external_user_id`。 */
+            buyer_external_id?: string | null;
+            /** @description 客户端形态：`pc`（缺省）/ `mobile`。 */
+            client_platform?: string | null;
             /** @description 请求来源（完整源，如 `https://shop.example.com`）。 */
             origin?: string | null;
+            /** @description 支付渠道；省略时由服务端取 `alipay`。 */
+            pay_channel?: string | null;
             /**
              * Format: int64
              * @description 资源编号。
@@ -10566,15 +14594,46 @@ export interface components {
         OpenPurchaseResponse: {
             /**
              * Format: int64
-             * @description 应付金额（分）。
+             * @description 应付金额（分），由服务端资源价格决定。
              */
             amount_fen: number;
-            /** @description 收银台地址（带一次性票据）。 */
+            /** @description 回调地址与签名密钥是否均已配置。 */
+            callback_registered: boolean;
+            /** @description 收银台地址（带订单号与一次性票据）。 */
             checkout_url: string;
             /** @description 订单号。 */
             order_no: string;
+            /** @description 服务端采用的支付渠道。 */
+            pay_channel?: string | null;
+            /**
+             * Format: int64
+             * @description 资源编号。
+             */
+            resource_id: number;
             /** @description 订单状态。 */
             status: string;
+        };
+        OperationLogPageResponse: {
+            items: components["schemas"]["OperationLogResponse"][];
+            /** Format: int64 */
+            total: number;
+        };
+        OperationLogResponse: {
+            action: string;
+            created_at: string;
+            detail?: string | null;
+            /** Format: int64 */
+            id: number;
+            ip?: string | null;
+            operator: string;
+            target_id: string;
+            target_type: string;
+        };
+        OperationOverviewResponse: {
+            coupon_counts: components["schemas"]["CouponCountsResponse"];
+            pending_resources: components["schemas"]["OverviewResourceResponse"][];
+            requirement_counts: components["schemas"]["RequirementCountsResponse"];
+            todos: components["schemas"]["OverviewTodoResponse"][];
         };
         /** @description 订单列表查询参数（对应 legacy `ResourcePurchaseListQuery`）。 */
         OrderListQueryParams: {
@@ -10700,7 +14759,7 @@ export interface components {
              * @description 积分购卖家实收。
              */
             seller_net_points: number;
-            /** @description 订单来源：本 crate 只产生 `platform`（平台内下单）。 */
+            /** @description 订单来源：`platform`（平台内下单）/ `oauth`（开发者站点开放下单）。 */
             source_kind: string;
             /** @description 分账状态。 */
             split_status: string;
@@ -10710,6 +14769,38 @@ export interface components {
             updated_at: string;
             /** @description 是否仍在可退窗口内。 */
             within_refund_window: boolean;
+        };
+        OverviewResourceResponse: {
+            changed_at: string;
+            creator: string;
+            /** Format: int64 */
+            resource_id: number;
+            status: string;
+            title: string;
+        };
+        OverviewResponse: {
+            logs: components["schemas"]["LogResponse"][];
+            /** Format: int64 */
+            logs_page: number;
+            /** Format: int64 */
+            logs_page_size: number;
+            /** Format: int64 */
+            logs_total: number;
+            perks: components["schemas"]["PerkResponse"][];
+            /** Format: int64 */
+            points_balance: number;
+            username: string;
+            username_gradient: boolean;
+            username_gradient_owned: boolean;
+        };
+        OverviewTodoResponse: {
+            created_at: string;
+            kind: string;
+            responsible: string;
+            responsible_type: string;
+            status: string;
+            target_id: string;
+            title: string;
         };
         /**
          * @description 平台资金口径。
@@ -10806,6 +14897,13 @@ export interface components {
             /** @description 收银台标题。 */
             subject: string;
         };
+        PerkResponse: {
+            created_at?: string | null;
+            equipped: boolean;
+            expires_at?: string | null;
+            owned: boolean;
+            perk_code: string;
+        };
         /** @description 权限点响应。 */
         PermissionResponse: {
             /** @description 权限码。 */
@@ -10844,6 +14942,139 @@ export interface components {
             /** @description 手写签名数据；可留空，留空时日志里不落签名指纹。 */
             handwritten_signature?: string;
         };
+        PointsOrderResponse: {
+            created_at: string;
+            handle_note?: string | null;
+            handled_at?: string | null;
+            handled_by?: string | null;
+            /** Format: int64 */
+            id: number;
+            perk_code?: string | null;
+            /** Format: int64 */
+            points_cost: number;
+            /** Format: int64 */
+            product_id: number;
+            product_kind: string;
+            product_name: string;
+            status: string;
+            username: string;
+        };
+        PrepaidAccountPageQuery: {
+            /** Format: int64 */
+            page?: number | null;
+            /** Format: int64 */
+            page_size?: number | null;
+        };
+        PrepaidAccountPageResponse: {
+            items: components["schemas"]["PrepaidAccountResponse"][];
+            /** Format: int64 */
+            page: number;
+            /** Format: int64 */
+            page_size: number;
+            /** Format: int64 */
+            total: number;
+        };
+        PrepaidAccountQuery: {
+            /** Format: int64 */
+            ledger_limit?: number | null;
+        };
+        PrepaidAccountResponse: {
+            /** Format: int64 */
+            balance_fen: number;
+            created_time: string;
+            /** Format: int64 */
+            frozen_fen: number;
+            /** Format: int64 */
+            refunding_fen: number;
+            /** Format: int64 */
+            total_recharged_fen: number;
+            /** Format: int64 */
+            total_refunded_fen: number;
+            /** Format: int64 */
+            total_withdrawn_fen: number;
+            updated_time: string;
+            username: string;
+        };
+        PrepaidAccountStatementResponse: {
+            account: components["schemas"]["PrepaidAccountResponse"];
+            ledger: components["schemas"]["PrepaidLedgerResponse"][];
+            /**
+             * Format: int64
+             * @description 已申请但还没出账的预付提现合计。
+             */
+            pending_withdrawal_fen: number;
+            /**
+             * Format: int64
+             * @description 现在还能申请提现的额度。
+             */
+            withdrawable_fen: number;
+        };
+        PrepaidCreditRequest: {
+            /** Format: int64 */
+            amount_fen: number;
+            note: string;
+            username: string;
+        };
+        PrepaidLedgerResponse: {
+            /** Format: int64 */
+            amount_fen: number;
+            /** Format: int64 */
+            balance_after_fen: number;
+            created_time: string;
+            direction: string;
+            /** Format: int64 */
+            id: number;
+            kind: string;
+            note: string;
+            operator: string;
+            ref_no: string;
+            username: string;
+        };
+        PrepaidOrderListQuery: {
+            created_from?: string | null;
+            created_to?: string | null;
+            /** Format: int64 */
+            page?: number | null;
+            /** Format: int64 */
+            page_size?: number | null;
+            status?: string | null;
+            username?: string | null;
+        };
+        PrepaidOrderListResponse: {
+            items: components["schemas"]["PrepaidOrderResponse"][];
+            /** Format: int64 */
+            page: number;
+            /** Format: int64 */
+            page_size: number;
+            /** Format: int64 */
+            total: number;
+        };
+        PrepaidOrderResponse: {
+            /** Format: int64 */
+            amount_fen: number;
+            biz_no: string;
+            biz_type: string;
+            channel: string;
+            client_action?: unknown;
+            created_time: string;
+            order_no: string;
+            paid_at?: string | null;
+            payer: string;
+            provider_payment_id?: string | null;
+            status: string;
+            status_label: string;
+            subject: string;
+        };
+        PrepaidRechargeRequest: {
+            /** Format: int64 */
+            amount_fen: number;
+            channel: string;
+            client_platform: string;
+            idempotency_key?: string | null;
+        };
+        PrepaidRefundLookupRequest: {
+            refund_no: string;
+        };
         /** @description 渠道合同预览响应。 */
         PreviewResponse: {
             /** @description 当事人这一侧要打开的预览页地址。 */
@@ -10861,6 +15092,23 @@ export interface components {
             roles: string[];
             /** @description 用户名。 */
             username: string;
+        };
+        ProductResponse: {
+            created_at: string;
+            /** Format: int64 */
+            duration_days: number;
+            enabled: boolean;
+            /** Format: int64 */
+            id: number;
+            kind: string;
+            name: string;
+            payload?: string | null;
+            perk_code?: string | null;
+            /** Format: int64 */
+            points_cost: number;
+            /** Format: int64 */
+            stock: number;
+            updated_at: string;
         };
         /**
          * @description 个人的档案响应。字段名与 1.x 一致，前端共用同一份类型定义。
@@ -10897,45 +15145,21 @@ export interface components {
             /** @description 状态过滤：`pending` / `approved` / `rejected` / `revoked`。 */
             status?: string | null;
         };
-        /** @description 推广位申请响应。 */
         PromoCardResponse: {
-            /** @description 申请人。 */
-            applicant: string;
-            /** @description 申请说明。 */
-            apply_note?: string | null;
-            /**
-             * Format: int64
-             * @description 申请编号。
-             */
-            card_id: number;
-            /** @description 推广形态。 */
-            channel: string;
-            /** @description 创建时间。 */
+            card_code: string;
             created_at: string;
-            /**
-             * Format: int64
-             * @description 期望时长（天）。
-             */
+            /** Format: int64 */
             duration_days: number;
-            /** @description 窗口结束。 */
-            ends_at?: string | null;
-            /**
-             * Format: int64
-             * @description 目标资源。
-             */
-            resource_id: number;
-            /** @description 审核说明。 */
-            review_note?: string | null;
-            /** @description 审核时间。 */
-            reviewed_at?: string | null;
-            /** @description 审核人。 */
-            reviewed_by?: string | null;
-            /** @description 窗口开始。 */
-            starts_at?: string | null;
-            /** @description 状态。 */
+            /** Format: int64 */
+            id: number;
+            /** Format: int64 */
+            product_id: number;
+            /** Format: int64 */
+            redeem_order_id: number;
             status: string;
-            /** @description 更新时间。 */
-            updated_at: string;
+            used_at?: string | null;
+            /** Format: int64 */
+            used_resource_id?: number | null;
         };
         /** @description 一条绑定关系。 */
         ProviderAccountResponse: {
@@ -10986,6 +15210,11 @@ export interface components {
              * @description 命中条件的总条数（不受分页影响）。
              */
             total: number;
+        };
+        PublicChannelResponse: {
+            channel_key: string;
+            enabled: boolean;
+            label: string;
         };
         /**
          * @description 公开档案响应。
@@ -11158,11 +15387,13 @@ export interface components {
         };
         /** @description 轮询响应。 */
         QrStatusResponse: {
-            /** @description `pending` / `confirmed` / `expired`。 */
+            /** @description `failed` 时的原因（例如「这个微信账号已经绑在别的平台账号上」）。 */
+            message?: string | null;
+            /** @description `pending` / `scanned` / `confirmed` / `failed` / `expired`。 */
             status: string;
-            /** @description 已确认时返回令牌（取走即作废）。 */
+            /** @description 扫码登录已确认时返回令牌（取走即作废）；扫码绑定恒为 `null`。 */
             token?: string | null;
-            /** @description 已确认时返回账号。 */
+            /** @description 已完成时返回账号：登录模式是扫码登录的账号，绑定模式是**被绑定的**目标账号。 */
             username?: string | null;
         };
         /** @description 二维码地址查询参数。 */
@@ -11178,6 +15409,34 @@ export interface components {
             state: string;
             /** @description 授权地址（前端画成二维码）。 */
             url: string;
+        };
+        QuickReplyCreateRequest: {
+            category?: string;
+            content: string;
+            /** Format: int32 */
+            sort_order?: number | null;
+            title: string;
+        };
+        QuickReplyResponse: {
+            category: string;
+            content: string;
+            created_at: string;
+            created_by: string;
+            /** Format: int64 */
+            id: number;
+            is_active: boolean;
+            /** Format: int32 */
+            sort_order: number;
+            title: string;
+            updated_at: string;
+        };
+        QuickReplyUpdateRequest: {
+            category?: string | null;
+            content?: string | null;
+            is_active?: boolean | null;
+            /** Format: int32 */
+            sort_order?: number | null;
+            title?: string | null;
         };
         /**
          * @description 限流配置（进程内滑动窗口）。
@@ -11364,6 +15623,10 @@ export interface components {
             /** @description 本次处理了几笔。 */
             handled: number;
         };
+        RedeemRequest: {
+            /** Format: int64 */
+            product_id: number;
+        };
         /** @description 退款请求体（对应 legacy `ResourceRefundRequest`）。 */
         RefundRequest: {
             /**
@@ -11445,6 +15708,28 @@ export interface components {
             claim_amount_fen?: number | null;
             /** @description 这一轮的诉求说明（必填）。 */
             note?: string | null;
+        };
+        ReplyTicketRequest: {
+            content: string;
+            internal?: boolean | null;
+        };
+        RequirementCountsResponse: {
+            /** Format: int64 */
+            completed: number;
+            /** Format: int64 */
+            deposit_paid: number;
+            /** Format: int64 */
+            in_development: number;
+            /** Format: int64 */
+            pending_deposit: number;
+            /** Format: int64 */
+            pending_final: number;
+            /** Format: int64 */
+            pending_review: number;
+            /** Format: int64 */
+            rejected: number;
+            /** Format: int64 */
+            total: number;
         };
         /** @description 管理端分页列表响应（字段与 legacy `RequirementListPageResponse` 一致）。 */
         RequirementListPageResponse: {
@@ -11569,6 +15854,10 @@ export interface components {
             offset?: number | null;
             /** @description 平台过滤。 */
             platform?: string | null;
+        };
+        ResourcePromoMetaResponse: {
+            /** Format: int64 */
+            high_like_threshold: number;
         };
         /** @description 资源响应（字段顺序与 legacy `ResourcePayload` 一致）。 */
         ResourceResponse: {
@@ -11755,6 +16044,10 @@ export interface components {
             /** @description 红冲原因（必填）。 */
             reason: string;
         };
+        ReviewCommunityPostRequest: {
+            review_note?: string | null;
+            status: string;
+        };
         /**
          * @description 审核决定请求体（通过 / 驳回共用）。
          *
@@ -11792,6 +16085,10 @@ export interface components {
             /** @description 审核备注。 */
             note?: string | null;
         };
+        ReviewTransferRequest: {
+            action: string;
+            note?: string | null;
+        };
         /** @description 撤销请求体。 */
         RevokeRequest: {
             /** @description 客户端编号。 */
@@ -11800,6 +16097,12 @@ export interface components {
             client_secret: string;
             /** @description 要撤销的令牌。 */
             token: string;
+        };
+        RewardRuleRequest: {
+            code: string;
+            description?: string | null;
+            /** Format: int64 */
+            value: number;
         };
         /** @description 角色详情响应。 */
         RoleDetailResponse: {
@@ -11834,6 +16137,13 @@ export interface components {
              * @description 用户数。
              */
             user_count: number;
+        };
+        RuleResponse: {
+            code: string;
+            description?: string | null;
+            updated_at: string;
+            /** Format: int64 */
+            value: number;
         };
         /** @description 保存结果：带上「需要重启」的明确提示。 */
         SaveOutcome_DatabaseView: {
@@ -12425,6 +16735,9 @@ export interface components {
             /** @description 印章编号是否已配。 */
             seal_configured: boolean;
         };
+        SendAgentMessageRequest: {
+            content: string;
+        };
         /** @description 发换绑邮箱验证码请求体。 */
         SendEmailCodeRequest: {
             /** @description 新邮箱，验证码发到这里。 */
@@ -12448,6 +16761,14 @@ export interface components {
             email: string;
             /** @description 人机校验令牌。 */
             turnstile_token?: string | null;
+        };
+        SendSupportMessageRequest: {
+            content: string;
+        };
+        /** @description 发验证码入参（两个端点同形）。 */
+        SendVerifyCodeBody: {
+            /** @description 新手机号。 */
+            mobile: string;
         };
         /**
          * @description 服务连接配置（反向代理与客户端连接口径）。
@@ -12479,9 +16800,22 @@ export interface components {
              */
             request_timeout_secs: number;
         };
+        SetEquippedBadgesRequest: {
+            codes: string[];
+        };
         /** @description 设置精选请求体。 */
         SetFeaturedRequest: {
             /** @description 是否精选。 */
+            featured: boolean;
+        };
+        SetPerkRequest: {
+            equipped: boolean;
+        };
+        SetPostBoostRequest: {
+            /** @description bump / highlight / homepage / section / hot。 */
+            kind: string;
+        };
+        SetPostFeaturedRequest: {
             featured: boolean;
         };
         /** @description 设置用户级权限覆盖的请求体。 */
@@ -12762,6 +17096,32 @@ export interface components {
             /** @description 在线制章链接（企业主体还没实名时为空串）。 */
             make_seal_url: string;
         };
+        ShareCardData: {
+            logo_url: string;
+            qr_url: string;
+            sharer: string;
+            subtitle: string;
+            tags: string[];
+            title: string;
+        };
+        ShareCardResponse: {
+            card_data: components["schemas"]["ShareCardData"];
+        };
+        ShareRecordResponse: {
+            /** Format: int32 */
+            registrations: number;
+            share_type: string;
+            target_id?: string | null;
+            /** Format: int32 */
+            visits: number;
+        };
+        ShareStatsResponse: {
+            records: components["schemas"]["ShareRecordResponse"][];
+            /** Format: int64 */
+            total_registrations: number;
+            /** Format: int64 */
+            total_visits: number;
+        };
         /** @description 签署日志筛选（全部可选）。 */
         SigningLogQuery: {
             /** @description 按动作。 */
@@ -12848,6 +17208,18 @@ export interface components {
              * @description 整数合同状态。
              */
             status: number;
+        };
+        /** @description 模拟收款结果。 */
+        SimulatedPaymentResponse: {
+            detail: string;
+            kind: string;
+            payment_id: string;
+            status: string;
+        };
+        SpecialRewardRequest: {
+            category: string;
+            note?: string | null;
+            username: string;
         };
         /**
          * @description SSE（服务端推送）配置。
@@ -12995,6 +17367,108 @@ export interface components {
             /** @description 生效后的订阅状态。 */
             subscribe_status_change: boolean;
         };
+        SupportAgentResponse: {
+            account_status: string;
+            created_at: string;
+            permissions: string[];
+            roles: string[];
+            username: string;
+        };
+        SupportConversationDetailResponse: {
+            conversation: components["schemas"]["SupportConversationResponse"];
+            messages: components["schemas"]["SupportMessageResponse"][];
+        };
+        SupportConversationListQuery: {
+            keyword?: string | null;
+            priority?: string | null;
+            status?: string | null;
+        };
+        SupportConversationResponse: {
+            /** Format: int64 */
+            agent_last_read_message_id?: number | null;
+            agent_username?: string | null;
+            conversation_no: string;
+            created_at: string;
+            /** Format: int64 */
+            id: number;
+            last_message?: string | null;
+            last_message_at?: string | null;
+            last_message_by?: string | null;
+            priority: string;
+            status: string;
+            /** Format: int32 */
+            unread_agent: number;
+            /** Format: int32 */
+            unread_user: number;
+            updated_at: string;
+            /** Format: int64 */
+            user_last_read_message_id?: number | null;
+            user_role: string;
+            user_username: string;
+        };
+        SupportMessageResponse: {
+            content: string;
+            /** Format: int64 */
+            conversation_id: number;
+            created_at: string;
+            /** Format: int64 */
+            id: number;
+            sender_role: string;
+            sender_username: string;
+        };
+        SupportUserContractBrief: {
+            contract_no: string;
+            created_at: string;
+            role: string;
+            /** Format: int32 */
+            status: number;
+            title: string;
+        };
+        SupportUserHitResponse: {
+            account_status: string;
+            email?: string | null;
+            matched_by: string;
+            realname_status?: string | null;
+            roles: string[];
+            username: string;
+        };
+        SupportUserLookupResponse: {
+            account_status: string;
+            avatar_url?: string | null;
+            contracts: components["schemas"]["SupportUserContractBrief"][];
+            conversations: components["schemas"]["SupportConversationResponse"][];
+            created_at: string;
+            email?: string | null;
+            published_requirements: components["schemas"]["SupportUserRequirementBrief"][];
+            realname_status?: string | null;
+            roles: string[];
+            tickets: components["schemas"]["SupportUserTicketBrief"][];
+            undertaken_requirements: components["schemas"]["SupportUserRequirementBrief"][];
+            username: string;
+        };
+        SupportUserRequirementBrief: {
+            /** Format: int64 */
+            budget_fen: number;
+            created_at: string;
+            payment_mode: string;
+            requirement_id: string;
+            status: string;
+            title: string;
+        };
+        SupportUserSearchQuery: {
+            keyword: string;
+        };
+        SupportUserTicketBrief: {
+            created_at: string;
+            priority: string;
+            status: string;
+            subject: string;
+            ticket_id: string;
+        };
+        SupportWsQuery: {
+            /** @description 登录令牌。WebSocket 浏览器 API 不能设置 Authorization 请求头。 */
+            token?: string | null;
+        };
         /** @description 中止请求体（与 legacy `SuspendBreachDeadlineRequest` 同形）。 */
         SuspendDeadlineRequest: {
             /**
@@ -13007,57 +17481,52 @@ export interface components {
             /** @description 事由：`force_majeure` / `requirement_change` / `third_party`。 */
             reason: string;
         };
-        /** @description 标签分组响应（递归结构，与 legacy 一致）。 */
-        TagGroupResponse: {
-            /** @description 分组别名。 */
+        TagExportGroupResponse: {
             alias: string;
-            /**
-             * @description 子分组。
-             *
-             *     递归结构：`no_recursion` 只断掉 OpenAPI 生成期的递归，实际响应的嵌套深度
-             *     与库里的分组层级一致。
-             */
-            child_groups: components["schemas"]["TagGroupResponse"][];
-            /**
-             * Format: int64
-             * @description 分组编号。
-             */
-            id: number;
-            /** @description 直属标签。 */
-            items: components["schemas"]["TagItemResponse"][];
-            /** @description 分组名。 */
+            children: components["schemas"]["TagExportGroupResponse"][];
             name: string;
-            /**
-             * Format: int64
-             * @description 父分组编号。
-             */
+            tags: components["schemas"]["TagExportTagResponse"][];
+        };
+        TagExportResponse: {
+            exported_at: string;
+            groups: components["schemas"]["TagExportGroupResponse"][];
+            /** Format: int32 */
+            version: number;
+        };
+        TagExportTagResponse: {
+            alias: string;
+            name: string;
+        };
+        TagGroupResponse: {
+            alias: string;
+            child_groups: components["schemas"]["TagGroupResponse"][];
+            /** Format: int64 */
+            id: number;
+            items: components["schemas"]["TagItemResponse"][];
+            name: string;
+            /** Format: int64 */
             parent_group_id?: number | null;
-            /**
-             * Format: int64
-             * @description 排序值。
-             */
+            /** Format: int64 */
             sort_order: number;
         };
-        /** @description 标签项响应。 */
-        TagItemResponse: {
-            /** @description 标签别名。 */
-            alias: string;
-            /**
-             * Format: int64
-             * @description 所属分组。
-             */
-            group_id: number;
-            /**
-             * Format: int64
-             * @description 标签编号。
-             */
-            id: number;
-            /** @description 标签名。 */
+        TagImportGroup: {
+            alias?: string;
+            children?: components["schemas"]["TagImportGroup"][];
             name: string;
-            /**
-             * Format: int64
-             * @description 排序值。
-             */
+            tags?: components["schemas"]["TagImportTag"][];
+        };
+        TagImportTag: {
+            alias: string;
+            name: string;
+        };
+        TagItemResponse: {
+            alias: string;
+            /** Format: int64 */
+            group_id: number;
+            /** Format: int64 */
+            id: number;
+            name: string;
+            /** Format: int64 */
             sort_order: number;
         };
         /** @description 一组标签选择。 */
@@ -13174,6 +17643,42 @@ export interface components {
             /** @description 案件当前状态（机器码由争议线定义，如 `negotiating`）。 */
             status: string;
         };
+        TicketDetailResponse: {
+            messages: components["schemas"]["TicketMessageResponse"][];
+            ticket: components["schemas"]["TicketResponse"];
+        };
+        TicketListQuery: {
+            assigned_to?: string | null;
+            category?: string | null;
+            creator?: string | null;
+            keyword?: string | null;
+            status?: string | null;
+        };
+        TicketMessageResponse: {
+            content: string;
+            created_at: string;
+            /** Format: int64 */
+            id: number;
+            internal: boolean;
+            sender: string;
+            sender_role: string;
+            ticket_id: string;
+        };
+        TicketResponse: {
+            assigned_to?: string | null;
+            category?: string | null;
+            created_at: string;
+            creator: string;
+            /** Format: int64 */
+            id: number;
+            last_replied_at?: string | null;
+            last_replied_by?: string | null;
+            priority: string;
+            status: string;
+            subject: string;
+            ticket_id: string;
+            updated_at: string;
+        };
         /** @description 打赏设置响应。 */
         TipConfigResponse: {
             /** @description 是否允许自填金额。 */
@@ -13231,6 +17736,30 @@ export interface components {
             status: string;
             /** @description 打赏人（匿名单对开发者之外的人隐藏，见 handler 注释）。 */
             tipper: string;
+            /** @description 仅创建响应返回的微信中间页凭证，30 分钟有效。 */
+            wechat_pay_token?: string | null;
+        };
+        TipWechatAuthUrlQuery: {
+            redirect_to?: string | null;
+            token: string;
+        };
+        TipWechatAuthUrlResponse: {
+            authorized: boolean;
+            url: string;
+        };
+        TipWechatJsapiRequest: {
+            token: string;
+        };
+        TipWechatJsapiResponse: {
+            order: components["schemas"]["TipOrderResponse"];
+            pay_info: string;
+        };
+        TipWechatStatusQuery: {
+            token: string;
+        };
+        TipWechatStatusResponse: {
+            authorized: boolean;
+            order: components["schemas"]["TipOrderResponse"];
         };
         /** @description token 端点请求（form）。 */
         TokenRequest: {
@@ -13332,6 +17861,49 @@ export interface components {
              */
             page_size?: number | null;
         };
+        TransferMetaResponse: {
+            /** Format: int64 */
+            daily_cap: number;
+            /** Format: int64 */
+            fee_rate: number;
+            /** Format: int64 */
+            manual_review_threshold: number;
+            /** Format: int64 */
+            new_user_cap: number;
+            /** Format: int64 */
+            new_user_min_days: number;
+            /** Format: int64 */
+            receive_daily_cap: number;
+        };
+        TransferRequestBody: {
+            /** Format: int64 */
+            amount: number;
+            note?: string | null;
+            to_username: string;
+        };
+        TransferResponse: {
+            /** Format: int64 */
+            amount: number;
+            /** Format: int64 */
+            balance_after: number;
+            created_at: string;
+            cycle_flag: boolean;
+            /** Format: int64 */
+            fee: number;
+            from_username: string;
+            /** Format: int64 */
+            id: number;
+            note?: string | null;
+            pending_review: boolean;
+            /** Format: int64 */
+            received: number;
+            review_note?: string | null;
+            review_reason?: string | null;
+            reviewed_at?: string | null;
+            reviewed_by?: string | null;
+            status: string;
+            to_username: string;
+        };
         /** @description Turnstile 配置的对外形状（服务端密钥掩码）。 */
         TurnstileView: {
             /** @description 未配密钥时是否旁路。 */
@@ -13371,6 +17943,10 @@ export interface components {
             /** @description 平台用户名。 */
             username: string;
         };
+        UnionAuthorizeUrlResponse: {
+            /** @description 带签名 state 的云闪付授权地址。 */
+            url: string;
+        };
         /** @description 未读数响应。 */
         UnreadCountResponse: {
             /**
@@ -13382,6 +17958,16 @@ export interface components {
         UpdateActivityCampaignRequest: {
             content: string;
             title: string;
+        };
+        UpdateAgentDraftRequest: {
+            acceptance_html?: string | null;
+            /** Format: int64 */
+            budget_fen?: number | null;
+            description_html?: string | null;
+            /** Format: int32 */
+            development_cycle_days?: number | null;
+            payment_mode?: string | null;
+            title?: string | null;
         };
         /** @description 写入渠道配置请求体。 */
         UpdateApiChannelRequest: {
@@ -13412,6 +17998,16 @@ export interface components {
             name: string;
             /** @description 回调地址列表。 */
             redirect_uris: string[];
+        };
+        UpdateCommunityPostRequest: {
+            content_html: string;
+            origin_author?: string | null;
+            origin_note?: string | null;
+            origin_org?: string | null;
+            origin_type?: string | null;
+            origin_url?: string | null;
+            tag_names: string[];
+            title: string;
         };
         /**
          * @description 更新请求体（管理端 `PATCH /api/contract/{id}`）。
@@ -13448,12 +18044,28 @@ export interface components {
              */
             template_id?: number | null;
         };
+        UpdateCreditPolicyRequest: {
+            /** Format: double */
+            default_initial_credit?: number | null;
+            enforce_deposit_limit?: boolean | null;
+            enforce_order_limit?: boolean | null;
+            /** Format: int64 */
+            fen_per_credit?: number | null;
+            /** Format: double */
+            min_credit_for_dev?: number | null;
+        };
         /** @description 换绑邮箱请求体。 */
         UpdateEmailRequest: {
             /** @description 发到新邮箱的 6 位验证码。 */
             email_code: string;
             /** @description 新邮箱。 */
             new_email: string;
+        };
+        UpdateKnowledgeArticleRequest: {
+            category?: string | null;
+            content?: string | null;
+            summary?: string | null;
+            title?: string | null;
         };
         /** @description 改密码请求体。 */
         UpdatePasswordRequest: {
@@ -13598,6 +18210,17 @@ export interface components {
             /** @description 官方活动通知。 */
             subscribe_official_activity?: boolean | null;
         };
+        UpdateSupportConversationStatusRequest: {
+            status: string;
+        };
+        UpdateTagGroupRequest: {
+            alias?: string | null;
+            name?: string | null;
+        };
+        UpdateTagRequest: {
+            alias?: string | null;
+            name?: string | null;
+        };
         /** @description 改团队信息；缺省字段表示不改。 */
         UpdateTeamRequest: {
             /** @description 头像地址；传空串表示清空。 */
@@ -13615,6 +18238,12 @@ export interface components {
             name?: string | null;
             /** @description 标题。 */
             title?: string | null;
+        };
+        UpdateTicketRequest: {
+            assigned_to?: string | null;
+            category?: string | null;
+            priority?: string | null;
+            status?: string | null;
         };
         /** @description 写打赏设置的请求体（字段与响应一致，`updated_at` 忽略）。 */
         UpdateTipConfigRequest: {
@@ -13728,6 +18357,27 @@ export interface components {
             /** @description 存储相对路径：随发布版本一起提交。 */
             resource: string;
         };
+        UpsertBadgeRequest: {
+            category: string;
+            description: string;
+            icon: string;
+            name: string;
+            /** Format: int32 */
+            tier: number;
+        };
+        UpsertProductRequest: {
+            /** Format: int64 */
+            duration_days?: number;
+            enabled?: boolean;
+            kind?: string;
+            name: string;
+            payload?: string | null;
+            perk_code?: string | null;
+            /** Format: int64 */
+            points_cost: number;
+            /** Format: int64 */
+            stock?: number;
+        };
         /** @description 维护角色请求体。 */
         UpsertRoleRequest: {
             /** @description 角色码。 */
@@ -13738,6 +18388,20 @@ export interface components {
             name: string;
             /** @description 权限码列表。 */
             permission_codes?: string[];
+        };
+        UserBadgeResponse: {
+            awarded_at: string;
+            category: string;
+            code: string;
+            description: string;
+            equipped: boolean;
+            icon: string;
+            name: string;
+            /** Format: int32 */
+            tier: number;
+        };
+        UserBadgesResponse: {
+            badges: components["schemas"]["UserBadgeResponse"][];
         };
         /** @description 用户级权限覆盖条目响应。 */
         UserPermissionOverrideResponse: {
@@ -13921,6 +18585,16 @@ export interface components {
             /** @description `wx.login` 拿到的 code（一次性，5 分钟有效）。 */
             code: string;
         };
+        WechatPaymentStatusResponse: {
+            authorized: boolean;
+        };
+        WechatPaymentUrlQuery: {
+            qr_presentation?: boolean;
+            redirect_to: string;
+        };
+        WechatPaymentUrlResponse: {
+            url: string;
+        };
         /** @description 微信中间页状态响应（对应 legacy `ResourceWechatStatusResponse`）。 */
         WechatStatusResponse: {
             /** @description 本单是否已挂付款人 openid。 */
@@ -14061,6 +18735,8 @@ export interface components {
             payout_failure_reason?: string | null;
             /** @description 审核意见。 */
             review_note: string;
+            /** @description 资金来源：`income` / `prepaid`。 */
+            source: string;
             /** @description 状态。 */
             status: string;
             /** @description 状态中文说明。 */
@@ -14113,6 +18789,26 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    api_home: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 平台入口页 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/html": unknown;
+                };
+            };
+        };
+    };
     requirement_create_deposit: {
         parameters: {
             query?: never;
@@ -14228,6 +18924,124 @@ export interface operations {
             };
             /** @description 支付通道未装配 */
             503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    payment_union_oauth_callback: {
+        parameters: {
+            query?: {
+                state?: string;
+                resp_code?: string;
+                user_auth_code?: string;
+                error?: string;
+                error_description?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 授权处理后回跳前端 */
+            302: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    payment_union_oauth_authorize_url: {
+        parameters: {
+            query?: {
+                /** @description 授权完成后的前端地址；必须与原定成功地址同源。 */
+                redirect_to?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 授权地址 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnionAuthorizeUrlResponse"];
+                };
+            };
+            /** @description 回跳地址不是同源地址 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 未登录 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 云闪付授权通道未配置 */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    payment_admin_adapay_simulate_paid: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description 平台支付单号 */
+                payment_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SimulatedPaymentResponse"];
+                };
+            };
+            /** @description 生产环境禁用，或没有 system.config.manage 权限 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 支付单不存在 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 支付单状态不允许模拟收款 */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 支付已入账但业务侧消费失败 */
+            500: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -14703,6 +19517,635 @@ export interface operations {
             };
         };
     };
+    community_admin_warning_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateCommentWarningRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CommentWarningPayload"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    community_admin_comment_delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description 评论 ID */
+                comment_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    community_admin_post_list: {
+        parameters: {
+            query?: {
+                limit?: number;
+                offset?: number;
+                tag?: string;
+                author?: string;
+                status?: string;
+                keyword?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CommunityPostPayload"][];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    community_admin_post_detail: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description 帖子 ID */
+                post_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CommunityPostPayload"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    community_admin_post_delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description 帖子 ID */
+                post_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    community_admin_post_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description 帖子 ID */
+                post_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateCommunityPostRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CommunityPostPayload"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    community_admin_comment_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description 帖子 ID */
+                post_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CommunityCommentPayload"][];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    community_admin_post_featured: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description 帖子 ID */
+                post_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SetPostFeaturedRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CommunityPostPayload"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    community_admin_post_review: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description 帖子 ID */
+                post_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReviewCommunityPostRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CommunityPostPayload"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    community_admin_tag_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CommunityTagAdminPayload"][];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    community_admin_tag_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CommunityTagRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CommunityTagAdminPayload"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    community_admin_tag_delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description 标签 ID */
+                tag_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    community_admin_tag_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description 标签 ID */
+                tag_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CommunityTagRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CommunityTagAdminPayload"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     conversation_admin_list: {
         parameters: {
             query?: {
@@ -14927,6 +20370,104 @@ export interface operations {
             };
             /** @description 没有该接口权限 */
             403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    dispute_admin_detail: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description 案件编号 */
+                case_no: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 案件详情（含表态流水） */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CaseDetailResponse"];
+                };
+            };
+            /** @description 没有登录或令牌无效 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 没有该接口权限 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 案件不存在 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    dispute_admin_ai_verdict: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description 案件编号 */
+                case_no: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AiVerdictRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CaseDetailResponse"];
+                };
+            };
+            /** @description 责任方或判定依据不合法 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 没有该接口权限 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 案件不存在 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 案件状态不允许回写 AI 建议 */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -15211,6 +20752,346 @@ export interface operations {
             };
             /** @description 案件未结案、需求状态不允许，或已有别的在办案件 */
             409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    growth_admin_badges: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminBadgeDefinitionItem"][];
+                };
+            };
+            /** @description 无权限 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    growth_admin_grant_badge: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AdminBadgeGrantRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UserBadgesResponse"];
+                };
+            };
+            /** @description 无权限 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 用户或徽章不存在 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    growth_admin_revoke_badge: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AdminBadgeGrantRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UserBadgesResponse"];
+                };
+            };
+            /** @description 无权限 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 用户不存在 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    growth_admin_upsert_badge: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description 徽章编码 */
+                code: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpsertBadgeRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminBadgeDefinitionItem"];
+                };
+            };
+            /** @description 徽章内容不合法 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 无权限 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    growth_admin_delete_badge: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description 徽章编码 */
+                code: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DeletedResponse"];
+                };
+            };
+            /** @description 无权限 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 徽章不存在 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    growth_admin_upload_badge_icon: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description 徽章编码 */
+                code: string;
+            };
+            cookie?: never;
+        };
+        /** @description 字段名 file；PNG/JPEG/WebP/GIF，最大 2 MiB */
+        requestBody: {
+            content: {
+                "multipart/form-data": string;
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminBadgeDefinitionItem"];
+                };
+            };
+            /** @description 图片不合法 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 无权限 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 徽章不存在 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    growth_admin_invitations: {
+        parameters: {
+            query?: {
+                keyword?: string;
+                page?: number;
+                page_size?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminInvitationListResponse"];
+                };
+            };
+            /** @description 无权限 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    growth_admin_invite_codes: {
+        parameters: {
+            query?: {
+                keyword?: string;
+                page?: number;
+                page_size?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminInviteCodeListResponse"];
+                };
+            };
+            /** @description 无权限 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    growth_admin_overview: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminGrowthOverviewResponse"];
+                };
+            };
+            /** @description 无权限 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    growth_admin_share_records: {
+        parameters: {
+            query?: {
+                keyword?: string;
+                page?: number;
+                page_size?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminShareRecordListResponse"];
+                };
+            };
+            /** @description 无权限 */
+            403: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -15518,6 +21399,48 @@ export interface operations {
             };
         };
     };
+    operation_log_list: {
+        parameters: {
+            query?: {
+                action?: string;
+                operator?: string;
+                limit?: number;
+                offset?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OperationLogPageResponse"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     payment_admin_channel_status: {
         parameters: {
             query?: {
@@ -15607,6 +21530,160 @@ export interface operations {
             };
             /** @description 没有该接口权限 */
             403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    payment_admin_get_settlement_account: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                username: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 收款账户 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminSettlementAccountResponse"];
+                };
+            };
+            /** @description 用户名为空 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 没有该接口权限 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 该账号没有收款账户 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    payment_admin_close_settlement_account: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                username: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 解绑后的收款账户 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SettlementAccountResponse"];
+                };
+            };
+            /** @description 没有该接口权限 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 该账号没有收款账户 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 有在途资金或在办需求，不能解绑 */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    payment_admin_open_settlement_account: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                username: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SettlementOpenRequest"];
+            };
+        };
+        responses: {
+            /** @description 开户后的收款账户 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SettlementAccountResponse"];
+                };
+            };
+            /** @description 进件资料不合法（缺项、格式不对，或对公资料走了本通道） */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 没有该接口权限 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 该账号不存在 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 账户已开通 */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 渠道拒绝进件（原因已落库） */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 收款账户进件通道未装配 */
+            503: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -16127,7 +22204,7 @@ export interface operations {
                     "application/json": components["schemas"]["WithdrawalResponse"];
                 };
             };
-            /** @description 没有该接口权限 */
+            /** @description 没有该接口权限，或申请人审核本人提现单 */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -16157,6 +22234,670 @@ export interface operations {
             };
             /** @description 出款通道未就绪 */
             503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    realname_admin_asign_modify_company_info: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AdminModifyCompanyInfoBody"];
+            };
+        };
+        responses: {
+            /** @description 修改成功，改企业名时 `data` 是新印章编号 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AsignStringDataResponse"];
+                };
+            };
+            /** @description 三个字段都没给，或字段超长 / 证件号非法（`INVALID_ARGUMENT`） */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 未登录，或令牌无效 / 已吊销 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 没有 `realname.application_review.post` */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 目标用户没有通过的实名记录（`REALNAME_NOT_FOUND`） */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 校验操作权限失败，或内部错误 */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 爱签接口调用失败（`ASIGN_CHANNEL_ERROR`） */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 渠道未配置（`VERIFICATION_SERVICE_UNAVAILABLE`） */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    realname_admin_asign_modify_mobile_by_code: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AdminModifyMobileByCodeBody"];
+            };
+        };
+        responses: {
+            /** @description 修改成功，`data` 为 `null` */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AsignStringDataResponse"];
+                };
+            };
+            /** @description 手机号 / 验证码 / 令牌不合法（`INVALID_ARGUMENT`） */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 未登录，或令牌无效 / 已吊销 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 没有 `realname.application_review.post` */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 目标用户没有通过的实名记录（`REALNAME_NOT_FOUND`） */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 校验操作权限失败，或内部错误 */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 爱签接口调用失败（`ASIGN_CHANNEL_ERROR`） */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 渠道未配置（`VERIFICATION_SERVICE_UNAVAILABLE`） */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    realname_admin_asign_modify_user_name: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AdminModifyUserNameBody"];
+            };
+        };
+        responses: {
+            /** @description 修改成功（`data` 通常为 `null`） */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AsignStringDataResponse"];
+                };
+            };
+            /** @description 姓名为空 / 缺凭证（`INVALID_ARGUMENT`） */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 未登录，或令牌无效 / 已吊销 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 没有 `realname.application_review.post` */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 目标用户没有通过的实名记录（`REALNAME_NOT_FOUND`） */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 校验操作权限失败，或内部错误 */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 爱签接口调用失败（`ASIGN_CHANNEL_ERROR`） */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 渠道未配置（`VERIFICATION_SERVICE_UNAVAILABLE`） */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    realname_admin_asign_re_auth_user: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AdminReAuthUserBody"];
+            };
+        };
+        responses: {
+            /** @description 重新认证已提交（`data` 通常为 `null`） */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AsignStringDataResponse"];
+                };
+            };
+            /** @description 流水号为空或字段非法（`INVALID_ARGUMENT`） */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 未登录，或令牌无效 / 已吊销 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 没有 `realname.application_review.post` */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 目标用户没有通过的实名记录（`REALNAME_NOT_FOUND`） */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 校验操作权限失败，或内部错误 */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 爱签接口调用失败（`ASIGN_CHANNEL_ERROR`） */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 渠道未配置（`VERIFICATION_SERVICE_UNAVAILABLE`） */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    realname_admin_asign_send_verify_code: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SendVerifyCodeBody"];
+            };
+        };
+        responses: {
+            /** @description 验证码已发送，`data` 是 `codeToken` 字符串 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AsignStringDataResponse"];
+                };
+            };
+            /** @description 手机号格式不正确（`INVALID_ARGUMENT`） */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 未登录，或令牌无效 / 已吊销 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 没有 `realname.application_review.post` */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 校验操作权限失败，或内部错误 */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 爱签接口调用失败（`ASIGN_CHANNEL_ERROR`） */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 渠道未配置（`VERIFICATION_SERVICE_UNAVAILABLE`） */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    requirement_agent_config_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AgentConfigResponse"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    requirement_agent_config_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AgentConfigUpdateRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AgentConfigResponse"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    requirement_agent_admin_conversation_list: {
+        parameters: {
+            query?: {
+                status?: string;
+                keyword?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AgentConversationResponse"][];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    requirement_agent_admin_conversation_detail: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description 会话主键 */
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AgentConversationDetailResponse"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    requirement_agent_skill_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AgentSkillResponse"][];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    requirement_agent_skill_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AgentSkillCreateRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AgentSkillResponse"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    requirement_agent_skill_delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description 技能主键 */
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    requirement_agent_skill_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description 技能主键 */
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AgentSkillUpdateRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AgentSkillResponse"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -17273,6 +24014,238 @@ export interface operations {
             };
         };
     };
+    ticket_admin_list: {
+        parameters: {
+            query?: {
+                status?: string;
+                creator?: string;
+                assigned_to?: string;
+                keyword?: string;
+                category?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 工单列表 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TicketResponse"][];
+                };
+            };
+            /** @description 状态筛选值不合法 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 没有登录或令牌无效 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 没有管理端工单列表权限 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    ticket_admin_events: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description SSE 事件流 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/event-stream": unknown;
+                };
+            };
+            /** @description 没有登录或令牌无效 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 没有管理端工单列表权限 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    ticket_admin_detail: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ticket_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 工单完整详情 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TicketDetailResponse"];
+                };
+            };
+            /** @description 没有登录或令牌无效 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 没有管理端工单详情权限 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 工单不存在 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    ticket_admin_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ticket_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateTicketRequest"];
+            };
+        };
+        responses: {
+            /** @description 更新后的工单 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TicketResponse"];
+                };
+            };
+            /** @description 没有更新字段或字段值不合法 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 没有登录或令牌无效 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 没有更新权限或试图指派他人 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 工单不存在 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    ticket_admin_reply: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ticket_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReplyTicketRequest"];
+            };
+        };
+        responses: {
+            /** @description 回复后的完整详情 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TicketDetailResponse"];
+                };
+            };
+            /** @description 回复内容不合法 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 没有登录或令牌无效 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 没有管理端回复权限 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 工单不存在 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     tip_admin_refund: {
         parameters: {
             query?: never;
@@ -17737,6 +24710,40 @@ export interface operations {
             };
             /** @description 内部错误 */
             500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    auth_dev_admin_auto_login: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 登录响应 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AuthResponse"];
+                };
+            };
+            /** @description 未开启或不是回环请求 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 没有可用的主超级管理员 */
+            503: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -19070,6 +26077,40 @@ export interface operations {
             };
         };
     };
+    auth_dev_support_auto_login: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 登录响应 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AuthResponse"];
+                };
+            };
+            /** @description 未开启或不是回环请求 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 开发账号创建或令牌签发失败 */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     auth_get_user_service_agreement: {
         parameters: {
             query?: never;
@@ -19682,6 +26723,82 @@ export interface operations {
             };
         };
     };
+    auth_wechat_bind_qr_status: {
+        parameters: {
+            query: {
+                /** @description 二维码上的 state。 */
+                state: string;
+                /** @description 建码时拿到的轮询凭据。 */
+                poll_secret: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 绑定状态 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["QrStatusResponse"];
+                };
+            };
+        };
+    };
+    auth_wechat_bind_qr_url: {
+        parameters: {
+            query?: {
+                /** @description 登录成功后跳回的前端地址；留空用渠道落地页。 */
+                redirect_to?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 二维码地址与轮询凭据 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["QrUrlResponse"];
+                };
+            };
+            /** @description 渠道凭据或回调配置不全 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 未登录，或令牌无效 / 已吊销 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 该渠道未启用（`OAUTH_DISABLED`） */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 内部错误 */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     auth_wechat_bind_url: {
         parameters: {
             query?: {
@@ -19941,6 +27058,77 @@ export interface operations {
             };
         };
     };
+    auth_wechat_payment_status: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 授权状态 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WechatPaymentStatusResponse"];
+                };
+            };
+            /** @description 未登录 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    auth_wechat_payment_url: {
+        parameters: {
+            query: {
+                redirect_to: string;
+                qr_presentation?: boolean;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 授权地址 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WechatPaymentUrlResponse"];
+                };
+            };
+            /** @description 渠道配置不完整 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 未登录 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 微信渠道未启用 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     auth_unbind: {
         parameters: {
             query?: never;
@@ -19975,6 +27163,914 @@ export interface operations {
                 content?: never;
             };
             /** @description 内部错误 */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    badge_catalog: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BadgeDefinitionResponse"][];
+                };
+            };
+        };
+    };
+    badge_my: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UserBadgesResponse"];
+                };
+            };
+            /** @description 无权限 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    badge_equip: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SetEquippedBadgesRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UserBadgesResponse"];
+                };
+            };
+            /** @description 佩戴未获得徽章 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 无权限 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    badge_user: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description 用户名 */
+                username: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UserBadgesResponse"];
+                };
+            };
+            /** @description 用户不存在 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    community_warning_mine: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CommentWarningPayload"][];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    community_comment_like: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description 评论 ID */
+                comment_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CommunityCommentLikePayload"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    community_comment_unlike: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description 评论 ID */
+                comment_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CommunityCommentLikePayload"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    community_post_list: {
+        parameters: {
+            query?: {
+                limit?: number;
+                offset?: number;
+                tag?: string;
+                author?: string;
+                status?: string;
+                keyword?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CommunityPostPayload"][];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    community_post_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateCommunityPostRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CommunityPostPayload"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    community_favorite_list: {
+        parameters: {
+            query?: {
+                limit?: number;
+                offset?: number;
+                tag?: string;
+                author?: string;
+                status?: string;
+                keyword?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CommunityPostPayload"][];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    community_post_detail: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description 帖子 ID */
+                post_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CommunityPostPayload"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    community_post_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description 帖子 ID */
+                post_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateCommunityPostRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CommunityPostPayload"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    community_post_boost: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description 帖子 ID */
+                post_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SetPostBoostRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CommunityPostPayload"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    community_bounty_accept: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description 帖子 ID */
+                post_id: number;
+                /** @description 评论 ID */
+                comment_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CommunityPostPayload"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    community_bounty_cancel: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description 帖子 ID */
+                post_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CommunityPostPayload"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    community_comment_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description 帖子 ID */
+                post_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CommunityCommentPayload"][];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    community_comment_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description 帖子 ID */
+                post_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateCommunityCommentRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CommunityCommentPayload"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    community_post_favorite: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description 帖子 ID */
+                post_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CommunityFavoritePayload"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    community_post_unfavorite: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description 帖子 ID */
+                post_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CommunityFavoritePayload"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    community_post_like: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description 帖子 ID */
+                post_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CommunityLikePayload"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    community_post_unlike: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description 帖子 ID */
+                post_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CommunityLikePayload"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    community_tag_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CommunityTagPayload"][];
+                };
+            };
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
             500: {
                 headers: {
                     [name: string]: unknown;
@@ -20140,6 +28236,76 @@ export interface operations {
                 content?: never;
             };
             /** @description 落库失败 */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    contract_asign_config_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 当前生效的爱签配置（密钥掩码） */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AsignView"];
+                };
+            };
+            /** @description 没有 `contract.config.get` 权限 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    contract_asign_config_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AsignView"];
+            };
+        };
+        responses: {
+            /** @description 保存后的配置（密钥掩码）与 `restart_required` */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 字段校验不通过 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 没有 `contract.config.put` 权限 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 配置写入失败 */
             500: {
                 headers: {
                     [name: string]: unknown;
@@ -22695,6 +30861,315 @@ export interface operations {
             };
         };
     };
+    credit_adjust: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AdjustCreditRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CreditAccountResponse"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    credit_developer_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CreditAccountResponse"][];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    credit_developer_detail: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description 开发者用户名 */
+                username: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CreditAccountResponse"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    credit_log_list: {
+        parameters: {
+            query?: {
+                username?: string;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CreditLogResponse"][];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    credit_self_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CreditSelfResponse"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    credit_policy_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CreditPolicyResponse"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    credit_policy_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateCreditPolicyRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CreditPolicyResponse"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     dispute_list_mine: {
         parameters: {
             query?: {
@@ -22925,6 +31400,112 @@ export interface operations {
             };
             /** @description 案件已裁决 / 已结案 / 已撤回 */
             409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    api_healthz: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 进程存活 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    invite_leaderboard: {
+        parameters: {
+            query?: {
+                /** @description `weekly`（默认，近 7 天）或 `alltime`。 */
+                period?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InviteLeaderboardResponse"];
+                };
+            };
+            /** @description 无权限 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    invite_my_code: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InviteCodeResponse"];
+                };
+            };
+            /** @description 无权限 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 用户不存在 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    invite_my_stats: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InviteStatsResponse"];
+                };
+            };
+            /** @description 无权限 */
+            403: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -23731,6 +32312,101 @@ export interface operations {
             };
         };
     };
+    payment_adapay_config_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 当前生效的 AdaPay 配置（密钥掩码） */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdaPayView"];
+                };
+            };
+            /** @description 没有 `payment.config.get` 权限 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    payment_adapay_config_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AdaPayView"];
+            };
+        };
+        responses: {
+            /** @description 保存后的配置（密钥掩码）与 `restart_required` */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 字段校验不通过 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 没有 `payment.config.put` 权限 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 配置写入失败 */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    payment_adapay_config_probe: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 自检结论：ready / not_ready 与断点说明 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 没有 `payment.config.get` 权限 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     payment_admin_run_auto_withdrawals: {
         parameters: {
             query?: {
@@ -23788,6 +32464,518 @@ export interface operations {
             };
             /** @description 没有该接口权限 */
             403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    payment_prepaid_account_get: {
+        parameters: {
+            query?: {
+                ledger_limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PrepaidAccountStatementResponse"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    payment_prepaid_recharge_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PrepaidRechargeRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PrepaidOrderResponse"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    payment_admin_prepaid_account_list: {
+        parameters: {
+            query?: {
+                page?: number;
+                page_size?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PrepaidAccountPageResponse"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    payment_admin_prepaid_order_list: {
+        parameters: {
+            query?: {
+                status?: string;
+                created_from?: string;
+                created_to?: string;
+                username?: string;
+                page?: number;
+                page_size?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PrepaidOrderListResponse"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    payment_admin_prepaid_credit: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PrepaidCreditRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PrepaidAccountResponse"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    payment_admin_prepaid_order_delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description 充值支付单号 */
+                payment_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    payment_admin_prepaid_refund_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description 充值支付单号 */
+                payment_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RefundRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RefundResponse"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    payment_admin_prepaid_refund_manual: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description 充值支付单号 */
+                payment_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PrepaidRefundLookupRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RefundResponse"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    payment_admin_prepaid_refund_query: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description 充值支付单号 */
+                payment_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PrepaidRefundLookupRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RefundResponse"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    payment_prepaid_order_list: {
+        parameters: {
+            query?: {
+                status?: string;
+                created_from?: string;
+                created_to?: string;
+                username?: string;
+                page?: number;
+                page_size?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PrepaidOrderListResponse"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    payment_prepaid_order_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description 充值支付单号 */
+                payment_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PrepaidOrderResponse"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    payment_prepaid_withdrawal_list: {
+        parameters: {
+            query?: {
+                /** @description 状态过滤。 */
+                status?: string;
+                /** @description 取多少条。 */
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WithdrawalResponse"][];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    payment_prepaid_withdrawal_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["WithdrawalRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RefundResponse"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            503: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -24095,6 +33283,56 @@ export interface operations {
             };
             /** @description 这张单已支付或底下还挂着退款单 / 分账单 */
             409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    payment_refresh_order: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                order_no: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 入账后的支付单 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaymentOrderResponse"];
+                };
+            };
+            /** @description 没有该接口权限 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 支付单不存在 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 渠道侧尚未支付成功 */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 查询渠道失败 */
+            502: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -24866,6 +34104,1388 @@ export interface operations {
             };
         };
     };
+    points_admin_adjust: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AdjustPointsRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LogResponse"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    points_admin_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AccountResponse"][];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    points_admin_logs: {
+        parameters: {
+            query?: {
+                username?: string;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LogResponse"][];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    points_admin_orders: {
+        parameters: {
+            query?: {
+                username?: string;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PointsOrderResponse"][];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    points_admin_handle_order: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description 兑换订单编号 */
+                order_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["HandleOrderRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PointsOrderResponse"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    points_admin_grant_perk: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["GrantPerkRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PerkResponse"][];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    points_admin_user_perks: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description 用户名 */
+                username: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PerkResponse"][];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    points_admin_revoke_perk: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description 用户名 */
+                username: string;
+                /** @description 权益编码 */
+                perk_code: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PerkResponse"][];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    points_admin_products: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProductResponse"][];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    points_admin_create_product: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpsertProductRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProductResponse"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    points_admin_delete_product: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description 商品编号 */
+                product_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    points_admin_update_product: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description 商品编号 */
+                product_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpsertProductRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProductResponse"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    points_admin_rules: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RuleResponse"][];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    points_admin_upsert_rule: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RewardRuleRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RuleResponse"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    points_admin_special_reward: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SpecialRewardRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LogResponse"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    points_admin_transfers: {
+        parameters: {
+            query?: {
+                status?: string;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TransferResponse"][];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    points_admin_review_transfer: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description 转账编号 */
+                transfer_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReviewTransferRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TransferResponse"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    points_username_appearance: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AppearanceRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AppearanceResponse"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    points_checkin: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CheckinResponse"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    points_checkin_status: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CheckinStatusResponse"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    points_set_gradient: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SetPerkRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AppearanceResponse"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    points_mall_orders: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PointsOrderResponse"][];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    points_mall_products: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProductResponse"][];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    points_mall_redeem: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RedeemRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PointsOrderResponse"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    points_me: {
+        parameters: {
+            query?: {
+                page?: number;
+                page_size?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OverviewResponse"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    points_my_perks: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PerkResponse"][];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    points_set_perk: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description 权益编码 */
+                perk_code: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SetPerkRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PerkResponse"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    points_promo_cards: {
+        parameters: {
+            query?: {
+                status?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PromoCardResponse"][];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    points_resource_promo_meta: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ResourcePromoMetaResponse"];
+                };
+            };
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    points_transfer: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TransferRequestBody"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TransferResponse"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    points_transfer_meta: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TransferMetaResponse"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    points_my_transfers: {
+        parameters: {
+            query?: {
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TransferResponse"][];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    api_readyz: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 数据库可用 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 数据库不可用 */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     realname_submit: {
         parameters: {
             query?: never;
@@ -25264,6 +35884,364 @@ export interface operations {
                 content?: never;
             };
             /** @description 实名核身渠道不可用（`VERIFICATION_SERVICE_UNAVAILABLE`） */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    realname_asign_modify_company_info: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AsignModifyCompanyInfoRequest"];
+            };
+        };
+        responses: {
+            /** @description 修改成功，改企业名时 `data` 是新印章编号 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AsignStringDataResponse"];
+                };
+            };
+            /** @description 三个字段都没给，或字段超长 / 证件号非法（`INVALID_ARGUMENT`） */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 未登录，或令牌无效 / 已吊销 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 没有 `realname.mine.get` */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 还没有通过的实名记录（`REALNAME_NOT_FOUND`） */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 校验操作权限失败，或内部错误 */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 爱签接口调用失败（`ASIGN_CHANNEL_ERROR`） */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 渠道未配置（`VERIFICATION_SERVICE_UNAVAILABLE`） */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    realname_asign_modify_mobile_by_code: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ModifyMobileByCodeBody"];
+            };
+        };
+        responses: {
+            /** @description 修改成功，`data` 为 `null` */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AsignStringDataResponse"];
+                };
+            };
+            /** @description 手机号 / 验证码 / 令牌不合法（`INVALID_ARGUMENT`） */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 未登录，或令牌无效 / 已吊销 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 没有 `realname.mine.get` */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 还没有通过的实名记录（`REALNAME_NOT_FOUND`） */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 校验操作权限失败，或内部错误 */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 爱签接口调用失败（`ASIGN_CHANNEL_ERROR`） */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 渠道未配置（`VERIFICATION_SERVICE_UNAVAILABLE`） */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    realname_asign_modify_user_name: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AsignModifyUserNameRequest"];
+            };
+        };
+        responses: {
+            /** @description 修改成功（`data` 通常为 `null`） */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AsignStringDataResponse"];
+                };
+            };
+            /** @description 姓名为空 / 缺手机号 / 缺银联卡号（`INVALID_ARGUMENT`） */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 未登录，或令牌无效 / 已吊销 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 没有 `realname.mine.get` */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 还没有通过的实名记录（`REALNAME_NOT_FOUND`） */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 校验操作权限失败，或内部错误 */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 爱签接口调用失败（`ASIGN_CHANNEL_ERROR`） */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 渠道未配置（`VERIFICATION_SERVICE_UNAVAILABLE`） */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    realname_asign_re_auth_user: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AsignReAuthUserRequest"];
+            };
+        };
+        responses: {
+            /** @description 重新认证已提交（`data` 通常为 `null`） */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AsignStringDataResponse"];
+                };
+            };
+            /** @description 流水号为空或字段非法（`INVALID_ARGUMENT`） */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 未登录，或令牌无效 / 已吊销 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 没有 `realname.mine.get` */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 还没有通过的实名记录（`REALNAME_NOT_FOUND`） */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 校验操作权限失败，或内部错误 */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 爱签接口调用失败（`ASIGN_CHANNEL_ERROR`） */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 渠道未配置（`VERIFICATION_SERVICE_UNAVAILABLE`） */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    realname_asign_send_verify_code: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SendVerifyCodeBody"];
+            };
+        };
+        responses: {
+            /** @description 验证码已发送，`data` 是 `codeToken` 字符串 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AsignStringDataResponse"];
+                };
+            };
+            /** @description 手机号格式不正确（`INVALID_ARGUMENT`） */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 未登录，或令牌无效 / 已吊销 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 没有 `realname.mine.get` */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 校验操作权限失败，或内部错误 */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 爱签接口调用失败（`ASIGN_CHANNEL_ERROR`） */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 渠道未配置（`VERIFICATION_SERVICE_UNAVAILABLE`） */
             503: {
                 headers: {
                     [name: string]: unknown;
@@ -26134,6 +37112,535 @@ export interface operations {
             };
         };
     };
+    requirement_agent_agent_conversation_list: {
+        parameters: {
+            query?: {
+                status?: string;
+                keyword?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AgentConversationResponse"][];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    requirement_agent_agent_message_send: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description 会话主键 */
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SendAgentMessageRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AgentConversationDetailResponse"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    requirement_agent_agent_takeover: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description 会话主键 */
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AgentConversationResponse"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    requirement_agent_agent_draft_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description 草稿主键 */
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateAgentDraftRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AgentDraftResponse"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    requirement_agent_agent_draft_publish: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description 草稿主键 */
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AgentDraftResponse"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    requirement_agent_conversation_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateAgentConversationRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AgentConversationDetailResponse"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    requirement_agent_conversation_mine: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AgentConversationResponse"][];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    requirement_agent_conversation_stream: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/event-stream": unknown;
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    requirement_agent_conversation_detail: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description 会话主键 */
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AgentConversationDetailResponse"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    requirement_agent_handoff_request: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description 会话主键 */
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AgentConversationDetailResponse"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    requirement_agent_message_send: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description 会话主键 */
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SendAgentMessageRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AgentConversationDetailResponse"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    requirement_agent_draft_adopt: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description 草稿主键 */
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AgentDraftResponse"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     requirement_list_all: {
         parameters: {
             query?: never;
@@ -26295,6 +37802,96 @@ export interface operations {
                 content?: never;
             };
             /** @description 权限查询失败，或配置写盘失败 */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    dev_dashboard_snapshot: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 完整看板快照 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DevDashboardSnapshotResponse"];
+                };
+            };
+            /** @description 未登录或令牌无效 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 缺少钱包概览或开发者工作台权限 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 权限查询或看板聚合失败 */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    dev_dashboard_stream: {
+        parameters: {
+            query?: {
+                /** @description 浏览器 WebSocket 无法设置 Authorization 请求头，令牌由此传入。 */
+                token?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description WebSocket 连接已建立；快照结构见 DevDashboardSnapshotMessage */
+            101: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 缺少令牌或令牌无效 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 没有开发者工作台权限 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 同一开发者同时在线的看板连接超过 3 个 */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 权限查询失败 */
             500: {
                 headers: {
                     [name: string]: unknown;
@@ -27960,15 +39557,24 @@ export interface operations {
             };
         };
         responses: {
-            /** @description 会话：`{ token, username, role, roles }` */
+            /** @description 平台会话与订单号 */
             200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CheckoutExchangeResponse"];
+                };
+            };
+            /** @description ticket 为空 */
+            400: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content?: never;
             };
             /** @description 票据无效、已过期或已被使用 */
-            403: {
+            410: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -28087,6 +39693,65 @@ export interface operations {
             };
         };
     };
+    resource_open_purchase_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["OpenPurchaseRequest"];
+            };
+        };
+        responses: {
+            /** @description 订单与收银台地址 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenPurchaseResponse"];
+                };
+            };
+            /** @description 缺 buyer_external_id、渠道无法识别，或 resource_id 不是正整数 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 凭据无效 / 已停用 / 开发者接入未配置 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 没有 purchase scope，或资源不在该开发者名下 / 来源不在允许列表 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 资源或版本不存在 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 外部用户未绑定 / 接口交付渠道未配置 / 协议未签署 / 已购买 / 价格不一致 */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     resource_open_integration_guide: {
         parameters: {
             query?: never;
@@ -28143,65 +39808,6 @@ export interface operations {
             };
             /** @description 订单不存在 */
             404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    resource_open_purchase_create: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["OpenPurchaseRequest"];
-            };
-        };
-        responses: {
-            /** @description 订单与收银台地址 */
-            201: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["OpenPurchaseResponse"];
-                };
-            };
-            /** @description 缺 external_user_id，或 resource_id 不是正整数 */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description 凭据无效 / 已停用 / 开发者接入未配置 */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description 没有 purchase scope，或资源不在该开发者名下 / 来源不在允许列表 */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description 资源或版本不存在 */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description 外部用户未绑定 / 接口交付渠道未配置 / 协议未签署 / 已购买 / 价格不一致 */
-            409: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -32251,6 +43857,855 @@ export interface operations {
             };
         };
     };
+    share_generate_card: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["GenerateShareCardRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ShareCardResponse"];
+                };
+            };
+            /** @description 分享类型或目标不合法 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 无权限 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    share_stats: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ShareStatsResponse"];
+                };
+            };
+            /** @description 无权限 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    support_list_agents: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SupportAgentResponse"][];
+                };
+            };
+        };
+    };
+    support_list_channels: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChannelConfigResponse"][];
+                };
+            };
+        };
+    };
+    support_list_public_channels: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PublicChannelResponse"][];
+                };
+            };
+        };
+    };
+    support_update_channel: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                channel_key: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ChannelUpdateRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChannelConfigResponse"];
+                };
+            };
+            /** @description 渠道不存在 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    support_preview_contract: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                contract_no: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ContractPreviewResponse"];
+                };
+            };
+            /** @description 合同暂不可预览 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 合同不存在 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    support_list_conversations: {
+        parameters: {
+            query?: {
+                status?: string;
+                priority?: string;
+                keyword?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SupportConversationResponse"][];
+                };
+            };
+            /** @description 无权限 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    support_create_conversation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateSupportConversationRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SupportConversationResponse"];
+                };
+            };
+            /** @description 消息无效或渠道已停用 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    support_list_my_conversations: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SupportConversationResponse"][];
+                };
+            };
+        };
+    };
+    support_stream_conversations: {
+        parameters: {
+            query?: {
+                /** @description 登录令牌。WebSocket 浏览器 API 不能设置 Authorization 请求头。 */
+                token?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description WebSocket 已建立 */
+            101: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 令牌缺失或无效 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 无实时事件权限 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    support_get_conversation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SupportConversationDetailResponse"];
+                };
+            };
+            /** @description 不是会话归属方 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 会话不存在 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    support_send_message: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SendSupportMessageRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SupportMessageResponse"];
+                };
+            };
+            /** @description 消息为空、过长或会话已关闭 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 不是会话归属方 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    support_update_conversation_status: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateSupportConversationStatusRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SupportConversationResponse"];
+                };
+            };
+            /** @description 状态无效 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 无权限或会话已分配给其他客服 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    knowledge_article_list: {
+        parameters: {
+            query?: {
+                category?: string;
+                keyword?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["KnowledgeArticleResponse"][];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    knowledge_article_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateKnowledgeArticleRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["KnowledgeArticleResponse"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    knowledge_article_delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description 文章编号 */
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    knowledge_article_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description 文章编号 */
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateKnowledgeArticleRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["KnowledgeArticleResponse"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    knowledge_category_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["KnowledgeCategoryResponse"][];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    knowledge_category_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateKnowledgeCategoryRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["KnowledgeCategoryResponse"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    support_list_quick_replies: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["QuickReplyResponse"][];
+                };
+            };
+        };
+    };
+    support_create_quick_reply: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["QuickReplyCreateRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["QuickReplyResponse"];
+                };
+            };
+            /** @description 标题或内容无效 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    support_delete_quick_reply: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 已删除 */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 常用语不存在 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    support_update_quick_reply: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["QuickReplyUpdateRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["QuickReplyResponse"];
+                };
+            };
+            /** @description 常用语不存在 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    support_search_users: {
+        parameters: {
+            query: {
+                keyword: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SupportUserHitResponse"][];
+                };
+            };
+            /** @description 关键词为空 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    support_lookup_user: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                username: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SupportUserLookupResponse"];
+                };
+            };
+            /** @description 用户不存在 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     system_activity_campaign_list: {
         parameters: {
             query?: never;
@@ -32486,6 +44941,45 @@ export interface operations {
                 content?: never;
             };
             500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    adapay_app_public_key: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 商户应用公钥与它的来源 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 没有 `payment.config.get` 权限 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 私钥文件存在但无法解析 */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 没有可用私钥 */
+            503: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -32915,6 +45409,43 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    operation_system_overview: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OperationOverviewResponse"];
+                };
             };
             401: {
                 headers: {
@@ -34226,6 +46757,230 @@ export interface operations {
             };
         };
     };
+    tag_group_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateTagGroupRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TagGroupResponse"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    tag_group_delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                group_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    tag_group_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                group_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateTagGroupRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TagGroupResponse"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    tag_group_move: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                group_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MoveTagGroupRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TagGroupResponse"][];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     resource_tag_groups: {
         parameters: {
             query?: never;
@@ -34243,6 +46998,320 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["TagGroupResponse"][];
                 };
+            };
+        };
+    };
+    tag_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateTagRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TagItemResponse"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    tag_export: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TagExportResponse"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    tag_import: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ImportTagsRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TagGroupResponse"][];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    tag_delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tag_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    tag_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tag_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateTagRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TagItemResponse"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    tag_move: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tag_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MoveTagRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TagGroupResponse"][];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };
@@ -34896,6 +47965,225 @@ export interface operations {
             };
         };
     };
+    ticket_list_mine: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 本人工单列表 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TicketResponse"][];
+                };
+            };
+            /** @description 没有登录或令牌无效 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 没有本人工单列表权限 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    ticket_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateTicketRequest"];
+            };
+        };
+        responses: {
+            /** @description 创建的工单 */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TicketResponse"];
+                };
+            };
+            /** @description 标题、内容、分类或优先级不合法 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 没有登录或令牌无效 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 没有创建工单权限 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    ticket_detail: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ticket_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 工单详情 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TicketDetailResponse"];
+                };
+            };
+            /** @description 没有登录或令牌无效 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 不是工单创建者或没有详情权限 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 工单不存在 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    ticket_close: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ticket_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 关闭后的工单 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TicketResponse"];
+                };
+            };
+            /** @description 没有登录或令牌无效 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 不是工单创建者或没有关闭权限 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 工单不存在 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    ticket_reply: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ticket_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReplyTicketRequest"];
+            };
+        };
+        responses: {
+            /** @description 回复后的工单详情 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TicketDetailResponse"];
+                };
+            };
+            /** @description 回复内容不合法 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 没有登录或令牌无效 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 不是工单创建者或没有回复权限 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 工单不存在 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     tip_create: {
         parameters: {
             query?: never;
@@ -35090,6 +48378,126 @@ export interface operations {
             };
             /** @description 内部错误 */
             500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    tip_wechat_auth_url: {
+        parameters: {
+            query: {
+                token: string;
+                redirect_to?: string;
+            };
+            header?: never;
+            path: {
+                /** @description 打赏单号 */
+                order_no: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 授权地址或已授权状态 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TipWechatAuthUrlResponse"];
+                };
+            };
+            /** @description 订单不存在 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 凭证无效或订单状态不允许授权 */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    tip_wechat_jsapi: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description 打赏单号 */
+                order_no: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TipWechatJsapiRequest"];
+            };
+        };
+        responses: {
+            /** @description 订单与微信调起参数 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TipWechatJsapiResponse"];
+                };
+            };
+            /** @description 订单不存在 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 未授权、凭证无效或订单状态不允许支付 */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    tip_wechat_status: {
+        parameters: {
+            query: {
+                token: string;
+            };
+            header?: never;
+            path: {
+                /** @description 打赏单号 */
+                order_no: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 订单与授权状态 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TipWechatStatusResponse"];
+                };
+            };
+            /** @description 订单不存在 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 凭证无效或与订单不匹配 */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -35448,6 +48856,39 @@ export interface operations {
         responses: {
             /** @description 跳回前端落地页，结果见跳转参数 */
             302: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    invite_redirect: {
+        parameters: {
+            query?: {
+                share_type?: string;
+                target_id?: string;
+                /** @description 仅允许站内绝对路径，不允许 `//` 与换行。 */
+                redirect_to?: string;
+            };
+            header?: never;
+            path: {
+                /** @description 邀请码 */
+                code: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 跳转到前端注册页或分享落地页 */
+            302: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 邀请码无效 */
+            400: {
                 headers: {
                     [name: string]: unknown;
                 };
