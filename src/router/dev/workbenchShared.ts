@@ -8,6 +8,16 @@ import type { RouteRecordRaw } from 'vue-router'
 
 export const devWorkbenchSharedRoutes: RouteRecordRaw[] = [
   {
+    path: 'developer/assistant',
+    name: 'dev-assistant',
+    component: () => import('@/views/RequirementAssistantView.vue'),
+    meta: {
+      title: 'AI 需求助手',
+      description: '对话梳理需求并生成可采纳草稿',
+      devArea: true,
+    },
+  },
+  {
     path: 'developer/dashboard',
     name: 'dev-dashboard',
     component: () => import('@/views/DevRealtimeDashboardView.vue'),
