@@ -7,6 +7,16 @@
 import type { RouteRecordRaw } from 'vue-router'
 
 export const devWorkbenchSharedRoutes: RouteRecordRaw[] = [
+  {
+    path: 'developer/dashboard',
+    name: 'dev-dashboard',
+    component: () => import('@/views/DevRealtimeDashboardView.vue'),
+    meta: {
+      title: '实时看板',
+      description: '订单、资金、交付与动态实时快照',
+      devArea: true,
+    },
+  },
   // 团队服务从用户工作台整体移入开发者工作台：侧边栏模式下路由需带 devArea，否则进页会切回用户菜单
   {
     path: 'developer/teams',
