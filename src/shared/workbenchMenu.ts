@@ -198,6 +198,11 @@ export function buildMenuGroups(realnameApproved: boolean): WorkbenchMenuGroup[]
             ]
           : []),
         { label: '我的发票', name: 'workbench-invoices', description: '获取发票、查看与下载' },
+        {
+          label: '我的收藏',
+          name: 'workbench-favorites',
+          description: '查看收藏的社区帖子',
+        },
         { label: '优惠券中心', name: 'workbench-coupons', description: '查看券包并复制券码' },
         { label: '积分中心', name: 'workbench-points', description: '签到、积分明细与打赏' },
         { label: '积分商城', name: 'mall', description: '兑换权益与道具卡' },

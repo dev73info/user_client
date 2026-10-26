@@ -36,6 +36,12 @@ export const workbenchRoutes: RouteRecordRaw[] = [
         },
       },
       {
+        path: 'favorites',
+        name: 'workbench-favorites',
+        component: () => import('@/views/CommunityListView.vue'),
+        meta: { title: '我的收藏', description: '查看收藏的社区帖子' },
+      },
+      {
         path: 'assistant',
         name: 'workbench-assistant',
         component: () => import('@/views/RequirementAssistantView.vue'),
