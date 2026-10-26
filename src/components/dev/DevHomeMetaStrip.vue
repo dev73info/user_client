@@ -20,6 +20,7 @@ defineProps<{
 
 const emit = defineEmits<{
   refresh: []
+  openDashboard: []
 }>()
 </script>
 
@@ -34,6 +35,9 @@ const emit = defineEmits<{
         </div>
       </template>
       <div class="dev-meta-strip__item dev-meta-strip__action">
+        <TButton icon-only aria-label="打开实时看板" @click="emit('openDashboard')">
+          <span class="dev-meta-strip__dashboard-label">看板</span>
+        </TButton>
         <TButton icon-only :loading="loading" aria-label="刷新概览" @click="emit('refresh')">
           <TIcon>
             <Refresh />

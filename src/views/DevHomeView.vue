@@ -1,12 +1,13 @@
 <script setup lang="ts">
 import { onBeforeUnmount, onMounted, ref } from 'vue'
-import { useRouter } from 'vue-router'
-import { TMessage } from 'ui_73info'
+import { useRoute, useRouter } from 'vue-router'
+import { TButton, TMessage } from 'ui_73info'
 
 import DevWithdrawalDialog from '@/components/DevWithdrawalDialog.vue'
 import DevFundPanel from '@/components/dev/DevFundPanel.vue'
 import DevHomeMetaStrip from '@/components/dev/DevHomeMetaStrip.vue'
 import DevProjectList from '@/components/dev/DevProjectList.vue'
+import DevRealtimeDashboardView from '@/views/DevRealtimeDashboardView.vue'
 import { useDevHomeBoard } from '@/composables/useDevHomeBoard'
 import { useDevHomeDashboard } from '@/composables/useDevHomeDashboard'
 import { useDevHomeIncomeChart } from '@/composables/useDevHomeIncomeChart'
@@ -17,7 +18,7 @@ import { CHIP_TONES } from '@/shared/devHomeDisplay'
  * 开发者工作台总览：三档读数 + 钱包读数 + 近期到账 + 我的需求 + 我的资源 + 四个跳转入口。
  *
  * 本页三份读数由 `useDevHomeDashboard` 取；订单、资金、交付、漏斗与动态流的实时快照
- * 在独立的「实时看板」页（`/workbench/developer/dashboard`），使用 2.0 看板 REST/WS 契约。
+ * 是**总览的全屏版**（点读数条左侧「看板」进入，返回总览退出），使用 2.0 看板 REST/WS 契约。
  */
 
 /**
@@ -56,6 +57,22 @@ const {
 })
 
 const router = useRouter()
+const route = useRoute()
+
+/** 实时看板是总览的**全屏版**，不是独立菜单页：点读数条左侧「看板」进来，返回总览出去。 */
+const dashboardOpen = ref(route.query.dashboard === '1')
+
+function openDashboard() {
+  dashboardOpen.value = true
+  void router.replace({ query: { ...route.query, dashboard: '1' } })
+}
+
+function closeDashboard() {
+  dashboardOpen.value = false
+  const query = { ...route.query }
+  delete query.dashboard
+  void router.replace({ query })
+}
 
 /** 三格读数的口径在 `useDevHomeBoard`（没读到数据时显示「—」，不显示 0）。 */
 const { statCards, incomeRows } = useDevHomeBoard({
@@ -112,7 +129,7 @@ function openMyOrder(requirementId: string) {
 <template>
   <div class="dev-page dev-home" :class="{ 'dev-home--loading': loading }">
     <!-- 顶部三格读数：进行中 / 待交付 / 已完成，全部按「我的需求」的 status 现算 -->
-    <DevHomeMetaStrip :loading="loading" :cards="statCards" @refresh="loadPage" />
+    <DevHomeMetaStrip :loading="loading" :cards="statCards" @refresh="loadPage" @open-dashboard="openDashboard" />
 
     <!-- 四个跳转入口：读数只报数，明细在各自菜单页 -->
     <nav class="dev-home__entries" aria-label="开发者工作台入口">
@@ -197,9 +214,34 @@ function openMyOrder(requirementId: string) {
 
     <!-- 收入提现弹窗：与收益钱包页共用同一个，提交成功后只回刷钱包读数 -->
     <DevWithdrawalDialog ref="withdrawDialog" @submitted="reloadWallet" />
+
+    <!-- 实时看板：总览的全屏版，不是独立页面。返回键回到总览。 -->
+    <div v-if="dashboardOpen" class="dev-dashboard-fullscreen" role="dialog" aria-modal="true" aria-label="实时看板">
+      <div class="dev-dashboard-fullscreen__bar">
+        <TButton variant="outline" @click="closeDashboard">返回总览</TButton>
+      </div>
+      <DevRealtimeDashboardView />
+    </div>
   </div>
 </template>
 
 <style scoped src="./../components/dev/dev-home-page.css"></style>
 
 <style scoped src="./../components/dev/dev-home-responsive.css"></style>
+
+<style scoped>
+.dev-dashboard-fullscreen {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  overflow-y: auto;
+  background: var(--73-bg, #f5f7fb);
+  padding: 16px 20px 32px;
+}
+
+.dev-dashboard-fullscreen__bar {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 12px;
+}
+</style>
