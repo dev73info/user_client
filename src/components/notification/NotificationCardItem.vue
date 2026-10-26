@@ -1,11 +1,11 @@
 <script setup lang="ts">
 import type { NotificationCard, NotificationKind } from '@/shared/notifications'
-import { ChatDotRound, Clock, Service, TButton, TIcon } from 'ui_73info'
+import { ChatDotRound, Clock, Service, Warning, TButton, TIcon } from 'ui_73info'
 
 /**
  * 一条系统通知（`<li class="wb-item">` 那一层）。
  *
- * 两类来源在后端字段与可做的动作上都不同，但卡片形状统一：左侧类别图标 + 中间标题与正文行 +
+ * 三类来源在后端字段与可做的动作上都不同，但卡片形状统一：左侧类别图标 + 中间标题与正文行 +
  * 右侧时间与动作。类别色由 `--nc-accent` 决定（色条、图标底、类别徽标共用同一支颜色），
  * 这个变量由页面根元素上的 `--nc-*` 令牌提供，组件自己不带色值。
  *
@@ -28,6 +28,8 @@ function kindIcon(kind: NotificationKind) {
       return ChatDotRound
     case 'after-sales':
       return Service
+    case 'comment-warning':
+      return Warning
   }
 }
 </script>
@@ -99,6 +101,10 @@ function kindIcon(kind: NotificationKind) {
 
 .notifications-card--after-sales {
   --nc-accent: var(--nc-accent-after-sales);
+}
+
+.notifications-card--comment-warning {
+  --nc-accent: var(--nc-accent-comment-warning);
 }
 
 /* 左侧 3px 类别色条：不增加一列布局，只做视觉锚点，扫列表时先按颜色分出类别 */

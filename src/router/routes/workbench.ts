@@ -95,14 +95,14 @@ export const workbenchRoutes: RouteRecordRaw[] = [
       },
       { path: 'team-resources', redirect: { name: 'workbench-team-resources' } },
       {
-        // 系统通知：三类系统消息（历史沟通公开申请、解除合作案件、资源过户）聚合展示。
+        // 系统通知：公开申请、解除合作案件与本人评论警告聚合展示。
         // 开发者工作台另有 dev-notifications（见 router/dev.ts），同一个页面、各自一条路由。
         path: 'notifications',
         name: 'workbench-notifications',
         component: () => import('@/views/NotificationCenterView.vue'),
         meta: {
           title: '系统通知',
-          description: '平台公告、评论警告与待确认事项',
+          description: '公开申请、评论警告与解除合作案件',
         },
       },
       {

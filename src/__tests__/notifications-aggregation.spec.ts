@@ -1,23 +1,40 @@
-/** 两类来源合成通知列表：排序、跨类别唯一键、各类卡片的标题 / 正文 / 弱信息行。 */
+/** 三类来源合成通知列表：排序、跨类别唯一键、各类卡片的标题 / 正文 / 弱信息行。 */
 import { describe, expect, it } from 'vitest'
 
 import { buildNotificationCards, parseNoticeTime } from '@/shared/notifications'
-import { afterSalesCase, disclosure, kinds, keys } from './helpers/notifications'
+import { afterSalesCase, commentWarning, disclosure, kinds, keys } from './helpers/notifications'
 
 describe('system notification aggregation', () => {
-  it('两类来源合成一张列表并按时间倒序', () => {
+  it('三类来源合成一张列表并按时间倒序', () => {
     const cards = buildNotificationCards({
       disclosures: [disclosure()],
       afterSales: [afterSalesCase()],
+      commentWarnings: [commentWarning()],
       username: 'dev_old',
     })
 
-    // 两类时间格式不一样（公开申请与解除合作案件带时区），聚合层统一解析后再排序：四月 → 三月
-    expect(kinds(cards)).toEqual(['after-sales', 'history-disclosure'])
-    // 跨类别唯一的键：公开申请用自增 id，解除合作案件用业务号 `case_no`，不会撞
-    expect(keys(cards)).toEqual(['after-sales-AFTERSALES_1_abc', 'history-disclosure-3'])
-    expect(cards[0]?.kindLabel).toBe('解除合作案件')
-    expect(cards[1]?.kindLabel).toBe('公开申请')
+    // 三类时间格式统一在聚合层解析后再排序：五月 → 四月 → 三月
+    expect(kinds(cards)).toEqual(['comment-warning', 'after-sales', 'history-disclosure'])
+    expect(keys(cards)).toEqual([
+      'comment-warning-2',
+      'after-sales-AFTERSALES_1_abc',
+      'history-disclosure-3',
+    ])
+    expect(cards[0]?.kindLabel).toBe('评论警告')
+    expect(cards[1]?.kindLabel).toBe('解除合作案件')
+    expect(cards[2]?.kindLabel).toBe('公开申请')
+  })
+
+  it('评论警告卡片直接展示快照、原因和时间，不依赖源评论是否存在', () => {
+    const [card] = buildNotificationCards({
+      commentWarnings: [commentWarning()],
+      username: 'cust',
+    })
+
+    expect(card?.title).toBe('评论 #5')
+    expect(card?.body).toEqual(['评论快照：含有联系方式的测试评论', '警告原因：包含广告联系方式'])
+    expect(card?.meta).toBe('2026-05-01 10:00:00 由 admin 发出警告')
+    expect(card?.canVote).toBe(false)
   })
 
   it('解除合作案件卡片只读：标题取需求编号，正文写清诉求额度与当前状态', () => {
