@@ -22,6 +22,8 @@ const props = defineProps<{
   /** 推广归因轻提示（比例 > 0 且本次带推广码时才为 true） */
   showPromoHint: boolean
   channel: ResourcePayChannelUi
+  /** 积分资源只显示积分支付，不再拉起现金渠道。 */
+  pointsMode: boolean
   /** 后端拒绝原因，持久展示在弹窗里 */
   error: string
   /** 下单进行中：渠道按钮与兑换按钮都置灰 */
@@ -84,7 +86,7 @@ const emit = defineEmits<{
           本单由推广者带来，卖家将从净收中支付约定分成。
         </p>
 
-        <div class="payment-options" role="radiogroup" aria-label="支付方式选择">
+        <div v-if="!pointsMode" class="payment-options" role="radiogroup" aria-label="支付方式选择">
           <button
             type="button"
             class="payment-option"
@@ -110,6 +112,16 @@ const emit = defineEmits<{
           >
             <img class="payment-option-icon" src="/icons/wechat-pay.png" alt="" />
             微信
+          </button>
+        </div>
+        <div v-else class="payment-options" role="radiogroup" aria-label="支付方式选择">
+          <button
+            type="button"
+            class="payment-option active"
+            :disabled="submitting"
+            @click="emit('select-channel', 'points')"
+          >
+            积分支付
           </button>
         </div>
 

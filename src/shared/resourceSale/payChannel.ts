@@ -1,6 +1,6 @@
-export type ResourcePayChannelUi = 'alipay' | 'wechat' | 'union'
+export type ResourcePayChannelUi = 'alipay' | 'wechat' | 'union' | 'points'
 
-/** 前端支付渠道 → 后端 pay_channel（不含 points）。 */
+/** 前端支付渠道 → 后端 pay_channel。 */
 
 export function toResourcePayChannel(channel: ResourcePayChannelUi): string {
   if (channel === 'wechat') {
@@ -8,6 +8,9 @@ export function toResourcePayChannel(channel: ResourcePayChannelUi): string {
   }
   if (channel === 'union') {
     return 'union'
+  }
+  if (channel === 'points') {
+    return 'points'
   }
   return 'alipay'
 }

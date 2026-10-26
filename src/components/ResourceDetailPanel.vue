@@ -87,6 +87,7 @@ const {
   submit: submitPurchase,
 } = useResourcePurchase({
   getResourceId: () => resource.value?.id ?? null,
+  getPricePoints: () => Number(resource.value?.price_points ?? 0),
   getPromoShareBps: () => Number(resource.value?.promo_share_bps ?? 0),
   refreshDetail: refreshResourceDetail,
 })
@@ -332,6 +333,7 @@ watch(
     :price-label="priceLabel"
     :show-promo-hint="showPromoHint"
     :channel="purchaseChannel"
+    :points-mode="Number(resource?.price_points ?? 0) > 0"
     :error="purchaseError"
     :submitting="purchaseSubmitting"
     :order-no="purchaseOrder?.order_no ?? ''"

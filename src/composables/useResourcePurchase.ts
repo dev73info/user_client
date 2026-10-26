@@ -17,6 +17,8 @@ import { useAuthStore } from '@/stores/auth'
 export type UseResourcePurchaseOptions = {
   /** 当前资源编号（没有编号就不下单） */
   getResourceId: () => number | null
+  /** 积分买断价；大于 0 时只允许积分支付。 */
+  getPricePoints: () => number
   /** 资源当前的推广分成比例（bps），只用来决定要不要出推广轻提示 */
   getPromoShareBps: () => number
   /** 付款成功 / 后端回「已购买」后刷新详情（资源实体还在父级手里） */
@@ -38,6 +40,7 @@ export function useResourcePurchase(options: UseResourcePurchaseOptions) {
   const panelOpen = ref(false)
   const submitting = ref(false)
   const channel = ref<ResourcePayChannelUi>('alipay')
+  const pointsMode = computed(() => Number(options.getPricePoints()) > 0)
   /** 购买失败原因：原样透传后端文案（toast 只停 2.6 秒，用户在弹窗里还要能再看到一次） */
   const error = ref('')
   /** 切换支付渠道防抖，避免连点支付宝/微信刷出一堆订单 */
@@ -116,8 +119,8 @@ export function useResourcePurchase(options: UseResourcePurchaseOptions) {
       startReusePoll()
       return
     }
-    channel.value = 'alipay'
-    if (hasReusableCashQr('alipay')) {
+    channel.value = pointsMode.value ? 'points' : 'alipay'
+    if (!pointsMode.value && hasReusableCashQr('alipay')) {
       startReusePoll()
       return
     }
@@ -134,6 +137,9 @@ export function useResourcePurchase(options: UseResourcePurchaseOptions) {
   }
 
   function selectChannel(next: ResourcePayChannelUi) {
+    if (pointsMode.value !== (next === 'points')) {
+      return
+    }
     if (channel.value === next && (qrDataUrl.value || submitting.value)) {
       return
     }
@@ -198,6 +204,7 @@ export function useResourcePurchase(options: UseResourcePurchaseOptions) {
       const cashOrder = await createResourcePurchase(auth.token, resourceId, {
         pay_channel: channel.value,
         client_platform: getAdapayClientPlatform() === 'mobile' ? 'mobile' : 'pc',
+        ...(pointsMode.value ? { amount_points: Number(options.getPricePoints()) } : {}),
         // R029：推广码随单下发，后端按比例归因
         ...(promoCode.value ? { promo_code: promoCode.value } : {}),
       })

@@ -2474,7 +2474,7 @@ export interface paths {
         put?: never;
         /**
          * 注册并直接登录
-         * @description **免登录**：注册成功当场下发会话令牌，响应体与登录完全相同（`AuthResponse`）。**`password` 必须是 `md5(明文密码)`：32 位小写十六进制。** 客户端自己做一次 md5、取小写 hex，把结果放进 `password`；服务端只接受这个格式，直接传明文、大写 hex 或位数不对一律回 400`INVALID_ARGUMENT`，文案是「密码需为 32 位小写十六进制字符串（md5 后的密码）」。服务端不会再对收到的串做一次 md5，而是立刻用 Argon2id 加盐再哈希落库，所以入库的哈希既不等于明文也不等于客户端发来的 md5 串。用户名与邮箱都要过格式校验；用户名已占用回 409 `USERNAME_TAKEN`，邮箱已被注册回 409 `EMAIL_TAKEN`。两个占用判定都排在消费验证码之前，所以一次因重名 / 邮箱冲突失败的注册不会把验证码烧掉。`email_code` 必填，是 `/api/auth/send-register-email-code` 发出的那一封；验证码不存在 / 已使用 / 不匹配 / 已过期回 400，尝试次数超限回 429。`invite_code`、`share_type`、`share_target_id`、`request_dev_role` 当前只做兼容接收，不影响结果。同一邮箱每 15 分钟 12 次，超限 429。
+         * @description **免登录**：注册成功当场下发会话令牌，响应体与登录完全相同（`AuthResponse`）。**`password` 必须是 `md5(明文密码)`：32 位小写十六进制。** 客户端自己做一次 md5、取小写 hex，把结果放进 `password`；服务端只接受这个格式，直接传明文、大写 hex 或位数不对一律回 400`INVALID_ARGUMENT`，文案是「密码需为 32 位小写十六进制字符串（md5 后的密码）」。服务端不会再对收到的串做一次 md5，而是立刻用 Argon2id 加盐再哈希落库，所以入库的哈希既不等于明文也不等于客户端发来的 md5 串。用户名与邮箱都要过格式校验；用户名已占用回 409 `USERNAME_TAKEN`，邮箱已被注册回 409 `EMAIL_TAKEN`。两个占用判定都排在消费验证码之前，所以一次因重名 / 邮箱冲突失败的注册不会把验证码烧掉。`email_code` 必填，是 `/api/auth/send-register-email-code` 发出的那一封；验证码不存在 / 已使用 / 不匹配 / 已过期回 400，尝试次数超限回 429。`invite_code`、`share_type`、`share_target_id` 会在注册前校验，成功后保存邀请关系、分享归因和相应徽章。`request_dev_role` 只接收；开发者资格仍走实名与协议签署后的申请流程。同一邮箱每 15 分钟 12 次，超限 429。
          */
         post: operations["auth_register"];
         delete?: never;
@@ -12702,6 +12702,7 @@ export interface components {
         CreateCommentWarningRequest: {
             /** Format: int64 */
             comment_id: number;
+            /** @description community（社区帖子评论）或 resource（资源评论）。 */
             comment_type: string;
             reason: string;
         };
@@ -12811,9 +12812,14 @@ export interface components {
              *     新增字段，老前端不传；传了就必须等于当前价格，否则 409。
              */
             amount_fen?: number | null;
+            /**
+             * Format: int64
+             * @description 买家声明的应付积分；只在积分渠道下核对。
+             */
+            amount_points?: number | null;
             /** @description 客户端形态：`pc`（缺省）/ `mobile`。 */
             client_platform?: string | null;
-            /** @description 支付渠道：`alipay` / `wx_pub` / `wx_lite` / `union` / `fast_pay` / `online_pay`。 */
+            /** @description 支付渠道：`alipay` / `wx_pub` / `wx_lite` / `union` / `fast_pay` / `online_pay` / `points`。 */
             pay_channel: string;
             /** @description legacy 的推广码。推广分成不在本 crate 范围内，收到后忽略（不影响下单）。 */
             promo_code?: string | null;
@@ -12877,6 +12883,11 @@ export interface components {
             ownership_type?: string | null;
             /** @description 所属平台。 */
             platform: string;
+            /**
+             * Format: int64
+             * @description 积分买断价。
+             */
+            price_points?: number | null;
             /**
              * Format: int32
              * @description 推广分成比例（万分比）。
@@ -14293,11 +14304,7 @@ export interface components {
             source_type?: string | null;
             username: string;
         };
-        /**
-         * @description 登录请求体。字段与老接口保持一致。
-         *
-         *     两步验证与人机校验字段当前只做兼容接收，对应能力在后续阶段接入。
-         */
+        /** @description 登录请求体：密码、两步验证码与人机校验令牌。 */
         LoginRequest: {
             /** @description md5(明文密码)：32 位小写十六进制。服务端只接受这个格式，明文一律 400。 */
             password: string;
@@ -15653,16 +15660,11 @@ export interface components {
             /** @description 状态。 */
             status: string;
         };
-        /**
-         * @description 注册请求体。字段与老接口保持一致。
-         *
-         *     邮箱验证码、邀请码、人机校验等字段当前只做兼容接收，
-         *     对应能力（邮件、邀请、Turnstile）在后续阶段接入。
-         */
+        /** @description 注册请求体：账号、邀请归因与人机校验分别交给对应服务处理。 */
         RegisterRequest: {
             /** @description 主邮箱。 */
             email?: string;
-            /** @description 邮箱验证码。当前阶段尚未接入邮件服务，字段保留但不校验。 */
+            /** @description 注册邮箱验证码。 */
             email_code?: string;
             /** @description 邀请码。 */
             invite_code?: string | null;
@@ -18137,6 +18139,11 @@ export interface components {
             ownership_type?: string | null;
             /** @description 所属平台。 */
             platform?: string | null;
+            /**
+             * Format: int64
+             * @description 积分买断价。
+             */
+            price_points?: number | null;
             /**
              * Format: int32
              * @description 推广分成比例（万分比）。
@@ -25619,7 +25626,7 @@ export interface operations {
                     "application/json": components["schemas"]["AuthResponse"];
                 };
             };
-            /** @description 用户名 / 邮箱格式非法，`password` 不是 32 位小写十六进制，或邮箱验证码不可用 */
+            /** @description 注册参数、邀请参数或邮箱验证码不可用 */
             400: {
                 headers: {
                     [name: string]: unknown;
@@ -25649,6 +25656,13 @@ export interface operations {
             };
             /** @description 验证码服务未配置或内部错误 */
             500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 邀请服务未装配 */
+            503: {
                 headers: {
                     [name: string]: unknown;
                 };
