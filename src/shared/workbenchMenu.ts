@@ -173,6 +173,12 @@ export function buildMenuGroups(realnameApproved: boolean): WorkbenchMenuGroup[]
         { label: '我的发票', name: 'workbench-invoices', description: '获取发票、查看与下载' },
         { label: '优惠券中心', name: 'workbench-coupons', description: '查看券包并复制券码' },
         {
+          label: '勋章与邀请',
+          name: 'workbench-badges',
+          description: '查看与佩戴徽章、邀请好友与邀请记录',
+          activeNames: ['workbench-invite-leaderboard'],
+        },
+        {
           label: '我的已购',
           name: 'workbench-resource-purchases',
           description: '已购数字资源，退款由卖家或平台发起',

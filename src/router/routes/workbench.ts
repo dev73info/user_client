@@ -76,6 +76,23 @@ export const workbenchRoutes: RouteRecordRaw[] = [
         },
       },
       {
+        path: 'invite',
+        name: 'workbench-invite',
+        redirect: { name: 'workbench-badges' },
+      },
+      {
+        path: 'invite/leaderboard',
+        name: 'workbench-invite-leaderboard',
+        component: () => import('@/views/InviteLeaderboardView.vue'),
+        meta: { title: '邀请排行榜', description: '查看周榜与总榜' },
+      },
+      {
+        path: 'badges',
+        name: 'workbench-badges',
+        component: () => import('@/views/BadgeCenterView.vue'),
+        meta: { title: '勋章与邀请', description: '查看徽章与邀请记录' },
+      },
+      {
         path: 'resource-purchases',
         name: 'workbench-resource-purchases',
         component: () => import('@/views/MyResourcePurchasesView.vue'),
