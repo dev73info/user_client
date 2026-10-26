@@ -8,6 +8,10 @@
   gap: 16px;
 }
 
+.portal-resource-browser--no-filters {
+  grid-template-columns: minmax(0, 1fr);
+}
+
 /* 三条卡面（筛选栏、卡片、空态）共用描边与底色；三处子组件都不再覆写这两个属性，所以放在父级作用域即可 */
 /* 层级靠描边与底色，不用投影（本轮重设计口径：卡片去阴影改描边） */
 .portal-resource-browser__filters,

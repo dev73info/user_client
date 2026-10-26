@@ -196,7 +196,10 @@ watch(activeFilterChips, (chips) => emit('filters-change', chips), { immediate: 
 </script>
 
 <template>
-  <section class="portal-resource-browser">
+  <section
+    class="portal-resource-browser"
+    :class="{ 'portal-resource-browser--no-filters': filterSections.length === 0 }"
+  >
     <ResourceCatalogFilterMenu
       :sections="filterSections"
       @toggle-tag="toggleTag"
