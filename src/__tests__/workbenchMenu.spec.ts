@@ -58,9 +58,10 @@ describe('buildMenuGroups', () => {
 })
 
 describe('开发者菜单', () => {
-  it('一级条目按动线平铺：总览 → 资源 → 需求大厅 → 我的接单', () => {
+  it('一级条目按动线平铺：总览 → 实时看板 → 资源 → 需求大厅 → 我的接单', () => {
     expect(devWorkbenchItems.map((item) => item.label)).toEqual([
       '工作台总览',
+      '实时看板',
       '资源项目',
       '需求大厅',
       '我的接单',

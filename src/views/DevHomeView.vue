@@ -16,9 +16,8 @@ import { CHIP_TONES } from '@/shared/devHomeDisplay'
 /**
  * 开发者工作台总览：三档读数 + 钱包读数 + 近期到账 + 我的需求 + 我的资源 + 四个跳转入口。
  *
- * 数据只来自三个契约端点（钱包概览 / 我的需求 / 我的资源），全部由 `useDevHomeDashboard` 取；
- * 后端没有「仪表盘」聚合接口，也没有实时看板——原先那套 WebSocket 快照、交付列表、动态流与
- * 漏斗在 `openapi.json` 里没有对应路径，已整体删除，不做「未上线」占位。
+ * 本页三份读数由 `useDevHomeDashboard` 取；订单、资金、交付、漏斗与动态流的实时快照
+ * 在独立的「实时看板」页（`/workbench/developer/dashboard`），使用 2.0 看板 REST/WS 契约。
  */
 
 /**
