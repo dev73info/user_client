@@ -179,4 +179,39 @@ describe('ResourceDetailPanel 挂载烟测', () => {
     expect(note.get('strong').text()).toBe('红石时钟')
     expect(note.text()).not.toContain('**')
   })
+
+  it('首次加载失败后，重试只重取当前资源和版本并展示详情', async () => {
+    mocks.getResource.mockRejectedValueOnce(new Error('资源服务暂不可用'))
+    const wrapper = mountPanel()
+    await flushPromises()
+
+    const alert = wrapper.get('.resource-detail-page__load-error')
+    expect(alert.attributes('role')).toBe('alert')
+    expect(alert.text()).toContain('资源服务暂不可用')
+    expect(wrapper.find('.resource-detail-page__title').exists()).toBe(false)
+
+    let finishRetry: (() => void) | undefined
+    mocks.getResource.mockImplementationOnce(
+      () =>
+        new Promise<PublicMcResourceItem>((resolve) => {
+          finishRetry = () => resolve(resource)
+        }),
+    )
+    const retry = wrapper.get('button[aria-label="重新加载资源详情"]')
+    await retry.trigger('click')
+    await retry.trigger('click')
+    finishRetry?.()
+    await flushPromises()
+
+    expect(mocks.getResource).toHaveBeenCalledTimes(2)
+    expect(mocks.listVersions).toHaveBeenCalledTimes(2)
+    expect(mocks.getResource).toHaveBeenNthCalledWith(1, 7, null)
+    expect(mocks.getResource).toHaveBeenNthCalledWith(2, 7, null)
+    expect(mocks.listVersions).toHaveBeenNthCalledWith(1, 7, null)
+    expect(mocks.listVersions).toHaveBeenNthCalledWith(2, 7, null)
+    expect(wrapper.get('.resource-detail-page__title').text()).toBe('红石自动化整合包')
+    expect(wrapper.find('.resource-detail-page__load-error').exists()).toBe(false)
+    expect(mocks.push).not.toHaveBeenCalled()
+    wrapper.unmount()
+  })
 })

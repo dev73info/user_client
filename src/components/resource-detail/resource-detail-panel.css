@@ -216,3 +216,8 @@
   color: var(--73-ink);
   font-size: 15px;
 }
+
+.resource-detail-page__retry {
+  margin-top: 8px;
+  min-height: 44px;
+}

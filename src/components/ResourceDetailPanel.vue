@@ -28,7 +28,7 @@ import ResourceDetailCover from '@/components/resource-detail/ResourceDetailCove
 import ResourceDetailSummaryCard from '@/components/resource-detail/ResourceDetailSummaryCard.vue'
 import ResourcePurchaseDialog from '@/components/resource-detail/ResourcePurchaseDialog.vue'
 import ResourceVersionList from '@/components/resource-detail/ResourceVersionList.vue'
-import { TLoading, TMessage } from 'ui_73info'
+import { TButton, TLoading, TMessage } from 'ui_73info'
 
 /**
  * 资源详情面板：资源列表页（ResourceCatalogView）里就地渲染的详情内容。
@@ -210,6 +210,9 @@ async function loadResource() {
     loadError.value = '没有拿到有效的资源编号。'
     return
   }
+  if (loading.value) {
+    return
+  }
 
   loading.value = true
   loadError.value = ''
@@ -306,9 +309,18 @@ watch(
           <ResourceCommentSection :resource-id="resource.id" :is-published="isPublishedResource" />
         </section>
       </template>
-      <div v-else-if="loadError" class="resource-detail-page__load-error">
+      <div v-else-if="loadError" class="resource-detail-page__load-error" role="alert">
         <strong>资源详情加载失败</strong>
         <span>{{ loadError }}</span>
+        <TButton
+          class="resource-detail-page__retry"
+          variant="outline"
+          :disabled="loading"
+          aria-label="重新加载资源详情"
+          @click="loadResource"
+        >
+          重新加载
+        </TButton>
       </div>
     </TLoading>
   </div>
