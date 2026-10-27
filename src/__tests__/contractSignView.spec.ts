@@ -21,6 +21,7 @@ const mocks = vi.hoisted(() => ({
   initiateSign: vi.fn(),
   syncStatus: vi.fn(),
   previewUrl: vi.fn(),
+  getMyRealnameVerification: vi.fn(),
 }))
 
 vi.mock('@/api/contracts', async (orig) => ({
@@ -30,6 +31,10 @@ vi.mock('@/api/contracts', async (orig) => ({
   initiateAsignSign: mocks.initiateSign,
   syncAsignSignStatus: mocks.syncStatus,
   fetchAsignContractPreviewUrl: mocks.previewUrl,
+}))
+vi.mock('@/api/realname', async (orig) => ({
+  ...(await orig<typeof import('@/api/realname')>()),
+  getMyRealnameVerification: mocks.getMyRealnameVerification,
 }))
 vi.mock('@/api/requirements', async (orig) => ({
   ...(await orig<typeof import('@/api/requirements')>()),
@@ -130,6 +135,11 @@ beforeEach(() => {
   })
   mocks.syncStatus.mockResolvedValue(contractDetail())
   mocks.previewUrl.mockResolvedValue('')
+  mocks.getMyRealnameVerification.mockResolvedValue({
+    status: 'approved',
+    real_name: '张三',
+    id_card_no_masked: '110***********1234',
+  })
 
   // 换掉 `window.location`：只记账、不导航，断言的是「跳转函数收到了哪个 URL」
   let href = ''
@@ -292,6 +302,51 @@ describe('合同签署页：最小挂载烟测', () => {
     expect(mocks.initiateSign).not.toHaveBeenCalled()
     expect(redirectTo).not.toHaveBeenCalled()
 
+    wrapper.unmount()
+  })
+
+  it('本人实名姓名优先于合同里的平台账号', async () => {
+    useAuthStore().username = 'client_flow_03562487'
+    mocks.getMyRealnameVerification.mockResolvedValue({
+      status: 'approved',
+      real_name: '樊波',
+      id_card_no_masked: '532***************',
+    })
+    const { wrapper } = await render(
+      { requirement_id: 'REQ-1' },
+      {
+        party_a_name: 'client_flow_03562487',
+        party_a_username: 'client_flow_03562487',
+        party_a_real_name: undefined,
+      },
+    )
+
+    expect(wrapper.find('.signer-fields').text()).toContain('实名姓名樊波')
+    expect(wrapper.find('.signer-fields').text()).not.toContain('实名姓名client_flow_03562487')
+    expect(signButton(wrapper)?.attributes('disabled')).toBeUndefined()
+    wrapper.unmount()
+  })
+
+  it('未通过实名时不能用平台账号充当签署身份', async () => {
+    useAuthStore().username = 'client_flow_03562487'
+    mocks.getMyRealnameVerification.mockResolvedValue({
+      status: 'pending',
+      real_name: '樊波',
+      id_card_no_masked: '532***************',
+    })
+    const { wrapper } = await render(
+      { requirement_id: 'REQ-1' },
+      {
+        party_a_name: 'client_flow_03562487',
+        party_a_username: 'client_flow_03562487',
+        party_a_real_name: undefined,
+      },
+    )
+
+    expect(wrapper.find('.signer-fields').text()).toContain('未完成实名认证')
+    expect(wrapper.find('.signer-fields').text()).not.toContain('实名姓名client_flow_03562487')
+    expect(signButton(wrapper)?.attributes('disabled')).toBeDefined()
+    expect(wrapper.find('.identity-warning').text()).toContain('实名认证审核通过后才能签署')
     wrapper.unmount()
   })
 })

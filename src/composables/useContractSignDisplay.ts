@@ -53,8 +53,7 @@ type UseContractSignDisplayOptions = {
 export function useContractSignDisplay(options: UseContractSignDisplayOptions) {
   const { contract, requirementArchive, signing, localDocumentFallback } = options
 
-  // 合同 DTO 不带实名姓名与脱敏证件号，本人这一方的签署身份只能从实名资料补。
-  // 缺了它，「实名认证审核通过后才能签署」那道闸门永远不放行——平台协议因此签不了。
+  // 签署放行以本人已审核通过的实名资料为准；合同账号不能充当实名身份。
   const { selfRealname } = useContractSignerRealname(options.token)
 
   const currentParty = computed(() => contractPartyOf(contract.value, options.username()))
@@ -68,7 +67,9 @@ export function useContractSignDisplay(options: UseContractSignDisplayOptions) {
         )
       : null,
   )
-  const signerIdentityReady = computed(() => isSignerIdentityReady(currentSigner.value))
+  const signerIdentityReady = computed(() =>
+    Boolean(selfRealname.value && isSignerIdentityReady(currentSigner.value)),
+  )
   const canSignContract = computed(() => contractCanSign(contract.value, currentParty.value))
   // 从需求列表 / 需求会话的「查看合同」进来时，页面同样要能看清是谁在什么时候签的。
   // 只有在本人还需要签署时才收起这些区块，保持签署流程页只聚焦签署动作。
