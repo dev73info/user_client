@@ -241,6 +241,8 @@ declare module 'vue' {
     SoldPurchaseRefundDialog: typeof import('./src/components/payment/SoldPurchaseRefundDialog.vue')['default']
     SoldPurchasesTable: typeof import('./src/components/dev/SoldPurchasesTable.vue')['default']
     SpotlightResourceSection: typeof import('./src/components/home/SpotlightResourceSection.vue')['default']
+    SupportChatPanel: typeof import('./src/components/support/SupportChatPanel.vue')['default']
+    SupportChatWidget: typeof import('./src/components/SupportChatWidget.vue')['default']
     TeamCardItem: typeof import('./src/components/team/TeamCardItem.vue')['default']
     TeamCreateDialog: typeof import('./src/components/team/TeamCreateDialog.vue')['default']
     TeamDetailSummaryStrip: typeof import('./src/components/team/TeamDetailSummaryStrip.vue')['default']
