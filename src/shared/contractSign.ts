@@ -206,6 +206,12 @@ export function contractStatusTone(status: number): string {
   return CONTRACT_STATUS_TONES[status] ?? 'waiting'
 }
 
+export function hasInitiatedSigning(
+  logs: readonly { action: string }[] | null | undefined,
+): boolean {
+  return (logs ?? []).some((log) => log.action === 'sign_initiated')
+}
+
 /** 签署记录里每个动作的中文说明；后端给了 `note` 时优先用 `note`。 */
 const SIGNING_LOG_LABELS: Record<string, string> = {
   created: '合同已创建',
@@ -213,6 +219,7 @@ const SIGNING_LOG_LABELS: Record<string, string> = {
   party_a_signed: '甲方已签署',
   party_b_signed: '乙方已签署',
   party_c_signed: '丙方已签署',
+  sign_initiated: '已发起电子签署',
   asign_sign_initiated: '已发起电子签署',
   asign_sign_completed: '电子签署完成',
   signed: '签署已完成',

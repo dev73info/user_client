@@ -13,7 +13,7 @@ import {
 } from '@/api/contracts'
 import { fetchRequirementDetail, type RequirementItem } from '@/api/requirements'
 import { CONTRACT_STATUS } from '@/shared/contracts'
-import { contractStatusTone } from '@/shared/contractSign'
+import { contractStatusTone, hasInitiatedSigning } from '@/shared/contractSign'
 import { ARCHIVED_WRITE_BLOCKED_MESSAGE } from '@/shared/requirementArchive'
 import { useAuthStore } from '@/stores/auth'
 
@@ -127,9 +127,8 @@ export function useContractSign(options: UseContractSignOptions) {
       // 若同步后仍未签署，则启动轮询持续同步，直到爱签侧完成或合同变为已签署。
       const item = contract.value
       if (item && item.status === CONTRACT_STATUS.signing) {
-        const hasInitiated = (item.signing_logs ?? []).some(
-          (log) => log.action === 'asign_sign_initiated',
-        )
+        const hasInitiated =
+          Boolean(item.channel_contract_no) || hasInitiatedSigning(item.signing_logs)
         if (hasInitiated) {
           try {
             contract.value = await syncAsignSignStatus(auth.token, item.id)

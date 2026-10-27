@@ -57,6 +57,7 @@ export type ContractDetail = ContractAttachmentFields & {
   template_name?: string
   requirement_id?: string | null
   contract_no: string
+  channel_contract_no?: string | null
   title: string
   content: string
   content_sha256: string
