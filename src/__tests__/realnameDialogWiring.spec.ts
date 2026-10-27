@@ -134,6 +134,8 @@ describe('材料认证弹窗', () => {
   it('个人只显示材料、手机号和认证方式，点击后直接跳爱签', async () => {
     const wrapper = await renderPage()
     expect(document.querySelector('input[placeholder="请输入真实姓名"]')).toBeNull()
+    expect(document.body.textContent).toContain('个人人脸活体认证')
+    expect(document.body.textContent).not.toContain('（153）')
     const file = pickFile(0, 'front.jpg')
     await flushPromises()
     await fillMobile('请输入本人手机号')
@@ -157,7 +159,8 @@ describe('材料认证弹窗', () => {
     state.draft.form.authType = 'ENTERPRISE'
     await nextTick()
     expect(state.draft.form.identifyType).toBe(369)
-    expect(document.body.textContent).toContain('企业线下盖章授权认证（369，默认）')
+    expect(document.body.textContent).toContain('企业线下盖章授权认证')
+    expect(document.body.textContent).not.toContain('（369，默认）')
 
     pickFile(0, 'front.jpg')
     await flushPromises()
