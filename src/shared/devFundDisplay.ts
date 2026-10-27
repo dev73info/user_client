@@ -20,13 +20,19 @@ import type { DevWalletIncomeItem, DevWithdrawalRecord } from '@/api/devWallet'
 /** 三类资金动作：类型标签 + 金额着色 + 那一行的说明怎么拼。 */
 export type FundRecordKind = 'income' | 'income_reversal' | 'income_withdrawal'
 
+export type FundAmountPart = {
+  amount: number
+  /** 该笔分账的支付阶段：定金 / 尾款 / 收入。 */
+  label: string
+}
+
 export type FundRecord = {
   key: string
   kind: FundRecordKind
   id: string
   amount: number
-  /** 同一需求单合并后的分笔金额；未合并时为空。 */
-  amountBreakdown?: number[]
+  /** 收入的分笔金额与阶段；悬停每笔金额时展示。 */
+  amountParts?: FundAmountPart[]
   detail: string
   account: string
   status: string
@@ -50,13 +56,24 @@ export function money(value?: number | null) {
   return `¥${value.toFixed(2)}`
 }
 
+/** 后端支付阶段 → 金额悬停文案。 */
+export function paymentStageLabel(stage?: string | null) {
+  if (stage === 'deposit') {
+    return '定金'
+  }
+  if (stage === 'final') {
+    return '尾款'
+  }
+  return '收入'
+}
+
 /** 金额列：同一需求合并后把分笔摆出来，如 `¥0.80（¥0.16 + ¥0.64）`。 */
-export function fundAmount(record: Pick<FundRecord, 'amount' | 'amountBreakdown'>) {
-  const parts = record.amountBreakdown ?? []
+export function fundAmount(record: Pick<FundRecord, 'amount' | 'amountParts'>) {
+  const parts = record.amountParts ?? []
   if (parts.length < 2) {
     return money(record.amount)
   }
-  return `${money(record.amount)}（${parts.map((part) => money(part)).join(' + ')}）`
+  return `${money(record.amount)}（${parts.map((part) => money(part.amount)).join(' + ')}）`
 }
 
 /**
@@ -139,10 +156,13 @@ export function buildFundRecords(sources: Partial<FundRecordSources> = {}): Fund
         String(second.paid_at ?? '').localeCompare(String(first.paid_at ?? '')) ||
         second.gross_amount_cny - first.gross_amount_cny,
     )[0]!
-    const breakdown = records
-      .map((record) => record.gross_amount_cny)
-      .sort((first, second) => first - second)
-    const amount = breakdown.reduce((total, part) => total + part, 0)
+    const amountParts = records
+      .map((record) => ({
+        amount: record.gross_amount_cny,
+        label: paymentStageLabel(record.payment_stage),
+      }))
+      .sort((first, second) => first.amount - second.amount)
+    const amount = amountParts.reduce((total, part) => total + part.amount, 0)
 
     // 「收入」行永远记**到账**了多少。此前这里取的是净额，一次售后退款就把那一行改写成
     // ¥0.00——既看不出这笔钱到过账，也和「累计收入」对不上。
@@ -151,7 +171,7 @@ export function buildFundRecords(sources: Partial<FundRecordSources> = {}): Fund
       kind: 'income',
       id: requirementId,
       amount,
-      amountBreakdown: breakdown.length > 1 ? breakdown : undefined,
+      amountParts,
       detail: latest.title,
       account: `${latest.requirement_id} · ${latest.customer}`,
       status: '已入账',

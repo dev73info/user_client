@@ -11,12 +11,12 @@ import { LIST_PAGE_SIZES } from '@/composables/useClientPagination'
 import { useDevFundRecords } from '@/composables/useDevFundRecords'
 import {
   KIND_LABELS,
-  fundAmount,
   isInflowKind,
   kindTagTone,
+  money,
   type FundRecordKind,
 } from '@/shared/devFundDisplay'
-import { TOption, TPagination, TSelect, TTable, TTableColumn, TTag } from 'ui_73info'
+import { TOption, TPagination, TSelect, TTable, TTableColumn, TTag, TTooltip } from 'ui_73info'
 
 const props = defineProps<{ income: DevWalletIncomeItem[]; keyword?: string }>()
 
@@ -49,8 +49,25 @@ defineExpose({ loadRecords })
           <span
             class="dev-withdraw-table__amount"
             :class="{ 'dev-withdraw-table__amount--income': isInflowKind(scope.row.kind) }"
-            >{{ fundAmount(scope.row) }}</span
           >
+            <template v-if="scope.row.amountParts?.length === 1">
+              <TTooltip :content="scope.row.amountParts[0].label">
+                <span class="dev-withdraw-table__part">{{ money(scope.row.amount) }}</span>
+              </TTooltip>
+            </template>
+            <template v-else-if="scope.row.amountParts?.length > 1">
+              {{ money(scope.row.amount) }}（<template
+                v-for="(part, index) in scope.row.amountParts"
+                :key="`${part.label}:${part.amount}`"
+              >
+                <TTooltip :content="part.label">
+                  <span class="dev-withdraw-table__part">{{ money(part.amount) }}</span>
+                </TTooltip>
+                <span v-if="index < scope.row.amountParts.length - 1"> + </span> </template
+              >）
+            </template>
+            <template v-else>{{ money(scope.row.amount) }}</template>
+          </span>
         </template>
       </TTableColumn>
       <TTableColumn label="来源 / 收款账户" min-width="240" show-overflow-tooltip>
@@ -107,5 +124,11 @@ defineExpose({ loadRecords })
 
 .dev-withdraw-table__amount--income {
   color: var(--dev-cyan);
+}
+
+.dev-withdraw-table__part {
+  border-bottom: 1px dashed currentColor;
+  cursor: help;
+  white-space: nowrap;
 }
 </style>
