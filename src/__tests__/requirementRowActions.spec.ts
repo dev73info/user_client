@@ -100,6 +100,17 @@ describe('主操作优先级', () => {
     ).toBe(null)
   })
 
+  it('已付定金且已交付时，验收优先于取消需求', () => {
+    const item = requirement({
+      status: 'deposit_paid',
+      delivered_at: '2026-10-09 11:00:00',
+    })
+    const rowFacts = facts({ contract: SIGNED, versions: [version('v1')] })
+
+    expect(primaryRowAction(item, rowFacts)).toEqual({ key: 'acceptance', label: '验收' })
+    expect(moreRowActions(item, rowFacts).map((entry) => entry.key)).toContain('cancel')
+  })
+
   it('验收优先于无担保的「确认完成」', () => {
     const developing = requirement({
       status: 'in_development',

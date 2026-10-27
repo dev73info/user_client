@@ -2081,6 +2081,110 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/audit/callback": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 审核结果回调（渠道）
+         * @description 渠道回调入口，**免登录**。按 `X-SmartDoc-Signature: sha256=<hex>`对**原始字节**验签（恒定时间比较）；未配置回调密钥时失败关闭（401）。按 `task_no` 更新任务；未知 `task_no` 返回 200 且不落库；重复回调在结论一致时幂等返回 200。
+         */
+        post: operations["audit_callback"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/audit/config": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 读取智能审核配置
+         * @description 需要 `audit.config.get`。配置存库、每次操作现读，保存即生效。`app_secret` / `callback_secret` 只回 `***`（已配置）或空串（未配置）。
+         */
+        get: operations["audit_config_get"];
+        /**
+         * 保存智能审核配置
+         * @description 需要 `audit.config.put`。密钥传 `***` 或空串表示**保持原值**：前端把 GET 回来的 `***` 原样提交即可，不会被覆盖成字面量。响应 `restart_required` 恒为 `false`——配置存库、每次操作现读，保存即生效。
+         */
+        put: operations["audit_config_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/audit/probe": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 探测智能审核通道
+         * @description 需要 `audit.config.get`，测的是**已保存**的配置。先 GET `{base_url}/health`（5 秒超时）判断 `reachable`；再对 `{base_url}/open/v1/projects/{project_code}/tasks/SDV-PROBE-0000`做签名 GET，404 / 200 视为 `credentials_ready = true`，401 / 403 为 false。配置缺失或不全也返回 200 的结构化结论，不报错。
+         */
+        post: operations["audit_probe"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/audit/tasks": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 审核任务列表
+         * @description 需要 `audit.task.read`。按 `updated_at` 倒序；`limit` 缺省 20、范围 1~100；`kind` 可筛 `post` / `resource` / `contract_attachment` / `requirement`。`total` 是满足条件的总数，不受 `limit` 影响。
+         */
+        get: operations["audit_task_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/audit/tasks/{id}/refresh": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 刷新审核任务
+         * @description 需要 `audit.task.refresh`。用已保存的配置对渠道做签名 GET（`{base_url}/open/v1/projects/{project_code}/tasks/{task_no}`），把状态与结论写回本地任务并返回任务视图。任务还没有渠道编号时回 400；配置未启用 / 凭据不全回 409；渠道报错回 502。
+         */
+        post: operations["audit_task_refresh"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/auth/account": {
         parameters: {
             query?: never;
@@ -12044,6 +12148,133 @@ export interface components {
             /** @description 审核备注；驳回时必填（驳回理由）。 */
             note?: string | null;
         };
+        /** @description 回调报文（仅用于 OpenAPI 文档；服务端按原始字节验签后解析）。 */
+        AuditCallbackBody: {
+            /** @description 错误说明。 */
+            error?: string | null;
+            /** @description 完成时间（RFC3339 或东八区 `YYYY-MM-DD HH:MM:SS`）。 */
+            finished_at?: string | null;
+            /** @description 标签列表。 */
+            labels?: unknown;
+            /** @description 原因列表。 */
+            reasons?: unknown;
+            /** @description 结论。 */
+            result?: string | null;
+            /** @description 结果明细。 */
+            result_detail?: unknown;
+            /** @description 风险等级。 */
+            risk_level?: string | null;
+            /**
+             * Format: double
+             * @description 评分。
+             */
+            score?: number | null;
+            /** @description 状态（`QUEUED` / `PROCESSING` / `REVIEW_PENDING` / `SUCCESS` / `FAILED` / `STOPPED` / `SKIPPED`）。 */
+            status?: string | null;
+            /** @description 摘要。 */
+            summary?: string | null;
+            /** @description 渠道任务编号。 */
+            task_no?: string | null;
+        };
+        /** @description 配置视图。 */
+        AuditConfigView: {
+            /** @description 应用 Key。 */
+            app_key: string;
+            /** @description 应用密钥：`***` 表示已配置，空串表示未配置。 */
+            app_secret: string;
+            /** @description 合同附件审核编码。 */
+            audit_code_contract_attachment: string;
+            /** @description 帖子审核编码。 */
+            audit_code_post: string;
+            /** @description 需求单审核编码。 */
+            audit_code_requirement: string;
+            /** @description 资源审核编码。 */
+            audit_code_resource: string;
+            /** @description 渠道基址。 */
+            base_url: string;
+            /** @description 回调签名密钥：`***` 表示已配置，空串表示未配置。 */
+            callback_secret: string;
+            /** @description 服务端拼好的回调地址（`{public_base_url}/api/audit/callback`）。 */
+            callback_url: string;
+            /** @description 总开关。 */
+            enabled: boolean;
+            /** @description 项目编码。 */
+            project_code: string;
+            /** @description 对外可访问的站点基址。 */
+            public_base_url: string;
+            /** @description 最后修改时间（东八区 `YYYY-MM-DD HH:MM:SS`）。 */
+            updated_at: string;
+            /** @description 最后修改人。 */
+            updated_by?: string | null;
+        };
+        /** @description 探活结果。 */
+        AuditProbeResponse: {
+            /** @description 凭据是否可用（渠道返回 200 / 404 即视为可用）。 */
+            credentials_ready: boolean;
+            /** @description 结论说明。 */
+            detail: string;
+            /**
+             * Format: int64
+             * @description 耗时（毫秒）。
+             */
+            elapsed_ms: number;
+            /** @description 渠道是否可达（健康检查有响应即算可达）。 */
+            reachable: boolean;
+        };
+        /** @description 任务列表响应。 */
+        AuditTaskListResponse: {
+            /** @description 当前页任务。 */
+            items: components["schemas"]["AuditTaskView"][];
+            /**
+             * Format: int64
+             * @description 满足条件的总数（不受 `limit` 影响）。
+             */
+            total: number;
+        };
+        /** @description 任务视图。 */
+        AuditTaskView: {
+            /** @description 幂等键。 */
+            biz_key: string;
+            /**
+             * Format: int64
+             * @description 业务对象主键。
+             */
+            entity_id: number;
+            /** @description 错误说明。 */
+            error?: string | null;
+            /** @description 完成时间。 */
+            finished_at?: string | null;
+            /**
+             * Format: int64
+             * @description 主键。
+             */
+            id: number;
+            /** @description 业务类别。 */
+            kind: string;
+            /** @description 标签列表。 */
+            labels: unknown;
+            /** @description 原因列表。 */
+            reasons: unknown;
+            /** @description 结论。 */
+            result: string;
+            /** @description 风险等级。 */
+            risk_level?: string | null;
+            /**
+             * Format: double
+             * @description 评分。
+             */
+            score?: number | null;
+            /** @description 状态。 */
+            status: string;
+            /** @description 提交时间。 */
+            submitted_at: string;
+            /** @description 摘要。 */
+            summary?: string | null;
+            /** @description 渠道任务编号。 */
+            task_no?: string | null;
+            /** @description 更新时间。 */
+            updated_at: string;
+        };
         AuthResponse: {
             /** @description 主角色。 */
             role: string;
@@ -18506,6 +18737,75 @@ export interface components {
             name?: string | null;
             /** @description 备注。 */
             note?: string | null;
+        };
+        /**
+         * @description 更新配置的请求体。
+         *
+         *     所有字段都有默认值；`app_secret` / `callback_secret` 传 `***` 或空串表示保持原值。
+         */
+        UpdateAuditConfigRequest: {
+            /**
+             * @description 应用 Key。
+             * @default
+             */
+            app_key: string;
+            /**
+             * @description 应用密钥；`***` / 空串保持原值。
+             * @default
+             */
+            app_secret: string;
+            /**
+             * @description 合同附件审核编码。
+             * @default
+             */
+            audit_code_contract_attachment: string;
+            /**
+             * @description 帖子审核编码。
+             * @default
+             */
+            audit_code_post: string;
+            /**
+             * @description 需求单审核编码。
+             * @default
+             */
+            audit_code_requirement: string;
+            /**
+             * @description 资源审核编码。
+             * @default
+             */
+            audit_code_resource: string;
+            /**
+             * @description 渠道基址（`http(s)://` 开头，空串表示不配置）。
+             * @default
+             */
+            base_url: string;
+            /**
+             * @description 回调签名密钥；`***` / 空串保持原值。
+             * @default
+             */
+            callback_secret: string;
+            /**
+             * @description 总开关。
+             * @default false
+             */
+            enabled: boolean;
+            /**
+             * @description 项目编码。
+             * @default
+             */
+            project_code: string;
+            /**
+             * @description 对外可访问的站点基址（拼回调地址与图片绝对化）。
+             * @default
+             */
+            public_base_url: string;
+        };
+        /** @description 更新配置的响应。 */
+        UpdateAuditConfigResponse: {
+            /** @description 保存后的配置（密钥已掩码）。 */
+            config: components["schemas"]["AuditConfigView"];
+            /** @description 是否需要重启：配置存库、每次操作现读，恒为 `false`。 */
+            restart_required: boolean;
         };
         /** @description 设置主页背景请求体（传地址，不传文件）。 */
         UpdateBackgroundRequest: {
@@ -25312,6 +25612,280 @@ export interface operations {
             };
             /** @description 权限查询失败，或写库失败 */
             500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    audit_callback: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AuditCallbackBody"];
+            };
+        };
+        responses: {
+            /** @description 已处理（未知任务编号同样 200） */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 报文不合法或缺少 task_no / status */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 验签失败或未配置回调密钥 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    audit_config_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 当前配置 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AuditConfigView"];
+                };
+            };
+            /** @description 未登录 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 没有 audit.config.get 权限 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 读取配置失败 */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    audit_config_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateAuditConfigRequest"];
+            };
+        };
+        responses: {
+            /** @description 保存后的配置 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UpdateAuditConfigResponse"];
+                };
+            };
+            /** @description URL 不是 http(s) 开头 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 未登录 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 没有 audit.config.put 权限 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 保存失败 */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    audit_probe: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 探测结论 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AuditProbeResponse"];
+                };
+            };
+            /** @description 未登录 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 没有 audit.config.get 权限 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    audit_task_list: {
+        parameters: {
+            query?: {
+                /** @description 条数，缺省 20，范围 1~100。 */
+                limit?: number;
+                /** @description 业务类别（`post` / `resource` / `contract_attachment` / `requirement`）。 */
+                kind?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 任务列表 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AuditTaskListResponse"];
+                };
+            };
+            /** @description kind 不合法 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 未登录 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 没有 audit.task.read 权限 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    audit_task_refresh: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description 本地任务 ID */
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 刷新后的任务 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AuditTaskView"];
+                };
+            };
+            /** @description 任务还没有渠道编号 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 未登录 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 没有 audit.task.refresh 权限 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 任务不存在 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 审核服务未启用或凭据不全 */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 渠道报错或查无此任务 */
+            502: {
                 headers: {
                     [name: string]: unknown;
                 };
