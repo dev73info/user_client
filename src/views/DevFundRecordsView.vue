@@ -11,16 +11,18 @@ import { LIST_PAGE_SIZES } from '@/composables/useClientPagination'
 import { useDevFundRecords } from '@/composables/useDevFundRecords'
 import {
   KIND_LABELS,
+  fundAmount,
   isInflowKind,
   kindTagTone,
-  money,
   type FundRecordKind,
 } from '@/shared/devFundDisplay'
 import { TOption, TPagination, TSelect, TTable, TTableColumn, TTag } from 'ui_73info'
 
 const props = defineProps<{ income: DevWalletIncomeItem[]; keyword?: string }>()
 
-const { loading, page, pageSize, recordTotal, pagedRecords } = useDevFundRecords(props)
+const { loading, page, pageSize, recordTotal, pagedRecords, loadRecords } = useDevFundRecords(props)
+
+defineExpose({ loadRecords })
 </script>
 
 <template>
@@ -42,12 +44,12 @@ const { loading, page, pageSize, recordTotal, pagedRecords } = useDevFundRecords
           </TTag>
         </template>
       </TTableColumn>
-      <TTableColumn label="金额" width="140" align="right">
+      <TTableColumn label="金额" width="230" align="right">
         <template #default="scope">
           <span
             class="dev-withdraw-table__amount"
             :class="{ 'dev-withdraw-table__amount--income': isInflowKind(scope.row.kind) }"
-            >{{ money(scope.row.amount) }}</span
+            >{{ fundAmount(scope.row) }}</span
           >
         </template>
       </TTableColumn>

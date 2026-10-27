@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest'
 import {
   buildFundRecords,
   filterFundRecords,
+  fundAmount,
   incomeWithdrawalStatusText,
   isInflowKind,
   kindTagTone,
@@ -109,7 +110,37 @@ describe('buildFundRecords', () => {
       income: [{ ...income, paid_at: undefined as unknown as string }],
       incomeWithdrawals: [withdrawal],
     })
-    expect(records.map((record) => record.id)).toEqual(['wd-1', 'pay-1'])
+    expect(records.map((record) => record.id)).toEqual(['wd-1', 'req-1'])
+  })
+
+  it('同一需求的两笔分账合并为一行，金额展示总额与分笔明细', () => {
+    const records = buildFundRecords({
+      income: [
+        {
+          ...income,
+          payment_id: 'pay-final',
+          gross_amount_cny: 0.64,
+          paid_at: '2026-09-08 13:00:01',
+        },
+        {
+          ...income,
+          payment_id: 'pay-deposit',
+          gross_amount_cny: 0.16,
+          paid_at: '2026-09-08 13:00:00',
+        },
+      ],
+    })
+
+    expect(records).toHaveLength(1)
+    expect(records[0]).toMatchObject({
+      kind: 'income',
+      amount: 0.8,
+      amountBreakdown: [0.16, 0.64],
+      time: '2026-09-08 13:00:01',
+    })
+    expect(records[0]?.reference).toContain('pay-deposit')
+    expect(records[0]?.reference).toContain('pay-final')
+    expect(fundAmount(records[0]!)).toBe('¥0.80（¥0.16 + ¥0.64）')
   })
 
   it('客户实收高于开发者份额时，备注点明差额由平台承担', () => {
