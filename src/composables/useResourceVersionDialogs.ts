@@ -7,6 +7,7 @@ import {
   type McResourcePayload,
   type McResourceVersionPayload,
 } from '@/api/mcResources'
+import { submitRequirementDelivery } from '@/api/requirements'
 import {
   isResourceArchiveLocked,
   RESOURCE_ARCHIVE_LOCKED_MESSAGE,
@@ -71,15 +72,19 @@ export function useResourceVersionDialogs(deps: {
     }
 
     publishing.value = true
+    const requirementId = deps.resource.value.requirement_id
     try {
       await createMcResourceVersion(auth.token, deps.resource.value.id, {
         version: version.trim(),
         file,
         note: sanitizeRichHtml(note.trim()) || null,
       })
+      if (requirementId) {
+        await submitRequirementDelivery(auth.token, requirementId)
+      }
       createVersionDialogVisible.value = false
       await deps.loadPage()
-      TMessage.success('新版本已发布')
+      TMessage.success(requirementId ? '交付版本已提交，等待客户验收' : '新版本已发布')
     } catch (error) {
       const message = error instanceof Error ? error.message : '发布新版本失败'
       TMessage.error(message)

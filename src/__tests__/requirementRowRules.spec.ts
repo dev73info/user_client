@@ -65,7 +65,10 @@ describe('行内判定：合同状态', () => {
     expect(canPay(item, facts({ contract: AWAITING_B }))).toBe(false)
     expect(canPay(item, facts({ contract: null }))).toBe(false)
 
-    const developing = requirement({ status: 'in_development' })
+    const developing = requirement({
+      status: 'in_development',
+      delivered_at: '2026-10-09 11:00:00',
+    })
     const factsWithVersions = facts({ contract: SIGNED, versions: [version('v1.0.0')] })
     expect(canOpenAcceptance(developing, factsWithVersions)).toBe(true)
     expect(
@@ -74,7 +77,11 @@ describe('行内判定：合同状态', () => {
   })
 
   it('无担保模式不看合同：不能支付，但开发中可以直接确认完成', () => {
-    const selfManaged = requirement({ payment_mode: 'self_managed', status: 'in_development' })
+    const selfManaged = requirement({
+      payment_mode: 'self_managed',
+      status: 'in_development',
+      delivered_at: '2026-10-09 11:00:00',
+    })
     expect(canPay(requirement({ payment_mode: 'self_managed' }), facts({ contract: SIGNED }))).toBe(
       false,
     )
@@ -84,7 +91,10 @@ describe('行内判定：合同状态', () => {
   })
 
   it('尾款 / 验收要求至少发布过一个版本', () => {
-    const item = requirement({ status: 'in_development' })
+    const item = requirement({
+      status: 'in_development',
+      delivered_at: '2026-10-09 11:00:00',
+    })
     expect(canOpenAcceptance(item, facts({ contract: SIGNED, versions: [] }))).toBe(false)
     expect(canRequestFinalPayment(item, facts({ contract: SIGNED, versions: [] }))).toBe(false)
     expect(

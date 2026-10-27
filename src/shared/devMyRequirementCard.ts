@@ -182,7 +182,10 @@ export function contractStatusTone(
 
 /** 方案 B：交付物就是绑定资源项目的资源版本，直接走资源项目版本接口。 */
 export function canSubmitDeliveryVersion(item: RequirementItem): boolean {
-  return item.bound_resource_id != null && ['in_development', 'pending_final'].includes(item.status)
+  const canDeliver =
+    item.status === 'in_development' ||
+    (item.payment_mode === 'platform_guarantee' && item.status === 'deposit_paid')
+  return item.bound_resource_id != null && canDeliver
 }
 
 export function canReportBreach(

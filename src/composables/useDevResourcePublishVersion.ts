@@ -3,6 +3,7 @@ import { ref } from 'vue'
 import { TMessage } from 'ui_73info'
 
 import { createMcResourceVersion, type McResourcePayload } from '@/api/mcResources'
+import { submitRequirementDelivery } from '@/api/requirements'
 import {
   isResourceArchiveLocked,
   RESOURCE_ARCHIVE_LOCKED_MESSAGE,
@@ -62,14 +63,18 @@ export function useDevResourcePublishVersion() {
     }
 
     publishingResourceId.value = selectedResource.value.id
+    const requirementId = selectedResource.value.requirement_id
     try {
       await createMcResourceVersion(auth.token, selectedResource.value.id, {
         version: version.trim(),
         file,
         note: note.trim() || null,
       })
+      if (requirementId) {
+        await submitRequirementDelivery(auth.token, requirementId)
+      }
       publishDialogVisible.value = false
-      TMessage.success('新版本已发布')
+      TMessage.success(requirementId ? '交付版本已提交，等待客户验收' : '新版本已发布')
     } catch (error) {
       const message = error instanceof Error ? error.message : '发布新版本失败'
       TMessage.error(message)

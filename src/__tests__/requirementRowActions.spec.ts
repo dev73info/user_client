@@ -101,15 +101,25 @@ describe('主操作优先级', () => {
   })
 
   it('验收优先于无担保的「确认完成」', () => {
-    const developing = requirement({ status: 'in_development' })
+    const developing = requirement({
+      status: 'in_development',
+      delivered_at: '2026-10-09 11:00:00',
+    })
     expect(
       primaryRowAction(developing, facts({ contract: SIGNED, versions: [version('v1')] }))?.key,
     ).toBe('acceptance')
     expect(
-      primaryRowAction(requirement({ status: 'in_development', payment_mode: 'self_managed' }), {
-        contract: null,
-        versions: [version('v1')],
-      }),
+      primaryRowAction(
+        requirement({
+          status: 'in_development',
+          payment_mode: 'self_managed',
+          delivered_at: '2026-10-09 11:00:00',
+        }),
+        {
+          contract: null,
+          versions: [version('v1')],
+        },
+      ),
     ).toEqual({ key: 'finish', label: '确认完成' })
   })
 

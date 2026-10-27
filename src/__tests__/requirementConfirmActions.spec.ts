@@ -84,12 +84,13 @@ function requirement(patch: Partial<RequirementItem> = {}): RequirementItem {
     bound_resource_id: 42,
     bound_resource_title: '订单页模板',
     bound_resource_version_count: 1,
+    delivered_at: '2026-09-03 10:00:00',
     development_cycle_days: 15,
     ...patch,
   } as RequirementItem
 }
 
-/** 双方已签 + 发过一版：担保模式的验收 / 尾款入口都在这个组合下才开。 */
+/** 双方已签 + 已交付一版：担保模式的验收 / 尾款入口都在这个组合下才开。 */
 function signedFacts(versions: PublicMcResourceVersionItem[] = [version(1)]): RequirementRowFacts {
   return {
     contract: { has_contract: true, status: 2, party_a_signed: true, party_b_signed: true },
