@@ -24,6 +24,7 @@ export const MAX_COMPANY_ADDRESS_LEN = 200
 /** 实名草稿的全部字段：表单实例与纯函数共用同一份形状，字段名与后端口径一致。 */
 export type RealnameDraftFields = {
   authType: RealnameAuthType
+  identifyType: number
   idCardType: number
   realName: string
   idCardNo: string
@@ -33,6 +34,7 @@ export type RealnameDraftFields = {
   businessLicenseNo: string
   operatorName: string
   operatorIdCardNo: string
+  guardianRequired: boolean
   guardianConsent: boolean
   guardianConsentFile: string
   businessLicenseFile: string
@@ -115,27 +117,12 @@ export function idCardAgeBand(
   return 'adult'
 }
 
-/**
- * 个人主体的三项必填（姓名 / 证件号 / 手机号）有没有缺。
- *
- * 只在个人主体下算数：企业表单里这三项本来就不展示（经办人是另一组字段），
- * 少了这道门，企业主体的「提交」按钮会被它一直按着不放。
- */
 export function isIdentityCardDraftMissing(fields: RealnameDraftFields): boolean {
   if (fields.authType !== 'IDENTITY_CARD') return false
-  return !fields.realName.trim() || !fields.idCardNo.trim() || !fields.mobile.trim()
+  return !fields.legalCertFrontFile.trim() || !fields.mobile.trim()
 }
 
-/**
- * 企业进件资料里**只由营业执照识别带出、不在表单里展示**的四项。
- *
- * 渠道创建企业会员时这四项逐项必填，但都能从营业执照照片识别（省市编码由识别出的注册地址
- * 映射成渠道编码），所以不再让用户手填。识别不出时用户唯一的出路是重传一张更清晰的照片，
- * 因此校验失败必须指向「重新上传营业执照」，不能指回一个界面上根本没有的输入框。
- *
- * 个人主体（含港澳台居住证）没有这四项，直接返回空——否则个人 / 港澳台提交会被一条
- * 「缺企业资料」拦住。
- */
+/** 收款开户资料缺失检查；认证发起不再由前端回填这些字段。 */
 export function derivedEnterpriseMissing(fields: RealnameDraftFields): string[] {
   const missing: string[] = []
   if (!isBusinessAuthType(fields.authType)) return missing
@@ -146,24 +133,13 @@ export function derivedEnterpriseMissing(fields: RealnameDraftFields): string[] 
   return missing
 }
 
-/** 企业主体的必填项（含上面那四项「识别带出」的进件资料与法人证件有效期）。 */
 export function isEnterpriseDraftMissing(fields: RealnameDraftFields): boolean {
+  if (!isBusinessAuthType(fields.authType)) return false
   return (
-    !fields.companyName.trim() ||
-    !fields.unifiedSocialCreditCode.trim() ||
-    !fields.operatorName.trim() ||
-    !fields.operatorIdCardNo.trim() ||
-    !fields.mobile.trim() ||
-    !fields.businessLicenseFile.trim() ||
-    // 法人身份证正反面（开户进件三张证照里的另外两张）：缺任一张渠道都建不了企业会员
     !fields.legalCertFrontFile.trim() ||
     !fields.legalCertBackFile.trim() ||
-    // 企业进件资料里有四项不在表单里（见 derivedEnterpriseMissing）：
-    // 缺任一项渠道都会拒绝创建企业会员，之后连对公收款账户都开不了
-    derivedEnterpriseMissing(fields).length > 0 ||
-    // 法人证件有效期起止两项：OCR 会自动填，填不上就得用户补，缺任一项渠道必拒
-    !fields.legalCertBeginOn.trim() ||
-    !fields.legalCertExpiresOn.trim()
+    !fields.businessLicenseFile.trim() ||
+    !fields.mobile.trim()
   )
 }
 
@@ -172,52 +148,21 @@ export function isMinorGuardianMissing(fields: RealnameDraftFields): boolean {
   return !fields.guardianConsent || !fields.guardianConsentFile.trim()
 }
 
-/**
- * 提交前校验：返回要提示给用户的那句话，空串表示可以提交。
- *
- * 企业主体的四项进件资料（所在省市 / 注册地址 / 经营范围 / 营业执照有效期）不在表单里，
- * 只能由营业执照识别带出，所以缺了只能是「重传照片」，提示也要这么写——指回一个界面上
- * 根本没有的输入框会让人无从下手。
- */
-export function validateRealnameDraft(
-  fields: RealnameDraftFields,
-  today: Date = new Date(),
-): string {
+export function validateRealnameDraft(fields: RealnameDraftFields): string {
+  if (fields.authType === 'IDENTITY_CARD' && ![151, 152, 153].includes(fields.identifyType)) {
+    return '请选择个人认证方式'
+  }
+  if (isBusinessAuthType(fields.authType) && ![351, 369].includes(fields.identifyType)) {
+    return '请选择企业认证方式'
+  }
+  if (!fields.legalCertFrontFile.trim()) return '请上传身份证人像面照片'
   if (isBusinessAuthType(fields.authType)) {
-    if (!fields.companyName.trim()) return '请填写企业名称'
-    if (!fields.unifiedSocialCreditCode.trim()) return '请填写统一社会信用代码'
-    if (!fields.operatorName.trim()) return '请填写经办人姓名'
-    if (!fields.operatorIdCardNo.trim()) return '请填写经办人身份证号'
-    if (!isValidMobile(fields.mobile)) return '请填写正确的手机号'
-    if (!fields.businessLicenseFile.trim()) return '请上传营业执照'
-    // 法人身份证正反面：企业开户进件三张证照里的另外两张，缺哪张提示哪张。
-    if (!fields.legalCertFrontFile.trim()) return '请上传法人身份证人像面照片'
     if (!fields.legalCertBackFile.trim()) return '请上传法人身份证国徽面照片'
-    // 识别不出这四项就说明照片没识别全，出路是重传，而不是「去填一下」。
-    const derivedMissing = derivedEnterpriseMissing(fields)
-    if (derivedMissing.length) {
-      return `未能从营业执照识别出${derivedMissing.join('、')}，请重新上传更清晰的照片`
-    }
-    // 识别出的经营范围会按渠道上限截断（见 autoFillFromBusinessLicense）；历史记录可能超限，
-    // 重传一次营业执照会被重新截断，所以这里的出路同样是重传。
-    if (fields.businessScope.trim().length > MAX_BUSINESS_SCOPE_LEN) {
-      return `营业执照识别出的经营范围超过 ${MAX_BUSINESS_SCOPE_LEN} 字（渠道限制），请重新上传营业执照`
-    }
-    if (!/^\d{8}$/.test(fields.legalCertBeginOn.trim())) return '请选择法人证件有效期起始日'
-    if (!/^\d{8}$/.test(fields.legalCertExpiresOn.trim())) return '请选择法人证件有效期截止日'
-    return ''
+    if (!fields.businessLicenseFile.trim()) return '请上传营业执照'
   }
-
-  if (!fields.realName.trim() || !fields.idCardNo.trim()) {
-    return '请填写姓名和证件号'
-  }
-  if (!fields.mobile.trim()) return '请填写手机号'
   if (!isValidMobile(fields.mobile)) return '请填写正确的手机号'
-  const band = idCardAgeBand(fields.authType, fields.idCardNo, today)
-  if (band === 'under14') return '未满 14 周岁的未成年人不能进行实名认证'
-  if (band === 'minor' && !fields.guardianConsent) return '请确认已取得监护人同意'
-  if (band === 'minor' && !fields.guardianConsentFile.trim()) return '请上传监护人同意书'
-
+  if (fields.guardianRequired && !fields.guardianConsent) return '请确认已取得监护人同意'
+  if (fields.guardianRequired && !fields.guardianConsentFile.trim()) return '请上传监护人同意书'
   return ''
 }
 

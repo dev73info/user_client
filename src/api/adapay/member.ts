@@ -26,6 +26,7 @@ function toMemberStatus(account: SettlementAccount): AdapayMemberStatus {
     statusLabel: account.status_label,
     reviewNote: account.review_note,
     providerError: account.provider_error,
+    memberReady: account.member_ready,
     acceptsSettlement: account.accepts_settlement,
     updatedTime: account.updated_time,
   }

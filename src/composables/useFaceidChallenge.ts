@@ -214,8 +214,8 @@ export function useFaceidChallenge(options: FaceidChallengeOptions) {
     if (options.realname.value?.status !== 'pending') return
     if (faceidAuthUrl.value) return
     const authType = options.formAuthType()
-    // 企业认证：续发企业认证二维码
-    if (authType === 'ENTERPRISE') {
+    // 企业与个体工商户都走企业认证链接。
+    if (authType === 'ENTERPRISE' || authType === 'SOLE_PROPRIETOR') {
       await resumeEnterpriseFaceid()
       return
     }

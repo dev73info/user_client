@@ -65,6 +65,12 @@ export const realnameRoutes: MockRoute[] = [
   },
   {
     method: 'POST',
+    path: '/realname/asign/quick-start',
+    note: '材料认证入口（mock 不伪造真实渠道链接）',
+    handler: () => jsonResponse({ auth_url: '', biz_id: null, manual_review: false }),
+  },
+  {
+    method: 'POST',
     path: '/realname/asign/resume',
     note: '恢复实名二维码（占位）',
     handler: () =>

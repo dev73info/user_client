@@ -49,6 +49,13 @@ describe('收款账户阶段', () => {
     expect(settleAccountStage('active', false)).toBe('ready')
   })
 
+  it('会员已就绪但还没绑卡时是 ready，不是 reviewing 或可收款', () => {
+    expect(settleAccountStage('pending', false, true)).toBe('ready')
+    expect(isSettleUnderReview('pending', true)).toBe(false)
+    expect(settleAccountStage('pending', false, true)).not.toBe('bound')
+    expect(settleAccountStage('pending', false, false)).toBe('reviewing')
+  })
+
   it('渠道明确拒绝就是 failed，单独成一态而不是并进 none', () => {
     // BUG-013：并进 none 会显示成「待认证」，用户以为等着就行，而实际要回去核对资料。
     expect(settleAccountStage('failed', false)).toBe('failed')

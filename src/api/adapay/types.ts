@@ -60,6 +60,8 @@ export type AdapayMemberStatus = {
   reviewNote?: string | null
   /** 渠道侧失败原因，用于告诉用户「为什么没开通、接下来该补什么」。 */
   providerError?: string | null
+  /** 渠道会员已就绪，可以绑定结算账户；不等于已能收款。 */
+  memberReady?: boolean
   /** 能不能收分账款：状态可用且号码齐备（后端判定）。 */
   acceptsSettlement: boolean
   updatedTime?: string | null

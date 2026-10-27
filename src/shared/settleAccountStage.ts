@@ -3,6 +3,7 @@
  *
  * 事实源是契约端点 `GET /api/payment/settlement-account`（`SettlementAccountResponse`）：
  * - `status` ∈ `pending` / `active` / `under_review` / `failed` / `closed`（后端 `SettlementAccountStatus`）
+ * - `member_ready`：渠道会员已就绪，可以进入绑卡，但不代表已经能收款
  * - `accepts_settlement`：**能不能收分账款**的最终判定（状态可用且号码齐备）
  *
  * 两者要合成用户看得懂的阶段，口径写错一次就把用户引到错误的动作上：
@@ -42,8 +43,10 @@ export function isSettleBound(acceptsSettlement: boolean | null | undefined): bo
 export function settleAccountStage(
   status: SettlementAccountStatus | null | undefined,
   acceptsSettlement: boolean | null | undefined,
+  memberReady?: boolean,
 ): SettleAccountStage {
   if (isSettleBound(acceptsSettlement)) return 'bound'
+  if (memberReady) return 'ready'
   if (status === 'pending' || status === 'under_review') return 'reviewing'
   if (status === 'active') return 'ready'
   // 渠道已经给了否定结论：必须单独成一态。并进 `none` 会显示成「待认证」，
@@ -58,8 +61,11 @@ export function settleAccountStage(
  * 这期间**实名认证早已通过**、但结算账户绑不上，所以界面如实写「审核中」——
  * 写成「未设置」会让用户以为要自己再点一次绑定，而实际是渠道还没放行。
  */
-export function isSettleUnderReview(status: SettlementAccountStatus | null | undefined): boolean {
-  return status === 'under_review' || status === 'pending'
+export function isSettleUnderReview(
+  status: SettlementAccountStatus | null | undefined,
+  memberReady?: boolean,
+): boolean {
+  return !memberReady && (status === 'under_review' || status === 'pending')
 }
 
 /** 渠道已明确拒绝开通收款账户。`failed` 是唯一表示「渠道给了否定结论」的取值。 */

@@ -35,6 +35,7 @@ function record(patch: Partial<UserRealnameVerification> = {}): UserRealnameVeri
 function draft(patch: Partial<RealnameDraftFields> = {}): RealnameDraftFields {
   return {
     authType: 'ENTERPRISE',
+    identifyType: 369,
     idCardType: 1,
     realName: '',
     idCardNo: '',
@@ -44,6 +45,7 @@ function draft(patch: Partial<RealnameDraftFields> = {}): RealnameDraftFields {
     businessLicenseNo: '',
     operatorName: '张三',
     operatorIdCardNo: '110101199001011234',
+    guardianRequired: false,
     guardianConsent: false,
     guardianConsentFile: '',
     businessLicenseFile: 'https://cdn.example.com/bl.jpg',

@@ -35,7 +35,11 @@ export function useSettlementAccountLabels(options: SettlementAccountLabelsOptio
 
   /** 四态分开看：`failed` 是「去整改」不是「等」。 */
   const settleStage = computed(() =>
-    settleAccountStage(adapayMember.value?.onboardingStatus, adapayMember.value?.acceptsSettlement),
+    settleAccountStage(
+      adapayMember.value?.onboardingStatus,
+      adapayMember.value?.acceptsSettlement,
+      adapayMember.value?.memberReady,
+    ),
   )
 
   /** 已绑的账户是否还挂在旧主体上：主体变更后渠道侧账户不会自动跟着换，必须先说清原因。 */
@@ -66,7 +70,7 @@ export function useSettlementAccountLabels(options: SettlementAccountLabelsOptio
 
   /** 渠道是否还在审核中：审核期间绑不了对公账户。 */
   const settleUnderReview = computed(() =>
-    isSettleUnderReview(adapayMember.value?.onboardingStatus),
+    isSettleUnderReview(adapayMember.value?.onboardingStatus, adapayMember.value?.memberReady),
   )
 
   /** 「审核中」那句提示：企业与个人绑的不是同一种账户，不能共用一句写死对公账户的话。 */
