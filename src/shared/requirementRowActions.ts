@@ -92,8 +92,8 @@ export function primaryRowAction(
   }
   if (contractAction === 'sign') return { key: 'contract-sign', label: '签署合同' }
   if (canResubmit(item.status)) return { key: 'resubmit', label: '编辑' }
-  // 「取消需求」与「支付 / 验收 / 评价」在原来的 v-if 链里就是互斥的，这里保持同样的优先级。
-  if (!canCancel(item)) {
+  // 已交付订单优先验收；其余取消与支付 / 验收 / 评价互斥。
+  if (!canCancel(item) || canOpenAcceptance(item, facts)) {
     if (canPay(item, facts)) {
       return { key: 'pay', label: item.status === 'pending_final' ? '支付尾款' : '支付定金' }
     }
