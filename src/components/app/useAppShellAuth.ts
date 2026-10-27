@@ -9,7 +9,9 @@ import { TMessage } from 'ui_73info'
 
 import { useAuthStore } from '@/stores/auth'
 import { AUTH_UNAUTHORIZED_EVENT, type AuthUnauthorizedEventDetail } from '@/shared/api/authEvents'
-import { fetchTurnstileToken, isTurnstileEnabled } from '@/shared/turnstile'
+import { fetchTurnstileToken, getTurnstileSiteKey, isTurnstileEnabled } from '@/shared/turnstile'
+
+const CLOUDFLARE_TEST_SITE_KEY = '1x0000000000000000000000000000000AA'
 
 export function useAppShellAuth() {
   const auth = useAuthStore()
@@ -29,10 +31,14 @@ export function useAppShellAuth() {
     }
 
     try {
-      // `/auth/login` 与手动登录是同一个端点：后端开着 `[turnstile] enabled` 时一律要 token，
-      // 不带就必然 403 `missing_token`。这里离屏取一枚，取不到就按「未登录」继续，
-      // 不把本地便利功能的失败抛到启动流程里。
-      const turnstileToken = isTurnstileEnabled() ? await fetchTurnstileToken('login') : ''
+      // `/auth/login` 与手动登录是同一个端点，仍由后端校验账号密码与 token。
+      // 只有官方测试站点密钥才直接提交测试 token，避免本机挂件域名或脚本加载阻塞自动登录；
+      // 正式站点密钥必须继续通过 Cloudflare 取得真实 token，不能拿测试值代替。
+      const turnstileToken = isTurnstileEnabled()
+        ? getTurnstileSiteKey() === CLOUDFLARE_TEST_SITE_KEY
+          ? 'test'
+          : await fetchTurnstileToken('login')
+        : ''
       await auth.login(
         devAutoLoginCredentials.username,
         devAutoLoginCredentials.password,
