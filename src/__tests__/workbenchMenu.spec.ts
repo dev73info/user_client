@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
+import { workbenchRoutes } from '@/router/routes/workbench'
 import {
   buildMenuGroups,
   devWorkbenchItems,
@@ -25,13 +26,19 @@ describe('buildMenuGroups', () => {
     expect(buildMenuGroups(false).map((group) => group.key)).toEqual(['collaboration', 'account'])
   })
 
-  it('需求协作组包含我的需求和 AI 需求助手', () => {
+  it('我的需求只保留一个直达菜单，不再提供需求方 AI 助手', () => {
     const [collaboration] = buildMenuGroups(false)
 
-    expect(collaboration?.items.map((item) => item.name)).toEqual([
-      'workbench-requirements',
-      'workbench-assistant',
-    ])
+    expect(collaboration?.items.map((item) => item.name)).toEqual(['workbench-requirements'])
+  })
+
+  it('需求方旧助手地址直接回到我的需求', () => {
+    const assistant = workbenchRoutes
+      .find((route) => route.path === '/workbench')
+      ?.children?.find((route) => route.path === 'assistant')
+
+    expect(assistant?.redirect).toEqual({ name: 'workbench-requirements' })
+    expect(assistant?.name).not.toBe('workbench-assistant')
   })
 
   it('实名未通过时没有「我的合同」，通过后出现在账户服务里', () => {
@@ -60,11 +67,11 @@ describe('buildMenuGroups', () => {
 })
 
 describe('开发者菜单', () => {
-  it('一级条目按动线平铺，并保留 AI 需求助手入口', () => {
+  it('一级条目按动线平铺', () => {
     expect(devWorkbenchItems.map((item) => item.label)).toEqual([
       '工作台总览',
-      '实时看板',
       '资源项目',
+      '接入客户端',
       'AI 需求助手',
       '需求大厅',
       '我的接单',

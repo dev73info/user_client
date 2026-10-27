@@ -77,7 +77,6 @@ const routeNames = [
   'workbench',
   'workbench-requirements',
   'workbench-account',
-  'workbench-assistant',
   'workbench-authorized-apps',
   'workbench-tickets',
   'workbench-favorites',

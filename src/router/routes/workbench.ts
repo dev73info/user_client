@@ -41,12 +41,8 @@ export const workbenchRoutes: RouteRecordRaw[] = [
         component: () => import('@/views/CommunityListView.vue'),
         meta: { title: '我的收藏', description: '查看收藏的社区帖子' },
       },
-      {
-        path: 'assistant',
-        name: 'workbench-assistant',
-        component: () => import('@/views/RequirementAssistantView.vue'),
-        meta: { title: 'AI 需求助手', description: '对话梳理需求并生成可采纳草稿' },
-      },
+      // 需求方不再提供独立 AI 助手页面，旧链接直接回到需求列表。
+      { path: 'assistant', redirect: { name: 'workbench-requirements' } },
       {
         path: 'invoices',
         name: 'workbench-invoices',

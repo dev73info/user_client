@@ -75,10 +75,23 @@ describe('workbench mode switch', () => {
     const accountGroup = groups.find((group) =>
       group.find('.user-workbench__menu-group-head').text().includes('账户服务'),
     )!
-    expect(
-      accountGroup.findAll('.user-workbench__submenu-link').map((link) => link.text()),
-    ).toEqual(['账户详情', '我的合同', '我的发票', '优惠券中心', '我的已购'])
-    expect(accountGroup.findAll('.user-workbench__submenu-link')[3]?.attributes('href')).toBe(
+    const accountLinks = accountGroup.findAll('.user-workbench__submenu-link')
+    expect(accountLinks.map((link) => link.text())).toEqual([
+      '账户详情',
+      '已授权应用',
+      '工单中心',
+      '我的合同',
+      '我的发票',
+      '我的收藏',
+      '优惠券中心',
+      '积分中心',
+      '积分商城',
+      '我的权益',
+      '勋章与邀请',
+      '我的已购',
+      '过户与转移',
+    ])
+    expect(accountLinks.find((link) => link.text() === '优惠券中心')?.attributes('href')).toBe(
       '/workbench/workbench-coupons',
     )
     wrapper.unmount()
@@ -99,6 +112,8 @@ describe('workbench mode switch', () => {
     expect(devLinks.map((link) => link.text())).toEqual([
       '工作台总览',
       '资源项目',
+      '接入客户端',
+      'AI 需求助手',
       '需求大厅',
       '我的接单',
     ])

@@ -164,11 +164,6 @@ export function buildMenuGroups(realnameApproved: boolean): WorkbenchMenuGroup[]
           name: 'workbench-requirements',
           description: '查看支付、交付与验收进度',
         },
-        {
-          label: 'AI 需求助手',
-          name: 'workbench-assistant',
-          description: '对话梳理需求并生成草稿',
-        },
       ],
     },
     {
