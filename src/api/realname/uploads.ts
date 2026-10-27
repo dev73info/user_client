@@ -5,6 +5,7 @@ import type {
   GuardianConsentUploadResponse,
   LegalCertBackUploadResponse,
   LegalCertFrontUploadResponse,
+  OperatorCertFrontUploadResponse,
 } from './types'
 
 export async function uploadGuardianConsentFile(
@@ -50,8 +51,8 @@ export async function uploadBusinessLicenseFile(
 /**
  * 上传法人身份证**人像面**照片（企业开户进件三张证照之一）。
  *
- * 与营业执照不同，此接口**上传即落库**（后端写进 `realname_legal_cert.front_file`），
- * 进件时由另一个链路读取，所以返回值**不需要**再塞进提交实名的 payload。
+ * 此接口**上传即落库**（后端写进 `realname_legal_cert.front_file`），
+ * 返回路径随实名请求提交，供本次认证 OCR 与后续支付进件使用。
  */
 export async function uploadLegalCertFrontFile(
   token: string,
@@ -91,5 +92,25 @@ export async function uploadLegalCertBackFile(
       body: formData,
     },
     '上传法人身份证国徽面失败',
+  )
+}
+
+export async function uploadOperatorCertFrontFile(
+  token: string,
+  file: File,
+): Promise<OperatorCertFrontUploadResponse> {
+  const formData = new FormData()
+  formData.append('file', file)
+
+  return requestJson<OperatorCertFrontUploadResponse>(
+    '/realname/operator-cert-front-file',
+    {
+      method: 'POST',
+      headers: {
+        ...authHeader(token),
+      },
+      body: formData,
+    },
+    '上传经办人身份证人像面失败',
   )
 }

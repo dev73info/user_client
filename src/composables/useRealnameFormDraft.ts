@@ -21,6 +21,9 @@ export function useRealnameFormDraft() {
     businessLicenseNo: '',
     operatorName: '',
     operatorIdCardNo: '',
+    operatorIdentifyType: 153,
+    operatorCertFrontFile: '',
+    operatorMobile: '',
     guardianRequired: false,
     guardianConsent: false,
     guardianConsentFile: '',
@@ -59,6 +62,9 @@ export function useRealnameFormDraft() {
     form.legalCertBackFile = ''
     form.operatorName = ''
     form.operatorIdCardNo = ''
+    form.operatorIdentifyType = 153
+    form.operatorCertFrontFile = ''
+    form.operatorMobile = ''
     form.guardianRequired = false
     form.guardianConsent = false
     form.guardianConsentFile = ''

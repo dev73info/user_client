@@ -35,13 +35,15 @@ describe('实名材料必填清单', () => {
     ).toEqual(['企业所在省市', '企业注册地址', '经营范围', '营业执照有效期'])
   })
 
-  it('企业要求本次身份证两面、营业执照和手机号', () => {
+  it('企业要求法人、经办人材料及各自手机号', () => {
     expect(isEnterpriseDraftMissing(enterpriseDraft())).toBe(false)
     for (const patch of [
       { legalCertFrontFile: '' },
       { legalCertBackFile: '' },
       { businessLicenseFile: '' },
+      { operatorCertFrontFile: '' },
       { mobile: '' },
+      { operatorMobile: '' },
     ]) {
       expect(isEnterpriseDraftMissing(enterpriseDraft(patch))).toBe(true)
     }

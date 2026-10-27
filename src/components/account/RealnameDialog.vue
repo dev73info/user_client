@@ -35,6 +35,7 @@ const props = defineProps<{
   businessLicenseUploading: boolean
   legalCertFrontUploading: boolean
   legalCertBackUploading: boolean
+  operatorCertFrontUploading: boolean
   consentUploading: boolean
 }>()
 
@@ -45,6 +46,7 @@ const emit = defineEmits<{
   'business-license-picked': [file: File]
   'legal-cert-front-picked': [file: File]
   'legal-cert-back-picked': [file: File]
+  'operator-cert-front-picked': [file: File]
   'consent-picked': [file: File]
 }>()
 
@@ -94,6 +96,18 @@ watch(
         </TSelect>
       </TFormItem>
 
+      <TFormItem v-if="props.businessSelected" label="经办人认证方式" required>
+        <TSelect
+          v-model="form.operatorIdentifyType"
+          :disabled="props.locked || props.submitting"
+          style="width: 100%"
+        >
+          <TOption label="运营商三要素认证" :value="151" />
+          <TOption label="银行卡四要素认证" :value="152" />
+          <TOption label="人脸活体认证" :value="153" />
+        </TSelect>
+      </TFormItem>
+
       <TFormItem :label="props.businessSelected ? '法人身份证人像面' : '身份证人像面'" required>
         <RealnameMaterialUpload
           kind="legalCertFront"
@@ -123,15 +137,33 @@ watch(
             @picked="emit('business-license-picked', $event)"
           />
         </TFormItem>
+        <TFormItem label="经办人身份证人像面" required>
+          <RealnameMaterialUpload
+            kind="operatorCertFront"
+            :uploading="props.operatorCertFrontUploading"
+            :disabled="props.locked || props.submitting"
+            :file-name="form.operatorCertFrontFile"
+            @picked="emit('operator-cert-front-picked', $event)"
+          />
+        </TFormItem>
       </template>
 
-      <TFormItem label="手机号" required>
+      <TFormItem :label="props.businessSelected ? '法定代表人手机号' : '手机号'" required>
         <TInput
           v-model="form.mobile"
           inputmode="tel"
           :maxlength="11"
           :disabled="props.locked || props.submitting"
           :placeholder="props.businessSelected ? '请输入法定代表人手机号' : '请输入本人手机号'"
+        />
+      </TFormItem>
+      <TFormItem v-if="props.businessSelected" label="经办人手机号" required>
+        <TInput
+          v-model="form.operatorMobile"
+          inputmode="tel"
+          :maxlength="11"
+          :disabled="props.locked || props.submitting"
+          placeholder="请输入经办人手机号"
         />
       </TFormItem>
 

@@ -2,8 +2,8 @@
 /**
  * 证照 / 同意书的上传行：隐藏的原生文件选择框 + 「选择文件上传」按钮 + 一行状态说明。
  *
- * 从 `RealnameDialog` 里再拆一层的唯一原因：企业开户进件要传三张证照加一份同意书，
- * 四段几乎一样的标记会让实名弹窗自己顶到行数预算线上。四处的差别只有「收什么格式」
+ * 从 `RealnameDialog` 里再拆一层：企业开户进件与监护人认证都有多份材料，
+ * 重复的标记会让实名弹窗自己顶到行数预算线上。各行的差别只有「收什么格式」
  * 「没传时怎么提示」「文件名的兜底叫法」，正好是 `kind` 一张表。
  *
  * **点开文件选择框留在这里**：`<input>` 节点在本组件里，`ref` 拿不到跨组件边界，
@@ -34,6 +34,11 @@ const KINDS = {
     fallbackName: '法人身份证国徽面',
     accept: '.png,.jpg,.jpeg,.webp,image/png,image/jpeg,image/webp',
     hint: '请上传法人身份证国徽面照片（图片，10MB 以内）',
+  },
+  operatorCertFront: {
+    fallbackName: '经办人身份证人像面',
+    accept: '.png,.jpg,.jpeg,.webp,image/png,image/jpeg,image/webp',
+    hint: '请上传经办人身份证人像面照片（图片，10MB 以内）',
   },
   consent: {
     fallbackName: '同意书',

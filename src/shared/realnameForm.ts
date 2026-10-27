@@ -34,11 +34,14 @@ export type RealnameDraftFields = {
   businessLicenseNo: string
   operatorName: string
   operatorIdCardNo: string
+  operatorIdentifyType: number
+  operatorCertFrontFile: string
+  operatorMobile: string
   guardianRequired: boolean
   guardianConsent: boolean
   guardianConsentFile: string
   businessLicenseFile: string
-  /** 企业开户进件的另外两张证照（法人身份证正反面）：上传即落库，不参与实名提交 payload。 */
+  /** 法人身份证正反面：上传即落库，提交路径供本次认证 OCR 与后续支付进件使用。 */
   legalCertFrontFile: string
   legalCertBackFile: string
   /** 企业进件资料：支付渠道创建企业会员（对公收款账户）时逐项必填，企业 / 个体工商户主体要收齐。 */
@@ -139,7 +142,9 @@ export function isEnterpriseDraftMissing(fields: RealnameDraftFields): boolean {
     !fields.legalCertFrontFile.trim() ||
     !fields.legalCertBackFile.trim() ||
     !fields.businessLicenseFile.trim() ||
-    !fields.mobile.trim()
+    !fields.operatorCertFrontFile.trim() ||
+    !fields.mobile.trim() ||
+    !fields.operatorMobile.trim()
   )
 }
 
@@ -157,8 +162,11 @@ export function validateRealnameDraft(fields: RealnameDraftFields): string {
   }
   if (!fields.legalCertFrontFile.trim()) return '请上传身份证人像面照片'
   if (isBusinessAuthType(fields.authType)) {
+    if (![151, 152, 153].includes(fields.operatorIdentifyType)) return '请选择经办人认证方式'
     if (!fields.legalCertBackFile.trim()) return '请上传法人身份证国徽面照片'
     if (!fields.businessLicenseFile.trim()) return '请上传营业执照'
+    if (!fields.operatorCertFrontFile.trim()) return '请上传经办人身份证人像面照片'
+    if (!isValidMobile(fields.operatorMobile)) return '请填写正确的经办人手机号'
   }
   if (!isValidMobile(fields.mobile)) return '请填写正确的手机号'
   if (fields.guardianRequired && !fields.guardianConsent) return '请确认已取得监护人同意'

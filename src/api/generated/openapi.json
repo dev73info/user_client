@@ -18089,6 +18089,41 @@
         }
       }
     },
+    "/api/realname/operator-cert-front-file": {
+      "post": {
+        "tags": [
+          "realname"
+        ],
+        "summary": "上传经办人身份证人像面",
+        "description": "需要登录和 realname.submit.post。multipart 字段名为 file，只收 PNG / JPG / WEBP，单张不超过 10 MiB。返回 front_file，供材料认证入口使用。",
+        "operationId": "realname_upload_operator_cert_front",
+        "requestBody": {
+          "description": "字段名 file，图片二进制",
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "string"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "经办人证件地址"
+          },
+          "400": {
+            "description": "文件缺失、格式不支持、空文件或超过 10 MiB"
+          },
+          "401": {
+            "description": "未登录"
+          },
+          "403": {
+            "description": "没有实名提交权限"
+          }
+        }
+      }
+    },
     "/api/realname/withdraw": {
       "post": {
         "tags": [
@@ -42355,6 +42390,28 @@
           "mobile": {
             "type": "string",
             "description": "本人或法定代表人手机号。"
+          },
+          "operator_cert_front_file": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "本次上传的经办人身份证人像面（企业必填）。"
+          },
+          "operator_identify_type": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32",
+            "description": "经办人认证方式：151 / 152 / 153（默认 153）。"
+          },
+          "operator_mobile": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "经办人手机号（企业必填）。"
           }
         }
       },
@@ -46227,7 +46284,7 @@
               "null"
             ],
             "format": "int32",
-            "description": "认证方式：351 / 369。"
+            "description": "企业认证方式：351 / 369。"
           },
           "legal_cert_begin_on": {
             "type": [
@@ -46243,13 +46300,49 @@
             ],
             "description": "法人证件有效期截止。"
           },
+          "legal_person_id_card_no": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "法定代表人证件号；缺省与经办人一致。"
+          },
+          "legal_person_mobile": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "法定代表人手机号；缺省与经办人一致。"
+          },
+          "legal_person_name": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "法定代表人姓名；缺省与经办人一致（兼容旧记录）。"
+          },
           "mobile": {
             "type": "string",
-            "description": "手机号。"
+            "description": "经办人手机号。"
+          },
+          "operator_cert_front_file": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "经办人身份证人像面地址。"
           },
           "operator_id_card_no": {
             "type": "string",
             "description": "经办人证件号。"
+          },
+          "operator_identify_type": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32",
+            "description": "经办人认证方式：151 / 152 / 153（默认 153）。"
           },
           "operator_name": {
             "type": "string",
