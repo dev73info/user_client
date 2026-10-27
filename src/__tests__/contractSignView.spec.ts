@@ -283,6 +283,16 @@ describe('合同签署页：最小挂载烟测', () => {
     wrapper.unmount()
   })
 
+  it('已有渠道合同但没有签署日志时，进入页面主动同步状态', async () => {
+    const { wrapper } = await render(
+      { requirement_id: 'REQ-1' },
+      { channel_contract_no: 'C20261027222314056B93EE', signing_logs: undefined },
+    )
+
+    expect(mocks.syncStatus).toHaveBeenCalledWith('test-token', 88)
+    wrapper.unmount()
+  })
+
   it('自定义附件未放行时按钮置灰，不发请求也不跳转', async () => {
     const { wrapper } = await render(
       { requirement_id: 'REQ-1' },

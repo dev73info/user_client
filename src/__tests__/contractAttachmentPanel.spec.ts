@@ -3,7 +3,11 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import ContractAttachmentPanel from '@/components/ContractAttachmentPanel.vue'
 import type { ContractDetail } from '@/api/contracts'
 import type { RequirementItem } from '@/api/requirements'
-import { ATTACHMENT_REVIEW_STATUS, CONTRACT_CONTENT_SOURCE, CONTRACT_STATUS } from '@/shared/contracts'
+import {
+  ATTACHMENT_REVIEW_STATUS,
+  CONTRACT_CONTENT_SOURCE,
+  CONTRACT_STATUS,
+} from '@/shared/contracts'
 
 /**
  * R012 自定义合同附件面板：三态展示、金额预校验、当事人与「已发起签署」两类边界。
@@ -44,8 +48,8 @@ function contractOf(overrides: Partial<ContractDetail> = {}): ContractDetail {
     title: '网站服务合同',
     content: '平台生成的合同正文',
     content_sha256: 'content-sha',
-    // 需求合同建单时的状态就是「签约中 1」（后端直接以 CONTRACT_STATUS_SIGNING 落库），
-    // 因此「是否已发起签署」不能用状态判定，只能看签署日志里的 asign_sign_initiated。
+    // 需求合同建单时的状态就是「签约中 1」，不能用状态判断是否已发起签署；
+    // 应以渠道合同号为准，sign_initiated 日志只作兜底。
     status: CONTRACT_STATUS.signing,
     party_a_name: '甲方公司',
     party_a_username: 'alice',
@@ -86,7 +90,12 @@ async function render(contract: ContractDetail, party: 'party_a' | 'party_b' | n
 beforeEach(() => {
   vi.clearAllMocks()
   mocks.listRequirements.mockResolvedValue([
-    { requirement_id: 'REQ-001', title: '需求标题', budget: 1000, acceptance_criteria: '验收标准X' },
+    {
+      requirement_id: 'REQ-001',
+      title: '需求标题',
+      budget: 1000,
+      acceptance_criteria: '验收标准X',
+    },
   ] as unknown as RequirementItem[])
   mocks.listMyRequirements.mockResolvedValue([] as unknown as RequirementItem[])
 })
@@ -170,8 +179,20 @@ describe('attachment panel boundaries', () => {
       contractOf({
         status: CONTRACT_STATUS.signing,
         signing_logs: [
-          { id: 1, contract_id: 1, action: 'asign_sign_initiated' },
+          { id: 1, contract_id: 1, action: 'sign_initiated' },
         ] as unknown as ContractDetail['signing_logs'],
+      }),
+    )
+    expect(wrapper.text()).toContain('已发起签署，不能再更换附件')
+    expect(wrapper.find('input[type="file"]').exists()).toBe(false)
+    wrapper.unmount()
+  })
+
+  it('locks the entry by channel contract number when signing logs are absent', async () => {
+    const wrapper = await render(
+      contractOf({
+        channel_contract_no: 'C-CHANNEL-1',
+        signing_logs: undefined,
       }),
     )
     expect(wrapper.text()).toContain('已发起签署，不能再更换附件')
@@ -181,7 +202,9 @@ describe('attachment panel boundaries', () => {
 
   it('blocks a drafted amount that differs from the requirement budget', async () => {
     const wrapper = await render(contractOf())
-    const draftTab = wrapper.findAll('button').find((button) => button.text().includes('页面拟定条款'))
+    const draftTab = wrapper
+      .findAll('button')
+      .find((button) => button.text().includes('页面拟定条款'))
     await draftTab!.trigger('click')
     await flushPromises()
 
@@ -211,7 +234,10 @@ describe('attachment panel boundaries', () => {
     await flushPromises()
 
     expect(mocks.upload).toHaveBeenCalledWith('test-token', 'REQ-001', file)
-    expect(wrapper.emitted('updated')?.[0]?.[0]).toMatchObject({ id: 1, attachment_file_name: '双方补充条款.docx' })
+    expect(wrapper.emitted('updated')?.[0]?.[0]).toMatchObject({
+      id: 1,
+      attachment_file_name: '双方补充条款.docx',
+    })
     expect(wrapper.text()).toContain('附件已提交，等待平台审核')
     wrapper.unmount()
   })
