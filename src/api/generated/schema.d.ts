@@ -1155,8 +1155,8 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * 重试失败的分账
-         * @description 对某个业务单号最近一次分账重新发起，需要 `payment.settlement.retry`——它**会再发一次打钱指令**，所以与只读台账分开一个码。**只有失败的分账能重试**：已成功与仍在渠道处理中的一律拒绝且不碰渠道，但「谁试过」仍留审计；这两种情况回 409 并带上被拒的分账单号。幂等由执行侧兜底：重复点击不会打第二笔钱。
+         * 补发或重试分账
+         * @description 对某个业务单号补发或重试分账，需要 `payment.settlement.retry`——它会发出真实打钱指令，所以与只读台账分开一个码。没有初始分账记录时按正常分账补发；已有记录时重试失败的那笔，并在没有在途记录时补做尚未发起的定金或尾款。已成功与仍在渠道处理中的不会重复发起，但「谁试过」仍留审计；确实无事可做时回 409 并带上现有分账单号。幂等由执行侧兜底：重复点击不会打第二笔钱。
          */
         post: operations["payment_admin_retry_settlement"];
         delete?: never;
@@ -3476,7 +3476,7 @@ export interface paths {
         };
         /**
          * 取或建《接口使用协议》
-         * @description 取或建当前登录用户的《接口使用协议》合同，需要 `contract.my_requirement.get`。**「取或建」而不是每次新建**：协议是长期义务，重复点开不该堆出一批待签合同。待签时返回那一份待签的，已签过就返回已签的；作废 / 拒签不算已有，会重新生成。甲方固定为平台且**不落平台账号**：协议由平台与开发者共同订立，把平台当成需要实名资料的普通当事人会让发起签署缺手机号而必然失败。签没签当前有效版本由正文指纹判定——签过旧版本不算已签。
+         * @description 取或建当前登录用户的《接口使用协议》合同，需要 `contract.my_requirement.get`。**「取或建」而不是每次新建**：协议是长期义务，重复点开不该堆出一批待签合同。待签时返回那一份待签的，已签过就返回已签的；作废 / 拒签不算已有，会重新生成。甲方固定为平台且**不落平台账号**：协议由平台与开发者共同订立，把平台当成需要实名资料的普通当事人会让发起签署缺手机号而必然失败。签没签当前有效版本按模板版本与渠道合同号判定——签过旧版本、或本机签完但没有渠道合同号的旧记录，都不算已签。
          */
         get: operations["contract_get_api_usage_agreement"];
         put?: never;
@@ -14165,6 +14165,8 @@ export interface components {
             paid_at: string;
             /** @description 分账单号（字段名沿用 legacy 的 `payment_id`）。 */
             payment_id: string;
+            /** @description 支付阶段：`deposit`（定金）/ `final`（尾款）/ `unknown`。 */
+            payment_stage: string;
             /**
              * Format: double
              * @description 售后收回（元）。
@@ -22771,7 +22773,7 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description 该业务单号没有分账记录 */
+            /** @description 业务单或资金条款不存在 */
             404: {
                 headers: {
                     [name: string]: unknown;

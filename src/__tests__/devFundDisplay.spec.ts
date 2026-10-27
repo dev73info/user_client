@@ -18,6 +18,7 @@ const income = {
   title: '小程序首页改版',
   customer: '甲方',
   gross_amount_cny: 5,
+  payment_stage: 'deposit',
   refund_developer_cny: 0,
   amount_cny: 5,
   paid_at: '2026-09-08 13:00:00',
@@ -118,18 +119,20 @@ describe('buildFundRecords', () => {
     expect(records.map((record) => record.id)).toEqual(['wd-1', 'req-1'])
   })
 
-  it('同一需求的两笔分账合并为一行，金额展示总额与分笔明细', () => {
+  it('同一需求的两笔分账合并为一行，金额展示总额与分笔阶段', () => {
     const records = buildFundRecords({
       income: [
         {
           ...income,
           payment_id: 'pay-final',
+          payment_stage: 'final',
           gross_amount_cny: 0.64,
           paid_at: '2026-09-08 13:00:01',
         },
         {
           ...income,
           payment_id: 'pay-deposit',
+          payment_stage: 'deposit',
           gross_amount_cny: 0.16,
           paid_at: '2026-09-08 13:00:00',
         },
@@ -140,12 +143,28 @@ describe('buildFundRecords', () => {
     expect(records[0]).toMatchObject({
       kind: 'income',
       amount: 0.8,
-      amountBreakdown: [0.16, 0.64],
+      amountParts: [
+        { amount: 0.16, label: '定金' },
+        { amount: 0.64, label: '尾款' },
+      ],
       time: '2026-09-08 13:00:01',
     })
     expect(records[0]?.reference).toContain('pay-deposit')
     expect(records[0]?.reference).toContain('pay-final')
     expect(fundAmount(records[0]!)).toBe('¥0.80（¥0.16 + ¥0.64）')
+  })
+
+  it('只有一笔收入时也保留支付阶段，供金额悬浮提示', () => {
+    const [deposit] = buildFundRecords({
+      income: [{ ...income, payment_stage: 'deposit', gross_amount_cny: 0.16 }],
+    })
+    expect(deposit?.amountParts).toEqual([{ amount: 0.16, label: '定金' }])
+    expect(fundAmount(deposit!)).toBe('¥0.16')
+
+    const [final] = buildFundRecords({
+      income: [{ ...income, payment_stage: 'final', gross_amount_cny: 0.64 }],
+    })
+    expect(final?.amountParts).toEqual([{ amount: 0.64, label: '尾款' }])
   })
 
   it('客户实收高于开发者份额时，备注点明差额由平台承担', () => {
