@@ -1115,8 +1115,8 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * 管理端回查进件结论
-         * @description 客服替指定账号向渠道问一次开户审核结果并刷新本地状态，需要 `payment.settlement.sync.post`。与用户端 `POST /api/payment/settlement-account/sync` 是同一个用例，只是不必等用户自己来点——渠道审核卡住时由管理端发起。这个码与「人工审核放行」分开：回查只读渠道、写本地快照，审核是直接放钱过去。
+         * 管理端回查或重试进件
+         * @description 客服替指定账号向渠道问一次开户审核结果并刷新本地状态，需要 `payment.settlement.sync.post`。本地为 `failed` 时按已通过的实名资料重试进件；已有会员只回查，不重复创建。这个码与「人工审核放行」分开，审核是直接放钱过去。
          */
         post: operations["payment_admin_sync_settlement_account"];
         delete?: never;
@@ -5537,8 +5537,8 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * 回查渠道进件结论
-         * @description 主动向渠道问一次本人开户的审核结果并刷新本地状态，需要 `payment.settlement.mine.get`。渠道审核是异步的，结论只能靠回查。还没拿到渠道会员号回 409（说明还没完成进件）；渠道未装配回 503。管理端替指定账号发起的同一动作见 `POST /api/admin/payment/settlement-accounts/{username}/sync`。
+         * 回查或重试进件
+         * @description 主动向渠道问一次本人开户的审核结果并刷新本地状态，需要 `payment.settlement.mine.get`。本地为 `failed` 时按已通过的实名资料重试进件；已有会员只回查，不重复创建。还没拿到渠道会员号回 409；渠道未装配回 503。管理端替指定账号发起的同一动作见 `POST /api/admin/payment/settlement-accounts/{username}/sync`。
          */
         post: operations["payment_sync_settlement_account"];
         delete?: never;
@@ -22353,7 +22353,7 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description 渠道回查失败 */
+            /** @description 渠道回查或进件失败 */
             502: {
                 headers: {
                     [name: string]: unknown;
@@ -34484,7 +34484,7 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description 渠道回查失败 */
+            /** @description 渠道回查或进件失败 */
             502: {
                 headers: {
                     [name: string]: unknown;
