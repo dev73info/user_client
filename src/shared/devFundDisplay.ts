@@ -39,7 +39,7 @@ export type FundRecord = {
 export const KIND_LABELS: Record<FundRecordKind, string> = {
   income: '收入',
   income_reversal: '退款冲减',
-  income_withdrawal: '收入提现',
+  income_withdrawal: '提现',
 }
 
 /** 金额展示：一律带 ¥ 与两位小数；缺值按 0 处理（列表里不出现空白格）。 */
@@ -60,23 +60,28 @@ export function fundAmount(record: Pick<FundRecord, 'amount' | 'amountBreakdown'
 }
 
 /**
- * 接单收入提现的状态文案：**兜底**用。
+ * 接单收入提现的状态文案。
  *
- * 契约的 `WithdrawalResponse` 自带 `status_label`（后端下发的中文说明），显示一律以它为准；
- * 这张 map 只在 `status_label` 为空时兜底，所以不写任何到账承诺（比如 1.x 页面里那句
- * 「出款中（T+1）」的 T+1 后端并没有承诺，渠道打款时间不由前端规定）。
+ * 已知状态用列表页的紧凑文案（例如 `processing` →「处理中」），未知状态才回落到
+ * 后端下发的 `status_label`，最后才是状态码。这里不写任何到账承诺：
+ * 1.x 页面那句「出款中（T+1）」里的 T+1 并不是后端契约。
  */
-export function incomeWithdrawalStatusText(status: DevWithdrawalRecord['status']) {
+export function incomeWithdrawalStatusText(
+  status: DevWithdrawalRecord['status'],
+  statusLabel?: string | null,
+) {
   const map: Record<string, string> = {
     pending_review: '待审核',
     approved: '待出款',
-    payout_processing: '出款中',
+    processing: '处理中',
+    payout_processing: '处理中',
+    failed: '出款失败',
     payout_failed: '出款失败',
     rejected: '已驳回',
     paid: '已到账',
     closed: '已关闭',
   }
-  return map[status] ?? status
+  return map[status] ?? statusLabel ?? status
 }
 
 export function statusTagType(
@@ -85,7 +90,7 @@ export function statusTagType(
   if (status === 'pending_review') {
     return 'warning'
   }
-  if (status === 'approved' || status === 'payout_processing') {
+  if (status === 'approved' || status === 'processing' || status === 'payout_processing') {
     return 'info'
   }
   if (status === 'paid') {
@@ -94,20 +99,17 @@ export function statusTagType(
   return 'danger'
 }
 
-/** 钱进来的那一类（收入）用同一种强调色，出款与冲减用中性色/警示色。 */
+/** 钱进来的那一类（收入）用黄色强调，提现用绿色，冲减用警示色。 */
 export function isInflowKind(kind: FundRecordKind): boolean {
   return kind === 'income'
 }
 
-/** 「类型」列的标签色调：冲减是警示色，流入是成功色，出款是信息色。 */
-export function kindTagTone(
-  kind: FundRecordKind,
-  tag: FundRecord['tag'],
-): 'success' | 'info' | 'danger' {
-  if (tag === 'danger') {
-    return 'danger'
+/** 「类型」列的标签色调：收入黄色、提现绿色、退款冲减红色。 */
+export function kindTagTone(kind: FundRecordKind): 'warning' | 'success' | 'danger' {
+  if (kind === 'income') {
+    return 'warning'
   }
-  return isInflowKind(kind) ? 'success' : 'info'
+  return kind === 'income_withdrawal' ? 'success' : 'danger'
 }
 
 export type FundRecordSources = {
@@ -195,8 +197,8 @@ export function buildFundRecords(sources: Partial<FundRecordSources> = {}): Fund
       amount: record.amount_fen / 100,
       detail: `收入提现 · ${record.account_name}`,
       account: record.account_no_tail,
-      // 中文说明以后端下发的 `status_label` 为准，本地 map 只兜底
-      status: record.status_label || incomeWithdrawalStatusText(record.status),
+      // 已知状态用紧凑文案，未知状态才回落到后端下发的 `status_label`
+      status: incomeWithdrawalStatusText(record.status, record.status_label),
       tag: statusTagType(record.status),
       note: record.review_note || record.payout_failure_reason || '-',
       reference: record.withdrawal_id,

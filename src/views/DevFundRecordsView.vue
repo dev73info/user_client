@@ -39,7 +39,7 @@ defineExpose({ loadRecords })
       </template>
       <TTableColumn label="类型" width="110">
         <template #default="scope">
-          <TTag variant="outline" :tone="kindTagTone(scope.row.kind, scope.row.tag)">
+          <TTag variant="outline" :tone="kindTagTone(scope.row.kind)">
             {{ KIND_LABELS[scope.row.kind as FundRecordKind] }}
           </TTag>
         </template>
