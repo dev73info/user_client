@@ -50,7 +50,11 @@ export function primeSignatureMocks(mocks: SignatureMocks) {
   auth.profileLoaded = true
   vi.spyOn(auth, 'hydrate').mockImplementation(() => {})
   vi.spyOn(auth, 'initializeSession').mockResolvedValue({ username: 'alice', role: 'user' })
-  mocks.realname.mockResolvedValue({ status: 'approved' })
+  mocks.realname.mockResolvedValue({
+    status: 'approved',
+    real_name: 'Alice',
+    id_card_no_masked: '****1234',
+  })
   mocks.list.mockResolvedValue([
     baseContract,
     {
@@ -73,6 +77,16 @@ const routeNames = [
   'workbench',
   'workbench-requirements',
   'workbench-account',
+  'workbench-assistant',
+  'workbench-authorized-apps',
+  'workbench-tickets',
+  'workbench-favorites',
+  'workbench-points',
+  'mall',
+  'workbench-perks',
+  'workbench-badges',
+  'workbench-purchase-transfers',
+  'workbench-messages',
   'workbench-invoices',
   'workbench-coupons',
   'workbench-notifications',

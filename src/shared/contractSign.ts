@@ -87,17 +87,18 @@ export function contractPartyDisplay(
       party,
       label: '甲方',
       role: platformAgreement ? '平台' : '需求方',
-      // 合同若带了实名姓名（后端未来补字段）就用它；没有就从本人实名资料补。
+      // 本人实名优先；平台账号只在缺少本人信息时作展示兜底。
       legalName: displayText(
-        contract.party_a_real_name ?? contract.party_a_name ?? myRealname?.legalName,
+        contract.party_a_real_name ?? myRealname?.legalName ?? (self ? '' : contract.party_a_name),
         '未完成实名认证',
       ),
       idCardNo: isPlatformParty
         ? '平台盖章'
-        : displayText(contract.party_a_id_card_no_masked ?? myRealname?.idCardNo, '未完成实名认证'),
-      username: isPlatformParty
-        ? '平台盖章'
-        : displayText(contract.party_a_username, '未绑定账号'),
+        : displayText(
+            myRealname?.idCardNo ?? (self ? '' : contract.party_a_id_card_no_masked),
+            '未完成实名认证',
+          ),
+      username: isPlatformParty ? '平台盖章' : displayText(contract.party_a_username, '未绑定账号'),
       email: displayText(contract.party_a_account_email, '未绑定邮箱'),
       signedAt: contract.party_a_signed_at,
     }
@@ -108,11 +109,11 @@ export function contractPartyDisplay(
     label: '乙方',
     role: '开发者',
     legalName: displayText(
-      contract.party_b_real_name ?? contract.party_b_name ?? myRealname?.legalName,
+      contract.party_b_real_name ?? myRealname?.legalName ?? (self ? '' : contract.party_b_name),
       '未完成实名认证',
     ),
     idCardNo: displayText(
-      contract.party_b_id_card_no_masked ?? myRealname?.idCardNo,
+      myRealname?.idCardNo ?? (self ? '' : contract.party_b_id_card_no_masked),
       '未完成实名认证',
     ),
     username: displayText(contract.party_b_username, '未绑定账号'),
@@ -120,7 +121,6 @@ export function contractPartyDisplay(
     signedAt: contract.party_b_signed_at,
   }
 }
-
 
 /** 签署身份是否可用于发起签署：实名姓名与身份证号都得有。 */
 export function signerIdentityReady(signer: PartyDisplay | null): boolean {
@@ -144,10 +144,7 @@ export function canSignContract(
   currentParty: ContractParty | null,
 ): boolean {
   if (!contract || !currentParty) return false
-  if (
-    contract.status !== CONTRACT_STATUS.awaiting &&
-    contract.status !== CONTRACT_STATUS.signing
-  ) {
+  if (contract.status !== CONTRACT_STATUS.awaiting && contract.status !== CONTRACT_STATUS.signing) {
     return false
   }
   return currentParty === 'party_a' ? !contract.party_a_signed_at : !contract.party_b_signed_at
