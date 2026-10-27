@@ -25,6 +25,8 @@ export type FundRecord = {
   kind: FundRecordKind
   id: string
   amount: number
+  /** 同一需求单合并后的分笔金额；未合并时为空。 */
+  amountBreakdown?: number[]
   detail: string
   account: string
   status: string
@@ -46,6 +48,15 @@ export function money(value?: number | null) {
     return '¥0.00'
   }
   return `¥${value.toFixed(2)}`
+}
+
+/** 金额列：同一需求合并后把分笔摆出来，如 `¥0.80（¥0.16 + ¥0.64）`。 */
+export function fundAmount(record: Pick<FundRecord, 'amount' | 'amountBreakdown'>) {
+  const parts = record.amountBreakdown ?? []
+  if (parts.length < 2) {
+    return money(record.amount)
+  }
+  return `${money(record.amount)}（${parts.map((part) => money(part)).join(' + ')}）`
 }
 
 /**
@@ -110,45 +121,69 @@ export function buildFundRecords(sources: Partial<FundRecordSources> = {}): Fund
   const incomeWithdrawals = sources.incomeWithdrawals ?? []
   const merged: FundRecord[] = []
 
+  // 同一需求通常有定金与尾款两笔分账。收入按需求合并成一行，
+  // 金额列同时展开分笔，避免同一项目在明细里看起来像两笔独立收入。
+  const incomeByRequirement = new Map<string, DevWalletIncomeItem[]>()
   for (const record of income) {
+    const groupKey = record.requirement_id || record.payment_id
+    const group = incomeByRequirement.get(groupKey) ?? []
+    group.push(record)
+    incomeByRequirement.set(groupKey, group)
+  }
+
+  for (const [requirementId, records] of incomeByRequirement) {
+    const latest = [...records].sort(
+      (first, second) =>
+        String(second.paid_at ?? '').localeCompare(String(first.paid_at ?? '')) ||
+        second.gross_amount_cny - first.gross_amount_cny,
+    )[0]!
+    const breakdown = records
+      .map((record) => record.gross_amount_cny)
+      .sort((first, second) => first - second)
+    const amount = breakdown.reduce((total, part) => total + part, 0)
+
     // 「收入」行永远记**到账**了多少。此前这里取的是净额，一次售后退款就把那一行改写成
     // ¥0.00——既看不出这笔钱到过账，也和「累计收入」对不上。
     merged.push({
-      key: `income:${record.payment_id}`,
+      key: `income:${requirementId}`,
       kind: 'income',
-      id: record.payment_id,
-      amount: record.gross_amount_cny,
-      detail: record.title,
-      account: `${record.requirement_id} · ${record.customer}`,
+      id: requirementId,
+      amount,
+      amountBreakdown: breakdown.length > 1 ? breakdown : undefined,
+      detail: latest.title,
+      account: `${latest.requirement_id} · ${latest.customer}`,
       status: '已入账',
       tag: 'success',
       note: '-',
-      reference: record.payment_id,
-      time: record.paid_at,
+      reference: records.map((record) => record.payment_id).join(' / '),
+      time: latest.paid_at,
     })
-    // 售后按原分账份额收回的那部分单独成行：钱往哪走了看得见，也不用回头改历史收入行。
-    if (record.refund_developer_cny > 0) {
-      // 这一行的金额是**从开发者这里收回的份额**，不是客户实收：结单后的退款由渠道按原分账
-      // 份额从各方收回去，平台会按自己的服务费承担一部分（实测：客户申请 199.00，
-      // 开发者份额 160.00 = 128.00 + 32.00，余下 39.00 由平台出）。两个数摆在一起，
-      // 免得 128.00 / 32.00 被读成「客户只退了 160」。
-      const shareNote =
-        record.requirement_refund_cny > record.refund_developer_cny
-          ? `本次退款客户实收 ${money(record.requirement_refund_cny)}（含平台按服务费承担的部分），此处只记从开发者收回的份额`
-          : '售后退款按原分账份额从开发者收回'
-      merged.push({
-        key: `income_reversal:${record.payment_id}`,
-        kind: 'income_reversal',
-        id: record.payment_id,
-        amount: record.refund_developer_cny,
-        detail: `退款冲减（开发者份额）· ${record.title}`,
-        account: `${record.requirement_id} · ${record.customer}`,
-        status: '已冲减',
-        tag: 'danger',
-        note: shareNote,
-        reference: record.payment_id,
-        time: record.refunded_at ?? record.paid_at,
-      })
+
+    for (const record of records) {
+      // 售后按原分账份额收回的那部分单独成行：钱往哪走了看得见，也不用回头改历史收入行。
+      if (record.refund_developer_cny > 0) {
+        // 这一行的金额是**从开发者这里收回的份额**，不是客户实收：结单后的退款由渠道按原分账
+        // 份额从各方收回去，平台会按自己的服务费承担一部分（实测：客户申请 199.00，
+        // 开发者份额 160.00 = 128.00 + 32.00，余下 39.00 由平台出）。两个数摆在一起，
+        // 免得 128.00 / 32.00 被读成「客户只退了 160」。
+        const shareNote =
+          record.requirement_refund_cny > record.refund_developer_cny
+            ? `本次退款客户实收 ${money(record.requirement_refund_cny)}（含平台按服务费承担的部分），此处只记从开发者收回的份额`
+            : '售后退款按原分账份额从开发者收回'
+        merged.push({
+          key: `income_reversal:${record.payment_id}`,
+          kind: 'income_reversal',
+          id: record.payment_id,
+          amount: record.refund_developer_cny,
+          detail: `退款冲减（开发者份额）· ${record.title}`,
+          account: `${record.requirement_id} · ${record.customer}`,
+          status: '已冲减',
+          tag: 'danger',
+          note: shareNote,
+          reference: record.payment_id,
+          time: record.refunded_at ?? record.paid_at,
+        })
+      }
     }
   }
 

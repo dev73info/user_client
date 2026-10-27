@@ -64,6 +64,9 @@ const withdrawDialog = ref<InstanceType<typeof DevWithdrawalDialog> | null>(null
 /** 「资金明细」的关键字筛选：只过滤已经加载回来的记录，不发新请求 */
 const recordKeyword = ref('')
 
+/** 明细子组件：刷新钱包时把提现台账也一起重取。 */
+const fundRecords = ref<InstanceType<typeof DevFundRecordsView> | null>(null)
+
 /** 充值：走保证金充值弹窗（与工作台总览共用同一个组件）。 */
 const rechargeDepositDialog = ref<InstanceType<typeof DevDepositRechargeDialog> | null>(null)
 const withdrawDepositDialog = ref<InstanceType<typeof DevWalletDepositWithdrawDialog> | null>(null)
@@ -82,7 +85,7 @@ async function refreshWallet() {
   // 渠道回调可能丢件：先让后端主动回查在途退款，再读余额与明细。
   // 同步失败不阻塞页面（渠道不可用时仍展示本地账）。
   await syncInflightRefunds(auth.token).catch(() => undefined)
-  await Promise.all([loadWallet(), loadDeposit()])
+  await Promise.all([loadWallet(), loadDeposit(), fundRecords.value?.loadRecords()])
 }
 </script>
 
@@ -143,11 +146,11 @@ async function refreshWallet() {
       </div>
 
       <!-- 资金明细：收入 / 退款冲减 / 收入提现三类合成一段（子组件里按时间倒序拼） -->
-      <DevFundRecordsView :income="recentIncome" :keyword="recordKeyword" />
+      <DevFundRecordsView ref="fundRecords" :income="recentIncome" :keyword="recordKeyword" />
     </section>
 
     <!-- 收入提现弹窗：与工作台总览的「提现」按钮共用同一组件 -->
-    <DevWithdrawalDialog ref="withdrawDialog" @submitted="loadWallet" />
+    <DevWithdrawalDialog ref="withdrawDialog" @submitted="refreshWallet" />
 
     <!-- 保证金充值 / 提现：与工作台总览共用充值弹窗 -->
     <DevDepositRechargeDialog ref="rechargeDepositDialog" @succeeded="loadDeposit" />
