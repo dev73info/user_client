@@ -12,6 +12,7 @@ const mocks = vi.hoisted(() => ({
   back: vi.fn(),
   qr: vi.fn(),
   invoke: vi.fn(),
+  refreshOrder: vi.fn(),
 }))
 const route = reactive({ query: {} as Record<string, string> })
 const auth = reactive({ token: '', isAuthed: false, hydrate: vi.fn() })
@@ -45,7 +46,7 @@ vi.mock('vue-router', () => ({
 vi.mock('qrcode', () => ({ default: { toDataURL: mocks.qr } }))
 /**
  * 「旧一步下单」（`/payments/alipay|wechat/create|confirm`）与「预付保证金」
- * （`/adapay/developer-deposits`）都已不在契约里，支付页只剩一条下单接口与一条查单接口。
+ * （`/adapay/developer-deposits`）都不再使用；查单区分本地读取与渠道刷新。
  */
 vi.mock('@/api/adapay', () => ({
   createAdapayPayment: mocks.createRequirement,
@@ -55,6 +56,7 @@ vi.mock('@/api/adapay', () => ({
 vi.mock('@/api/payments', () => ({
   getPaymentOrder: vi.fn(),
   listPaymentOrders: vi.fn(),
+  refreshPaymentOrder: mocks.refreshOrder,
 }))
 
 const paymentInfo = {
@@ -129,6 +131,7 @@ beforeEach(() => {
   route.query = { ...intentQuery }
   mocks.createRequirement.mockResolvedValue(deposit)
   mocks.getRequirement.mockResolvedValue(paymentOrder())
+  mocks.refreshOrder.mockResolvedValue(paymentOrder())
   mocks.replace.mockImplementation(async ({ query }) => {
     route.query = query
   })
@@ -221,11 +224,11 @@ describe('PaymentView WeChat cross-device flow', () => {
     route.query = { ...handoff, payment_handoff: '0', client_platform: 'pc' }
     wrapper = mount(PaymentView)
     await flushPromises()
-    mocks.getRequirement.mockRejectedValueOnce(new Error('Temporary query failure'))
+    mocks.refreshOrder.mockRejectedValueOnce(new Error('Temporary query failure'))
     window.dispatchEvent(new Event('focus'))
     await flushPromises()
     expect(wrapper.text()).toContain('Temporary query failure')
-    mocks.getRequirement.mockResolvedValue(paymentOrder({ status: 'paid' }))
+    mocks.refreshOrder.mockResolvedValue(paymentOrder({ status: 'paid' }))
     window.dispatchEvent(new Event('focus'))
     await flushPromises()
     expect(wrapper.get('[role="status"]').text()).toContain('平台已确认收款')

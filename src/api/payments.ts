@@ -69,12 +69,21 @@ export async function listPaymentOrders(
   )
 }
 
-/** 单张支付单（`GET /api/payment/orders/{order_no}`）：支付结果一律以它为准，没有「确认支付」接口。 */
+/** 单张支付单（`GET /api/payment/orders/{order_no}`）：读取本地支付状态。 */
 export async function getPaymentOrder(token: string, orderNo: string): Promise<PaymentOrder> {
   return requestJson<PaymentOrder>(
     `/payment/orders/${encodeURIComponent(orderNo)}`,
     { headers: authHeaders(token) },
     '查询支付单状态失败',
+  )
+}
+
+/** 主动向渠道查单并按真实回调链路入账；只有渠道明确已支付才返回 `paid`。 */
+export function refreshPaymentOrder(token: string, orderNo: string): Promise<PaymentOrder> {
+  return requestJson<PaymentOrder>(
+    `/payment/orders/${encodeURIComponent(orderNo)}/refresh`,
+    { method: 'POST', headers: authHeaders(token) },
+    '刷新支付单状态失败',
   )
 }
 

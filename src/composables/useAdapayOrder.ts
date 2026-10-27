@@ -1,6 +1,7 @@
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 
 import { getAdapayPayment, type PaymentOrderResponse } from '@/api/adapay'
+import { refreshPaymentOrder } from '@/api/payments'
 import {
   normalizePaymentChannel,
   type PaymentChannel,
@@ -25,9 +26,9 @@ function isPaidStatus(status: string): boolean {
 /**
  * Adapay 订单的加载 / 查单 / 轮询刷新。
  *
- * 契约里**没有「确认支付」接口**：支付结果只有一个来源——`GET /api/payment/orders/{order_no}`
- * （这里的 `order_no` 就是下单回执里的 `payment_id`，也是支付页 query 上的 `payment_id`）。
- * 所以「确认」= 查一次单，`status === 'paid'` 才算完成。
+ * 首屏通过 `GET /api/payment/orders/{order_no}` 读取本地订单；手动查询与轮询则通过
+ * `POST /api/payment/orders/{order_no}/refresh` 向渠道核对真实结果并补记入账。
+ * 只有 `status === 'paid'` 才算完成，未到账与查询失败要展示原因。
  *
  * 与视图的分工：这里只管「订单现在是什么状态」，要不要停轮询、要不要展示结果页由页面级 composable 决定。
  */
@@ -90,7 +91,7 @@ export function useAdapayOrder(options: UseAdapayOrderOptions) {
     confirming.value = true
     options.session.confirmationError.value = ''
     try {
-      const order = await getAdapayPayment(options.token(), ctx.paymentId)
+      const order = await refreshPaymentOrder(options.token(), ctx.paymentId)
       adapayPayment.value = order
       if (isPaidStatus(order.status)) {
         options.session.markPaymentPaid()

@@ -51,11 +51,10 @@ export async function createAdapayPayment(
 }
 
 /**
- * 查单：支付结果只有这一个来源（没有「确认支付」接口）。
+ * 首屏查单：读取本地订单状态，与 `api/payments` 共用同一份实现。
  *
  * `order_no` 就是下单回执里的 `payment_id`，支付页 query 上的 `payment_id` 原样传进来。
- * 实现只有 `api/payments` 那一份（`GET /api/payment/orders/{order_no}`），这里只是沿用
- * 「Adapay 域」的旧名字，免得支付页的调用点集体改名。
+ * 手动查询与轮询同步走 `refreshPaymentOrder` 对应的 `/refresh`，主动向渠道核对真实结果。
  */
 export function getAdapayPayment(token: string, orderNo: string): Promise<PaymentOrderResponse> {
   return getPaymentOrder(token, orderNo)
