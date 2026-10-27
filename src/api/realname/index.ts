@@ -15,6 +15,7 @@ export type {
   LegalCertFrontUploadResponse,
   LegalCertOcrResult,
   LegalCertOcrSide,
+  QuickStartIdentifyPayload,
   RealnameAuthType,
   StartAsignIdentifyPayload,
   StartAsignIdentifyResponse,
@@ -28,6 +29,8 @@ export type {
   WithdrawRealnameVerificationResponse,
 } from './types'
 
+export { REALNAME_ERROR_CODES } from './types'
+
 export {
   getMyRealnameVerification,
   submitMyRealnameVerification,
@@ -38,6 +41,7 @@ export { completeWechatFaceidVerification, startWechatFaceidVerification } from 
 
 export {
   completeAsignIdentify,
+  quickStartAsignIdentify,
   resumeAsignIdentify,
   resumeCompanyAsignIdentify,
   startAsignIdentify,

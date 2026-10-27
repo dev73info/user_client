@@ -11,6 +11,10 @@ import type { components } from '@/api/generated/schema'
 /** 生成物里的 schema 集合。 */
 type Schemas = components['schemas']
 
+export const REALNAME_ERROR_CODES = {
+  guardianConsentRequired: 'GUARDIAN_CONSENT_REQUIRED',
+} as const
+
 /**
  * 认证类型。
  *
@@ -83,6 +87,12 @@ export type CompleteWechatFaceidVerificationPayload = {
 export type WithdrawRealnameVerificationResponse = Schemas['WithdrawResponse'] & {
   /** 本次撤回是「取消主体变更」：账号已还原成变更前那份实名主体，而不是回到未提交。 */
   restored: boolean
+}
+
+/** 本次上传材料发起认证；姓名和工商信息由后端 OCR，不由前端读取旧实名记录。 */
+export type QuickStartIdentifyPayload = Schemas['QuickStartIdentifyRequest'] & {
+  auth_type: RealnameAuthType
+  identify_type: number
 }
 
 /** 爱签个人核身请求体（`POST /api/realname/asign/start`），字段同契约 `StartIdentifyRequest`。 */

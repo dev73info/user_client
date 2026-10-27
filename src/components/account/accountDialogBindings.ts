@@ -54,29 +54,24 @@ export function dialog<C extends abstract new (...args: never[]) => { $props: ob
   } as AccountDialogEntry
 }
 
-/** 提交按钮为什么是灰的：只读态、各主体的必填、年龄禁区，少一条都会让用户点了没反应。 */
 function submitBlocked(d: AccountDialogDomains): boolean {
+  const guardianMissing =
+    d.draft.form.guardianRequired &&
+    (!d.draft.form.guardianConsent || !d.draft.form.guardianConsentFile)
   return (
     d.identity.realnameLocked.value ||
+    d.submit.submitting.value ||
     d.draft.identityCardRequiredMissing.value ||
     d.draft.enterpriseRequiredMissing.value ||
-    d.draft.isUnder14.value ||
-    d.draft.minorGuardianRequiredMissing.value
+    guardianMissing
   )
 }
 
-/** 提交按钮的文案：随实名状态、变更中、主体类型换话术（点不动时也要说清为什么）。 */
 function submitText(d: AccountDialogDomains): string {
-  if (d.identity.realnameChanging.value) return '提交变更，重新认证'
+  if (d.identity.realnameChanging.value) return '提交变更，开始认证'
   if (d.identity.realnameApproved.value) return '已通过认证'
-  if (d.identity.realnameLocked.value && d.draft.identityCardSelected.value) return '认证处理中'
-  if (d.draft.identityCardSelected.value) {
-    return d.identity.current.value ? '重新发起实名认证' : '实名认证'
-  }
-  if (!d.identity.current.value || d.identity.realnameRejected.value) {
-    return d.identity.current.value ? '重新提交认证' : '提交认证'
-  }
-  return '已提交，不能修改'
+  if (d.identity.realnameLocked.value) return '认证处理中'
+  return '开始认证'
 }
 
 export const verifyDialogEntries: AccountDialogEntry[] = [
@@ -93,24 +88,12 @@ export const verifyDialogEntries: AccountDialogEntry[] = [
       changeBacked: d.identity.realnameChangeBacked.value,
       withdrawing: d.faceid.withdrawing.value,
       submitting: d.submit.submitting.value,
-      faceidStarting: d.faceid.faceidStarting.value,
       submitDisabled: submitBlocked(d),
       submitText: submitText(d),
-      idCardPlaceholder: d.identity.current.value?.id_card_no_masked || '请输入证件号',
-      mobileMasked: d.identity.current.value?.mobile_masked ?? '',
-      identityCardSelected: d.draft.identityCardSelected.value,
       businessSelected: d.draft.businessSelected.value,
-      soleProprietorSelected: d.draft.soleProprietorSelected.value,
-      isUnder14: d.draft.isUnder14.value,
-      isMinor14To18: d.draft.isMinor14To18.value,
-      isAdult: d.draft.isAdult.value,
-      derivedNote: d.draft.businessLicenseDerivedNote.value,
-      derivedMissing: d.draft.businessLicenseDerivedMissing.value.length > 0,
       businessLicenseUploading: d.materials.businessLicenseUploading.value,
-      licenseOcrLoading: d.materials.businessLicenseOcrLoading.value,
       legalCertFrontUploading: d.materials.legalCertFrontUploading.value,
       legalCertBackUploading: d.materials.legalCertBackUploading.value,
-      legalCertOcrLoading: d.legalCert.legalCertOcrLoading.value,
       consentUploading: d.materials.consentUploading.value,
     }),
     (d) => ({
@@ -121,9 +104,6 @@ export const verifyDialogEntries: AccountDialogEntry[] = [
       'legal-cert-front-picked': d.materials.handleLegalCertFrontFile,
       'legal-cert-back-picked': d.materials.handleLegalCertBackFile,
       'consent-picked': d.materials.handleConsentFile,
-      'mark-begin-edited': d.legalCert.markLegalCertBeginEdited,
-      'mark-expires-edited': d.legalCert.markLegalCertExpiresEdited,
-      'long-term': d.legalCert.applyLongTermLegalCert,
     }),
   ),
   dialog(

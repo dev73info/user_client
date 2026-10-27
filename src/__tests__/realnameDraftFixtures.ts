@@ -13,9 +13,9 @@ export const TODAY = new Date(2026, 4, 20) // 2026-05-20
 export function draft(patch: Partial<RealnameDraftFields> = {}): RealnameDraftFields {
   return {
     authType: 'IDENTITY_CARD',
+    identifyType: 153,
     idCardType: 1,
     realName: '张三',
-    // 1990-01-01 生：任何用例的 today 下都是成年人
     idCardNo: '110101199001011234',
     mobile: '13800000000',
     companyName: '',
@@ -23,10 +23,11 @@ export function draft(patch: Partial<RealnameDraftFields> = {}): RealnameDraftFi
     businessLicenseNo: '',
     operatorName: '',
     operatorIdCardNo: '',
+    guardianRequired: false,
     guardianConsent: false,
     guardianConsentFile: '',
     businessLicenseFile: '',
-    legalCertFrontFile: '',
+    legalCertFrontFile: '/uploads/realname-legal-certs/test/front.jpg',
     legalCertBackFile: '',
     companyProvCode: '',
     companyAreaCode: '',
@@ -39,10 +40,11 @@ export function draft(patch: Partial<RealnameDraftFields> = {}): RealnameDraftFi
   }
 }
 
-/** 一份填齐的企业草稿（含四项「只能靠营业执照识别」的进件资料）。 */
+/** 一份材料齐全的企业草稿；工商字段保留给旧的收款资料检查，不参与认证输入。 */
 export function enterpriseDraft(patch: Partial<RealnameDraftFields> = {}): RealnameDraftFields {
   return draft({
     authType: 'ENTERPRISE',
+    identifyType: 369,
     companyName: '示例科技有限公司',
     unifiedSocialCreditCode: '91310000MA1K35Q64U',
     operatorName: '张三',

@@ -4,33 +4,20 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { openEntry, stubMatchMedia } from '@/__tests__/accountViewHelpers'
 
-/**
- * 「提交认证信息」弹窗**在视图里**的接线：组件级用例验「点了会 emit 什么」，这一层验**视图与
- * 宿主那一侧的监听有没有写对**——十一个 emit 键里任何一个改个名字，点下去都静默无反应
- * （本页踩过 `updateChannel` vs `@update:channel`），所以每个动作都从「点真按钮」推到「调了哪个接口」。
- */
 const mocks = vi.hoisted(() => ({
   getProfile: vi.fn(),
   getBoundProviders: vi.fn(),
   getMyRealnameVerification: vi.fn(),
-  completeAsignIdentify: vi.fn(),
-  resumeAsignIdentify: vi.fn(),
-  withdrawRealname: vi.fn(),
-  startAsignIdentify: vi.fn(),
+  quickStartAsignIdentify: vi.fn(),
   uploadBusinessLicenseFile: vi.fn(),
-  ocrBusinessLicense: vi.fn(),
   uploadLegalCertFrontFile: vi.fn(),
-  recognizeLegalCertPeriod: vi.fn(),
-  hydrate: vi.fn(),
+  uploadLegalCertBackFile: vi.fn(),
+  withdrawRealname: vi.fn(),
+  open: vi.fn(),
   replace: vi.fn(),
 }))
 
-const auth = reactive({
-  token: 'test-token',
-  isAuthed: true,
-  hydrate: mocks.hydrate,
-  fetchProfile: vi.fn(async () => undefined),
-})
+const auth = reactive({ token: 'test-token', isAuthed: true, hydrate: vi.fn() })
 const route = reactive({ query: {} as Record<string, string> })
 
 vi.mock('@/stores/auth', () => ({ useAuthStore: () => auth }))
@@ -39,261 +26,188 @@ vi.mock('vue-router', () => ({
   useRouter: () => ({ replace: mocks.replace, push: mocks.replace }),
 }))
 vi.mock('qrcode', () => ({ default: { toDataURL: vi.fn(async () => 'data:image/png;base64,qr') } }))
-
 vi.mock('ui_73info', async (importOriginal) => {
   const actual = await importOriginal<typeof import('ui_73info')>()
   const noop = vi.fn()
   return { ...actual, TMessage: { ...actual.TMessage, success: noop, error: noop, warning: noop } }
 })
-
 vi.mock('@/api/settings', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/api/settings')>()),
   getProfile: mocks.getProfile,
 }))
-
 vi.mock('@/api/auth', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/api/auth')>()),
   getBoundProviders: mocks.getBoundProviders,
 }))
-
 vi.mock('@/api/adapay', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/api/adapay')>()),
   getMyAdapayMember: vi.fn(async () => ({ onboardingStatus: 'active', acceptsSettlement: false })),
   getMySettlementAccountSnapshot: vi.fn(async () => ({ bound: false })),
 }))
-
 vi.mock('@/api/realname', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/api/realname')>()),
   getMyRealnameVerification: mocks.getMyRealnameVerification,
-  completeAsignIdentify: mocks.completeAsignIdentify,
-  resumeAsignIdentify: mocks.resumeAsignIdentify,
-  withdrawMyRealnameVerification: mocks.withdrawRealname,
-  startAsignIdentify: mocks.startAsignIdentify,
+  quickStartAsignIdentify: mocks.quickStartAsignIdentify,
   uploadBusinessLicenseFile: mocks.uploadBusinessLicenseFile,
-  ocrBusinessLicense: mocks.ocrBusinessLicense,
   uploadLegalCertFrontFile: mocks.uploadLegalCertFrontFile,
-  recognizeLegalCertPeriod: mocks.recognizeLegalCertPeriod,
+  uploadLegalCertBackFile: mocks.uploadLegalCertBackFile,
+  withdrawMyRealnameVerification: mocks.withdrawRealname,
 }))
 
-import RealnameDialog from '@/components/account/RealnameDialog.vue'
 import AccountCouponsView from '@/views/AccountCouponsView.vue'
 
-/** 两条实名记录：已通过（变更主体用）与审核中（撤回用）。 */
+const REJECTED_RECORD = { status: 'rejected', auth_type: 'IDENTITY_CARD' }
 const APPROVED_RECORD = {
   status: 'approved',
   auth_type: 'IDENTITY_CARD',
-  real_name: '张三',
-  id_card_no_masked: '110***********1234',
-  mobile_masked: '138****0000',
+  real_name: '旧姓名',
+  mobile: '13800000000',
 }
-const PENDING_RECORD = { ...APPROVED_RECORD, status: 'pending' }
-const EXPECTED_LICENSE_FILE = '/uploads/realname-business-licenses/flow/license.jpg'
+const FRONT_FILE = '/uploads/realname-legal-certs/flow/front.jpg'
+const BACK_FILE = '/uploads/realname-legal-certs/flow/back.jpg'
+const LICENSE_FILE = '/uploads/realname-business-licenses/flow/license.jpg'
 
-/** 域实例里的 ref 不解包（读状态用 `.value`）；弹窗可见性仍在顶层。 */
 type Setup = {
-  draft: {
-    form: Record<string, unknown>
-    legalCertPeriodEdited: Record<'begin' | 'expires', boolean>
-  }
+  draft: { form: Record<string, unknown> }
   identity: { realnameChanging: { value: boolean } }
   realnameDialogVisible: boolean
 }
 const setupState = (wrapper: VueWrapper): Setup =>
   (wrapper.vm.$ as unknown as { setupState: Setup }).setupState
 
-/** 按可见文案找**弹窗里**的按钮（整页找会把入口行也匹配进来）。 */
 function bodyButton(text: string): HTMLElement {
-  const found = [...document.querySelectorAll('.t73-dialog button')].find((button) =>
-    (button.textContent ?? '').includes(text),
+  const button = [...document.querySelectorAll('.t73-dialog button')].find((item) =>
+    (item.textContent ?? '').includes(text),
   )
-  if (!found) {
-    throw new Error(`弹窗里找不到按钮：${text}`)
-  }
-  return found as HTMLElement
+  if (!button) throw new Error(`弹窗里找不到按钮：${text}`)
+  return button as HTMLElement
 }
-async function renderAccountPage(): Promise<VueWrapper> {
+
+function pickFile(index: number, name: string): File {
+  const inputs = [
+    ...document.querySelectorAll('.t73-dialog .realname-consent-upload__native'),
+  ] as HTMLInputElement[]
+  const file = new File(['x'], name, { type: 'image/jpeg' })
+  Object.defineProperty(inputs[index]!, 'files', { value: [file], configurable: true })
+  inputs[index]!.dispatchEvent(new Event('change'))
+  return file
+}
+
+async function renderPage(): Promise<VueWrapper> {
   const wrapper = mount(AccountCouponsView, {
     attachTo: document.body,
     global: { stubs: { RealnameHero: true } },
   })
   await flushPromises()
+  await openEntry(wrapper, 'realname')
+  await flushPromises()
   return wrapper
 }
 
-/** 在第 index 个上传行里「选一个文件」（三个上传行按模板顺序排）。 */
-function pickFile(index: number, name: string): File {
-  const inputs = [
-    ...document.querySelectorAll('.t73-dialog .realname-consent-upload__native'),
-  ] as HTMLInputElement[]
-  const target = inputs[index]!
-  const file = new File(['x'], name, { type: 'image/jpeg' })
-  Object.defineProperty(target, 'files', { value: [file], configurable: true })
-  target.dispatchEvent(new Event('change'))
-  return file
-}
-
-/** 打开「提交认证信息」弹窗（点入口行，与用户同一个分发路径）。 */
-async function openRealnameDialog(wrapper: VueWrapper): Promise<void> {
-  await openEntry(wrapper, 'realname')
-  await flushPromises()
-}
-
-/** 打开弹窗并切到企业主体（三张证照与法人证件有效期只在企业表单里）。 */
-async function openEnterpriseDialog(): Promise<{ wrapper: VueWrapper; state: Setup }> {
-  const wrapper = await renderAccountPage()
-  await openRealnameDialog(wrapper)
-  const state = setupState(wrapper)
-  state.draft.form.authType = 'ENTERPRISE'
+async function fillMobile(placeholder: string) {
+  const input = document.querySelector(
+    `.t73-dialog input[placeholder="${placeholder}"]`,
+  ) as HTMLInputElement
+  input.value = '13800000000'
+  input.dispatchEvent(new Event('input'))
   await nextTick()
-  return { wrapper, state }
 }
 
 beforeEach(() => {
   vi.clearAllMocks()
   stubMatchMedia()
-  route.query = {}
-  mocks.getProfile.mockResolvedValue({
-    username: 'alice',
-    email: 'old@example.com',
-    two_factor_enabled: false,
-    wechat_bound: false,
-  })
+  vi.spyOn(window, 'open').mockImplementation(mocks.open)
+  mocks.getProfile.mockResolvedValue({ username: 'alice', email: 'a@example.com' })
   mocks.getBoundProviders.mockResolvedValue({ providers: [] })
-  mocks.getMyRealnameVerification.mockResolvedValue(null)
-  mocks.completeAsignIdentify.mockResolvedValue({ status: 'none' })
-  mocks.resumeAsignIdentify.mockResolvedValue({ auth_url: '', manual_review: false })
-  mocks.startAsignIdentify.mockResolvedValue({ auth_url: 'https://faceid.test/x' })
-  mocks.uploadBusinessLicenseFile.mockResolvedValue({
-    business_license_file: EXPECTED_LICENSE_FILE,
-  })
-  mocks.ocrBusinessLicense.mockResolvedValue({
-    company_name: '云南某某科技有限公司',
-    unified_social_credit_code: '91530600MA6K000000',
-    company_address: '云南省昭通市彝良县角奎街道人民街1号',
-    business_scope: '信息技术咨询服务',
-    business_license_expires_on: '20991231',
-  })
+  mocks.getMyRealnameVerification.mockResolvedValue(REJECTED_RECORD)
+  mocks.quickStartAsignIdentify.mockResolvedValue({ auth_url: 'https://asign.test/auth' })
+  mocks.uploadLegalCertFrontFile.mockResolvedValue({ front_file: FRONT_FILE })
+  mocks.uploadLegalCertBackFile.mockResolvedValue({ back_file: BACK_FILE })
+  mocks.uploadBusinessLicenseFile.mockResolvedValue({ business_license_file: LICENSE_FILE })
 })
 
 afterEach(() => {
   document.body.innerHTML = ''
 })
-describe('实名弹窗：表单草稿双向绑定', () => {
-  it('弹窗里输入的姓名写回视图那份草稿（defineModel 透传的是同一个 reactive）', async () => {
-    const wrapper = await renderAccountPage()
-    await openRealnameDialog(wrapper)
 
-    const input = document.querySelector(
-      '.t73-dialog input[placeholder="请输入真实姓名"]',
-    ) as HTMLInputElement
-    input.value = '李四'
-    input.dispatchEvent(new Event('input'))
-    await nextTick()
-
-    expect(setupState(wrapper).draft.form.realName).toBe('李四')
-    wrapper.unmount()
-  })
-})
-
-describe('实名弹窗：动作的 emit 键', () => {
-  it('「提交认证」打到发起核身接口（个人主体）', async () => {
-    const wrapper = await renderAccountPage()
-    await openRealnameDialog(wrapper)
-    const state = setupState(wrapper)
-    state.draft.form.authType = 'IDENTITY_CARD'
-    state.draft.form.realName = '张三'
-    state.draft.form.idCardNo = '110101199001011234'
-    state.draft.form.mobile = '13800000000'
-    await nextTick()
-
-    bodyButton('实名认证').click()
+describe('材料认证弹窗', () => {
+  it('个人只显示材料、手机号和认证方式，点击后直接跳爱签', async () => {
+    const wrapper = await renderPage()
+    expect(document.querySelector('input[placeholder="请输入真实姓名"]')).toBeNull()
+    const file = pickFile(0, 'front.jpg')
+    await flushPromises()
+    await fillMobile('请输入本人手机号')
+    bodyButton('开始认证').click()
     await flushPromises()
 
-    expect(mocks.startAsignIdentify).toHaveBeenCalledWith(
-      'test-token',
-      expect.objectContaining({ real_name: '张三', id_card_no: '110101199001011234' }),
-    )
+    expect(mocks.uploadLegalCertFrontFile).toHaveBeenCalledWith('test-token', file)
+    expect(mocks.quickStartAsignIdentify).toHaveBeenCalledWith('test-token', {
+      auth_type: 'IDENTITY_CARD',
+      identify_type: 153,
+      mobile: '13800000000',
+      legal_cert_front_file: FRONT_FILE,
+    })
+    expect(mocks.open).toHaveBeenCalledWith('https://asign.test/auth', '_self')
     wrapper.unmount()
   })
 
-  it('「长期有效」写截止日并打标记；两个日期的标记各走各的键', async () => {
-    const { wrapper, state } = await openEnterpriseDialog()
-
-    bodyButton('长期有效').click()
+  it('企业默认 369，上传三张证照并上送本次文件路径', async () => {
+    const wrapper = await renderPage()
+    const state = setupState(wrapper)
+    state.draft.form.authType = 'ENTERPRISE'
     await nextTick()
-    expect(state.draft.form.legalCertExpiresOn).toBe('20991231')
-    expect(state.draft.legalCertPeriodEdited.expires).toBe(true)
+    expect(state.draft.form.identifyType).toBe(369)
+    expect(document.body.textContent).toContain('企业线下盖章授权认证（369，默认）')
 
-    // 起始日那个标记单独验：直接让子组件 emit，日期控件的内部实现不参与
-    const dialog = wrapper.findComponent(RealnameDialog)
-    expect(state.draft.legalCertPeriodEdited.begin).toBe(false)
-    dialog.vm.$emit('mark-begin-edited')
-    await nextTick()
-    expect(state.draft.legalCertPeriodEdited.begin).toBe(true)
+    pickFile(0, 'front.jpg')
+    await flushPromises()
+    pickFile(1, 'back.jpg')
+    await flushPromises()
+    pickFile(2, 'license.jpg')
+    await flushPromises()
+    await fillMobile('请输入法定代表人手机号')
+    bodyButton('开始认证').click()
+    await flushPromises()
+
+    expect(mocks.quickStartAsignIdentify).toHaveBeenCalledWith('test-token', {
+      auth_type: 'ENTERPRISE',
+      identify_type: 369,
+      mobile: '13800000000',
+      legal_cert_front_file: FRONT_FILE,
+      legal_cert_back_file: BACK_FILE,
+      business_license_file: LICENSE_FILE,
+    })
+    expect(mocks.open).toHaveBeenCalledWith('https://asign.test/auth', '_self')
     wrapper.unmount()
   })
 
-  it('「放弃变更」由视图退出变更模式', async () => {
+  it('变更认证类型不从旧实名记录回填要素', async () => {
     mocks.getMyRealnameVerification.mockResolvedValue(APPROVED_RECORD)
-    const wrapper = await renderAccountPage()
+    const wrapper = mount(AccountCouponsView, {
+      attachTo: document.body,
+      global: { stubs: { RealnameHero: true } },
+    })
+    await flushPromises()
     await openEntry(wrapper, 'changeSubject')
     await flushPromises()
     const state = setupState(wrapper)
     expect(state.identity.realnameChanging.value).toBe(true)
+    expect(state.draft.form.realName).toBe('')
+    expect(state.draft.form.mobile).toBe('')
 
     bodyButton('放弃变更').click()
     await flushPromises()
-
     expect(state.identity.realnameChanging.value).toBe(false)
     expect(state.realnameDialogVisible).toBe(false)
     wrapper.unmount()
   })
 
-  it('「撤回认证」打到撤回接口，成功后由视图关弹窗', async () => {
-    mocks.getMyRealnameVerification.mockResolvedValue(PENDING_RECORD)
-    mocks.completeAsignIdentify.mockResolvedValue(PENDING_RECORD)
-    const wrapper = await renderAccountPage()
-    await openRealnameDialog(wrapper)
-
+  it('处理中仍可撤回本次认证', async () => {
+    mocks.getMyRealnameVerification.mockResolvedValue({ ...REJECTED_RECORD, status: 'pending' })
+    const wrapper = await renderPage()
     bodyButton('撤回认证').click()
     await flushPromises()
-
     expect(mocks.withdrawRealname).toHaveBeenCalledWith('test-token')
-    wrapper.unmount()
-  })
-})
-
-describe('实名弹窗：材料上传链路', () => {
-  it('营业执照选好文件后：上传 → 写草稿 → OCR 回填企业信息', async () => {
-    const { wrapper, state } = await openEnterpriseDialog()
-
-    const file = pickFile(0, 'license.jpg')
-    await flushPromises()
-
-    expect(mocks.uploadBusinessLicenseFile).toHaveBeenCalledWith('test-token', file)
-    expect(state.draft.form.businessLicenseFile).toBe(EXPECTED_LICENSE_FILE)
-    expect(state.draft.form.companyName).toBe('云南某某科技有限公司')
-    wrapper.unmount()
-  })
-
-  it('法人身份证人像面选好文件后上传，并触发有效期识别', async () => {
-    mocks.uploadLegalCertFrontFile.mockResolvedValue({
-      front_file: '/uploads/realname-legal-certs/flow/front.jpg',
-    })
-    mocks.recognizeLegalCertPeriod.mockResolvedValue({
-      cert_begin_on: '20180101',
-      cert_expires_on: '20380101',
-    })
-    const { wrapper, state } = await openEnterpriseDialog()
-
-    // 三个上传行按模板顺序：营业执照 / 人像面 / 国徽面
-    const file = pickFile(1, 'front.jpg')
-    await flushPromises()
-
-    expect(mocks.uploadLegalCertFrontFile).toHaveBeenCalledWith('test-token', file)
-    expect(state.draft.form.legalCertFrontFile).toBe('/uploads/realname-legal-certs/flow/front.jpg')
-    expect(mocks.recognizeLegalCertPeriod).toHaveBeenCalledWith('test-token', 'front')
-    expect(state.draft.form.legalCertBeginOn).toBe('20180101')
     wrapper.unmount()
   })
 })

@@ -1001,6 +1001,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/admin/payment/orders": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 全部支付单（管理端）
+         * @description 列出全部支付单，不限付款人，需要 `payment.admin_order_list.get`。筛选与分页口径与用户面一致：状态、业务类型、下单时间。
+         */
+        get: operations["payment_admin_list_orders"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/admin/payment/settlement-accounts": {
         parameters: {
             query?: never;
@@ -1735,6 +1755,26 @@ export interface paths {
          * @description 后台驳回：`review` → `rejected`，作者据此修改后可重新提交。需要 `resource.admin_update.patch` 且具备后台资源管理权限。**必须写明理由**（缺失回 400，500 字内）——驳回理由会随资源回给作者，空理由等于让作者猜。只有待审核状态能驳回，其余状态回 409。
          */
         post: operations["resource_admin_review_reject"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/resources/{resource_id}/versions/upload": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 后台上传版本文件
+         * @description 后台替任意资源把版本文件传到**私有目录**并返回存储路径，需要`resource.admin_version_create.post` 且具备后台资源管理权限；不校验归属。**multipart 上传，文件字段名 `file`，单个文件上限 200 MB**，后缀白名单与开发者侧上传完全一致。上传后把返回的 `resource` 随版本号一起提交到`POST /api/admin/resources/{resource_id}/versions`。
+         */
+        post: operations["resource_admin_version_upload"];
         delete?: never;
         options?: never;
         head?: never;
@@ -5363,6 +5403,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/payment/refunds/sync": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 主动同步在途退款
+         * @description 对本地所有 `pending` 退款逐单回查渠道并补记结论（最多 20 条）。需要 `payment.order.list.get`。单笔失败只记入 errors，不中断整批。
+         */
+        post: operations["payment_sync_inflight_refunds"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/payment/settlement-account": {
         parameters: {
             query?: never;
@@ -6361,7 +6421,31 @@ export interface paths {
          */
         get: operations["realname_asign_notify"];
         put?: never;
-        post?: never;
+        /**
+         * 爱签实名异步通知（免登录）
+         * @description 接收爱签文档约定的 POST JSON。个人 idNo 是身份证号，企业 idNo 是统一社会信用代码；serialNo 必须与本地挑战一致。
+         */
+        post: operations["realname_asign_notify_json"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/realname/asign/quick-start": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 上传证照并获取爱签认证链接
+         * @description 需要登录和 realname.submit.post。姓名、证件号、工商信息只从本次上传件的 OCR 结果取得，不从已存实名记录回填。
+         */
+        post: operations["realname_quick_start_identify"];
         delete?: never;
         options?: never;
         head?: never;
@@ -14307,6 +14391,11 @@ export interface components {
             contract_id?: number | null;
             /** @description 创建时间。 */
             created_at: string;
+            /**
+             * Format: int64
+             * @description 当前应开票金额（分，实时派生；只有管理端列表会带）。
+             */
+            current_invoiceable_fen?: number | null;
             /** @description 买方（需求方）。 */
             customer_username: string;
             /** @description 乙方实名主体类型。 */
@@ -14362,6 +14451,13 @@ export interface components {
             reversal_of_id?: number | null;
             /** @description 红冲原因。 */
             reversal_reason?: string | null;
+            /** @description 是否需要红冲（实时派生）。 */
+            reversal_required?: boolean | null;
+            /**
+             * Format: int64
+             * @description 建议冲减额（分，实时派生）。
+             */
+            reversal_suggestion_fen?: number | null;
             /** @description 原蓝票的红冲时间。 */
             reversed_at?: string | null;
             /** @description 原蓝票的红冲操作人。 */
@@ -15322,9 +15418,22 @@ export interface components {
             paid_at?: string | null;
             payer: string;
             provider_payment_id?: string | null;
+            /**
+             * Format: int64
+             * @description 最新退款单金额（分）。
+             */
+            refund_fen?: number | null;
+            /** @description 最新退款单原因。 */
+            refund_reason?: string | null;
+            /** @description 最新退款单状态（`pending` / `succeeded` / `failed`）；没有退款时为 `null`。 */
+            refund_status?: string | null;
+            /** @description 最新退款单更新时间。 */
+            refund_time?: string | null;
             status: string;
             status_label: string;
             subject: string;
+            /** @description 支付单最近更新时间。 */
+            updated_time: string;
         };
         PrepaidRechargeRequest: {
             /** Format: int64 */
@@ -15719,6 +15828,28 @@ export interface components {
             sort_order?: number | null;
             title?: string | null;
         };
+        /** @description 用本次上传的证照发起认证，姓名与证件信息只从 OCR 结果取得。 */
+        QuickStartIdentifyRequest: {
+            /** @description IDENTITY_CARD / ENTERPRISE / SOLE_PROPRIETOR。 */
+            auth_type: string;
+            /** @description 本次上传的营业执照（企业必填）。 */
+            business_license_file?: string | null;
+            /** @description 监护人同意。 */
+            guardian_consent?: boolean | null;
+            /** @description 监护人同意书地址。 */
+            guardian_consent_file?: string | null;
+            /**
+             * Format: int32
+             * @description 个人 151 / 152 / 153；企业 351 / 369（默认 369）。
+             */
+            identify_type?: number | null;
+            /** @description 本次上传的身份证国徽面（企业必填）。 */
+            legal_cert_back_file?: string | null;
+            /** @description 本次上传的身份证人像面。 */
+            legal_cert_front_file: string;
+            /** @description 本人或法定代表人手机号。 */
+            mobile: string;
+        };
         /**
          * @description 限流配置（进程内滑动窗口）。
          *
@@ -15933,6 +16064,24 @@ export interface components {
             refund_no: string;
             /** @description 状态。 */
             status: string;
+        };
+        /** @description 单张退款回查失败的原因（不中断整批同步）。 */
+        RefundSyncError: {
+            /** @description 失败原因（渠道未就绪、回查不一致、渠道暂时不可用等）。 */
+            detail: string;
+            /** @description 退款单号。 */
+            refund_no: string;
+        };
+        /** @description 一轮在途退款主动同步的结果。 */
+        RefundSyncOutcome: {
+            /** @description 本次回查的在途退款数。 */
+            checked: number;
+            /** @description 单笔回查失败的明细（不影响其它单）。 */
+            errors: components["schemas"]["RefundSyncError"][];
+            /** @description 已有明确终态并落库的数量（成功或失败）。 */
+            settled: number;
+            /** @description 渠道仍在处理中的数量。 */
+            still_pending: number;
         };
         /** @description 注册请求体：账号、邀请归因与人机校验分别交给对应服务处理。 */
         RegisterRequest: {
@@ -17154,6 +17303,8 @@ export interface components {
             bank_name: string;
             /** @description 企业统一社会信用代码（仅企业账户有值）。 */
             credit_code?: string | null;
+            /** @description 渠道会员已就绪，但不代表已绑定结算账户。 */
+            member_ready: boolean;
             /** @description `personal` / `enterprise`。 */
             member_type: string;
             /** @description 企业商户类型（`enterprise` / `sole_proprietor`，仅企业账户有值）。 */
@@ -17544,6 +17695,8 @@ export interface components {
         };
         /** @description 发起企业扫码认证的请求体。 */
         StartCompanyIdentifyRequest: {
+            /** @description 主体类型：ENTERPRISE / SOLE_PROPRIETOR。 */
+            auth_type?: string | null;
             /** @description 营业执照有效期截止。 */
             business_license_expires_on?: string | null;
             /** @description 营业执照文件地址。 */
@@ -17558,6 +17711,11 @@ export interface components {
             company_name: string;
             /** @description 企业所在省份编码。 */
             company_prov_code?: string | null;
+            /**
+             * Format: int32
+             * @description 认证方式：351 / 369。
+             */
+            identify_type?: number | null;
             /** @description 法人证件有效期起始。 */
             legal_cert_begin_on?: string | null;
             /** @description 法人证件有效期截止。 */
@@ -17586,6 +17744,11 @@ export interface components {
             guardian_consent_file?: string | null;
             /** @description 证件号。 */
             id_card_no: string;
+            /**
+             * Format: int32
+             * @description 认证方式：151 / 152 / 153。
+             */
+            identify_type?: number | null;
             /** @description 手机号。 */
             mobile?: string | null;
             /** @description 姓名。 */
@@ -21813,6 +21976,53 @@ export interface operations {
             };
         };
     };
+    payment_admin_list_orders: {
+        parameters: {
+            query?: {
+                /** @description 状态：`created` / `pending` / `paid` / `failed` / `canceled`。 */
+                status?: string;
+                /** @description 业务类型（精确匹配）。 */
+                biz_type?: string;
+                /** @description 下单时间下界（含）。 */
+                created_from?: string;
+                /** @description 下单时间上界（不含）。 */
+                created_to?: string;
+                /** @description 页码，从 1 开始。 */
+                page?: number;
+                /** @description 每页条数（上限 100）。 */
+                page_size?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 支付单分页（含最新退款） */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PrepaidOrderListResponse"];
+                };
+            };
+            /** @description 状态取值无法识别，或筛选时间格式无效 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 没有该接口权限 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     payment_admin_list_settlement_accounts: {
         parameters: {
             query?: {
@@ -24051,6 +24261,68 @@ export interface operations {
             };
             /** @description 资源不处于待审核状态 */
             409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    resource_admin_version_upload: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                resource_id: number;
+            };
+            cookie?: never;
+        };
+        /** @description 字段名 `file`，文件二进制（上限 200 MB） */
+        requestBody: {
+            content: {
+                "multipart/form-data": string;
+            };
+        };
+        responses: {
+            /** @description 存储相对路径与展示文件名 */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UploadVersionFileResponse"];
+                };
+            };
+            /** @description 没读到 `file` 字段、文件为空、后缀不在白名单，或超过 200 MB */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 未登录 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 没有该接口权限，或没有后台资源管理权限 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 资源不存在 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 版本文件存储未配置或落盘失败 */
+            500: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -33813,6 +34085,33 @@ export interface operations {
             };
         };
     };
+    payment_sync_inflight_refunds: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 同步结果 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RefundSyncOutcome"];
+                };
+            };
+            /** @description 没有该接口权限 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     payment_get_settlement_account: {
         parameters: {
             query?: never;
@@ -36801,6 +37100,96 @@ export interface operations {
             };
             /** @description 签名校验失败或缺关键参数（纯文本原因） */
             400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    realname_asign_notify_json: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    [key: string]: unknown;
+                };
+            };
+        };
+        responses: {
+            /** @description 已接收或已处理 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 签名、流水号或证件信息不合法 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    realname_quick_start_identify: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["QuickStartIdentifyRequest"];
+            };
+        };
+        responses: {
+            /** @description 爱签认证链接 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StartIdentifyResponse"];
+                };
+            };
+            /** @description 材料缺失或认证方式不正确 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 未登录 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 没有实名提交权限 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 爱签明确拒绝或 OCR 失败 */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 认证渠道不可用 */
+            503: {
                 headers: {
                     [name: string]: unknown;
                 };

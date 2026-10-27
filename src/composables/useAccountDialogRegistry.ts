@@ -11,7 +11,6 @@ import { useAccountUsername } from './useAccountUsername'
 import type { AccountEntryActions, AccountEntryGroupsOptions } from './useAccountEntryGroups'
 import { useAsignAccount } from './useAsignAccount'
 import { useFaceidChallenge } from './useFaceidChallenge'
-import { useLegalCertPeriod } from './useLegalCertPeriod'
 import { useRealnameFormDraft } from './useRealnameFormDraft'
 import { useRealnameIdentity } from './useRealnameIdentity'
 import { useRealnameMaterials } from './useRealnameMaterials'
@@ -94,29 +93,16 @@ export function useAccountDialogRegistry(deps: AccountDialogDeps) {
   const asign = useAsignAccount()
   const seal = useAccountSeal({ openCompanyInfo: () => asign.openAsignDialog('company') })
   const closeAccount = useAccountCloseAccount()
-  const legalCert = useLegalCertPeriod({
-    form: draft.form,
-    edited: draft.legalCertPeriodEdited,
-    locked: identity.realnameLocked,
-  })
-  const materials = useRealnameMaterials({
-    form: draft.form,
-    autoFillLegalCertPeriod: legalCert.autoFillLegalCertPeriod,
-  })
+  const materials = useRealnameMaterials({ form: draft.form })
   const submit = useRealnameSubmit({
     form: draft.form,
     validate: draft.validate,
-    buildPayload: draft.buildPayload,
-    identityCardSelected: draft.identityCardSelected,
-    enterpriseSelected: draft.enterpriseSelected,
-    isMinor14To18: draft.isMinor14To18,
-    approved: identity.realnameApproved,
     rejected: identity.realnameRejected,
     locked: identity.realnameLocked,
-    changing: identity.realnameChanging,
     applyRecord: (record) => identity.applyRealnameRecord(record),
-    beginChallenge: faceid.beginChallenge,
-    restoreBusinessPage: (record) => identity.tryRestoreBusinessPage(record),
+    beginChallenge: async (authUrl) => {
+      window.open(authUrl, '_self')
+    },
     faceidStarting: faceid.faceidStarting,
   })
   const settle = useSettlementAccount({
@@ -131,7 +117,6 @@ export function useAccountDialogRegistry(deps: AccountDialogDeps) {
   function startRealnameChange() {
     identity.startChangeMode()
     draft.resetSubjectFields()
-    draft.applyOperatorPrefill(identity.current.value)
     faceidDialogVisible.value = false
     realnameDialogVisible.value = true
   }
@@ -145,7 +130,7 @@ export function useAccountDialogRegistry(deps: AccountDialogDeps) {
     realnameDialogVisible.value = false
   }
 
-  /// 审核中继续人脸核身：先找回刷新后丢失的爱签核身链接，再打开核身弹窗。
+  /// 审核中继续认证：取回仍有效的爱签链接并直接跳转。
   async function continueFaceid() {
     if (!faceid.faceidAuthUrl.value) {
       await faceid.restoreFaceidChallengeIfNeeded()
@@ -154,7 +139,7 @@ export function useAccountDialogRegistry(deps: AccountDialogDeps) {
       TMessage.warning('暂时拿不到人脸核身链接，可撤回本次认证后重新提交')
       return
     }
-    faceidDialogVisible.value = true
+    window.open(faceid.faceidAuthUrl.value, '_self')
   }
 
   /** 缺企业资料时不去重绑：关掉结算弹窗、打开实名表单让用户补企业进件资料。 */
@@ -245,7 +230,6 @@ export function useAccountDialogRegistry(deps: AccountDialogDeps) {
     draft,
     identity,
     materials,
-    legalCert,
     faceid,
     submit,
     settle,
@@ -283,7 +267,5 @@ export function useAccountDialogRegistry(deps: AccountDialogDeps) {
     consumeProviderBindResult: provider.consumeProviderBindResult,
     refreshAdapayMember: settle.refreshAdapayMember,
     openSettleDialog: settle.openSettleDialog,
-    /** `watch(realnameDialogVisible)` 打开时补一次证件照识别。 */
-    autoFillLegalCertPeriod: legalCert.autoFillLegalCertPeriod,
   }
 }

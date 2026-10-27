@@ -55,8 +55,8 @@ export function buildIdentityEntries(state: IdentityRowsState): AccountEntry[] {
   if (state.pending) {
     entries.push({
       key: 'faceid',
-      title: '继续人脸核身',
-      desc: '扫码完成人脸核验，也可在这里查询核验结果',
+      title: '继续认证',
+      desc: '进入爱签完成认证，或查询认证结果',
       icon: Promotion,
       loading: state.restoring,
     })

@@ -2894,6 +2894,92 @@
         }
       }
     },
+    "/api/admin/payment/orders": {
+      "get": {
+        "tags": [
+          "payment-admin"
+        ],
+        "summary": "全部支付单（管理端）",
+        "description": "列出全部支付单，不限付款人，需要 `payment.admin_order_list.get`。筛选与分页口径与用户面一致：状态、业务类型、下单时间。",
+        "operationId": "payment_admin_list_orders",
+        "parameters": [
+          {
+            "name": "status",
+            "in": "query",
+            "description": "状态：`created` / `pending` / `paid` / `failed` / `canceled`。",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "biz_type",
+            "in": "query",
+            "description": "业务类型（精确匹配）。",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "created_from",
+            "in": "query",
+            "description": "下单时间下界（含）。",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "created_to",
+            "in": "query",
+            "description": "下单时间上界（不含）。",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "description": "页码，从 1 开始。",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "page_size",
+            "in": "query",
+            "description": "每页条数（上限 100）。",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "支付单分页（含最新退款）",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PrepaidOrderListResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "状态取值无法识别，或筛选时间格式无效"
+          },
+          "403": {
+            "description": "没有该接口权限"
+          }
+        }
+      }
+    },
     "/api/admin/payment/settlement-accounts": {
       "get": {
         "tags": [
@@ -5081,6 +5167,65 @@
           },
           "409": {
             "description": "资源不处于待审核状态"
+          }
+        }
+      }
+    },
+    "/api/admin/resources/{resource_id}/versions/upload": {
+      "post": {
+        "tags": [
+          "resource-admin"
+        ],
+        "summary": "后台上传版本文件",
+        "description": "后台替任意资源把版本文件传到**私有目录**并返回存储路径，需要`resource.admin_version_create.post` 且具备后台资源管理权限；不校验归属。**multipart 上传，文件字段名 `file`，单个文件上限 200 MB**，后缀白名单与开发者侧上传完全一致。上传后把返回的 `resource` 随版本号一起提交到`POST /api/admin/resources/{resource_id}/versions`。",
+        "operationId": "resource_admin_version_upload",
+        "parameters": [
+          {
+            "name": "resource_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "description": "字段名 `file`，文件二进制（上限 200 MB）",
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "string"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "存储相对路径与展示文件名",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UploadVersionFileResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "没读到 `file` 字段、文件为空、后缀不在白名单，或超过 200 MB"
+          },
+          "401": {
+            "description": "未登录"
+          },
+          "403": {
+            "description": "没有该接口权限，或没有后台资源管理权限"
+          },
+          "404": {
+            "description": "资源不存在"
+          },
+          "500": {
+            "description": "版本文件存储未配置或落盘失败"
           }
         }
       }
@@ -14720,6 +14865,31 @@
         }
       }
     },
+    "/api/payment/refunds/sync": {
+      "post": {
+        "tags": [
+          "payment"
+        ],
+        "summary": "主动同步在途退款",
+        "description": "对本地所有 `pending` 退款逐单回查渠道并补记结论（最多 20 条）。需要 `payment.order.list.get`。单笔失败只记入 errors，不中断整批。",
+        "operationId": "payment_sync_inflight_refunds",
+        "responses": {
+          "200": {
+            "description": "同步结果",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RefundSyncOutcome"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "没有该接口权限"
+          }
+        }
+      }
+    },
     "/api/payment/settlement-account": {
       "get": {
         "tags": [
@@ -17390,6 +17560,83 @@
           },
           "400": {
             "description": "签名校验失败或缺关键参数（纯文本原因）"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "realname"
+        ],
+        "summary": "爱签实名异步通知（免登录）",
+        "description": "接收爱签文档约定的 POST JSON。个人 idNo 是身份证号，企业 idNo 是统一社会信用代码；serialNo 必须与本地挑战一致。",
+        "operationId": "realname_asign_notify_json",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": {},
+                "propertyNames": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "已接收或已处理"
+          },
+          "400": {
+            "description": "签名、流水号或证件信息不合法"
+          }
+        }
+      }
+    },
+    "/api/realname/asign/quick-start": {
+      "post": {
+        "tags": [
+          "realname"
+        ],
+        "summary": "上传证照并获取爱签认证链接",
+        "description": "需要登录和 realname.submit.post。姓名、证件号、工商信息只从本次上传件的 OCR 结果取得，不从已存实名记录回填。",
+        "operationId": "realname_quick_start_identify",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/QuickStartIdentifyRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "爱签认证链接",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StartIdentifyResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "材料缺失或认证方式不正确"
+          },
+          "401": {
+            "description": "未登录"
+          },
+          "403": {
+            "description": "没有实名提交权限"
+          },
+          "502": {
+            "description": "爱签明确拒绝或 OCR 失败"
+          },
+          "503": {
+            "description": "认证渠道不可用"
           }
         }
       }
@@ -38533,6 +38780,14 @@
             "type": "string",
             "description": "创建时间。"
           },
+          "current_invoiceable_fen": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "当前应开票金额（分，实时派生；只有管理端列表会带）。"
+          },
           "customer_username": {
             "type": "string",
             "description": "买方（需求方）。"
@@ -38660,6 +38915,21 @@
               "null"
             ],
             "description": "红冲原因。"
+          },
+          "reversal_required": {
+            "type": [
+              "boolean",
+              "null"
+            ],
+            "description": "是否需要红冲（实时派生）。"
+          },
+          "reversal_suggestion_fen": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "建议冲减额（分，实时派生）。"
           },
           "reversed_at": {
             "type": [
@@ -40961,7 +41231,8 @@
           "status",
           "status_label",
           "subject",
-          "created_time"
+          "created_time",
+          "updated_time"
         ],
         "properties": {
           "amount_fen": {
@@ -40999,6 +41270,35 @@
               "null"
             ]
           },
+          "refund_fen": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "最新退款单金额（分）。"
+          },
+          "refund_reason": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "最新退款单原因。"
+          },
+          "refund_status": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "最新退款单状态（`pending` / `succeeded` / `failed`）；没有退款时为 `null`。"
+          },
+          "refund_time": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "最新退款单更新时间。"
+          },
           "status": {
             "type": "string"
           },
@@ -41007,6 +41307,10 @@
           },
           "subject": {
             "type": "string"
+          },
+          "updated_time": {
+            "type": "string",
+            "description": "支付单最近更新时间。"
           }
         }
       },
@@ -41995,6 +42299,65 @@
           }
         }
       },
+      "QuickStartIdentifyRequest": {
+        "type": "object",
+        "description": "用本次上传的证照发起认证，姓名与证件信息只从 OCR 结果取得。",
+        "required": [
+          "auth_type",
+          "mobile",
+          "legal_cert_front_file"
+        ],
+        "properties": {
+          "auth_type": {
+            "type": "string",
+            "description": "IDENTITY_CARD / ENTERPRISE / SOLE_PROPRIETOR。"
+          },
+          "business_license_file": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "本次上传的营业执照（企业必填）。"
+          },
+          "guardian_consent": {
+            "type": [
+              "boolean",
+              "null"
+            ],
+            "description": "监护人同意。"
+          },
+          "guardian_consent_file": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "监护人同意书地址。"
+          },
+          "identify_type": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32",
+            "description": "个人 151 / 152 / 153；企业 351 / 369（默认 369）。"
+          },
+          "legal_cert_back_file": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "本次上传的身份证国徽面（企业必填）。"
+          },
+          "legal_cert_front_file": {
+            "type": "string",
+            "description": "本次上传的身份证人像面。"
+          },
+          "mobile": {
+            "type": "string",
+            "description": "本人或法定代表人手机号。"
+          }
+        }
+      },
       "RateLimitConfig": {
         "type": "object",
         "description": "限流配置（进程内滑动窗口）。\n\n单实例部署下进程内计数足够；上多实例时换 Redis 实现，调用方不变。",
@@ -42455,6 +42818,58 @@
           "status": {
             "type": "string",
             "description": "状态。"
+          }
+        }
+      },
+      "RefundSyncError": {
+        "type": "object",
+        "description": "单张退款回查失败的原因（不中断整批同步）。",
+        "required": [
+          "refund_no",
+          "detail"
+        ],
+        "properties": {
+          "detail": {
+            "type": "string",
+            "description": "失败原因（渠道未就绪、回查不一致、渠道暂时不可用等）。"
+          },
+          "refund_no": {
+            "type": "string",
+            "description": "退款单号。"
+          }
+        }
+      },
+      "RefundSyncOutcome": {
+        "type": "object",
+        "description": "一轮在途退款主动同步的结果。",
+        "required": [
+          "checked",
+          "settled",
+          "still_pending",
+          "errors"
+        ],
+        "properties": {
+          "checked": {
+            "type": "integer",
+            "description": "本次回查的在途退款数。",
+            "minimum": 0
+          },
+          "errors": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RefundSyncError"
+            },
+            "description": "单笔回查失败的明细（不影响其它单）。"
+          },
+          "settled": {
+            "type": "integer",
+            "description": "已有明确终态并落库的数量（成功或失败）。",
+            "minimum": 0
+          },
+          "still_pending": {
+            "type": "integer",
+            "description": "渠道仍在处理中的数量。",
+            "minimum": 0
           }
         }
       },
@@ -44834,6 +45249,7 @@
           "account_no_tail",
           "status",
           "status_label",
+          "member_ready",
           "accepts_settlement",
           "review_note",
           "updated_time"
@@ -44861,6 +45277,10 @@
               "null"
             ],
             "description": "企业统一社会信用代码（仅企业账户有值）。"
+          },
+          "member_ready": {
+            "type": "boolean",
+            "description": "渠道会员已就绪，但不代表已绑定结算账户。"
           },
           "member_type": {
             "type": "string",
@@ -45751,6 +46171,13 @@
           "business_license_file"
         ],
         "properties": {
+          "auth_type": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "主体类型：ENTERPRISE / SOLE_PROPRIETOR。"
+          },
           "business_license_expires_on": {
             "type": [
               "string",
@@ -45793,6 +46220,14 @@
               "null"
             ],
             "description": "企业所在省份编码。"
+          },
+          "identify_type": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32",
+            "description": "认证方式：351 / 369。"
           },
           "legal_cert_begin_on": {
             "type": [
@@ -45871,6 +46306,14 @@
           "id_card_no": {
             "type": "string",
             "description": "证件号。"
+          },
+          "identify_type": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32",
+            "description": "认证方式：151 / 152 / 153。"
           },
           "mobile": {
             "type": [

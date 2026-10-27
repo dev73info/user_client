@@ -14,6 +14,7 @@ const props = defineProps<{
   verification?: UserRealnameVerification | null
   adapayMember?: {
     onboardingStatus: string
+    memberReady?: boolean
     /** 能不能收分账款：契约 `SettlementAccountResponse.accepts_settlement`。 */
     acceptsSettlement?: boolean
     providerError?: string | null
@@ -23,6 +24,7 @@ const props = defineProps<{
 const localVerification = ref<UserRealnameVerification | null>(null)
 const localAdapayMember = ref<{
   onboardingStatus: string
+  memberReady?: boolean
   acceptsSettlement?: boolean
   providerError?: string | null
 } | null>(null)
@@ -94,12 +96,14 @@ const settleAccountText = computed(() => {
  *
  * 企业会员开通对公收款要走渠道审核，这期间**实名认证早已通过**、但结算账户绑不上，
  * 所以这一格如实写「审核中」——写成「未设置」会让用户以为要自己再点一次绑定，
- * 而实际是渠道还没放行。（企业会员自 2026-10-05 起改在「结算账户」那一步创建，
- * 所以这条提示更常出现在个人主体上。）
+ * 而实际是渠道还没放行。会员可能在实名通过后或收款开户时创建，
+ * `member_ready` 为真时不再显示审核中，下一步是绑定结算账户。
  *
  * 口径见 `@/shared/settleAccountStage`，与账户页那一份同源。
  */
-const settleUnderReview = computed(() => isSettleUnderReview(adapayMember.value?.onboardingStatus))
+const settleUnderReview = computed(() =>
+  isSettleUnderReview(adapayMember.value?.onboardingStatus, adapayMember.value?.memberReady),
+)
 
 /**
  * 渠道已明确拒绝开通收款账户（企业开户审核未通过 / 审核通过但开户失败）。

@@ -5,6 +5,7 @@ import type {
   StartAsignIdentifyResponse,
   StartCompanyIdentifyPayload,
   StartCompanyIdentifyResponse,
+  QuickStartIdentifyPayload,
   UserRealnameVerification,
 } from './types'
 
@@ -39,6 +40,21 @@ export async function startCompanyAsignIdentify(
       body: JSON.stringify(payload),
     },
     '发起爱签企业实名认证失败',
+  )
+}
+
+export async function quickStartAsignIdentify(
+  token: string,
+  payload: QuickStartIdentifyPayload,
+): Promise<StartAsignIdentifyResponse> {
+  return requestJson<StartAsignIdentifyResponse>(
+    '/realname/asign/quick-start',
+    {
+      method: 'POST',
+      headers: authHeaders(token, { 'Content-Type': 'application/json' }),
+      body: JSON.stringify(payload),
+    },
+    '发起爱签实名认证失败',
   )
 }
 

@@ -6,14 +6,10 @@
  * 十二个弹窗不在这里：状态归 `useAccountDialogRegistry`（一包域实例 + 一张可见性表），
  * 绑定表归 `AccountDialogHost`（`key → 组件 + props + 事件`），视图只有下面一行挂点。
  *
- * 三条跨域 watch **必须留在这里**：
- * - `watch(realnameDialogVisible)`：关弹窗即丢弃变更草稿（草稿的生命周期归视图）；
- * - `watch(faceidAuthUrl)`：二维码出现 / 消失要连带开关实名弹窗（两个弹窗互斥）；
- * - `watch(form.authType)`：切主体时把经办人信息补进草稿（读身份域、写草稿域）。
+ * 实名弹窗关闭时退出变更模式。认证材料只来自本次上传，不从这里读取旧实名要素。
  *
- * `onMounted` 的**串行顺序不许变**：hydrate → 消费两条回跳 query → loadProfile →
- * loadBoundProviders → matchMedia → loadCurrentRealname → 会员状态 → `settle=1` 开结算弹窗 →
- * 回查核身结果 → 恢复核身链接。前一步的返回值是后一步的输入，调换会让 hero / 入口卡读到旧状态。
+ * 页面加载后读取实名与渠道会员状态，认证中先回查一次结果；只有用户主动点击
+ * 「继续认证」才恢复爱签链接，不会在回跳后自动再次跳走。
  */
 import { onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
@@ -100,38 +96,8 @@ const { realnameEntryGroups, accountEntryGroups, openAccountEntry } = useAccount
   actions: dialogs.entryActions,
 })
 
-/// 切到企业 / 个体户时带上本人经办人信息（只在字段为空时补）。
-watch(
-  () => draft.form.authType,
-  (next, previous) => {
-    if (next !== previous) draft.applyOperatorPrefill(identity.current.value)
-  },
-)
-
-/**
- * 核身二维码出现时自动弹出核身弹窗，并收起「提交认证信息」弹窗，避免双弹窗叠放。
- *
- * 只做可见性——**两个弹窗互相关闭这件事必须留在视图**：`realnameDialogVisible` 是表单草稿的
- * 生命周期开关（关掉就丢弃变更草稿），不能让 composable 或子组件去改它。
- */
-watch(faceid.faceidAuthUrl, (url) => {
-  if (url) {
-    faceidDialogVisible.value = true
-    realnameDialogVisible.value = false
-    return
-  }
-  faceidDialogVisible.value = false
-})
-
-// 关掉「提交认证信息」弹窗即放弃变更草稿：没提交过的变更，下次打开不该还是解锁态。
 watch(realnameDialogVisible, (visible) => {
-  if (!visible) {
-    identity.exitChangeMode()
-    return
-  }
-  // 表单打开、本地已存有证件照时补一次识别（上传那次的识别可能失败过，重开弹窗即重试）。
-  // 静默：不再重复弹「未能识别」——这条提示在上传后已经给过一次了。
-  void dialogs.autoFillLegalCertPeriod({ silent: true })
+  if (!visible) identity.exitChangeMode()
 })
 
 onMounted(async () => {
@@ -163,8 +129,6 @@ onMounted(async () => {
   if (shouldRecheckRealnameResult(identity.current.value?.status)) {
     await faceid.checkWechatFaceidResult({ silent: true })
   }
-  // 刷新后尝试恢复丢失的爱签二维码（若仍未完成人脸核身）
-  await faceid.restoreFaceidChallengeIfNeeded()
 })
 </script>
 

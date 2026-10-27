@@ -7,9 +7,9 @@
  * 「没传时怎么提示」「文件名的兜底叫法」，正好是 `kind` 一张表。
  *
  * **点开文件选择框留在这里**：`<input>` 节点在本组件里，`ref` 拿不到跨组件边界，
- * 「点按钮 → 弹系统选择框」只能跟着节点走。校验 / 上传 / OCR 全在
- * `composables/useRealnameMaterials.ts`，本组件只把选好的 `File` emit 出去，
- * 不碰 `@/api/*`、`TMessage`、`router`。
+ * 「点按钮 → 弹系统选择框」只能跟着节点走。校验与上传在
+ * `composables/useRealnameMaterials.ts`，OCR 由后端在发起认证时完成。
+ * 本组件只把选好的 `File` emit 出去，不碰 `@/api/*`、`TMessage`、`router`。
  *
  * 样式：`.realname-consent-upload*` / `.realname-consent-template` 整组随节点搬进来
  * （父级 scoped 对子组件节点不命中，留在父级会整组失效）。
@@ -22,13 +22,13 @@ import { TButton } from 'ui_73info'
 const KINDS = {
   businessLicense: {
     fallbackName: '营业执照',
-    accept: '.png,.jpg,.jpeg,.webp,.pdf,image/png,image/jpeg,image/webp,application/pdf',
-    hint: '请上传营业执照扫描件或照片（图片或 PDF，10MB 以内）',
+    accept: '.png,.jpg,.jpeg,.webp,image/png,image/jpeg,image/webp',
+    hint: '请上传营业执照扫描件或照片（图片，10MB 以内）',
   },
   legalCertFront: {
-    fallbackName: '法人身份证人像面',
+    fallbackName: '身份证人像面',
     accept: '.png,.jpg,.jpeg,.webp,image/png,image/jpeg,image/webp',
-    hint: '请上传法人身份证人像面照片（图片，10MB 以内）',
+    hint: '请上传身份证人像面照片（图片，10MB 以内）',
   },
   legalCertBack: {
     fallbackName: '法人身份证国徽面',
