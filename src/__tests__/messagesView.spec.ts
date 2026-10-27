@@ -1,7 +1,7 @@
 import { createPinia, setActivePinia } from 'pinia'
 import { flushPromises, mount, type VueWrapper } from '@vue/test-utils'
 import { createMemoryHistory, createRouter } from 'vue-router'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { useAuthStore } from '@/stores/auth'
 import MessagesView from '@/views/MessagesView.vue'
 
@@ -141,6 +141,9 @@ const ROUTES = [
 
 beforeEach(() => {
   vi.resetAllMocks()
+  // 固定参考时间，历史消息不会随真实日期滚出「近 7 天」统计窗口。
+  vi.useFakeTimers()
+  vi.setSystemTime(new Date('2026-10-26T12:00:00+08:00'))
   setActivePinia(createPinia())
   const auth = useAuthStore()
   // 不用真 token：hydrate 会从 localStorage 读回空串，把这里设的身份冲掉
@@ -152,6 +155,10 @@ beforeEach(() => {
   mocks.requirements.mockResolvedValue(baseRequirements)
   mocks.disclosures.mockResolvedValue([])
   mocks.subscribe.mockReturnValue(() => {})
+})
+
+afterEach(() => {
+  vi.useRealTimers()
 })
 
 async function render(

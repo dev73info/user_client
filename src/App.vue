@@ -6,6 +6,7 @@ import AppDownloadCard from '@/components/app/AppDownloadCard.vue'
 import AppSiteFooter from '@/components/app/AppSiteFooter.vue'
 import PortalTopNav from '@/components/PortalTopNav.vue'
 import PortalMobileDock from '@/components/PortalMobileDock.vue'
+import SupportChatWidget from '@/components/SupportChatWidget.vue'
 import MockIdentitySwitcher from '@/mock/MockIdentitySwitcher.vue'
 import { TScrollbar } from 'ui_73info'
 import { useAppShellAuth } from '@/components/app/useAppShellAuth'
@@ -51,6 +52,7 @@ const showSiteFooter = computed(
 
     <!-- 全局资源下载进度浮层：切换路由不中断下载，浮层持续展示进度 -->
     <AppDownloadCard />
+    <SupportChatWidget />
   </div>
 </template>
 
