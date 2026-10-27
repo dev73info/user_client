@@ -129,10 +129,13 @@ export function canPay(
   return status === 'pending_deposit' || status === 'pending_final'
 }
 
-/** 开发中且已发布过版本，需求方就能请求支付尾款。 */
+/** 开发中且已交付至少一个版本，需求方就能请求支付尾款。 */
 export function canRequestFinalPayment(item: RequirementItem) {
   return (
-    hasBoundResource(item) && item.status === 'in_development' && publishedVersionCount(item) > 0
+    hasBoundResource(item) &&
+    Boolean(item.delivered_at) &&
+    item.status === 'in_development' &&
+    publishedVersionCount(item) > 0
   )
 }
 

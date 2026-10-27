@@ -5129,6 +5129,10 @@ export interface paths {
         };
         get?: never;
         put?: never;
+        /**
+         * 人工调整预付保证金
+         * @description 金额为整数分：正数充值、负数扣除，必须填写原因。扣除后余额不能为负，也不能占用在途提现。
+         */
         post: operations["payment_admin_prepaid_credit"];
         delete?: never;
         options?: never;
@@ -8168,8 +8172,8 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * 资源详情（公开面）
-         * @description 按编号读一条已上架的非接口资源，并**累加一次浏览次数**。未上架、已下架或接口交付类资源一律按不存在处理（404），不区分「没有这条」与「你看不到」，免得被拿来探测编号。带令牌时额外回 `purchased_by_me`（按购买权益实时判定）；未登录、或装配层没注入权益端口时恒为 false —— 没接上就不该声称用户已购买。
+         * 资源详情（公开面 / 需求交付）
+         * @description 按编号读一条资源，并**累加一次浏览次数**。公开面只放已上架的非接口资源；私有交付资源只有绑定需求的双方可读，其他访问者一律按不存在处理（404），不区分「没有这条」与「你看不到」，免得被拿来探测编号。带令牌时额外回 `purchased_by_me`（按购买权益实时判定）；未登录、或装配层没注入权益端口时恒为 false —— 没接上就不该声称用户已购买。
          */
         get: operations["resource_public_detail"];
         put?: never;
@@ -8368,8 +8372,8 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * 资源的版本列表（公开面）
-         * @description 公开读某个已上架资源的版本列表，每条带 `is_current`（是否当前版本）与`purchasable`（单版本价大于 0 才可单卖）。未上架资源按不存在处理（404）。这里只列版本、不校验下载权：能不能下由下载端点单独判定，所以未购买的访客也能看到版本号与价格。
+         * 资源的版本列表（公开面 / 需求交付）
+         * @description 公开读某个已上架资源的版本列表，每条带 `is_current`（是否当前版本）与`purchasable`（单版本价大于 0 才可单卖）。未上架资源只对绑定需求的双方可见，其他访问者按不存在处理（404）。这里只列版本、不校验下载权：能不能下由下载端点单独判定，所以未购买的访客也能看到公开版本号与价格。
          */
         get: operations["resource_public_versions"];
         put?: never;
@@ -8417,7 +8421,7 @@ export interface paths {
         };
         /**
          * 下载版本文件
-         * @description 下载某个版本的文件，必须登录。判定顺序：资源可见性（未上架只有作者与后台能下）→ 资源不是接口交付类（接口交付没有文件）→ 版本存在且未下线（已下线回 410）→ 作者 / 后台豁免 → 免费放行 → 权益放行，都不满足回 403。只有「买家凭权益下载」这一条路径会记首次下载时间并累加下载次数，豁免路径不写（否则免掉的那几次会被统计成 0 元售出）。文件从**私有目录**读取、以附件形式下发，不经过 `/uploads/**` 裸链，因此即使猜中路径也拿不到别人的版本文件。
+         * @description 下载某个版本的文件，必须登录。判定顺序：资源可见性（未上架只有作者、后台与需求双方能下）→ 资源不是接口交付类（接口交付没有文件）→ 版本存在且未下线（已下线回 410）→ 作者 / 后台 / 需求双方豁免 → 免费放行 → 权益放行，都不满足回 403。只有「买家凭权益下载」这一条路径会记首次下载时间并累加下载次数，豁免路径不写（否则免掉的那几次会被统计成 0 元售出）。文件从**私有目录**读取、以附件形式下发，不经过 `/uploads/**` 裸链，因此即使猜中路径也拿不到别人的版本文件。
          */
         get: operations["resource_download_version"];
         put?: never;
@@ -12186,8 +12190,8 @@ export interface components {
         /**
          * @description 接单请求体（与 legacy `BindRequirementProjectRequest` 同形）。
          *
-         *     `resource_id` 是开发者要交付的资源。资源绑定归资源 crate，本 crate 目前只读出来留着，
-         *     不落库也不校验归属——资源侧接上之后由那边在同一事务里写绑定关系，见 `bind_project` 的注释。
+         *     `resource_id` 是开发者要交付的资源。需求域会校验资源归属并写入绑定关系，
+         *     响应再通过同一份绑定关系返回资源编号与未删除版本数。
          */
         BindProjectRequest: {
             /**
@@ -15387,9 +15391,14 @@ export interface components {
             withdrawable_fen: number;
         };
         PrepaidCreditRequest: {
-            /** Format: int64 */
+            /**
+             * Format: int64
+             * @description 调整金额（分）：正数充值、负数扣除，不能为零。
+             */
             amount_fen: number;
+            /** @description 操作原因，与操作人一起写入审计流水。 */
             note: string;
+            /** @description 要调整的开发者平台账号。 */
             username: string;
         };
         PrepaidLedgerResponse: {
@@ -16235,6 +16244,16 @@ export interface components {
             /** @description 验收时间。 */
             accepted_at?: string | null;
             /**
+             * Format: int64
+             * @description 绑定的交付资源；未绑定为 `null`。
+             */
+            bound_resource_id?: number | null;
+            /**
+             * Format: int64
+             * @description 绑定资源的未删除版本数；未绑定为 `null`。
+             */
+            bound_resource_version_count?: number | null;
+            /**
              * Format: double
              * @description 预算（元）。
              */
@@ -16433,7 +16452,7 @@ export interface components {
             requirement_archive_cleared: boolean;
             /** @description 关联需求是否已锁定（需求模块未接入，恒为 false）。 */
             requirement_archive_locked: boolean;
-            /** @description 关联需求编号（需求模块未接入，暂为空）。 */
+            /** @description 关联需求编号（未绑定需求时为空）。 */
             requirement_id?: string | null;
             /** @description 资源类别。 */
             resource_kind: string;
@@ -33357,6 +33376,18 @@ export interface operations {
                 };
                 content?: never;
             };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
         };
     };
     payment_admin_prepaid_order_delete: {
@@ -42327,7 +42358,7 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description 资源不存在，或尚未上架 */
+            /** @description 资源不存在，或未上架且访问者不是需求双方 */
             404: {
                 headers: {
                     [name: string]: unknown;

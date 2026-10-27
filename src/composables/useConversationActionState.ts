@@ -29,6 +29,7 @@ export type ActionRequirement = {
   payment_mode: RequirementPaymentMode
   bound_resource_id?: number | null
   bound_resource_version_count?: number | null
+  delivered_at?: string | null
 }
 
 type ActionStateSources = {
@@ -112,11 +113,12 @@ export function useConversationActionState(readSources: () => ActionStateSources
       !isDeveloper.value &&
       isSelfManaged.value &&
       hasBoundResource.value &&
+      Boolean(requirement.value?.delivered_at) &&
       status.value === 'in_development' &&
       publishedVersionCount.value > 0,
   )
   /**
-   * 担保模式的验收入口：开发中与待付尾款都能提交，与「我的需求」页的 `canOpenAcceptance` 同口径。
+   * 担保模式的验收入口：已付定金、开发中与待付尾款都能提交，与「我的需求」页同口径。
    *
    * 验收可反复提交——不通过会留档并通知开发者整改：「开发中」留在原状态；
    * 「待付尾款」会退回「开发中」并挡住宿尾款（后端 `accept_delivery` 的 rolling_back 分支），
@@ -128,14 +130,16 @@ export function useConversationActionState(readSources: () => ActionStateSources
       !isSelfManaged.value &&
       contractSigned.value &&
       hasBoundResource.value &&
+      Boolean(requirement.value?.delivered_at) &&
       publishedVersionCount.value > 0 &&
-      (status.value === 'in_development' || status.value === 'pending_final'),
+      ['deposit_paid', 'in_development', 'pending_final'].includes(status.value ?? ''),
   )
   const canDeliver = computed(
     () =>
       isDeveloper.value &&
       hasBoundResource.value &&
-      (status.value === 'in_development' || status.value === 'pending_final'),
+      (status.value === 'in_development' ||
+        (!isSelfManaged.value && status.value === 'deposit_paid')),
   )
   /** 在办的解除合作案件（`is_open` 由后端按状态机算，前端不自己列终态表）。 */
   const hasLiveBreachCase = computed(() => breachCase.value?.is_open === true)
@@ -197,6 +201,7 @@ export function useConversationActionState(readSources: () => ActionStateSources
       payment_mode: row.payment_mode,
       bound_resource_id: row.bound_resource_id,
       bound_resource_version_count: row.bound_resource_version_count,
+      delivered_at: row.delivered_at,
     }
   }
 

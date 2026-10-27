@@ -148,7 +148,8 @@ export function latestDeliveryVersionLabel(item: RequirementItem, facts: Facts) 
 export function canRequestFinalPayment(item: RequirementItem, facts: Facts) {
   // 无担保模式完成无需合同已签；仅担保模式需要双方已签合同
   const contractSigned = isSelfManagedRequirement(item) || isRequirementContractSigned(facts)
-  const delivered = hasBoundResource(item) && publishedVersionCount(item, facts) > 0
+  const delivered =
+    hasBoundResource(item) && Boolean(item.delivered_at) && publishedVersionCount(item, facts) > 0
   return delivered && item.status === 'in_development' && contractSigned
 }
 
@@ -207,13 +208,13 @@ export function canReportBreach(item: RequirementItem, facts: Facts) {
 }
 
 /**
- * 担保模式的验收入口：双方已签 + 有交付资源 + 发过至少一版，开发中与待付尾款都能提交。
+ * 担保模式的验收入口：双方已签 + 已交付至少一版，已付定金、开发中与待付尾款都能提交。
  * 验收可重复提交：不过会留档，待付尾款那一档退回开发中并挡住宿尾款（后端 rolling_back）。
  */
 export function canOpenAcceptance(item: RequirementItem, facts: Facts) {
   if (isSelfManagedRequirement(item) || !isRequirementContractSigned(facts)) return false
-  if (!hasBoundResource(item)) return false
-  const reviewing = item.status === 'in_development' || item.status === 'pending_final'
+  if (!hasBoundResource(item) || !item.delivered_at) return false
+  const reviewing = ['deposit_paid', 'in_development', 'pending_final'].includes(item.status)
   return reviewing && publishedVersionCount(item, facts) > 0
 }
 

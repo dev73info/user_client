@@ -3,7 +3,7 @@ import { useRouter } from 'vue-router'
 import { TMessage } from 'ui_73info'
 
 import { fetchAsignRequirementPreviewUrl } from '@/api/contracts'
-import { apiUrl } from '@/api/http'
+import { useResourceDownload } from '@/composables/useResourceDownload'
 import { listRequirements } from '@/api/requirements'
 import { listPublicMcResourceVersions } from '@/api/resources'
 import type { ConversationCardMeta } from '@/shared/conversationCards'
@@ -97,6 +97,7 @@ export function useConversationCardActions(readSources: () => CardActionSources)
     }
 
     downloadLoading.value = true
+    const { downloadResourceVersion } = useResourceDownload()
     try {
       const requirements = await listRequirements(token)
       const boundResourceId = requirements.find(
@@ -114,7 +115,7 @@ export function useConversationCardActions(readSources: () => CardActionSources)
         return
       }
 
-      window.open(apiUrl(target.resource), '_blank', 'noopener')
+      await downloadResourceVersion(boundResourceId, target, token)
       // 下载已证明有交付版本：刷一遍工具条，并用刚查到的版本数兜底，让同卡「验收」立刻可点。
       const actions = readSources().actions()
       await actions?.loadActions?.()
