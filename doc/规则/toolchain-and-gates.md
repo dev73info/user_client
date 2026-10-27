@@ -89,6 +89,7 @@ Git Bash 完整路径，赋值写在 `-lc` 的字符串里：
 | `VITE_API_BASE_URL` | 接口基地址，留空表示同源（走 dev 代理） |
 | `VITE_ROUTER_MODE` | `history` 时用 history 路由，否则 hash（默认 hash） |
 | `VITE_DEV_AUTO_LOGIN_USERNAME` / `VITE_DEV_AUTO_LOGIN_PASSWORD` | 本地自动登录 |
+| `VITE_TURNSTILE_SITE_KEY` | 本机由脚本提供官方测试密钥，自动登录直接提交测试 token；正式站点密钥仍须从 Cloudflare 获取真实 token |
 | `VITE_DEV_HOME_MOCK` | 开发者工作台总览改用演示数据，只 dev 生效 |
 | `VITE_MOCK` / `VITE_MOCK_DELAY` | 整站走假后端 / 假响应延迟 |
 
