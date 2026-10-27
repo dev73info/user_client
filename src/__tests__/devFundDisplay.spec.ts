@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
 import {
+  KIND_LABELS,
   buildFundRecords,
   filterFundRecords,
   fundAmount,
@@ -51,33 +52,37 @@ describe('money', () => {
 })
 
 describe('状态文案', () => {
-  it('提现状态以契约的 status_label 为准，本地 map 只兜底且不带任何到账承诺', () => {
+  it('已知提现状态使用紧凑文案，未知状态才回落后端说明', () => {
     expect(incomeWithdrawalStatusText('paid')).toBe('已到账')
     expect(incomeWithdrawalStatusText('pending_review')).toBe('待审核')
-    // 「T+1」是 1.x 页面自己编的到账承诺，契约的 WithdrawalResponse 没有这个字段
-    expect(incomeWithdrawalStatusText('payout_processing')).toBe('出款中')
-    // 契约里没见过的状态原样透出，不猜
+    expect(incomeWithdrawalStatusText('processing')).toBe('处理中')
+    expect(incomeWithdrawalStatusText('payout_processing')).toBe('处理中')
+    expect(incomeWithdrawalStatusText('failed')).toBe('出款失败')
+    expect(incomeWithdrawalStatusText('unknown_state', '渠道自定义说明')).toBe('渠道自定义说明')
     expect(incomeWithdrawalStatusText('unknown_state')).toBe('unknown_state')
   })
 
-  it('标签色调按状态分档：待审核警示、出款中信息、失败危险', () => {
+  it('标签色调按状态分档：待审核警示、进行中信息、失败危险', () => {
     expect(statusTagType('pending_review')).toBe('warning')
     expect(statusTagType('approved')).toBe('info')
+    expect(statusTagType('processing')).toBe('info')
     expect(statusTagType('payout_processing')).toBe('info')
     expect(statusTagType('paid')).toBe('success')
+    expect(statusTagType('failed')).toBe('danger')
     expect(statusTagType('payout_failed')).toBe('danger')
     expect(statusTagType('rejected')).toBe('danger')
   })
 })
 
 describe('类型着色', () => {
-  it('只有收入算流入，出款用中性色，冲减用警示色', () => {
+  it('类型标签：收入黄色、提现绿色、退款冲减红色', () => {
+    expect(KIND_LABELS.income_withdrawal).toBe('提现')
     expect(isInflowKind('income')).toBe(true)
     expect(isInflowKind('income_withdrawal')).toBe(false)
     expect(isInflowKind('income_reversal')).toBe(false)
-    expect(kindTagTone('income', 'success')).toBe('success')
-    expect(kindTagTone('income_withdrawal', 'info')).toBe('info')
-    expect(kindTagTone('income_reversal', 'danger')).toBe('danger')
+    expect(kindTagTone('income')).toBe('warning')
+    expect(kindTagTone('income_withdrawal')).toBe('success')
+    expect(kindTagTone('income_reversal')).toBe('danger')
   })
 })
 
