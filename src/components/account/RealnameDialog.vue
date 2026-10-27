@@ -83,13 +83,13 @@ watch(
           style="width: 100%"
         >
           <template v-if="form.authType === 'IDENTITY_CARD'">
-            <TOption label="个人运营商三要素（151）" :value="151" />
-            <TOption label="个人银行卡四要素（152）" :value="152" />
-            <TOption label="个人人脸活体认证（153）" :value="153" />
+            <TOption label="个人运营商三要素" :value="151" />
+            <TOption label="个人银行卡四要素" :value="152" />
+            <TOption label="个人人脸活体认证" :value="153" />
           </template>
           <template v-else>
-            <TOption label="法定代表人认证（351）" :value="351" />
-            <TOption label="企业线下盖章授权认证（369，默认）" :value="369" />
+            <TOption label="法定代表人认证" :value="351" />
+            <TOption label="企业线下盖章授权认证" :value="369" />
           </template>
         </TSelect>
       </TFormItem>
