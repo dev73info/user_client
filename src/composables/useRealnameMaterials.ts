@@ -5,6 +5,7 @@ import {
   uploadGuardianConsentFile,
   uploadLegalCertBackFile,
   uploadLegalCertFrontFile,
+  uploadOperatorCertFrontFile,
 } from '@/api/realname'
 import type { RealnameDraftFields } from '@/shared/realnameForm'
 import { useAuthStore } from '@/stores/auth'
@@ -33,6 +34,7 @@ export function useRealnameMaterials(options: RealnameMaterialsOptions) {
   const businessLicenseUploading = ref(false)
   const legalCertFrontUploading = ref(false)
   const legalCertBackUploading = ref(false)
+  const operatorCertFrontUploading = ref(false)
 
   function ensureToken(): boolean {
     auth.hydrate()
@@ -97,6 +99,20 @@ export function useRealnameMaterials(options: RealnameMaterialsOptions) {
     }
   }
 
+  async function handleOperatorCertFrontFile(file: File) {
+    if (!validateFile(file, '经办人身份证人像面')) return
+    operatorCertFrontUploading.value = true
+    try {
+      const result = await uploadOperatorCertFrontFile(auth.token, file)
+      options.form.operatorCertFrontFile = result.front_file
+      TMessage.success('经办人身份证人像面已上传')
+    } catch (error) {
+      TMessage.error(error instanceof Error ? error.message : '上传经办人身份证人像面失败')
+    } finally {
+      operatorCertFrontUploading.value = false
+    }
+  }
+
   async function handleConsentFile(file: File) {
     if (!validateFile(file, '监护人同意书', true)) return
     if (file.size > MAX_CONSENT_FILE_SIZE) {
@@ -120,9 +136,11 @@ export function useRealnameMaterials(options: RealnameMaterialsOptions) {
     businessLicenseUploading,
     legalCertFrontUploading,
     legalCertBackUploading,
+    operatorCertFrontUploading,
     handleBusinessLicenseFile,
     handleLegalCertFrontFile,
     handleLegalCertBackFile,
+    handleOperatorCertFrontFile,
     handleConsentFile,
   }
 }

@@ -149,6 +149,11 @@ export type LegalCertBackUploadResponse = {
   back_file: string
 }
 
+/** 上传经办人身份证人像面成功后的响应；契约未声明响应体，与现有上传端点同口径。 */
+export type OperatorCertFrontUploadResponse = {
+  front_file: string
+}
+
 /**
  * 营业执照 OCR 识别结果：只包含可回填表单的白名单字段。
  *

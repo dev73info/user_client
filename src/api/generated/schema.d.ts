@@ -6672,6 +6672,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/realname/operator-cert-front-file": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 上传经办人身份证人像面
+         * @description 需要登录和 realname.submit.post。multipart 字段名为 file，只收 PNG / JPG / WEBP，单张不超过 10 MiB。返回 front_file，供材料认证入口使用。
+         */
+        post: operations["realname_upload_operator_cert_front"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/realname/withdraw": {
         parameters: {
             query?: never;
@@ -15849,6 +15869,15 @@ export interface components {
             legal_cert_front_file: string;
             /** @description 本人或法定代表人手机号。 */
             mobile: string;
+            /** @description 本次上传的经办人身份证人像面（企业必填）。 */
+            operator_cert_front_file?: string | null;
+            /**
+             * Format: int32
+             * @description 经办人认证方式：151 / 152 / 153（默认 153）。
+             */
+            operator_identify_type?: number | null;
+            /** @description 经办人手机号（企业必填）。 */
+            operator_mobile?: string | null;
         };
         /**
          * @description 限流配置（进程内滑动窗口）。
@@ -17713,17 +17742,30 @@ export interface components {
             company_prov_code?: string | null;
             /**
              * Format: int32
-             * @description 认证方式：351 / 369。
+             * @description 企业认证方式：351 / 369。
              */
             identify_type?: number | null;
             /** @description 法人证件有效期起始。 */
             legal_cert_begin_on?: string | null;
             /** @description 法人证件有效期截止。 */
             legal_cert_expires_on?: string | null;
-            /** @description 手机号。 */
+            /** @description 法定代表人证件号；缺省与经办人一致。 */
+            legal_person_id_card_no?: string | null;
+            /** @description 法定代表人手机号；缺省与经办人一致。 */
+            legal_person_mobile?: string | null;
+            /** @description 法定代表人姓名；缺省与经办人一致（兼容旧记录）。 */
+            legal_person_name?: string | null;
+            /** @description 经办人手机号。 */
             mobile: string;
+            /** @description 经办人身份证人像面地址。 */
+            operator_cert_front_file?: string | null;
             /** @description 经办人证件号。 */
             operator_id_card_no: string;
+            /**
+             * Format: int32
+             * @description 经办人认证方式：151 / 152 / 153（默认 153）。
+             */
+            operator_identify_type?: number | null;
             /** @description 经办人姓名。 */
             operator_name: string;
             /** @description 统一社会信用代码。 */
@@ -37799,6 +37841,50 @@ export interface operations {
             };
             /** @description 校验操作权限失败，或内部错误 */
             500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    realname_upload_operator_cert_front: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description 字段名 file，图片二进制 */
+        requestBody: {
+            content: {
+                "multipart/form-data": string;
+            };
+        };
+        responses: {
+            /** @description 经办人证件地址 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 文件缺失、格式不支持、空文件或超过 10 MiB */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 未登录 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 没有实名提交权限 */
+            403: {
                 headers: {
                     [name: string]: unknown;
                 };

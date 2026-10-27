@@ -12,6 +12,7 @@ const mocks = vi.hoisted(() => ({
   uploadBusinessLicenseFile: vi.fn(),
   uploadLegalCertFrontFile: vi.fn(),
   uploadLegalCertBackFile: vi.fn(),
+  uploadOperatorCertFrontFile: vi.fn(),
   withdrawRealname: vi.fn(),
   open: vi.fn(),
   replace: vi.fn(),
@@ -51,6 +52,7 @@ vi.mock('@/api/realname', async (importOriginal) => ({
   uploadBusinessLicenseFile: mocks.uploadBusinessLicenseFile,
   uploadLegalCertFrontFile: mocks.uploadLegalCertFrontFile,
   uploadLegalCertBackFile: mocks.uploadLegalCertBackFile,
+  uploadOperatorCertFrontFile: mocks.uploadOperatorCertFrontFile,
   withdrawMyRealnameVerification: mocks.withdrawRealname,
 }))
 
@@ -66,6 +68,8 @@ const APPROVED_RECORD = {
 const FRONT_FILE = '/uploads/realname-legal-certs/flow/front.jpg'
 const BACK_FILE = '/uploads/realname-legal-certs/flow/back.jpg'
 const LICENSE_FILE = '/uploads/realname-business-licenses/flow/license.jpg'
+const OPERATOR_FILE = '/uploads/realname-operator-certs/flow/front.jpg'
+const OPERATOR_MOBILE = '13900000000'
 
 type Setup = {
   draft: { form: Record<string, unknown> }
@@ -104,11 +108,11 @@ async function renderPage(): Promise<VueWrapper> {
   return wrapper
 }
 
-async function fillMobile(placeholder: string) {
+async function fillMobile(placeholder: string, value = '13800000000') {
   const input = document.querySelector(
     `.t73-dialog input[placeholder="${placeholder}"]`,
   ) as HTMLInputElement
-  input.value = '13800000000'
+  input.value = value
   input.dispatchEvent(new Event('input'))
   await nextTick()
 }
@@ -123,6 +127,7 @@ beforeEach(() => {
   mocks.quickStartAsignIdentify.mockResolvedValue({ auth_url: 'https://asign.test/auth' })
   mocks.uploadLegalCertFrontFile.mockResolvedValue({ front_file: FRONT_FILE })
   mocks.uploadLegalCertBackFile.mockResolvedValue({ back_file: BACK_FILE })
+  mocks.uploadOperatorCertFrontFile.mockResolvedValue({ front_file: OPERATOR_FILE })
   mocks.uploadBusinessLicenseFile.mockResolvedValue({ business_license_file: LICENSE_FILE })
 })
 
@@ -153,7 +158,7 @@ describe('材料认证弹窗', () => {
     wrapper.unmount()
   })
 
-  it('企业默认 369，上传三张证照并上送本次文件路径', async () => {
+  it('企业默认 369，上传四份材料并上送本次文件路径与两个手机号', async () => {
     const wrapper = await renderPage()
     const state = setupState(wrapper)
     state.draft.form.authType = 'ENTERPRISE'
@@ -168,7 +173,10 @@ describe('材料认证弹窗', () => {
     await flushPromises()
     pickFile(2, 'license.jpg')
     await flushPromises()
+    pickFile(3, 'operator-front.jpg')
+    await flushPromises()
     await fillMobile('请输入法定代表人手机号')
+    await fillMobile('请输入经办人手机号', OPERATOR_MOBILE)
     bodyButton('开始认证').click()
     await flushPromises()
 
@@ -179,6 +187,9 @@ describe('材料认证弹窗', () => {
       legal_cert_front_file: FRONT_FILE,
       legal_cert_back_file: BACK_FILE,
       business_license_file: LICENSE_FILE,
+      operator_identify_type: 153,
+      operator_mobile: OPERATOR_MOBILE,
+      operator_cert_front_file: OPERATOR_FILE,
     })
     expect(mocks.open).toHaveBeenCalledWith('https://asign.test/auth', '_self')
     wrapper.unmount()

@@ -69,6 +69,15 @@ describe('材料认证表单校验', () => {
     expect(validateRealnameDraft(enterpriseDraft({ businessLicenseFile: '' }))).toBe(
       '请上传营业执照',
     )
+    expect(validateRealnameDraft(enterpriseDraft({ operatorCertFrontFile: '' }))).toBe(
+      '请上传经办人身份证人像面照片',
+    )
+    expect(validateRealnameDraft(enterpriseDraft({ operatorMobile: '' }))).toBe(
+      '请填写正确的经办人手机号',
+    )
+    expect(validateRealnameDraft(enterpriseDraft({ operatorIdentifyType: 369 }))).toBe(
+      '请选择经办人认证方式',
+    )
     expect(
       validateRealnameDraft(
         enterpriseDraft({ companyName: '', companyAddress: '', businessScope: '' }),

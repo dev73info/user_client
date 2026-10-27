@@ -14,6 +14,7 @@ export type {
   LegalCertBackUploadResponse,
   LegalCertFrontUploadResponse,
   LegalCertOcrResult,
+  OperatorCertFrontUploadResponse,
   LegalCertOcrSide,
   QuickStartIdentifyPayload,
   RealnameAuthType,
@@ -53,6 +54,7 @@ export {
   uploadGuardianConsentFile,
   uploadLegalCertBackFile,
   uploadLegalCertFrontFile,
+  uploadOperatorCertFrontFile,
 } from './uploads'
 
 export { ocrBusinessLicense, recognizeLegalCertPeriod } from './ocr'

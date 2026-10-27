@@ -55,6 +55,9 @@ export function useRealnameSubmit(options: RealnameSubmitOptions) {
       if (form.authType !== 'IDENTITY_CARD') {
         payload.legal_cert_back_file = form.legalCertBackFile
         payload.business_license_file = form.businessLicenseFile
+        payload.operator_identify_type = form.operatorIdentifyType
+        payload.operator_mobile = form.operatorMobile.trim()
+        payload.operator_cert_front_file = form.operatorCertFrontFile
       }
       if (form.guardianConsentFile) {
         payload.guardian_consent = form.guardianConsent

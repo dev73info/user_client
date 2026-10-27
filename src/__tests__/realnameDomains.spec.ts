@@ -13,6 +13,7 @@ const mocks = vi.hoisted(() => ({
   uploadBusinessLicenseFile: vi.fn(),
   uploadLegalCertFrontFile: vi.fn(),
   uploadLegalCertBackFile: vi.fn(),
+  uploadOperatorCertFrontFile: vi.fn(),
   uploadGuardianConsentFile: vi.fn(),
   quickStartAsignIdentify: vi.fn(),
   getMyRealnameVerification: vi.fn(),
@@ -29,6 +30,7 @@ vi.mock('@/api/realname', async (importOriginal) => ({
   uploadBusinessLicenseFile: mocks.uploadBusinessLicenseFile,
   uploadLegalCertFrontFile: mocks.uploadLegalCertFrontFile,
   uploadLegalCertBackFile: mocks.uploadLegalCertBackFile,
+  uploadOperatorCertFrontFile: mocks.uploadOperatorCertFrontFile,
   uploadGuardianConsentFile: mocks.uploadGuardianConsentFile,
   quickStartAsignIdentify: mocks.quickStartAsignIdentify,
   getMyRealnameVerification: mocks.getMyRealnameVerification,
@@ -41,11 +43,14 @@ vi.mock('ui_73info', async (importOriginal) => ({
 const FRONT_FILE = '/uploads/realname-legal-certs/flow/front.jpg'
 const BACK_FILE = '/uploads/realname-legal-certs/flow/back.jpg'
 const LICENSE_FILE = '/uploads/realname-business-licenses/flow/license.jpg'
+const OPERATOR_FILE = '/uploads/realname-operator-certs/flow/front.jpg'
+const OPERATOR_MOBILE = '13900000000'
 
 beforeEach(() => {
   vi.clearAllMocks()
   mocks.uploadLegalCertFrontFile.mockResolvedValue({ front_file: FRONT_FILE })
   mocks.uploadLegalCertBackFile.mockResolvedValue({ back_file: BACK_FILE })
+  mocks.uploadOperatorCertFrontFile.mockResolvedValue({ front_file: OPERATOR_FILE })
   mocks.uploadBusinessLicenseFile.mockResolvedValue({ business_license_file: LICENSE_FILE })
   mocks.uploadGuardianConsentFile.mockResolvedValue({
     guardian_consent_file: '/uploads/consent.pdf',
@@ -62,11 +67,13 @@ describe('实名材料上传', () => {
     await materials.handleLegalCertFrontFile(file)
     await materials.handleLegalCertBackFile(file)
     await materials.handleBusinessLicenseFile(file)
+    await materials.handleOperatorCertFrontFile(file)
     await flushPromises()
 
     expect(draft.form.legalCertFrontFile).toBe(FRONT_FILE)
     expect(draft.form.legalCertBackFile).toBe(BACK_FILE)
     expect(draft.form.businessLicenseFile).toBe(LICENSE_FILE)
+    expect(draft.form.operatorCertFrontFile).toBe(OPERATOR_FILE)
     expect(draft.form.realName).toBe('')
     expect(draft.form.companyName).toBe('')
   })
@@ -123,7 +130,9 @@ describe('材料发起认证', () => {
     draft.form.legalCertFrontFile = FRONT_FILE
     draft.form.legalCertBackFile = BACK_FILE
     draft.form.businessLicenseFile = LICENSE_FILE
+    draft.form.operatorCertFrontFile = OPERATOR_FILE
     draft.form.mobile = '13800000000'
+    draft.form.operatorMobile = OPERATOR_MOBILE
     await submit.submitRealname()
 
     expect(mocks.quickStartAsignIdentify).toHaveBeenCalledWith('test-token', {
@@ -133,6 +142,9 @@ describe('材料发起认证', () => {
       legal_cert_front_file: FRONT_FILE,
       legal_cert_back_file: BACK_FILE,
       business_license_file: LICENSE_FILE,
+      operator_identify_type: 153,
+      operator_mobile: OPERATOR_MOBILE,
+      operator_cert_front_file: OPERATOR_FILE,
     })
     const payload = mocks.quickStartAsignIdentify.mock.calls[0]?.[1]
     expect(payload).not.toHaveProperty('company_name')

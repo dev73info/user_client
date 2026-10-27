@@ -94,6 +94,7 @@ export const verifyDialogEntries: AccountDialogEntry[] = [
       businessLicenseUploading: d.materials.businessLicenseUploading.value,
       legalCertFrontUploading: d.materials.legalCertFrontUploading.value,
       legalCertBackUploading: d.materials.legalCertBackUploading.value,
+      operatorCertFrontUploading: d.materials.operatorCertFrontUploading.value,
       consentUploading: d.materials.consentUploading.value,
     }),
     (d) => ({
@@ -103,6 +104,7 @@ export const verifyDialogEntries: AccountDialogEntry[] = [
       'business-license-picked': d.materials.handleBusinessLicenseFile,
       'legal-cert-front-picked': d.materials.handleLegalCertFrontFile,
       'legal-cert-back-picked': d.materials.handleLegalCertBackFile,
+      'operator-cert-front-picked': d.materials.handleOperatorCertFrontFile,
       'consent-picked': d.materials.handleConsentFile,
     }),
   ),

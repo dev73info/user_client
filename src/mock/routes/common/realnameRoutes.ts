@@ -108,4 +108,10 @@ export const realnameRoutes: MockRoute[] = [
     note: '上传营业执照（mock 只回一个假路径）',
     handler: () => jsonResponse({ business_license_file: '/uploads/mock-license.pdf' }),
   },
+  {
+    method: 'POST',
+    path: '/realname/operator-cert-front-file',
+    note: '上传经办人身份证人像面（mock 只回一个假路径）',
+    handler: () => jsonResponse({ front_file: '/uploads/mock-operator-cert.jpg' }),
+  },
 ]
