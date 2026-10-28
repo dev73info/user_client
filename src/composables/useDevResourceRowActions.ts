@@ -5,6 +5,7 @@ import { TMessage, TMessageBox } from 'ui_73info'
 
 import {
   deleteMcResource,
+  listMcResourceVersions,
   submitMcResourceReview,
   updateMcResourceHomepage,
   type McResourcePayload,
@@ -93,20 +94,23 @@ export function useDevResourceRowActions(deps: DevResourceRowActionDeps) {
       return
     }
 
-    if (
-      isPricedResource(resource.buyout_price_fen, resource.price_points) &&
-      !resource.copyright_declared
-    ) {
-      TMessage.warning('付费资源须先在「编辑主页」勾选版权声明，再申请公开')
-      router.push({
-        name: 'dev-resource-homepage-edit',
-        params: { resourceId: String(resource.id) },
-      })
-      return
-    }
-
     requestingReviewResourceId.value = resource.id
     try {
+      if (!resource.copyright_declared) {
+        const versions = await listMcResourceVersions(auth.token, resource.id)
+        if (
+          isPricedResource(resource.buyout_price_fen, resource.price_points) ||
+          versions.some((version) => Number(version.price_fen ?? 0) > 0)
+        ) {
+          TMessage.warning('付费资源须先在「编辑主页」勾选版权声明，再申请公开')
+          router.push({
+            name: 'dev-resource-homepage-edit',
+            params: { resourceId: String(resource.id) },
+          })
+          return
+        }
+      }
+
       // 契约里的审核动作端点：不再用 PATCH visibility:'review' 拼整页字段顶上去
       await submitMcResourceReview(auth.token, resource.id)
       TMessage.success('公开申请已提交，等待管理员审核')

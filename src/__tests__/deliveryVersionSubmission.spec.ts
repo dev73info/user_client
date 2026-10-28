@@ -31,18 +31,19 @@ vi.mock('ui_73info', () => ({
   },
 }))
 
-function resource(requirementId: string | null): McResourcePayload {
+function resource(requirementId: string | null, copyrightDeclared = true): McResourcePayload {
   return {
     id: 17,
     requirement_id: requirementId,
     requirement_archive_locked: false,
+    copyright_declared: copyrightDeclared,
   } as McResourcePayload
 }
 
-function setupEntry(kind: string, requirementId: string | null) {
+function setupEntry(kind: string, requirementId: string | null, copyrightDeclared = true) {
   if (kind === '资源列表') {
     const composable = useDevResourcePublishVersion()
-    composable.openPublishVersionDialog(resource(requirementId))
+    composable.openPublishVersionDialog(resource(requirementId, copyrightDeclared))
     return {
       submit: composable.submitVersion,
       visible: composable.publishDialogVisible,
@@ -52,7 +53,7 @@ function setupEntry(kind: string, requirementId: string | null) {
 
   const reload = vi.fn().mockResolvedValue(undefined)
   const composable = useResourceVersionDialogs({
-    resource: ref(resource(requirementId)),
+    resource: ref(resource(requirementId, copyrightDeclared)),
     versionRows: ref([]),
     loadPage: reload,
   })
@@ -219,5 +220,22 @@ describe('资源列表快捷发布：单版本售价', () => {
     expect(mocks.createVersion).not.toHaveBeenCalled()
     expect(mocks.warning).toHaveBeenCalledWith('单版本售价必须低于买断价')
     expect(composable.publishDialogVisible.value).toBe(true)
+  })
+})
+
+describe('单版本发布的版权要求', () => {
+  it.each(entries)('%s：未声明版权时不创建付费版本', async (kind) => {
+    const entry = setupEntry(kind, null, false)
+
+    await entry.submit({
+      version: 'v1.0.0',
+      note: '',
+      priceYuan: '1.00',
+      file: new File(['version'], 'version.zip'),
+    })
+
+    expect(mocks.createVersion).not.toHaveBeenCalled()
+    expect(mocks.warning).toHaveBeenCalledWith('付费版本须先在资源主页确认版权声明')
+    expect(entry.visible.value).toBe(true)
   })
 })

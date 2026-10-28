@@ -81,6 +81,10 @@ export function useResourceVersionDialogs(deps: {
       TMessage.warning('请设置单版本售价')
       return
     }
+    if (price.fen > 0 && !deps.resource.value.copyright_declared) {
+      TMessage.warning('付费版本须先在资源主页确认版权声明')
+      return
+    }
     const buyoutFen = Number(deps.resource.value.buyout_price_fen ?? 0)
     if (buyoutFen > 0 && price.fen >= buyoutFen) {
       TMessage.warning('单版本售价必须低于买断价')

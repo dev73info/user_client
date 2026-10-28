@@ -65,6 +65,10 @@ export function useDevResourcePublishVersion(options: { onPublished?: () => Prom
       TMessage.warning(price.message)
       return
     }
+    if (price.fen > 0 && !selectedResource.value.copyright_declared) {
+      TMessage.warning('付费版本须先在资源主页确认版权声明')
+      return
+    }
     const buyoutFen = Number(selectedResource.value.buyout_price_fen ?? 0)
     if (buyoutFen > 0 && price.fen >= buyoutFen) {
       TMessage.warning('单版本售价必须低于买断价')

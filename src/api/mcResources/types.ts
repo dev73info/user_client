@@ -2,7 +2,7 @@ import type { components } from '@/api/generated/schema'
 
 type Schemas = components['schemas']
 
-export type McResourceVisibility = 'draft' | 'review' | 'published'
+export type McResourceVisibility = 'draft' | 'review' | 'published' | 'rejected'
 export type McResourcePlatform = string
 
 /** 资源类别：normal = 大厅公开展示（默认）；api = 不在公开面展示，只能由指定来源下单 */
