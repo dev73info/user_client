@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest'
 
 import DevResourceTable from '@/components/dev/DevResourceTable.vue'
 import TeamResourcesTable from '@/components/dev/TeamResourcesTable.vue'
+import { resourceVisibilityView } from '@/shared/devHomeDisplay'
 import { resourceFixture } from './devResourceHomepageFixtures'
 
 const stubs = {
@@ -64,5 +65,11 @@ describe('资源驳回后的重新送审入口', () => {
     expect(actions).toHaveLength(1)
     expect(actions[0]!.text()).toContain('重新申请公开')
     wrapper.unmount()
+  })
+})
+
+describe('总览中的驳回状态', () => {
+  it('统一显示为已驳回', () => {
+    expect(resourceVisibilityView('rejected')).toEqual({ label: '已驳回', tone: 'gold' })
   })
 })

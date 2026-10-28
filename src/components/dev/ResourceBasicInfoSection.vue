@@ -126,11 +126,7 @@ const promoSharePercent = defineModel<number>('promoSharePercent', { required: t
           />
         </TFormItem>
 
-        <TFormItem
-          v-if="isPaidPricing || copyrightDeclared"
-          label="版权声明"
-          class="dev-basic-info-grid__copyright"
-        >
+        <TFormItem label="版权声明" class="dev-basic-info-grid__copyright">
           <TCheckbox v-model="copyrightDeclared">
             我确认拥有该资源版权，或已获得合法授权可售卖
           </TCheckbox>

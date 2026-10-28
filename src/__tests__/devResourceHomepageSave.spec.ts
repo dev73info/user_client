@@ -1,4 +1,4 @@
-import { flushPromises, shallowMount, type VueWrapper } from '@vue/test-utils'
+import { flushPromises, mount, shallowMount, type VueWrapper } from '@vue/test-utils'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 /**
@@ -97,7 +97,7 @@ import {
   type HomepageEditState,
 } from './devResourceHomepageFixtures'
 
-function mountEdit(payload: McResourcePayload): VueWrapper {
+function mountEdit(payload: McResourcePayload, deep = false): VueWrapper {
   mocks.route = {
     params: { resourceId: String(payload.id) },
     query: {},
@@ -105,7 +105,7 @@ function mountEdit(payload: McResourcePayload): VueWrapper {
   }
   mocks.getResource.mockResolvedValue(payload)
   mocks.updateHomepage.mockResolvedValue(payload)
-  return shallowMount(DevResourceHomepageEditView, {
+  return (deep ? mount : shallowMount)(DevResourceHomepageEditView, {
     global: {
       config: { warnHandler: () => {} },
       stubs: {
@@ -234,6 +234,26 @@ describe('DevResourceHomepageEditView：回填与保存载荷', () => {
     await flushPromises()
 
     expect(savedPayload(mocks.updateHomepage).cover_url).toBe('')
+    wrapper.unmount()
+  })
+
+  it('免费资源也能在主页确认版权并保存，随后才能发布付费版本', async () => {
+    const wrapper = mountEdit(
+      resourceFixture({ buyout_price_fen: 0, price_points: 0, copyright_declared: false }),
+      true,
+    )
+    await flushPromises()
+    const view = state<HomepageEditState>(wrapper)
+    const checkbox = wrapper.findComponent({ name: 'TCheckbox' })
+    expect(checkbox.exists()).toBe(true)
+    expect(view.form.copyrightDeclared).toBe(false)
+
+    await checkbox.vm.$emit('update:modelValue', true)
+    await flushPromises()
+    expect(view.form.copyrightDeclared).toBe(true)
+    await view.saveHomepage()
+
+    expect(savedPayload(mocks.updateHomepage).copyright_declared).toBe(true)
     wrapper.unmount()
   })
 })

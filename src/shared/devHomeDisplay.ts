@@ -68,11 +68,12 @@ export function statusChipClass(status: string): string {
   return CHIP_TONES[STATUS_TONES[status] ?? 'blue']
 }
 
-/** 资源可见性 → 中文标签与色调（`McResourceVisibility` 的三个取值）。 */
+/** 资源可见性 → 中文标签与色调（`McResourceVisibility` 的四个取值）。 */
 export const RESOURCE_VISIBILITY: Record<string, { label: string; tone: DevHomeTone }> = {
   draft: { label: '未发布', tone: 'muted' },
   review: { label: '审核中', tone: 'gold' },
   published: { label: '已发布', tone: 'cyan' },
+  rejected: { label: '已驳回', tone: 'gold' },
 }
 
 /** 没登记的可见性按「未发布」处理：宁可保守，也不把来路不明的值画成「已发布」。 */
