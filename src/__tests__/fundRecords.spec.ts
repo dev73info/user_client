@@ -49,6 +49,7 @@ it('merges income, refund reversal and income withdrawal in time order', async (
           refund_developer_cny: 0,
           amount_cny: 5,
           paid_at: '2026-09-08 13:00:00',
+          payment_stage: 'final',
           requirement_status: 'completed',
           refunded_at: null,
           requirement_refund_cny: 0,
@@ -71,7 +72,13 @@ it('merges income, refund reversal and income withdrawal in time order', async (
   expect(pager.props('total')).toBe(11)
   expect(table.props('data')).toHaveLength(10)
   const rows = table.props('data')
-  expect(rows[0]).toMatchObject({ kind: 'income', id: 'payment-1', amount: 5, status: '已入账' })
+  expect(rows[0]).toMatchObject({
+    kind: 'income',
+    id: 'requirement-1',
+    reference: 'payment-1',
+    amount: 5,
+    status: '已入账',
+  })
   expect(rows[1]).toMatchObject({ kind: 'income_withdrawal', status: '待审核', account: '1234' })
 
   pager.vm.$emit('update:current-page', 2)
