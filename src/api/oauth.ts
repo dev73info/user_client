@@ -14,7 +14,6 @@ export type OAuthAuthorizeParams = {
 export type OAuthAuthorizeMeta = {
   client_id: string
   client_name: string
-  resource_id: number
   redirect_uri: string
   scope: string
   state: string | null

@@ -4929,13 +4929,13 @@ export interface paths {
         };
         /**
          * 授权页元信息
-         * @description **需要登录**（`Authorization: Bearer <平台会话令牌>`）：这一步是让**平台用户**决定要不要把资料授权给某个开发者应用，所以必须是已登录的人在看。这条不挂端点权限码，登录即可——任何用户都可能被第三方应用拉起来授权。这是开发者 OAuth 2.0 授权码流程的第一步：前端拿 `client_id`、`redirect_uri`、`scope`来问「这个应用叫什么、要哪些 scope」，拿到了才能渲染授权同意页。响应是 `{ "client_id", "client_name", "scopes" }`，`scopes` 是实际会被授予的集合（没传 `scope` 时缺省为 `profile`）。以下情况都回 400 并带可展示的中文原因：客户端不存在、客户端已停用、`redirect_uri` 没登记在该客户端的白名单里、申请的 scope 超出客户端被允许的范围。可用的 scope 只有两个：`profile`（读账号与实名状态）、`purchase`（下单能力）。**注意这里签发的令牌不是平台会话**：`/api/oauth/**` 的 access token 只能用于`/api/oauth/userinfo` 与开放下单接口，平台通用鉴权不接受它。
+         * @description **需要登录**（`Authorization: Bearer <平台会话令牌>`）：这一步是让**平台用户**决定要不要把资料授权给某个开发者应用，所以必须是已登录的人在看。这条不挂端点权限码，登录即可——任何用户都可能被第三方应用拉起来授权。这是开发者 OAuth 2.0 授权码流程的第一步：前端拿 `client_id`、`redirect_uri`、`scope`来问「这个应用叫什么、要哪些 scope」，拿到了才能渲染授权同意页。响应包含 `client_id`、`client_name`、`redirect_uri`、空格分隔的 `scope`、原样返回的 `state` 与当前 `user`，供 SPA 授权页展示。以下情况都回 400 并带可展示的中文原因：客户端不存在、客户端已停用、`redirect_uri` 没登记在该客户端的白名单里、申请的 scope 超出客户端被允许的范围。可用的 scope 只有两个：`profile`（读账号与实名状态）、`purchase`（下单能力）。**注意这里签发的令牌不是平台会话**：`/api/oauth/**` 的 access token 只能用于`/api/oauth/userinfo` 与开放下单接口，平台通用鉴权不接受它。
          */
         get: operations["oauth_provider_authorize_meta"];
         put?: never;
         /**
          * 用户同意授权
-         * @description **需要登录**（`Authorization: Bearer <平台会话令牌>`），不挂端点权限码：授权的主体就是当前登录的这个人。用户在授权页点了「同意」后调这里：平台签发一次性授权码，然后**302 跳回**开发者登记的 `redirect_uri`，参数是 `?code=<授权码>`，带了 `state` 就原样带回。**成功不是 JSON，是 302**——前端要用 `location` 跳转，不要拿响应体解析。授权码有效 **10 分钟**、一次性使用，且与 `client_id` + `redirect_uri` 绑定：换 token 时这两项必须与授权时完全一致，否则换不到。传了 `code_challenge` 就要求换 token 时带对应的 `code_verifier`（PKCE），`code_challenge_method` 只支持 `S256`，其它取值回 400。客户端不存在 / 已停用 / `redirect_uri` 未登记 / scope 超范围都回 400。
+         * @description **需要登录**（`Authorization: Bearer <平台会话令牌>`），不挂端点权限码：授权的主体就是当前登录的这个人。用户在授权页点了「同意」后调这里：平台签发一次性授权码，并返回 `{ "redirect_url" }`。SPA 拿这个地址跳回开发者登记的 `redirect_uri`，参数是 `?code=<授权码>`，带了 `state` 就原样带回。授权码有效 **10 分钟**、一次性使用，且与 `client_id` + `redirect_uri` 绑定：换 token 时这两项必须与授权时完全一致，否则换不到。传了 `code_challenge` 就要求换 token 时带对应的 `code_verifier`（PKCE），`code_challenge_method` 只支持 `S256`，其它取值回 400。客户端不存在 / 已停用 / `redirect_uri` 未登记 / scope 超范围都回 400。
          */
         post: operations["oauth_provider_authorize_consent"];
         delete?: never;
@@ -12308,6 +12308,8 @@ export interface components {
             redirect_uri: string;
             /** @description scope（空格分隔）。 */
             scope?: string;
+            /** @description 开发者站点生成的 state，原样回传给授权页。 */
+            state?: string | null;
         };
         /** @description 授权印章请求。 */
         AuthorizeSealRequest: {
@@ -15277,8 +15279,8 @@ export interface components {
          * @description 订单响应（字段集合与 legacy `ResourcePurchaseOrderPayload` 对齐）。
          *
          *     未包含的字段都是本 crate 不做的能力：收银台账号（`buyer_account` / `platform_user_id` /
-         *     `buyer_ref`）、回调状态（`api_callback_*`）与推广分成（`promoter` / `promo_code` /
-         *     `promo_share_bps` / `promoter_fee_fen` / `promoter_split_status` / `promo_reject_reason`）。
+         *     `buyer_ref`）与推广分成（`promoter` / `promo_code` / `promo_share_bps` /
+         *     `promoter_fee_fen` / `promoter_split_status` / `promo_reject_reason`）。
          *     `source_kind` 是订单的真实来源（`platform` / `oauth`），开发者站点据此区分
          *     「平台内下单」与「自己站点经开放接口下单」。
          */
@@ -15293,6 +15295,15 @@ export interface components {
              * @description 积分购金额；现金单为 0。
              */
             amount_points: number;
+            /** @description 最近一次回调尝试时间。 */
+            api_callback_at?: string | null;
+            /**
+             * Format: int32
+             * @description 最近一次事件的回调尝试次数。
+             */
+            api_callback_attempts: number;
+            /** @description 最近一次支付 / 退款事件回调状态：none / pending / succeeded / failed。 */
+            api_callback_status: string;
             /** @description 买家用户名。 */
             buyer: string;
             /** @description 开发者站点的用户 ID（开放接口下单才有）。 */
@@ -15963,6 +15974,7 @@ export interface components {
              * @description 收银台前端地址前缀（如 `https://www.73info.cn`）。
              *
              *     开发者站点下单拿到的是 `{checkout_base_url}/checkout?ticket=…`；
+             *     用户端使用默认 hash 路由时基址以 `/#` 结尾，例如 `https://www.73info.cn/#`。
              *     留空时返回相对路径——前端与后端同源部署能直接跳，跨域部署必须配。
              * @default
              */
@@ -17294,6 +17306,7 @@ export interface components {
                  * @description 收银台前端地址前缀（如 `https://www.73info.cn`）。
                  *
                  *     开发者站点下单拿到的是 `{checkout_base_url}/checkout?ticket=…`；
+                 *     用户端使用默认 hash 路由时基址以 `/#` 结尾，例如 `https://www.73info.cn/#`。
                  *     留空时返回相对路径——前端与后端同源部署能直接跳，跨域部署必须配。
                  * @default
                  */
@@ -33130,6 +33143,8 @@ export interface operations {
                 redirect_uri: string;
                 /** @description scope（空格分隔）。 */
                 scope?: string;
+                /** @description 开发者站点生成的 state，原样回传给授权页。 */
+                state?: string;
             };
             header?: never;
             path?: never;
@@ -33137,7 +33152,7 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description `{ "client_id", "client_name", "scopes" }`：授权页要展示的信息 */
+            /** @description 客户端、scope、state、回跳地址与当前用户信息 */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -33180,8 +33195,8 @@ export interface operations {
             };
         };
         responses: {
-            /** @description 跳回开发者登记的 `redirect_uri`，带 `code` 与（若有）`state` */
-            302: {
+            /** @description `{ "redirect_url" }`：回开发者登记的地址，带 `code` 与（若有）`state` */
+            200: {
                 headers: {
                     [name: string]: unknown;
                 };

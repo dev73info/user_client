@@ -108,7 +108,7 @@ async function bootstrap() {
       const session = await exchangeCheckoutTicket(ticket)
       await auth.applyExternalSession({ token: session.token, username: session.username })
       const orderNo = readQueryString(route.query.order_no)
-      // 票据用掉即从地址栏移除：刷新 / 前进后退都不会再拿它换一次（第二次返回 403）。
+      // 票据用掉即从地址栏移除：刷新 / 前进后退都不会再拿它换一次（第二次返回 410）。
       await router.replace({
         name: 'api-resource-checkout',
         query: orderNo ? { order_no: orderNo } : {},

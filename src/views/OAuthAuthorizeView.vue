@@ -142,7 +142,6 @@ onMounted(() => {
     <section class="oauth-card">
       <header class="oauth-card__head">
         <h1 class="oauth-card__title">授权登录</h1>
-        <span v-if="meta" class="oauth-card__resource">资源 #{{ meta.resource_id }}</span>
       </header>
 
       <p v-if="phase === 'loading'" class="oauth-card__status" role="status">正在加载授权信息…</p>
