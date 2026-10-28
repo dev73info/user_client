@@ -247,7 +247,7 @@ describe('DevResourceHomepageEditView：接口资源按「原创」归类、不�
   })
 
   it('普通资源：仍然渲染「标签归类」，标签照常提交，类型跟随开发者选择', async () => {
-    const wrapper = mountEdit(resourceFixture({ resource_kind: 'normal' }))
+    const wrapper = mountEdit(resourceFixture({ resource_kind: 'normal', visibility: 'published' }))
     await flushPromises()
     const view = state<EditState>(wrapper)
 
@@ -255,15 +255,28 @@ describe('DevResourceHomepageEditView：接口资源按「原创」归类、不�
     expect(wrapper.text()).toContain('标签归类')
     expect(wrapper.text()).toContain('页面内容')
     expect(wrapper.text()).toContain('预览摘要')
+    expect(wrapper.find('[href*="resource="]').exists()).toBe(true)
 
     view.form.originType = 'repost'
     await flushPromises()
     expect(view.effectiveOriginType).toBe('repost')
 
-    // 选中一个标签后，标签选择要照常带出去（普通资源行为不变）
     view.selectedTagIdsByGroup[1] = [101]
     await flushPromises()
     expect(view.buildTagSelections()).toEqual([{ group_id: 1, tag_ids: [101] }])
+    wrapper.unmount()
+  })
+
+  it('普通资源：审核中且未关联需求时禁用预览并移除链接', async () => {
+    const wrapper = mountEdit(
+      resourceFixture({ resource_kind: 'normal', visibility: 'review', requirement_id: null }),
+    )
+    await flushPromises()
+
+    const preview = wrapper.findAll('button').find((button) => button.text() === '预览')
+    expect(preview?.attributes('disabled')).toBeDefined()
+    expect(preview?.attributes('title')).toBe('审核中，暂不可预览')
+    expect(wrapper.find('[href*="resource="]').exists()).toBe(false)
     wrapper.unmount()
   })
 })

@@ -19,6 +19,8 @@ defineProps<{
   /** 接口资源没有对外主页，预览入口一并不放。 */
   showPreview: boolean
   previewUrl: string
+  previewDisabled?: boolean
+  previewDisabledReason?: string
   isLoadingTags: boolean
 }>()
 
@@ -52,14 +54,16 @@ const emit = defineEmits<{
             ><TIcon><Back /></TIcon></template
           >返回</TButton
         >
-        <!-- 预览打开的是用户端资源主页；接口资源不进大厅、不对外公开，没有可预览的页面 -->
+        <!-- 不可预览时保留状态按钮但移除链接，避免打开无权访问的详情页。 -->
         <TButton
           variant="outline"
           v-if="showPreview"
-          as="a"
-          :href="previewUrl"
-          target="_blank"
-          rel="noopener noreferrer"
+          :as="previewDisabled ? 'button' : 'a'"
+          :href="previewDisabled ? undefined : previewUrl"
+          :target="previewDisabled ? undefined : '_blank'"
+          :rel="previewDisabled ? undefined : 'noopener noreferrer'"
+          :disabled="previewDisabled"
+          :title="previewDisabledReason || undefined"
           ><template #prefix
             ><TIcon><View /></TIcon></template
           >预览</TButton

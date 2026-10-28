@@ -44,6 +44,8 @@ const {
   resourceVisibilityLabel,
   archiveLocked,
   boundToRequirement,
+  canPreview,
+  previewBlockReason,
   userClientPreviewUrl,
   goBack,
 } = useResourceHomepageResource()
@@ -126,6 +128,8 @@ const {
       :save-disabled="archiveLocked || channel.needsApiAgreement.value"
       :show-preview="Boolean(resource) && !isApiKind"
       :preview-url="userClientPreviewUrl"
+      :preview-disabled="!canPreview"
+      :preview-disabled-reason="previewBlockReason"
       :is-loading-tags="isLoadingTags"
       @back="goBack"
       @save="saveHomepage"

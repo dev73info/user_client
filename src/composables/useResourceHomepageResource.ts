@@ -3,19 +3,18 @@ import { useRoute, useRouter } from 'vue-router'
 import type { McResourcePayload } from '@/api/mcResources'
 import { getTagRouteSlug } from '@/api/resourceTags'
 import { useAuthStore } from '@/stores/auth'
-import { resourceDetailLocation, resourceListingSaleOf } from '@/shared/resourceNavigation'
+import {
+  canPreviewResource,
+  resourceDetailLocation,
+  resourceListingSaleOf,
+} from '@/shared/resourceNavigation'
 import {
   isResourceArchiveLocked,
   resourceVisibilityLabel as visibilityLabel,
 } from '@/shared/resourcePresentation'
 import { savedTagPathSegment } from '@/shared/resourceTagPath'
 
-/**
- * 「资源主页编辑」页的资源级状态：资源本身、只读/付费这类从资源算出来的口径、
- * 返回与用户端预览地址。
- *
- * 这一块不碰表单，也不碰标签树与渠道配置：它就是「这次编辑的是哪个资源、它什么状态」。
- */
+/** 资源主页编辑页的资源状态、预览可见性与预览地址。 */
 export function useResourceHomepageResource() {
   const auth = useAuthStore()
   const route = useRoute()
@@ -29,12 +28,15 @@ export function useResourceHomepageResource() {
   const resourceVisibilityLabel = computed(() =>
     resource.value ? visibilityLabel(resource.value.visibility) : '私有',
   )
-  /* ---------- R014 到期锁定：所属需求合同有效期届满后，本页只读（后端 409 仍兜底） ---------- */
   const archiveLocked = computed(() =>
     resource.value ? isResourceArchiveLocked(resource.value) : false,
   )
   /** 绑定定制交付的资源不能改售价（定制单里已定价）。 */
   const boundToRequirement = computed(() => Boolean(resource.value?.requirement_id))
+  const canPreview = computed(() => canPreviewResource(resource.value))
+  const previewBlockReason = computed(() =>
+    canPreview.value ? '' : `${resourceVisibilityLabel.value}，暂不可预览`,
+  )
 
   /** 站内分享地址：独立详情页已废弃，统一指到列表页的页内详情态（`?resource=`）。 */
   function userClientResourceUrl(target: McResourcePayload): string {
@@ -78,6 +80,8 @@ export function useResourceHomepageResource() {
     resourceVisibilityLabel,
     archiveLocked,
     boundToRequirement,
+    canPreview,
+    previewBlockReason,
     userClientPreviewUrl,
     goBack,
     userClientResourceUrl,

@@ -8,8 +8,10 @@
  */
 import type { RouteLocationRaw } from 'vue-router'
 
+import type { McResourcePayload } from '@/api/mcResources'
 import { getResourceDetailSlug } from '@/api/resourceTags'
 import type { RequirementItem } from '@/api/requirements'
+import { isApiResourceKind } from '@/shared/resourceApi'
 import { isCashPaidListingResource, type ResourceListingSale } from '@/shared/resourceSale'
 
 /** 资源在门户目录里的售卖分区：现金定价 → 付费厅；免费与积分价 → 免费厅（与列表取数口径一致）。 */
@@ -18,6 +20,16 @@ export function resourceListingSaleOf(
   pricePoints?: number | null,
 ): ResourceListingSale {
   return isCashPaidListingResource(priceFen, pricePoints) ? 'paid' : 'free'
+}
+
+/** 公开详情只覆盖已上架与需求关联资源；接口资源没有公开预览页。 */
+export function canPreviewResource(
+  resource: Pick<McResourcePayload, 'visibility' | 'requirement_id' | 'resource_kind'> | null,
+): boolean {
+  if (!resource || isApiResourceKind(resource.resource_kind)) {
+    return false
+  }
+  return resource.visibility === 'published' || Boolean(resource.requirement_id)
 }
 
 /** 页内详情落点：资源列表页带 `?sale=` 与 `?resource=` 打开选中项。 */
