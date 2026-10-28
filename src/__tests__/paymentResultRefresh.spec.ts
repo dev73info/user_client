@@ -139,3 +139,36 @@ describe('支付结果主动刷新', () => {
     expect(wrapper.get('[role="status"]').text()).toContain('平台已确认收款')
   })
 })
+
+describe('支付动作取值', () => {
+  /** 后端 `client_action` 是对象（`redirect_url` / `qr_code` / `sdk_payload`），不是字符串。 */
+  const objectAction = {
+    qr_code: null,
+    redirect_url: 'https://qr.alipay.com/object-action',
+    sdk_payload: { pay_info: 'https://qr.alipay.com/object-action' },
+  }
+
+  it('订单里 client_action 是对象时也能渲染二维码', async () => {
+    mocks.getOrder.mockResolvedValue(paymentOrder({ client_action: objectAction }))
+    mocks.refreshOrder.mockResolvedValue(paymentOrder({ client_action: objectAction }))
+    route.query = { ...baseQuery, qr_content: '' }
+    wrapper = mount(PaymentView)
+    await flushPromises()
+
+    expect(mocks.qr).toHaveBeenCalledWith('https://qr.alipay.com/object-action', expect.anything())
+  })
+
+  it('历史遗留的 JSON 字符串形态同样能解析', async () => {
+    mocks.getOrder.mockResolvedValue(
+      paymentOrder({ client_action: JSON.stringify(objectAction) }),
+    )
+    mocks.refreshOrder.mockResolvedValue(
+      paymentOrder({ client_action: JSON.stringify(objectAction) }),
+    )
+    route.query = { ...baseQuery, qr_content: '' }
+    wrapper = mount(PaymentView)
+    await flushPromises()
+
+    expect(mocks.qr).toHaveBeenCalledWith('https://qr.alipay.com/object-action', expect.anything())
+  })
+})

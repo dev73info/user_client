@@ -23,6 +23,45 @@ function isPaidStatus(status: string): boolean {
   return status === 'paid'
 }
 
+/** 渠道返回的客户端动作（`payment_provider` 的 `ClientAction`）。 */
+type ClientAction = {
+  redirect_url?: string | null
+  qr_code?: string | null
+  sdk_payload?: { pay_info?: string | null } | null
+}
+
+/**
+ * 从订单的 `client_action` 里取支付地址。
+ *
+ * 后端这个字段是**对象**（`redirect_url` / `qr_code` / `sdk_payload`），不是字符串。
+ * 早先这里按字符串读，于是需求单与打赏单进了支付页取不到二维码，只剩「二维码生成失败」，
+ * 而同一个字段在充值弹窗里是按对象解析的——两处口径必须一致。
+ * 兼容老形态：历史数据里可能存着 JSON 字符串或直接的收银台地址。
+ */
+function extractPayUrl(action: unknown): string {
+  if (typeof action === 'string') {
+    const text = action.trim()
+    if (!text) {
+      return ''
+    }
+    if (!text.startsWith('{')) {
+      return text
+    }
+    try {
+      return extractPayUrl(JSON.parse(text) as unknown)
+    } catch {
+      return ''
+    }
+  }
+
+  if (!action || typeof action !== 'object') {
+    return ''
+  }
+
+  const value = action as ClientAction
+  return (value.redirect_url ?? value.qr_code ?? value.sdk_payload?.pay_info ?? '').trim()
+}
+
 /**
  * Adapay 订单的加载 / 查单 / 轮询刷新。
  *
@@ -133,10 +172,7 @@ export function useAdapayOrder(options: UseAdapayOrderOptions) {
     resolvedChannel,
     hasAdapayPayment,
     /** 订单上的支付动作（收银台地址 / 微信支付参数），前端据此跳转或渲二维码 */
-    adapayPayUrl: () =>
-      typeof adapayPayment.value?.client_action === 'string'
-        ? adapayPayment.value.client_action
-        : '',
+    adapayPayUrl: () => extractPayUrl(adapayPayment.value?.client_action),
     confirmPayment,
     refreshPaymentOnReturn,
   }
