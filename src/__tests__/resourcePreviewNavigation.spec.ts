@@ -14,7 +14,7 @@ describe('资源主页预览可见性', () => {
     ).toBe(true)
   })
 
-  it.each(['draft', 'review'] as const)('%s 且未关联需求时不可预览', (visibility) => {
+  it.each(['draft', 'review', 'rejected'] as const)('%s 且未关联需求时不可预览', (visibility) => {
     expect(canPreviewResource(resourceFixture({ visibility, requirement_id: null }))).toBe(false)
   })
 

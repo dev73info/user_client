@@ -33,7 +33,7 @@ export type PublicMcResourceItem = {
   source_url: string
   cover_url: string | null
   docs_url: string | null
-  visibility: 'draft' | 'review' | 'published'
+  visibility: 'draft' | 'review' | 'published' | 'rejected'
   release_note: string | null
   created_at: string
   updated_at: string

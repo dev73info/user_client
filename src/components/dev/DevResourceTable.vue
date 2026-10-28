@@ -186,7 +186,7 @@ function handleRowClick(event: MouseEvent) {
                 发布版本
               </TDropdownItem>
               <TDropdownItem
-                v-if="scope.row.visibility === 'draft'"
+                v-if="['draft', 'rejected'].includes(scope.row.visibility)"
                 :disabled="
                   Boolean(scope.row.requirement_id) ||
                   isResourceArchiveLocked(scope.row) ||
@@ -194,7 +194,13 @@ function handleRowClick(event: MouseEvent) {
                 "
                 :command="{ action: 'request-review', resource: scope.row }"
               >
-                {{ requestingReviewId === scope.row.id ? '提交中...' : '申请公开' }}
+                {{
+                  requestingReviewId === scope.row.id
+                    ? '提交中...'
+                    : scope.row.visibility === 'rejected'
+                      ? '重新申请公开'
+                      : '申请公开'
+                }}
               </TDropdownItem>
               <TDropdownItem
                 v-if="scope.row.visibility === 'published'"

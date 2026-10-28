@@ -2,7 +2,7 @@ import { isApiResourceKind } from '@/shared/resourceApi'
 
 export type ResourcePresentationInput = {
   platform: string
-  visibility: 'draft' | 'review' | 'published'
+  visibility: 'draft' | 'review' | 'published' | 'rejected'
   requirement_id?: string | null
   cover_url?: string | null
   tag_selections: Array<{ tag_names: string[] }>
@@ -19,14 +19,16 @@ export function resourcePlatformLabel(value: string): string {
 export function resourceVisibilityLabel(value: ResourcePresentationInput['visibility']): string {
   if (value === 'published') return '公开'
   if (value === 'review') return '审核中'
+  if (value === 'rejected') return '已驳回'
   return '私有'
 }
 
 export function resourceVisibilityTagType(
   value: ResourcePresentationInput['visibility'],
-): 'success' | 'warning' | 'info' {
+): 'success' | 'warning' | 'info' | 'danger' {
   if (value === 'published') return 'success'
   if (value === 'review') return 'warning'
+  if (value === 'rejected') return 'danger'
   return 'info'
 }
 
