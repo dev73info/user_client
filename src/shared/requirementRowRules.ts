@@ -1,9 +1,5 @@
 import { parseBackendDateTime } from '@/shared/datetime'
-import type {
-  RequirementItem,
-  RequirementPendingResourceVersionDeleteRequest,
-  RequirementStatus,
-} from '@/api/requirements'
+import type { RequirementItem, RequirementStatus } from '@/api/requirements'
 import type { PublicMcResourceVersionItem } from '@/api/resources'
 import type { ContractSigningStatus } from '@/shared/contracts'
 import type { InvoiceAvailabilityFacts } from '@/shared/invoiceAvailability'
@@ -32,7 +28,6 @@ type PaymentModeOf = Pick<RequirementItem, 'payment_mode'>
 type BoundResourceOf = Pick<RequirementItem, 'bound_resource_id'>
 type Facts = RequirementRowFacts
 type Mode = RequirementItem['payment_mode']
-type PendingVersionRequest = RequirementPendingResourceVersionDeleteRequest
 
 export function isSelfManagedRequirement(item: PaymentModeOf) {
   return item.payment_mode === 'self_managed'
@@ -273,25 +268,12 @@ export function hasPendingResourceVersionDeleteReview(item: RequirementItem) {
   return hasBoundResource(item) && pendingResourceVersionDeleteRequests(item).length > 0
 }
 
-/** 拒绝过版本删除时的回显：待审核状态改由「待审核」胶囊 + 右侧按钮表达，这里只留拒绝理由。 */
-export function versionDeleteRejectNote(item: RequirementItem) {
-  const note = item.resource_version_delete_review_note
-  return note ? `你上次拒绝删除版本：${note}` : ''
-}
-
-export function pendingResourceVersionTitle(item?: PendingVersionRequest | null) {
-  return `版本号 ${item?.version?.trim() || '未命名版本'}`
-}
-export function formatPendingVersionRequestedAt(item: PendingVersionRequest) {
-  return item.requested_at?.trim() || '时间未知'
-}
-/** 拒绝原因草稿：视图按版本 id 存一份 record，卡片只读当前版本那一条。 */
-export function pendingVersionRejectNote(
-  notes: Record<number, string>,
-  request: PendingVersionRequest,
-) {
-  return notes[request.version_id] ?? ''
-}
+export {
+  formatPendingVersionRequestedAt,
+  pendingResourceVersionTitle,
+  pendingVersionRejectNote,
+  versionDeleteRejectNote,
+} from '@/shared/requirementVersionReview'
 
 // 判定与错误口径本来就在 shared/requirementResourceClaim.ts，这里只转发给行组件，不新增第二份口径。
 export {

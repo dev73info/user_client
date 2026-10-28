@@ -26,6 +26,17 @@ export type RequirementPublishFormValues = {
   developmentCycleDays: string | number
 }
 
+export function createEmptyRequirementPublishForm(): RequirementPublishFormValues {
+  return {
+    title: '',
+    description: '',
+    budget: '',
+    acceptance: '',
+    paymentMode: 'self_managed',
+    developmentCycleDays: '',
+  }
+}
+
 /** 校验通过后可直接交给建单 / 重提交接口的载荷（字段名与接口一致）。 */
 export type RequirementPublishPayload = {
   title: string

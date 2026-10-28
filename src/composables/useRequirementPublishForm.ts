@@ -8,6 +8,7 @@ import PublishModal from '@/components/PublishModal.vue'
 import { useRequirementPublishModalBindings } from '@/composables/useRequirementPublishModalBindings'
 import { describeBackendError } from '@/shared/backendErrorText'
 import {
+  createEmptyRequirementPublishForm as emptyForm,
   validateRequirementPublishForm,
   type RequirementPublishFormValues,
   type RequirementPublishPayload,
@@ -70,17 +71,6 @@ type UseRequirementPublishFormOptions = {
    * 需要 `useRoute`，所以默认关——没挂路由的单测也能直接调这个工厂。
    */
   syncModalQuery?: boolean
-}
-
-function emptyForm(): RequirementPublishFormValues {
-  return {
-    title: '',
-    description: '',
-    budget: '',
-    acceptance: '',
-    paymentMode: 'self_managed',
-    developmentCycleDays: '',
-  }
 }
 
 export function useRequirementPublishForm(options: UseRequirementPublishFormOptions) {

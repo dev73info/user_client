@@ -4,7 +4,7 @@ import { computed, reactive, ref, watch } from 'vue'
 import { HttpError } from '@/api/http'
 import type { McResourcePayload } from '@/api/mcResources'
 import { createResourceTransfer } from '@/api/resourceTransfers'
-import { getTeamDetail, listMyTeams, type TeamResponse } from '@/api/team'
+import { useResourceTransferTeams } from '@/composables/useResourceTransferTeams'
 import { describeBackendError } from '@/shared/backendErrorText'
 import { validateTransferReceiver } from '@/shared/resourceTransfer'
 import { useAuthStore } from '@/stores/auth'
@@ -32,10 +32,12 @@ const form = reactive({
   toTeamId: null as number | null,
   message: '',
 })
+const { manageableTeams, teamsLoading, teamsError, loadManageableTeams } = useResourceTransferTeams(
+  () => {
+    form.receiverType = 'user'
+  },
+)
 const submitting = ref(false)
-const manageableTeams = ref<TeamResponse[]>([])
-const teamsLoading = ref(false)
-const teamsError = ref('')
 const dialogTitle = computed(() =>
   props.resource ? `资源过户 · ${props.resource.title}` : '资源过户',
 )
@@ -49,31 +51,6 @@ watch(open, (visible) => {
   teamsError.value = ''
   void loadManageableTeams()
 })
-
-async function loadManageableTeams() {
-  if (!auth.token) return
-  teamsLoading.value = true
-  teamsError.value = ''
-  try {
-    const teams = await listMyTeams(auth.token)
-    const details = await Promise.all(teams.map((team) => getTeamDetail(auth.token, team.team_id)))
-    manageableTeams.value = details
-      .filter((detail) =>
-        detail.members.some(
-          (member) =>
-            member.username === auth.username &&
-            (member.role === 'owner' || member.role === 'admin'),
-        ),
-      )
-      .map((detail) => detail.team)
-    if (!manageableTeams.value.length) form.receiverType = 'user'
-  } catch (error) {
-    manageableTeams.value = []
-    teamsError.value = describeBackendError(error, '加载可接收资源的团队失败')
-  } finally {
-    teamsLoading.value = false
-  }
-}
 
 async function submit() {
   if (!auth.token) {

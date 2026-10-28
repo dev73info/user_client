@@ -1,4 +1,4 @@
-import { flushPromises, shallowMount, type VueWrapper } from '@vue/test-utils'
+import { flushPromises } from '@vue/test-utils'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 /**
@@ -57,69 +57,8 @@ vi.mock('@/api/mcResources', () => ({
 
 import type { McResourcePayload } from '@/api/mcResources'
 import { RESOURCE_ARCHIVE_LOCKED_MESSAGE } from '@/shared/resourcePresentation'
-import DevResourceListView from '@/views/DevResourceListView.vue'
 import { resourceFixture } from './devResourceHomepageFixtures'
-
-/** 12 条自有资源（3 公开 / 6 私有 / 3 审核中）+ 1 条团队资源（本页要滤掉）。 */
-function resourceRows(): McResourcePayload[] {
-  const own = Array.from({ length: 12 }, (_, index) =>
-    resourceFixture({
-      id: 1000 + index,
-      ownership_type: 'individual',
-      title: `示例资源 ${index}`,
-      description: `第 ${index} 份资源简介`,
-      visibility: index < 3 ? 'published' : index < 9 ? 'draft' : 'review',
-    }),
-  )
-
-  return [...own, resourceFixture({ id: 2000, ownership_type: 'team', title: '团队资源' })]
-}
-
-function mountList(): VueWrapper {
-  return shallowMount(DevResourceListView, {
-    global: {
-      config: { warnHandler: () => {} },
-      stubs: {
-        // 卡片是默认桩（不渲染插槽）的话，表格与表尾分页都不会被挂上，所以这里放行插槽
-        TCard: { name: 'TCard', template: '<div><slot /></div>' },
-        // 表格单独换成带 props 的桩：本页的「渲染几条」就是这张表的 rows
-        DevResourceTable: {
-          name: 'DevResourceTable',
-          props: [
-            'rows',
-            'loading',
-            'emptyText',
-            'requestingReviewId',
-            'settingPrivateId',
-            'deletingId',
-            'coverUrl',
-            'versionPrices',
-          ],
-          template: '<div />',
-        },
-      },
-    },
-  })
-}
-
-type ListState = {
-  resources: McResourcePayload[]
-  filters: { keyword: string; visibility: string }
-  page: number
-  pageSize: number
-  paged: McResourcePayload[]
-  totalCount: number
-  openEditHomepagePage: (resource: McResourcePayload) => void
-  handleResourceCommand: (payload: { action: string; resource: McResourcePayload }) => void
-}
-
-function state(wrapper: VueWrapper): ListState {
-  return (wrapper.vm.$ as unknown as { setupState: ListState }).setupState
-}
-
-function table(wrapper: VueWrapper) {
-  return wrapper.findComponent({ name: 'DevResourceTable' })
-}
+import { mountList, resourceRows, state, table } from './devResourceListViewHelpers'
 
 describe('DevResourceListView：列表、筛选与分页', () => {
   beforeEach(() => {

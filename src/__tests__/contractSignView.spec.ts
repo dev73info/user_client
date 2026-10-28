@@ -1,13 +1,17 @@
 import { createPinia, setActivePinia } from 'pinia'
 import { flushPromises, mount, type VueWrapper } from '@vue/test-utils'
-import { createMemoryHistory, createRouter } from 'vue-router'
 import { afterEach, beforeEach, describe, expect, it, vi, type Mock } from 'vitest'
 
 import type { ContractDetail } from '@/api/contracts'
-import type { RequirementItem } from '@/api/requirements'
 import { CONTRACT_STATUS } from '@/shared/contracts'
 import { useAuthStore } from '@/stores/auth'
 import ContractSignView from '@/views/ContractSignView.vue'
+import {
+  SIGN_URL,
+  contractDetail,
+  createContractSignRouter,
+  requirementDetail,
+} from './contractSignViewFixtures'
 
 /**
  * 合同签署页最小挂载烟测：合同信息真的渲染出来、点「开始签署」后爱签链接经
@@ -53,62 +57,6 @@ vi.mock('@/components/ContractAttachmentPanel.vue', () => ({
     template: '<div class="stub-attachment" />',
   },
 }))
-
-const SIGN_URL = 'https://asign.example/sign/HT-2026-0001'
-
-function contractDetail(patch: Partial<ContractDetail> = {}): ContractDetail {
-  return {
-    id: 88,
-    contract_no: 'HT-2026-0001',
-    title: '需求开发合同',
-    content: '第一条 服务内容……',
-    content_sha256: 'sha256-of-contract-content',
-    status: CONTRACT_STATUS.signing,
-    party_a_name: '需求方甲',
-    party_a_username: 'alice',
-    party_a_real_name: '张三',
-    party_a_id_card_no_masked: '110***********1234',
-    party_a_signed_at: null,
-    party_b_name: '开发者乙',
-    party_b_username: 'bob',
-    party_b_real_name: '李四',
-    party_b_id_card_no_masked: '310***********5678',
-    party_b_signed_at: null,
-    party_c_name: '',
-    created_at: '2026-10-20 10:00:00',
-    requirement_id: 'REQ-1',
-    content_source: 'platform',
-    attachment_review_status: 'none',
-    effective_until: null,
-    development_cycle_days: null,
-    signing_logs: [
-      {
-        id: 1,
-        contract_id: 88,
-        contract_no: 'HT-2026-0001',
-        contract_title: '需求开发合同',
-        action: 'created',
-        operator: 'system',
-        created_at: '2026-10-20 10:00:00',
-      },
-    ],
-    ...patch,
-  }
-}
-
-/** 需求详情只用来取「到期归档」标记；正常态三个 archive_* 全空。 */
-function requirementDetail(): RequirementItem {
-  return {
-    id: 1,
-    requirement_id: 'REQ-1',
-    title: '数据清洗插件定制',
-    status: 'in_development',
-    archive_locked_at: null,
-    archive_lock_expires_at: null,
-    archive_cleared_at: null,
-    archive_can_claim_resource: false,
-  } as unknown as RequirementItem
-}
 
 /** 整页跳转的落点：`window.location.href` 的 setter，用来断言「跳转函数被调用」。 */
 let redirectTo: Mock<(value: string) => void>
@@ -165,33 +113,7 @@ async function render(
   patch: Partial<ContractDetail> = {},
 ) {
   mocks.requirementContract.mockResolvedValue(contractDetail(patch))
-  const router = createRouter({
-    history: createMemoryHistory(),
-    routes: [
-      { name: 'contract-sign', path: '/contract-sign', component: { template: '<div />' } },
-      {
-        name: 'workbench-signature-detail',
-        path: '/workbench/signatures/:contractId',
-        component: { template: '<div />' },
-      },
-      { name: 'workbench', path: '/workbench', component: { template: '<div />' } },
-      {
-        name: 'workbench-requirements',
-        path: '/workbench/requirements',
-        component: { template: '<div />' },
-      },
-      {
-        name: 'workbench-signatures',
-        path: '/workbench/signatures',
-        component: { template: '<div />' },
-      },
-      {
-        name: 'workbench-realname',
-        path: '/workbench/realname',
-        component: { template: '<div />' },
-      },
-    ],
-  })
+  const router = createContractSignRouter()
   await router.push({ name: 'contract-sign', query })
   const wrapper = mount(ContractSignView, { global: { plugins: [router] } })
   await flushPromises()
