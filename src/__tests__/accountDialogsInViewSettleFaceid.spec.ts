@@ -244,13 +244,15 @@ describe('账号与安全页：收款银行卡弹窗的接线', () => {
 })
 
 describe('账号与安全页：人脸核身弹窗的接线', () => {
-  it('审核中刷新页面会续发二维码并弹出核身弹窗，「查询结果」与「打开认证页面」各自打到接口', async () => {
+  it('审核中点击「继续认证」才续发二维码，「查询结果」与「打开认证页面」各自打到接口', async () => {
     mocks.getMyRealnameVerification.mockResolvedValue(pendingRecord)
     mocks.completeAsignIdentify.mockResolvedValue(pendingRecord)
 
     const wrapper = await renderAccountPage()
+    expect(mocks.resumeAsignIdentify).not.toHaveBeenCalled()
 
-    // 刷新后自动续发（resumeAsignIdentify）→ 二维码出现 → 视图把核身弹窗打开、实名弹窗收起
+    await openEntry(wrapper, 'faceid')
+    await flushPromises()
     expect(mocks.resumeAsignIdentify).toHaveBeenCalledWith('test-token')
     expect(document.body.textContent).toContain('请使用手机扫码，完成人脸核身认证')
 
@@ -265,6 +267,11 @@ describe('账号与安全页：人脸核身弹窗的接线', () => {
       '_blank',
       'noopener,noreferrer',
     )
+
+    mocks.completeAsignIdentify.mockResolvedValue(approvedRecord)
+    bodyButton('查询结果').click()
+    await flushPromises()
+    expect(document.body.textContent).not.toContain('请使用手机扫码，完成人脸核身认证')
     wrapper.unmount()
   })
 
@@ -273,6 +280,8 @@ describe('账号与安全页：人脸核身弹窗的接线', () => {
     mocks.completeAsignIdentify.mockResolvedValue(pendingRecord)
 
     const wrapper = await renderAccountPage()
+    await openEntry(wrapper, 'faceid')
+    await flushPromises()
     expect(document.body.textContent).toContain('人脸核身认证')
 
     bodyButton('撤回认证').click()
@@ -281,7 +290,7 @@ describe('账号与安全页：人脸核身弹窗的接线', () => {
     expect(mocks.withdrawRealname).toHaveBeenCalledWith('test-token')
     // 核身弹窗已收、实名弹窗已开（可见性耦合留在视图这一层）
     expect(document.body.textContent).not.toContain('请使用手机扫码，完成人脸核身认证')
-    expect(document.body.textContent).toContain('提交认证信息')
+    expect(document.body.textContent).toContain('开始认证')
     wrapper.unmount()
   })
 })

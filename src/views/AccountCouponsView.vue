@@ -33,7 +33,7 @@ const router = useRouter()
 
 /** 渠道会员状态：hero 与结算域共用（各请求一次的话 hero / 入口卡 / 结算会各看各的）。 */
 const adapayMember = ref<AdapayMemberStatus | null>(null)
-/** 两个实名弹窗的可见性归视图：三条 watch 要写它们，域与宿主只读同一份 ref。 */
+/** 两个实名弹窗的可见性归视图：两条 watch 要写它们，域与宿主只读同一份 ref。 */
 const realnameDialogVisible = ref(false)
 const faceidDialogVisible = ref(false)
 
@@ -94,6 +94,11 @@ const { realnameEntryGroups, accountEntryGroups, openAccountEntry } = useAccount
   settle: dialogs.settleEntry,
   security: dialogs.securityEntry,
   actions: dialogs.entryActions,
+})
+
+watch(faceid.faceidAuthUrl, (url) => {
+  faceidDialogVisible.value = Boolean(url)
+  if (url) realnameDialogVisible.value = false
 })
 
 watch(realnameDialogVisible, (visible) => {

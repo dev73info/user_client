@@ -36,7 +36,7 @@ export interface AccountDialogDeps {
   faceid: ReturnType<typeof useFaceidChallenge>
   /** 渠道会员状态：结算域与 hero 共用（hero 渲染在视图里）。 */
   adapayMember: Ref<AdapayMemberStatus | null>
-  /** 两个实名弹窗的可见性：三条跨域 watch 要写它们，所以正本在视图。 */
+  /** 两个实名弹窗的可见性：两条跨域 watch 要写它们，所以正本在视图。 */
   realnameDialogVisible: Ref<boolean>
   faceidDialogVisible: Ref<boolean>
 }
@@ -130,7 +130,7 @@ export function useAccountDialogRegistry(deps: AccountDialogDeps) {
     realnameDialogVisible.value = false
   }
 
-  /// 审核中继续认证：取回仍有效的爱签链接并直接跳转。
+  /// 审核中继续认证：用户点击后找回爱签链接，再打开核身弹窗。
   async function continueFaceid() {
     if (!faceid.faceidAuthUrl.value) {
       await faceid.restoreFaceidChallengeIfNeeded()
@@ -139,7 +139,7 @@ export function useAccountDialogRegistry(deps: AccountDialogDeps) {
       TMessage.warning('暂时拿不到人脸核身链接，可撤回本次认证后重新提交')
       return
     }
-    window.open(faceid.faceidAuthUrl.value, '_self')
+    faceidDialogVisible.value = true
   }
 
   /** 缺企业资料时不去重绑：关掉结算弹窗、打开实名表单让用户补企业进件资料。 */
