@@ -73,6 +73,8 @@ function makeOrder(overrides: Partial<ResourcePurchaseOrder>): ResourcePurchaseO
     provider_confirm_id: null,
     pay_url: null,
     split_status: 'none',
+    api_callback_attempts: 0,
+    api_callback_status: 'none',
     first_downloaded_at: null,
     paid_at: '2026-10-19 15:32:10',
     refunded_at: null,

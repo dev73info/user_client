@@ -33,7 +33,7 @@ export class FakeSupportSocket {
 }
 
 export function latestSupportSocket(): FakeSupportSocket {
-  const socket = FakeSupportSocket.instances.at(-1)
+  const socket = FakeSupportSocket.instances[FakeSupportSocket.instances.length - 1]
   if (!socket) throw new Error('还没有建立客服连接')
   return socket
 }

@@ -63,7 +63,7 @@ defineExpose({ loadRecords })
                 <TTooltip :content="part.label">
                   <span class="dev-withdraw-table__part">{{ money(part.amount) }}</span>
                 </TTooltip>
-                <span v-if="index < scope.row.amountParts.length - 1"> + </span> </template
+                <span v-if="Number(index) < scope.row.amountParts.length - 1"> + </span> </template
               >）
             </template>
             <template v-else>{{ money(scope.row.amount) }}</template>

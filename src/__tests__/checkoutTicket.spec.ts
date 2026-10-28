@@ -84,6 +84,8 @@ function makeOrder(overrides: Partial<ResourcePurchaseOrder> = {}): ResourcePurc
     provider_confirm_id: null,
     pay_url: 'https://pay.example.com/qr',
     split_status: 'none',
+    api_callback_attempts: 0,
+    api_callback_status: 'none',
     first_downloaded_at: null,
     paid_at: null,
     refunded_at: null,

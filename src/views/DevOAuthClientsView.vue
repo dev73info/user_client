@@ -145,7 +145,8 @@ async function rotate(client: OAuthClient) {
 }
 
 async function remove(client: OAuthClient) {
-  if (!window.confirm(`确定要删除「${client.name}」吗？删除后使用该客户端的应用会立即失效。`)) return
+  if (!window.confirm(`确定要删除「${client.name}」吗？删除后使用该客户端的应用会立即失效。`))
+    return
   submitting.value = true
   try {
     await deleteOAuthClient(auth.token, client.client_id)
@@ -170,7 +171,9 @@ onMounted(() => {
     <header class="dev-oauth-clients__head">
       <div>
         <h2>接入客户端</h2>
-        <p>在自己的站点使用 73Info 账号登录（OAuth 2.0 授权码模式）。创建客户端需要已完成实名认证。</p>
+        <p>
+          在自己的站点使用 73Info 账号登录（OAuth 2.0 授权码模式）。创建客户端需要已完成实名认证。
+        </p>
       </div>
       <TButton variant="outline" :loading="loading" @click="loadClients">刷新</TButton>
     </header>
@@ -184,11 +187,19 @@ onMounted(() => {
         </label>
         <label>
           回调地址（每行一个，生产用 https，本地可用 http://localhost / 127.0.0.1）
-          <textarea v-model="createForm.redirectUris" rows="3" placeholder="https://example.com/oauth/callback" />
+          <textarea
+            v-model="createForm.redirectUris"
+            rows="3"
+            placeholder="https://example.com/oauth/callback"
+          />
         </label>
         <fieldset>
           <legend>权限范围</legend>
-          <label v-for="option in OAUTH_SCOPE_OPTIONS" :key="option.value" class="dev-oauth-clients__scope">
+          <label
+            v-for="option in OAUTH_SCOPE_OPTIONS"
+            :key="option.value"
+            class="dev-oauth-clients__scope"
+          >
             <input
               type="checkbox"
               :checked="createForm.scopes.includes(option.value)"
@@ -197,7 +208,14 @@ onMounted(() => {
             {{ option.label }}
           </label>
         </fieldset>
-        <TButton type="primary" :loading="submitting" @click="submitCreate">创建客户端</TButton>
+        <TButton
+          type="button"
+          variant="solid"
+          tone="accent"
+          :loading="submitting"
+          @click="submitCreate"
+          >创建客户端</TButton
+        >
       </div>
     </section>
 
@@ -206,7 +224,9 @@ onMounted(() => {
       <p>明文只显示这一次，之后只能看到掩码前缀。换一枚新的也会使旧的立即失效。</p>
       <div class="dev-oauth-clients__secret-row">
         <code>{{ oneTimeSecret.secret }}</code>
-        <TButton variant="outline" @click="copySecret">{{ copied ? '已复制' : '复制密钥' }}</TButton>
+        <TButton variant="outline" @click="copySecret">{{
+          copied ? '已复制' : '复制密钥'
+        }}</TButton>
         <TButton variant="outline" @click="oneTimeSecret = null">知道了</TButton>
       </div>
     </section>
@@ -215,7 +235,11 @@ onMounted(() => {
     <p v-else-if="loading && !clients.length" class="dev-empty-state">正在加载客户端…</p>
     <p v-else-if="!clients.length" class="dev-empty-state">还没有接入客户端，先创建一个吧。</p>
 
-    <section v-for="client in clients" :key="client.client_id" class="dev-surface-card dev-oauth-clients__item">
+    <section
+      v-for="client in clients"
+      :key="client.client_id"
+      class="dev-surface-card dev-oauth-clients__item"
+    >
       <template v-if="editingId === client.client_id">
         <div class="dev-oauth-clients__form">
           <label>
@@ -227,7 +251,14 @@ onMounted(() => {
             <textarea v-model="editForm.redirectUris" rows="3" />
           </label>
           <div class="dev-oauth-clients__actions">
-            <TButton type="primary" :loading="submitting" @click="submitEdit(client)">保存</TButton>
+            <TButton
+              type="button"
+              variant="solid"
+              tone="accent"
+              :loading="submitting"
+              @click="submitEdit(client)"
+              >保存</TButton
+            >
             <TButton variant="outline" @click="editingId = null">取消</TButton>
           </div>
         </div>
@@ -239,13 +270,17 @@ onMounted(() => {
         </div>
         <dl>
           <dt>client_id</dt>
-          <dd><code>{{ client.client_id }}</code></dd>
+          <dd>
+            <code>{{ client.client_id }}</code>
+          </dd>
           <dt>回调地址</dt>
           <dd>{{ client.redirect_uris.join('、') }}</dd>
           <dt>权限范围</dt>
           <dd>{{ client.allowed_scopes.join('、') }}</dd>
           <dt>密钥前缀</dt>
-          <dd><code>{{ client.client_secret_prefix }}</code></dd>
+          <dd>
+            <code>{{ client.client_secret_prefix }}</code>
+          </dd>
         </dl>
         <div class="dev-oauth-clients__actions">
           <TButton variant="outline" @click="openEdit(client)">编辑</TButton>

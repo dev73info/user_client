@@ -205,7 +205,10 @@ describe('DevResourceInitView：类型来自统一路由查询', () => {
     if (typeof record?.redirect !== 'function') {
       throw new Error('旧接口创建路由缺少重定向')
     }
-    const target = record.redirect({ query: { kind: 'api', ownership: 'team' } } as never)
+    const target = record.redirect(
+      { query: { kind: 'api', ownership: 'team' } } as never,
+      {} as never,
+    )
     expect(target).toEqual({
       name: 'dev-plugins',
       query: { ownership: 'team', type: 'api' },

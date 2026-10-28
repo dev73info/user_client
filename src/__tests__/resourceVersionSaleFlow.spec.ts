@@ -5,7 +5,7 @@ import type { McResourcePayload } from '@/api/mcResources'
 import { useResourceVersionSaleFlow } from '@/composables/useResourceVersionSaleFlow'
 
 const mocks = vi.hoisted(() => ({
-  route: reactive({ query: {} as Record<string, unknown> }),
+  route: { query: {} as Record<string, unknown> },
   replace: vi.fn(),
   submitReview: vi.fn(),
 }))
@@ -19,7 +19,7 @@ vi.mock('@/api/mcResources', () => ({ submitMcResourceReview: mocks.submitReview
 
 beforeEach(() => {
   vi.clearAllMocks()
-  mocks.route.query = { sale: 'version', create: '1', review: '1' }
+  mocks.route = reactive({ query: { sale: 'version', create: '1', review: '1' } })
   mocks.replace.mockImplementation(({ query }: { query: Record<string, unknown> }) => {
     mocks.route.query = query
     return Promise.resolve()

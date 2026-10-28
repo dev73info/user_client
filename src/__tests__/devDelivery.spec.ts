@@ -92,6 +92,7 @@ function income(
     refund_developer_cny: 0,
     amount_cny: 100,
     paid_at: '2026-09-10 12:00:00',
+    payment_stage: 'final',
     requirement_status: 'completed',
     refunded_at: null,
     requirement_refund_cny: 0,

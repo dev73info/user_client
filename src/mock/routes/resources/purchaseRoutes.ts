@@ -64,6 +64,8 @@ export const purchaseRoutes: MockRoute[] = [
         provider_confirm_id: null,
         pay_url: null,
         split_status: 'succeeded',
+        api_callback_attempts: 0,
+        api_callback_status: 'none',
         first_downloaded_at: null,
         paid_at: stamp,
         refunded_at: null,

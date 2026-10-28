@@ -88,8 +88,8 @@ describe('资源版本发布后的需求交付登记', () => {
       expect.objectContaining({ version: 'v1.0.1' }),
     )
     expect(mocks.deliver).toHaveBeenCalledWith('test-token', 'REQ-3')
-    expect(mocks.createVersion.mock.invocationCallOrder[0]).toBeLessThan(
-      mocks.deliver.mock.invocationCallOrder[0],
+    expect(mocks.createVersion.mock.invocationCallOrder[0]!).toBeLessThan(
+      mocks.deliver.mock.invocationCallOrder[0]!,
     )
     expect(entry.visible.value).toBe(false)
     expect(mocks.success).toHaveBeenCalledWith('交付版本已提交，等待客户验收')

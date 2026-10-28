@@ -4,7 +4,7 @@
  * 创建页统一使用 dev-plugins；旧 dev-plugins-api 仅保留兼容重定向。
  * 汇总顺序见同目录 workbench.ts，顺序影响路由产出与匹配优先级。
  */
-import type { RouteRecordRaw } from 'vue-router'
+import type { LocationQueryRaw, RouteRecordRaw } from 'vue-router'
 
 export const devWorkbenchResourceRoutes: RouteRecordRaw[] = [
   {
@@ -27,7 +27,7 @@ export const devWorkbenchResourceRoutes: RouteRecordRaw[] = [
     path: 'developer/resources/plugins-init-api',
     name: 'dev-plugins-api',
     redirect: (to) => {
-      const query = { ...to.query, type: 'api' }
+      const query: LocationQueryRaw = { ...to.query, type: 'api' }
       delete query.kind
       return { name: 'dev-plugins', query }
     },
