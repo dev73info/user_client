@@ -168,11 +168,12 @@ describe('DevResourceHomepageEditView：接口资源的保存链路', () => {
     await view.saveHomepage()
     await flushPromises()
 
-    // 契约的渠道 PUT 只收三项（回调地址 / 密钥 / 允许来源），没有「重复购买」与资源类别
+    // 渠道 PUT 只收配置字段：回调地址 / 密钥 / 允许来源 / 重复购买
     expect(mocks.updateChannel).toHaveBeenCalledWith('test-token', 158100, {
       callback_url: 'https://shop.example.com/73info/callback',
       callback_secret: null,
       allowed_origins: ['https://shop.example.com'],
+      repeat_purchasable: true,
     })
     // 顺序：先主页、后渠道
     expect(mocks.updateHomepage.mock.invocationCallOrder[0]).toBeLessThan(

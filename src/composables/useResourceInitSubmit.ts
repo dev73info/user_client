@@ -193,6 +193,7 @@ export function useResourceInitSubmit(options: {
             // 留空 = 不改；首次留空时后端自动生成，明文只在这次响应里回显
             callback_secret: form.apiCallbackSecret.trim() || null,
             allowed_origins: channel.apiOrigins.value,
+            repeat_purchasable: form.apiRepeatPurchasable,
           })
           channel.applySavedApiChannel(saved)
         } catch (error) {

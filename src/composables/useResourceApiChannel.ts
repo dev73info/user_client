@@ -21,16 +21,16 @@ import {
 import type { ResourceHomepageFormState } from '@/shared/resourceHomepageForm'
 
 /**
- * 渠道区块只读写表单里的这三个字段：编辑页与新建页的表单形状不同（字段名相同），
+ * 渠道区块只读写表单里的这四个字段：编辑页与新建页的表单形状不同（字段名相同），
  * 这里按结构取子集，两页共用同一份渠道状态与校验。
  */
 type ApiChannelFormFields = Pick<
   ResourceHomepageFormState,
-  'apiCallbackUrl' | 'apiCallbackSecret' | 'apiAllowedOrigins'
+  'apiCallbackUrl' | 'apiCallbackSecret' | 'apiAllowedOrigins' | 'apiRepeatPurchasable'
 >
 
 /**
- * R028 接口资源的渠道配置：回调地址、一次性密钥、允许来源。
+ * R028 接口资源的渠道配置：回调地址、一次性密钥、允许来源、重复购买。
  *
  * 这块有两个不能弄丢的约定：
  * 1. **一次性密钥**：后端只在首次生成的那次响应里给明文，必须弹窗 + 页内各展示一次，
@@ -111,6 +111,7 @@ export function useResourceApiChannel(options: {
   /** 把服务端返回的渠道配置落到本地（掩码、明文一次性回显）。 */
   function applySavedApiChannel(saved: ResourceApiChannelPayload) {
     savedApiChannel.value = saved
+    form.apiRepeatPurchasable = saved.repeat_purchasable
     if (clearSecretOnApply) {
       form.apiCallbackSecret = ''
     }
@@ -126,6 +127,7 @@ export function useResourceApiChannel(options: {
     form.apiCallbackUrl = loaded.callback_url ?? ''
     form.apiAllowedOrigins = formatAllowedOriginsText(loaded.allowed_origins)
     form.apiCallbackSecret = ''
+    form.apiRepeatPurchasable = loaded.repeat_purchasable
   }
 
   async function loadApiChannel(resourceId: number, generation = loadGeneration.value) {
@@ -209,6 +211,7 @@ export function useResourceApiChannel(options: {
           // 留空 = 不改；首次留空时后端自动生成，明文只在这次响应里回显
           callback_secret: form.apiCallbackSecret.trim() || null,
           allowed_origins: apiOrigins.value,
+          repeat_purchasable: form.apiRepeatPurchasable,
         }),
       )
       channelRetryOnly.value = false
@@ -234,6 +237,7 @@ export function useResourceApiChannel(options: {
     form.apiCallbackUrl = ''
     form.apiCallbackSecret = ''
     form.apiAllowedOrigins = ''
+    form.apiRepeatPurchasable = false
   }
 
   return {

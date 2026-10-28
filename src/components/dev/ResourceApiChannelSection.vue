@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import { TAlert, TButton, TForm, TFormItem, TInput } from 'ui_73info'
+import { TAlert, TButton, TForm, TFormItem, TInput, TSwitch } from 'ui_73info'
 
 /**
- * R028「接口资源接入配置」整块：回调地址 / 回调密钥 / 允许来源，
+ * R028「接口资源接入配置」整块：回调地址 / 回调密钥 / 允许来源 / 重复购买，
  * 加一次性密钥面板与「接入提示词」样张。
  *
  * 两条提示是互斥的：渠道上一次保存失败（`channelRetryOnly`）优先于「还没配齐」，
@@ -34,6 +34,7 @@ const emit = defineEmits<{
 const callbackUrl = defineModel<string>('callbackUrl', { required: true })
 const callbackSecret = defineModel<string>('callbackSecret', { required: true })
 const allowedOrigins = defineModel<string>('allowedOrigins', { required: true })
+const repeatPurchasable = defineModel<boolean>('repeatPurchasable', { required: true })
 </script>
 
 <template>
@@ -65,6 +66,10 @@ const allowedOrigins = defineModel<string>('allowedOrigins', { required: true })
 
     <TForm label-position="top" class="dev-upload-form">
       <div class="dev-upload-grid dev-upload-grid--form">
+        <TFormItem label="重复购买">
+          <TSwitch v-model="repeatPurchasable" aria-label="允许重复购买" />
+        </TFormItem>
+
         <TFormItem label="回调地址" class="dev-form-item--wide">
           <TInput
             v-model="callbackUrl"

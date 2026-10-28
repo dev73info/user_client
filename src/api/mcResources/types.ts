@@ -183,10 +183,11 @@ export type UpdateMcResourceHomepageRequest = {
 /**
  * R028 接口资源的渠道配置（`GET` 响应；`PUT` 响应同构），直接取契约 `ApiChannelResponse`。
  *
- * 契约只回 `allowed_origins` / `callback_url` / `has_secret` / `callback_secret_prefix`，
- * 外加「本次生成的明文」`callback_secret_plain`（只有创建 / 轮换那一次有值）。
+ * 契约回 `allowed_origins` / `callback_url` / `repeat_purchasable` /
+ * `has_secret` / `callback_secret_prefix`，外加「本次生成的明文」
+ * `callback_secret_plain`（只有创建 / 轮换那一次有值）。
  */
 export type ResourceApiChannelPayload = Schemas['ApiChannelResponse']
 
-/** `PUT` 请求体：契约只收这三项，渠道配置里没有可写资源类别与「重复购买」。 */
+/** `PUT` 请求体：回调地址、密钥、允许来源与重复购买；未传字段由后端保留原值。 */
 export type UpdateResourceApiChannelRequest = Schemas['UpdateApiChannelRequest']

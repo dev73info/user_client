@@ -229,6 +229,7 @@ describe('DevResourceInitView：区块渲染与提交载荷', () => {
     view.form.author = '开发者'
     view.form.apiCallbackUrl = ' https://shop.example.com/cb '
     view.form.apiAllowedOrigins = 'https://shop.example.com'
+    view.form.apiRepeatPurchasable = true
     await flushPromises()
 
     expect(view.canSubmit).toBe(true)
@@ -247,11 +248,12 @@ describe('DevResourceInitView：区块渲染与提交载荷', () => {
         price_points: 0,
       }),
     )
-    // 契约的渠道 PUT 只收三项：回调地址 / 密钥 / 允许来源
+    // 契约的渠道 PUT 收回调地址 / 密钥 / 允许来源 / 重复购买
     expect(mocks.updateChannel).toHaveBeenCalledWith('test-token', 33, {
       callback_url: 'https://shop.example.com/cb',
       callback_secret: null,
       allowed_origins: ['https://shop.example.com'],
+      repeat_purchasable: true,
     })
     wrapper.unmount()
   })

@@ -206,6 +206,7 @@ const {
             v-model:callback-url="form.apiCallbackUrl"
             v-model:callback-secret="form.apiCallbackSecret"
             v-model:allowed-origins="form.apiAllowedOrigins"
+            v-model:repeat-purchasable="form.apiRepeatPurchasable"
             :retry-only="channel.channelRetryOnly.value"
             :channel-save-error="channel.channelSaveError.value"
             :blockers="channel.apiChannelBlockers.value"

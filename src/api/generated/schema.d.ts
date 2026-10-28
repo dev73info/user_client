@@ -11960,6 +11960,8 @@ export interface components {
             callback_url?: string | null;
             /** @description 是否已配置密钥。 */
             has_secret: boolean;
+            /** @description 同一真实买家能否重复购买。 */
+            repeat_purchasable: boolean;
             /**
              * Format: int64
              * @description 所属资源。
@@ -18745,6 +18747,8 @@ export interface components {
             callback_secret?: string | null;
             /** @description 回调地址；传空字符串表示清空。 */
             callback_url?: string | null;
+            /** @description 同一真实买家能否重复购买；未传时保持原值。 */
+            repeat_purchasable?: boolean | null;
         };
         /** @description 更新密钥请求体。 */
         UpdateApiKeyRequest: {

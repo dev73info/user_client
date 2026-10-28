@@ -110,6 +110,7 @@ export function channelFixture(
     has_secret: true,
     callback_secret_prefix: 'sk***ab',
     allowed_origins: ['https://shop.example.com'],
+    repeat_purchasable: true,
     ...part,
   }
 }
@@ -136,6 +137,7 @@ export type HomepageEditForm = {
   apiCallbackUrl: string
   apiCallbackSecret: string
   apiAllowedOrigins: string
+  apiRepeatPurchasable: boolean
 }
 
 /** 视图 `setupState` 里用例要读的那几个入口（拆视图后仍由视图透传）。 */
