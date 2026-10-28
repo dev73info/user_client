@@ -28,24 +28,28 @@ export function useResourceInitPage(options: {
   applyRouteSelection()
   watch(() => [route.query.type, route.query.kind, route.query.mode], applyRouteSelection)
 
-  watch([creationType, paidMode], () => {
-    const query = {
-      ...route.query,
-      ...resourceCreationRouteQuery(creationType.value, paidMode.value),
-    }
-    delete query.kind
-    if (creationType.value !== 'paid') {
-      delete query.mode
-    }
-    if (
-      route.query.kind === undefined &&
-      route.query.type === query.type &&
-      route.query.mode === query.mode
-    ) {
-      return
-    }
-    void router.replace({ name: 'dev-plugins', query })
-  })
+  watch(
+    [creationType, paidMode],
+    () => {
+      const query = {
+        ...route.query,
+        ...resourceCreationRouteQuery(creationType.value, paidMode.value),
+      }
+      delete query.kind
+      if (creationType.value !== 'paid') {
+        delete query.mode
+      }
+      if (
+        route.query.kind === undefined &&
+        route.query.type === query.type &&
+        route.query.mode === query.mode
+      ) {
+        return
+      }
+      void router.replace({ name: 'dev-plugins', query })
+    },
+    { immediate: route.query.kind !== undefined },
+  )
 
   onMounted(async () => {
     auth.hydrate()
