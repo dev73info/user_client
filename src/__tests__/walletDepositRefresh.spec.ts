@@ -58,6 +58,10 @@ function mountWallet() {
       // 开关在 TCard 里：桩默认不渲染默认插槽，不打开就找不到页面里的元素
       renderStubDefaultSlot: true,
       stubs: {
+        DevFundRecordsView: {
+          name: 'DevFundRecordsView',
+          methods: { loadRecords: vi.fn() },
+        },
         TTable: { name: 'TTable', props: ['data'], template: '<div />' },
         TPagination: {
           name: 'TPagination',
