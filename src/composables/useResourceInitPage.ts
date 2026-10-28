@@ -1,27 +1,51 @@
-import { onMounted, type ComputedRef } from 'vue'
+import { onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
-import { resourceKindFromQuery } from '@/shared/resourceApi'
-import type { McResourceKind } from '@/api/mcResources'
+import {
+  resolveResourceCreationType,
+  resolveResourcePaidMode,
+  resourceCreationRouteQuery,
+} from '@/shared/resourceCreation'
 import type { useResourceInitForm } from '@/composables/useResourceInitForm'
 import type { useResourceTagCatalog } from '@/composables/useResourceTagCatalog'
 
-/**
- * 「发布资源」创建页的加载与离场：类别来源（路由 props）、标签树 / 团队的加载时序、
- * 老链接改道、从「团队资源」页进入时的归属预选。
- *
- * 顺序不能换：标签树与团队都到手之后才判断 `?ownership=team`（那时才知道有没有团队）。
- */
+/** 创建页的类型路由同步、初始化加载与离场。 */
 export function useResourceInitPage(options: {
-  /** 入口决定的资源类别（普通资源 / 接口资源各一条创建路由）。 */
-  resourceKind: ComputedRef<McResourceKind>
   formState: ReturnType<typeof useResourceInitForm>
   tagCatalog: ReturnType<typeof useResourceTagCatalog>
 }) {
-  const { resourceKind, formState, tagCatalog } = options
+  const { formState, tagCatalog } = options
+  const { creationType, paidMode } = formState
   const auth = useAuthStore()
   const route = useRoute()
   const router = useRouter()
+
+  function applyRouteSelection() {
+    creationType.value = resolveResourceCreationType(route.query.type, route.query.kind)
+    paidMode.value = resolveResourcePaidMode(route.query.mode)
+  }
+
+  applyRouteSelection()
+  watch(() => [route.query.type, route.query.kind, route.query.mode], applyRouteSelection)
+
+  watch([creationType, paidMode], () => {
+    const query = {
+      ...route.query,
+      ...resourceCreationRouteQuery(creationType.value, paidMode.value),
+    }
+    delete query.kind
+    if (creationType.value !== 'paid') {
+      delete query.mode
+    }
+    if (
+      route.query.kind === undefined &&
+      route.query.type === query.type &&
+      route.query.mode === query.mode
+    ) {
+      return
+    }
+    void router.replace({ name: 'dev-plugins', query })
+  })
 
   onMounted(async () => {
     auth.hydrate()
@@ -31,19 +55,9 @@ export function useResourceInitPage(options: {
     await tagCatalog.loadTagTree()
     await formState.loadMyTeams()
 
-    // R028：入口已拆成两条创建路由，老链接上的 `?kind=api` 直接改道到接口资源创建页
-    if (resourceKind.value !== 'api' && resourceKindFromQuery(route.query.kind) === 'api') {
-      const query = { ...route.query }
-      delete query.kind
-      await router.replace({ name: 'dev-plugins-api', query })
-      return
-    }
-
-    // 从「团队资源」页进入时，自动归属团队项目
     if (route.query.ownership === 'team' && formState.hasJoinedTeam.value) {
       formState.form.ownershipType = 'team'
       const onlyTeam = formState.myTeams.value[0]
-      // 若只有一个团队，自动选中；多个团队则让用户挑选
       if (formState.myTeams.value.length === 1 && onlyTeam) {
         formState.form.teamId = String(onlyTeam.team_id)
       }

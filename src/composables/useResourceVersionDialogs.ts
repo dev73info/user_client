@@ -12,6 +12,7 @@ import {
   isResourceArchiveLocked,
   RESOURCE_ARCHIVE_LOCKED_MESSAGE,
 } from '@/shared/resourcePresentation'
+import { parseYuanPriceInput } from '@/shared/resourceSale'
 import { useAuthStore } from '@/stores/auth'
 import { sanitizeRichHtml } from '@/utils/sanitizeHtml'
 
@@ -22,18 +23,16 @@ export type ResourceVersionSubmitPayload = {
   version: string
   note: string
   file: File | null
+  priceYuan?: string
 }
 
-/**
- * 「版本管理」页三个弹窗的编排：发布版本、编辑版本、删除版本（删除在有关联需求时走审核）。
- *
- * 表单草稿（版本号 / 备注 / 文件选择 / 富文本编辑器）留在各自的弹窗组件里——它们只碰 DOM；
- * 这里只管开关、校验顺序、请求实参与提示文案，成功后再回刷整页。
- */
+/** 版本管理页的发布、编辑与删除弹窗编排。 */
 export function useResourceVersionDialogs(deps: {
   resource: Ref<McResourcePayload | null>
   versionRows: Ref<McResourceVersionPayload[]>
   loadPage: () => Promise<void>
+  requireVersionPrice?: Ref<boolean>
+  onVersionCreated?: () => Promise<void>
 }) {
   const auth = useAuthStore()
 
@@ -50,24 +49,41 @@ export function useResourceVersionDialogs(deps: {
     createVersionDialogVisible.value = true
   }
 
-  async function submitVersion({ version, note, file }: ResourceVersionSubmitPayload) {
+  async function submitVersion({
+    version,
+    note,
+    file,
+    priceYuan = '0',
+  }: ResourceVersionSubmitPayload) {
     if (!auth.token || !deps.resource.value) {
       TMessage.error('登录状态已失效，请重新登录')
       return
     }
-
     if (isResourceArchiveLocked(deps.resource.value)) {
       TMessage.warning(RESOURCE_ARCHIVE_LOCKED_MESSAGE)
       return
     }
-
     if (!version.trim()) {
       TMessage.warning('请填写版本号')
       return
     }
-
     if (!file) {
       TMessage.warning('请选择资源文件')
+      return
+    }
+
+    const price = parseYuanPriceInput(priceYuan)
+    if (!price.ok) {
+      TMessage.warning(price.message)
+      return
+    }
+    if (deps.requireVersionPrice?.value && price.fen <= 0) {
+      TMessage.warning('请设置单版本售价')
+      return
+    }
+    const buyoutFen = Number(deps.resource.value.buyout_price_fen ?? 0)
+    if (buyoutFen > 0 && price.fen >= buyoutFen) {
+      TMessage.warning('单版本售价必须低于买断价')
       return
     }
 
@@ -78,9 +94,12 @@ export function useResourceVersionDialogs(deps: {
         version: version.trim(),
         file,
         note: sanitizeRichHtml(note.trim()) || null,
+        price_fen: price.fen,
       })
       if (requirementId) {
         await submitRequirementDelivery(auth.token, requirementId)
+      } else {
+        await deps.onVersionCreated?.()
       }
       createVersionDialogVisible.value = false
       await deps.loadPage()

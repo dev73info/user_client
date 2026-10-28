@@ -17,9 +17,8 @@ import type { useResourceApiChannel } from '@/composables/useResourceApiChannel'
 /**
  * 「发布资源」创建页的提交链路：必填读数（提交按钮的状态文案）、保存顺序、失败重试锚点。
  *
- * 保存顺序是有意的：先把资源本身建出来（payload 带 `resource_kind`）拿 resource_id，
- * 再补图标、再 PUT 渠道配置、最后（公开申请时）PATCH 主页。上一轮资源已建好、
- * 只是后续步骤失败时，再点保存不会重复建资源，只补没成功的那一半。
+ * 先创建资源并取得 resource_id，再补图标与接口渠道。普通公开申请直接送审；
+ * 单版本先进入首版发布，首版成功后再送审。已建资源是失败重试锚点，不会重复创建。
  */
 export function useResourceInitSubmit(options: {
   formState: ReturnType<typeof useResourceInitForm>
@@ -64,6 +63,15 @@ export function useResourceInitSubmit(options: {
       }
     }
 
+    if (
+      formState.creationType.value === 'paid' &&
+      !formState.isVersionSale.value &&
+      !formState.hasCashPrice.value &&
+      !formState.hasPointsPrice.value
+    ) {
+      return '请设置现金售价或积分售价'
+    }
+
     return ''
   })
   const canSubmit = computed(() => !submitBlockReason.value)
@@ -81,27 +89,26 @@ export function useResourceInitSubmit(options: {
       TMessage.error('登录状态已失效，请重新登录')
       return
     }
-
     if (!canSubmit.value) {
       TMessage.warning('请先补全必填字段')
       return
     }
-
     if (effectiveOriginType.value === 'repost' && !form.originUrl.trim()) {
       TMessage.warning('转载资源必须填写原始出处链接')
       return
     }
-
     if (!channel.validateApiChannel()) {
       return
     }
 
+    const creationType = formState.creationType.value
+    const versionSale = formState.isVersionSale.value
     const priceParsed = formState.parsedPriceFen.value
+    const pointsParsed = formState.parsedPricePoints.value
     if (!priceParsed.ok) {
       TMessage.warning(priceParsed.message)
       return
     }
-    const pointsParsed = formState.parsedPricePoints.value
     if (!pointsParsed.ok) {
       TMessage.warning(pointsParsed.message)
       return
@@ -110,36 +117,45 @@ export function useResourceInitSubmit(options: {
       TMessage.warning('现金售价与积分售价不能同时设置')
       return
     }
-    // R028：接口资源只走现金价（积分购是平台内入口，指定地址售卖没有它）
+    if (creationType === 'free' && (priceParsed.fen > 0 || pointsParsed.points > 0)) {
+      TMessage.warning('免费资源不能设置售价')
+      return
+    }
+    if (
+      creationType === 'paid' &&
+      !versionSale &&
+      priceParsed.fen <= 0 &&
+      pointsParsed.points <= 0
+    ) {
+      TMessage.warning('付费买断资源请设置现金售价或积分售价')
+      return
+    }
+    if (versionSale && (priceParsed.fen > 0 || pointsParsed.points > 0)) {
+      TMessage.warning('单版本售价请在发布版本时设置')
+      return
+    }
     if (isApiKind.value && pointsParsed.points > 0) {
       TMessage.warning('接口资源只能设置现金售价，不能设置积分售价')
       return
     }
-    // R029：推广分成比例先在前端拦一道（0～50，留空 = 关闭），别指望后端 400 兜底
     const promoParsed = parsedPromoShare.value
     if (!promoParsed.ok) {
       TMessage.warning(promoParsed.message)
       return
     }
-    if (
-      (priceParsed.fen > 0 || pointsParsed.points > 0) &&
-      !form.copyrightDeclared &&
-      mode === 'public'
-    ) {
+    const paidPublic =
+      mode === 'public' &&
+      (creationType === 'paid' || priceParsed.fen > 0 || pointsParsed.points > 0)
+    if (paidPublic && !form.copyrightDeclared) {
       TMessage.warning('付费资源公开申请前必须勾选版权声明')
       return
     }
 
     submitting.value = true
-
     try {
       let resource: McResourcePayload
-
-      // 保存顺序：先资源本身（payload 里带 resource_kind）拿 resource_id，再 PUT 渠道配置。
-      // 上一轮资源已建好、只是后续步骤失败时，这里不再重复建资源。
       if (createdResource.value === null) {
         resource = await createMcResource(auth.token, {
-          // 接口资源不属于任何根节点 / 二级节点，没有平台可填；用资源类别占位（后端平台字段必填）
           platform: isApiKind.value ? '接口资源' : formState.currentPlatform.value,
           title: form.title.trim(),
           author: form.author.trim(),
@@ -158,11 +174,10 @@ export function useResourceInitSubmit(options: {
           origin_url: form.originUrl.trim() || null,
           origin_org: form.originOrg.trim() || null,
           origin_note: form.originNote.trim() || null,
-          buyout_price_fen: priceParsed.fen,
-          price_points: isApiKind.value ? 0 : pointsParsed.points,
+          buyout_price_fen: creationType === 'free' || versionSale ? 0 : priceParsed.fen,
+          price_points: creationType === 'paid' && !versionSale ? pointsParsed.points : 0,
           copyright_declared: form.copyrightDeclared,
           resource_kind: formState.resourceKind.value,
-          // R029：推广分成比例随资源一次保存；0 = 关闭，显式下发，不靠省略字段表达「不改」
           promo_share_bps: promoParsed.bps,
         })
         createdResource.value = resource
@@ -190,14 +205,12 @@ export function useResourceInitSubmit(options: {
         try {
           const saved = await updateResourceApiChannel(auth.token, resource.id, {
             callback_url: form.apiCallbackUrl.trim() || null,
-            // 留空 = 不改；首次留空时后端自动生成，明文只在这次响应里回显
             callback_secret: form.apiCallbackSecret.trim() || null,
             allowed_origins: channel.apiOrigins.value,
             repeat_purchasable: form.apiRepeatPurchasable,
           })
           channel.applySavedApiChannel(saved)
         } catch (error) {
-          // 资源已存、渠道没存：明确报错并留在表单上，重试只重发渠道配置
           const message = error instanceof Error ? error.message : '保存接口资源渠道配置失败'
           TMessage.error(
             `资源已保存（编号 #${resource.id}），但接口资源渠道配置未保存成功：${message}。请修正后重试，重试只会重发渠道配置。`,
@@ -206,28 +219,39 @@ export function useResourceInitSubmit(options: {
         }
       }
 
-      // 公开申请走契约里的审核动作端点（draft → review）；资源本体的字段在建资源那一步已经提交过，
-      // 不需要再用 PATCH visibility:'review' 把整页字段重发一遍。
-      if (mode === 'public') {
+      if (mode === 'public' && !versionSale) {
         resource = await submitMcResourceReview(auth.token, resource.id)
       }
 
       TMessage.success(
-        mode === 'public'
-          ? `公开申请已提交，项目编号 #${resource.id}`
-          : isApiKind.value
-            ? `接口已创建，编号 #${resource.id}`
-            : `资源已初始化为私有项目，编号 #${resource.id}`,
+        versionSale
+          ? `单版本资源已创建，请发布首个版本，项目编号 #${resource.id}`
+          : mode === 'public'
+            ? `公开申请已提交，项目编号 #${resource.id}`
+            : isApiKind.value
+              ? `接口已创建，编号 #${resource.id}`
+              : `资源已初始化为私有项目，编号 #${resource.id}`,
       )
 
       if (channel.revealedSecretPlain.value) {
-        // 明文只显示这一次：留住表单等开发者确认已保存，再回列表
         TMessage.warning('回调密钥已生成，且只显示这一次，请立即复制保存')
         return
       }
 
       resetAll()
-      await router.push({ name: 'dev-resource-list' })
+      if (versionSale) {
+        await router.push({
+          name: 'dev-resource-versions',
+          params: { resourceId: resource.id },
+          query: {
+            create: '1',
+            sale: 'version',
+            ...(mode === 'public' ? { review: '1' } : {}),
+          },
+        })
+      } else {
+        await router.push({ name: 'dev-resource-list' })
+      }
     } catch (error) {
       const message = error instanceof Error ? error.message : '发布资源失败'
       TMessage.error(message)

@@ -1,13 +1,6 @@
 import { flushPromises, shallowMount, type VueWrapper } from '@vue/test-utils'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-/**
- * R028：开发者工作台「发布资源」入口分两条（普通资源 / 接口资源），各进自己的创建路由
- * （`dev-plugins` / `dev-plugins-api`）；创建页的类别由路由 props 传入，表单里没有这个选项。
- *
- * 两个页面都走 shallowMount + setupState 调函数的写法（与 devResourceTransferList.spec.ts 一致）：
- * ui_73info 的下拉面板会 Teleport 到 body，真挂载去点菜单反而更脆。
- */
 const mocks = vi.hoisted(() => ({
   toast: vi.fn(),
   push: vi.fn(),
@@ -51,6 +44,7 @@ vi.mock('ui_73info', async (importOriginal) => {
 })
 vi.mock('@/api/mcResources', () => ({
   listMcResources: mocks.listResources,
+  listMcResourceVersions: vi.fn(),
   createMcResource: vi.fn(),
   getMcResource: vi.fn(),
   updateMcResourceHomepage: vi.fn(),
@@ -66,12 +60,11 @@ vi.mock('@/api/resourceTags', () => ({
   invalidateTagTreeCache: vi.fn(),
   getResourceDetailSlug: () => 'slug',
 }))
-vi.mock('@/api/team', () => ({
-  listMyTeams: mocks.listMyTeams,
-}))
+vi.mock('@/api/team', () => ({ listMyTeams: mocks.listMyTeams }))
 
 import DevResourceInitView from '@/views/DevResourceInitView.vue'
 import DevResourceListView from '@/views/DevResourceListView.vue'
+import { devWorkbenchResourceRoutes } from '@/router/dev/workbenchResource'
 
 function mountList(): VueWrapper {
   return shallowMount(DevResourceListView, {
@@ -80,7 +73,6 @@ function mountList(): VueWrapper {
       stubs: {
         TCard: { name: 'TCard', template: '<div><slot /></div>' },
         RouterLink: { template: '<a><slot /></a>' },
-        // 下拉面板默认是桩，这里让它把触发元素与菜单一起渲染出来，才能断言两个入口
         TDropdown: { name: 'TDropdown', template: '<div><slot /><slot name="dropdown" /></div>' },
         TDropdownMenu: { name: 'TDropdownMenu', template: '<div><slot /></div>' },
         TDropdownItem: {
@@ -92,9 +84,8 @@ function mountList(): VueWrapper {
   })
 }
 
-function mountCreate(props: { kind?: 'normal' | 'api' } = {}): VueWrapper {
+function mountCreate(): VueWrapper {
   return shallowMount(DevResourceInitView, {
-    props,
     global: {
       config: { warnHandler: () => {} },
       stubs: {
@@ -105,84 +96,119 @@ function mountCreate(props: { kind?: 'normal' | 'api' } = {}): VueWrapper {
   })
 }
 
-/** 列表页与创建页都把 setup 的绑定挂在 setupState 上 */
 function state<T>(wrapper: VueWrapper): T {
   return (wrapper.vm.$ as unknown as { setupState: T }).setupState
 }
 
-describe('DevResourceListView：发布资源入口分两条', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-    mocks.route = { params: {}, query: {} }
-    mocks.tagTree.mockResolvedValue({ roots: [] })
-    mocks.listResources.mockResolvedValue([])
-  })
+beforeEach(() => {
+  vi.clearAllMocks()
+  mocks.route = { params: {}, query: {} }
+  mocks.tagTree.mockResolvedValue({ roots: [] })
+  mocks.listResources.mockResolvedValue([])
+  mocks.listMyTeams.mockResolvedValue([])
+})
 
-  it('菜单里就是普通资源与接口资源两项', async () => {
+describe('DevResourceListView：三类资源统一创建入口', () => {
+  it('菜单提供免费的、付费的和接口三类资源', async () => {
     const wrapper = mountList()
     await flushPromises()
-
-    const items = wrapper.findAll('.entry-item')
-    expect(items.map((item) => item.text())).toEqual(['普通资源', '接口资源'])
+    expect(wrapper.findAll('.entry-item').map((item) => item.text())).toEqual([
+      '免费资源',
+      '付费资源（买断 / 单版本）',
+      '接口资源',
+    ])
     wrapper.unmount()
   })
 
-  it('goCreateResource 按类别跳到各自的创建页', async () => {
+  it('所有入口都进入统一创建页并携带类型', async () => {
     const wrapper = mountList()
     await flushPromises()
-    const view = state<{ goCreateResource: (kind: unknown) => void }>(wrapper)
+    const view = state<{ goCreateResource: (kind: unknown, mode?: unknown) => void }>(wrapper)
 
-    view.goCreateResource('normal')
-    expect(mocks.push).toHaveBeenLastCalledWith({ name: 'dev-plugins' })
-
+    view.goCreateResource('free')
+    expect(mocks.push).toHaveBeenLastCalledWith({
+      name: 'dev-plugins',
+      query: { type: 'free' },
+    })
+    view.goCreateResource('paid', 'version')
+    expect(mocks.push).toHaveBeenLastCalledWith({
+      name: 'dev-plugins',
+      query: { type: 'paid', mode: 'version' },
+    })
     view.goCreateResource('api')
-    expect(mocks.push).toHaveBeenLastCalledWith({ name: 'dev-plugins-api' })
-
-    // 命令值意外时不能把「看着像接口资源」的值带出去
+    expect(mocks.push).toHaveBeenLastCalledWith({
+      name: 'dev-plugins',
+      query: { type: 'api' },
+    })
     view.goCreateResource('API（不公开展示）')
-    expect(mocks.push).toHaveBeenLastCalledWith({ name: 'dev-plugins' })
+    expect(mocks.push).toHaveBeenLastCalledWith({
+      name: 'dev-plugins',
+      query: { type: 'free' },
+    })
     wrapper.unmount()
   })
 })
 
-type CreateState = { isApiKind: boolean }
+type CreateState = { isApiKind: boolean; creationType: string; paidMode: string }
 
-describe('DevResourceInitView：类别由路由 props 传入', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-    mocks.route = { params: {}, query: {} }
-    mocks.tagTree.mockResolvedValue({ roots: [] })
-    mocks.listMyTeams.mockResolvedValue([])
-  })
-
-  it('kind=api（接口资源创建页）展开「接口资源接入配置」', async () => {
-    const wrapper = mountCreate({ kind: 'api' })
+describe('DevResourceInitView：类型来自统一路由查询', () => {
+  it('type=api 展开接口配置', async () => {
+    mocks.route.query = { type: 'api' }
+    const wrapper = mountCreate()
     await flushPromises()
-
-    // 那一段就是 v-if="isApiKind"
     expect(state<CreateState>(wrapper).isApiKind).toBe(true)
     wrapper.unmount()
   })
 
-  it('kind=normal 与不带 props（普通资源创建页）都不展开配置区', async () => {
-    for (const props of [{}, { kind: 'normal' }] as const) {
-      const wrapper = mountCreate(props)
+  it('免费、付费买断和付费单版本都不展开接口配置', async () => {
+    for (const query of [
+      {},
+      { type: 'free' },
+      { type: 'paid', mode: 'buyout' },
+      { type: 'paid', mode: 'version' },
+    ]) {
+      mocks.route.query = query
+      const wrapper = mountCreate()
       await flushPromises()
-
       expect(state<CreateState>(wrapper).isApiKind).toBe(false)
       wrapper.unmount()
     }
   })
 
-  it('老链接上的 ?kind=api 改道到接口资源创建页，其余 query 原样带过去', async () => {
-    mocks.route = { params: {}, query: { kind: 'api', ownership: 'team' } }
+  it('类型切换同步到统一创建页查询参数', async () => {
     const wrapper = mountCreate()
     await flushPromises()
-
+    const view = state<CreateState>(wrapper)
+    view.creationType = 'paid'
+    view.paidMode = 'version'
+    await flushPromises()
     expect(mocks.replace).toHaveBeenLastCalledWith({
-      name: 'dev-plugins-api',
-      query: { ownership: 'team' },
+      name: 'dev-plugins',
+      query: { type: 'paid', mode: 'version' },
     })
     wrapper.unmount()
+  })
+
+  it('旧 ?kind=api 保留其余查询并归一化为 type=api', async () => {
+    mocks.route.query = { kind: 'api', ownership: 'team' }
+    const wrapper = mountCreate()
+    await flushPromises()
+    expect(mocks.replace).toHaveBeenLastCalledWith({
+      name: 'dev-plugins',
+      query: { ownership: 'team', type: 'api' },
+    })
+    wrapper.unmount()
+  })
+
+  it('旧接口创建路由重定向到统一页面', () => {
+    const record = devWorkbenchResourceRoutes.find((item) => item.name === 'dev-plugins-api')
+    if (typeof record?.redirect !== 'function') {
+      throw new Error('旧接口创建路由缺少重定向')
+    }
+    const target = record.redirect({ query: { kind: 'api', ownership: 'team' } } as never)
+    expect(target).toEqual({
+      name: 'dev-plugins',
+      query: { ownership: 'team', type: 'api' },
+    })
   })
 })

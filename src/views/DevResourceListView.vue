@@ -47,6 +47,7 @@ const transferResource = ref<McResourcePayload | null>(null)
 const {
   isLoading,
   resources,
+  versionPrices,
   filters,
   hasActiveFilters,
   filteredResources,
@@ -121,8 +122,6 @@ onMounted(async () => {
           <h3 class="dev-section-title">资源列表</h3>
         </div>
         <div class="dev-card-head__actions">
-          <!-- R028：发布入口分两条——普通资源（大厅公开展示）与接口资源（不公开展示，指定来源下单），
-               各自进自己的创建页；类别由入口决定，创建页表单里不再有「资源类别」。 -->
           <TDropdown trigger="click" @command="(cmd: unknown) => goCreateResource(cmd)">
             <button type="button" class="dev-btn dev-btn--primary">
               <TIcon>
@@ -132,7 +131,8 @@ onMounted(async () => {
             </button>
             <template #dropdown>
               <TDropdownMenu>
-                <TDropdownItem :command="'normal'">普通资源</TDropdownItem>
+                <TDropdownItem :command="'free'">免费资源</TDropdownItem>
+                <TDropdownItem :command="'paid'">付费资源（买断 / 单版本）</TDropdownItem>
                 <TDropdownItem :command="'api'">接口资源</TDropdownItem>
               </TDropdownMenu>
             </template>
@@ -194,6 +194,7 @@ onMounted(async () => {
         :setting-private-id="settingPrivateResourceId"
         :deleting-id="deletingResourceId"
         :cover-url="resolveCoverUrl"
+        :version-prices="versionPrices"
         @edit="openEditHomepagePage"
         @command="handleCommand"
       />

@@ -1,8 +1,8 @@
 /**
  * 开发者工作台路由：资源管理（创建、列表、售出订单、主页与版本）。
  *
- * 路由表按域拆分（R047）后仍然只有这里新增条目；`path` / `name` / `meta` 与拆分前逐项一致，
- * 汇总顺序见同目录 `workbench.ts`（顺序影响 `getRoutes()` 的产出与匹配优先级，不能重排）。
+ * 创建页统一使用 dev-plugins；旧 dev-plugins-api 仅保留兼容重定向。
+ * 汇总顺序见同目录 workbench.ts，顺序影响路由产出与匹配优先级。
  */
 import type { RouteRecordRaw } from 'vue-router'
 
@@ -12,14 +12,12 @@ export const devWorkbenchResourceRoutes: RouteRecordRaw[] = [
     redirect: { name: 'dev-plugins' },
   },
   {
-    // 普通资源与接口资源各一条创建页（R028）：类别由入口决定，表单里不再有「资源类别」。
     path: 'developer/resources/plugins-init',
     name: 'dev-plugins',
     component: () => import('@/views/DevResourceInitView.vue'),
-    props: { kind: 'normal' },
     meta: {
       title: '创建资源',
-      description: '创建插件、工具或服务资源并提交审核。',
+      description: '创建免费、付费或接口资源并提交审核。',
       devArea: true,
       requiresDevAccess: true,
       requiresRealname: true,
@@ -28,14 +26,10 @@ export const devWorkbenchResourceRoutes: RouteRecordRaw[] = [
   {
     path: 'developer/resources/plugins-init-api',
     name: 'dev-plugins-api',
-    component: () => import('@/views/DevResourceInitView.vue'),
-    props: { kind: 'api' },
-    meta: {
-      title: '创建接口资源',
-      description: '创建不在大厅展示、只能由指定来源下单的接口资源。',
-      devArea: true,
-      requiresDevAccess: true,
-      requiresRealname: true,
+    redirect: (to) => {
+      const query = { ...to.query, type: 'api' }
+      delete query.kind
+      return { name: 'dev-plugins', query }
     },
   },
   {

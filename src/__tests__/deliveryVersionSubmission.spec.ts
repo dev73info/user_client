@@ -125,3 +125,60 @@ describe('资源版本发布后的需求交付登记', () => {
     expect(mocks.error).toHaveBeenCalledWith('交付登记失败')
   })
 })
+
+describe('版本管理：单版本售价', () => {
+  function setupPriceEntry(buyoutFen = 0, required = true) {
+    const onVersionCreated = vi.fn().mockResolvedValue(undefined)
+    const composable = useResourceVersionDialogs({
+      resource: ref({ ...resource(null), buyout_price_fen: buyoutFen }),
+      versionRows: ref([]),
+      loadPage: vi.fn().mockResolvedValue(undefined),
+      requireVersionPrice: ref(required),
+      onVersionCreated,
+    })
+    composable.openCreateVersionDialog()
+    return { composable, onVersionCreated }
+  }
+
+  it('按元转换 price_fen，并在首版完成后接续流程', async () => {
+    const { composable, onVersionCreated } = setupPriceEntry()
+    await composable.submitVersion({
+      version: 'v1.0.0',
+      note: '',
+      priceYuan: '2.50',
+      file: new File(['version'], 'version.zip'),
+    })
+    expect(mocks.createVersion).toHaveBeenCalledWith(
+      'test-token',
+      17,
+      expect.objectContaining({ price_fen: 250 }),
+    )
+    expect(onVersionCreated).toHaveBeenCalledTimes(1)
+    expect(composable.createVersionDialogVisible.value).toBe(false)
+  })
+
+  it('单版本流程拒绝零价，不发起创建', async () => {
+    const { composable } = setupPriceEntry()
+    await composable.submitVersion({
+      version: 'v1.0.0',
+      note: '',
+      priceYuan: '0',
+      file: new File(['version'], 'version.zip'),
+    })
+    expect(mocks.createVersion).not.toHaveBeenCalled()
+    expect(mocks.warning).toHaveBeenCalledWith('请设置单版本售价')
+    expect(composable.createVersionDialogVisible.value).toBe(true)
+  })
+
+  it('有买断价时拒绝不低于买断价的单版本价', async () => {
+    const { composable } = setupPriceEntry(250, false)
+    await composable.submitVersion({
+      version: 'v1.0.0',
+      note: '',
+      priceYuan: '2.50',
+      file: new File(['version'], 'version.zip'),
+    })
+    expect(mocks.createVersion).not.toHaveBeenCalled()
+    expect(mocks.warning).toHaveBeenCalledWith('单版本售价必须低于买断价')
+  })
+})

@@ -74,8 +74,8 @@ import DevResourceInitView from '@/views/DevResourceInitView.vue'
 import { resourceFixture, tagTreeFixture } from '@/__tests__/devResourceHomepageFixtures'
 
 function mountInit(): VueWrapper {
+  mocks.route = { params: {}, query: { type: 'api' } }
   return shallowMount(DevResourceInitView, {
-    props: { kind: 'api' },
     global: {
       config: { warnHandler: () => {} },
       stubs: {

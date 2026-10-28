@@ -5,7 +5,9 @@
  * 这里不持有响应式状态，单测直接喂参数，视图与子组件只负责排版。
  */
 import type { McResourcePayload } from '@/api/mcResources'
+import { isApiResourceKind } from '@/shared/resourceApi'
 import { isResourceArchiveLocked, resourceTagSummary } from '@/shared/resourcePresentation'
+import { formatResourcePriceLabel, isPricedResource } from '@/shared/resourceSale'
 
 /** 状态筛选的三个档位；空串表示不筛（下拉清空后的取值）。 */
 export type DevResourceVisibilityFilter = '' | 'published' | 'review' | 'draft'
@@ -116,4 +118,27 @@ export function formatExposureStatus(resource: McResourcePayload): string {
     parts.push(`置顶至 ${resource.pinned_until}`)
   }
   return parts.join(' · ')
+}
+
+export function hasDevResourcePrice(
+  resource: McResourcePayload,
+  versionPrices: Record<number, number>,
+): boolean {
+  return (
+    isPricedResource(resource.buyout_price_fen, resource.price_points) ||
+    (!isApiResourceKind(resource.resource_kind) && (versionPrices[resource.id] ?? 0) > 0)
+  )
+}
+
+export function formatDevResourcePrice(
+  resource: McResourcePayload,
+  versionPrices: Record<number, number>,
+): string {
+  const versionFen = isApiResourceKind(resource.resource_kind)
+    ? 0
+    : (versionPrices[resource.id] ?? 0)
+  if (versionFen > 0 && !isPricedResource(resource.buyout_price_fen, resource.price_points)) {
+    return `单版本 ${formatResourcePriceLabel(versionFen)}`
+  }
+  return formatResourcePriceLabel(resource.buyout_price_fen ?? 0, resource.price_points ?? 0)
 }

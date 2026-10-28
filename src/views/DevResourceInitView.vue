@@ -1,37 +1,23 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { ref } from 'vue'
 import { TAlert, TButton, TCard } from 'ui_73info'
-import type { McResourceKind, McResourcePayload } from '@/api/mcResources'
+import type { McResourcePayload } from '@/api/mcResources'
 import { useResourceTagCatalog } from '@/composables/useResourceTagCatalog'
 import { useResourceApiChannel } from '@/composables/useResourceApiChannel'
 import { useResourceInitForm } from '@/composables/useResourceInitForm'
 import { useResourceInitSubmit } from '@/composables/useResourceInitSubmit'
 import { useResourceInitPage } from '@/composables/useResourceInitPage'
 import ResourceInitMetaStrip from '@/components/dev/ResourceInitMetaStrip.vue'
+import ResourceTypeSection from '@/components/dev/ResourceTypeSection.vue'
 import ResourceInitBasicInfoSection from '@/components/dev/ResourceInitBasicInfoSection.vue'
 import ResourceInitSubmitBar from '@/components/dev/ResourceInitSubmitBar.vue'
 import ResourceApiChannelSection from '@/components/dev/ResourceApiChannelSection.vue'
 import ResourceTagCatalogSection from '@/components/dev/ResourceTagCatalogSection.vue'
 import ResourceSecretPlainDialog from '@/components/dev/ResourceSecretPlainDialog.vue'
 
-/**
- * 开发者工作台「发布资源」创建页。
- *
- * 入口分两条（R028）：普通资源（`dev-plugins`）与接口资源（`dev-plugins-api`），
- * 类别由路由 props 传进来，表单里没有「资源类别」这个可选项：
- * - 普通资源：基础信息 + 标签归类，可创建私有项目或申请公开；
- * - 接口资源：基础信息 + 渠道配置，没有标签归类、没有积分价，一律「原创」。
- *
- * 状态与请求在 composable 里（表单 / 标签目录 / 渠道 / 提交 / 页面加载），
- * 模板区块在 `components/dev/Resource*Section.vue`，这里只剩布局与接线。
- */
-const props = withDefaults(defineProps<{ kind?: McResourceKind }>(), { kind: 'normal' })
-const resourceKind = computed<McResourceKind>(() => (props.kind === 'api' ? 'api' : 'normal'))
-
-/** 标签树与勾选：本页没有已存资源，不传 resource，加载时会落到标签树首项。 */
+/** 免费、付费（买断 / 单版本）与接口共用的资源创建页。 */
 const tagCatalog = useResourceTagCatalog()
 const formState = useResourceInitForm({
-  resourceKind,
   selectedTagCount: tagCatalog.selectedTagCount,
   currentEntryKey: tagCatalog.currentEntryKey,
   currentEntryLabel: tagCatalog.currentEntryLabel,
@@ -44,20 +30,21 @@ const channel = useResourceApiChannel({
   resource: createdResource,
   form: formState.form,
   isApiKind: formState.isApiKind,
-  // 新建页不会换资源，代际固定为 0
   loadGeneration: ref(0),
-  // 新建页保留开发者这次填的密钥；清空是编辑页「留空 = 不改」的口径
   clearSecretOnApply: false,
 })
 
 const { submitting, submitBlockReason, canSubmit, submitResource, confirmSecretSaved } =
   useResourceInitSubmit({ formState, tagCatalog, channel, createdResource })
-const { goBack } = useResourceInitPage({ resourceKind, formState, tagCatalog })
+const { goBack } = useResourceInitPage({ formState, tagCatalog })
 
 const {
   form,
   selectedIconFile,
+  creationType,
+  paidMode,
   isApiKind,
+  isVersionSale,
   effectiveOriginType,
   myTeams,
   teamOptions,
@@ -131,6 +118,8 @@ const {
 
     <div class="dev-upload-layout">
       <TCard class="dev-surface-card dev-upload-combined-card">
+        <ResourceTypeSection v-model:creation-type="creationType" v-model:paid-mode="paidMode" />
+
         <ResourceInitBasicInfoSection
           v-model:cover-url="form.coverUrl"
           v-model:cover-file="selectedIconFile"
@@ -146,6 +135,8 @@ const {
           v-model:price-yuan="form.priceYuan"
           v-model:price-points="form.pricePoints"
           v-model:promo-share-percent="form.promoSharePercent"
+          :creation-type="creationType"
+          :paid-mode="paidMode"
           :is-api-kind="isApiKind"
           :effective-origin-type="effectiveOriginType"
           :has-joined-team="hasJoinedTeam"
@@ -161,8 +152,7 @@ const {
           @points-price-input="onPointsPriceInput"
         />
 
-        <!-- R028 接口资源：只有接口资源创建页（dev-plugins-api）才有这一段。
-             字段与后端契约一一对应（资源类别随资源一次保存，渠道配置在资源建好之后 PUT）。 -->
+        <!-- 接口渠道在资源创建后保存；类别仍使用现有 resource_kind 字段。 -->
         <ResourceApiChannelSection
           v-if="isApiKind"
           v-model:callback-url="form.apiCallbackUrl"
@@ -205,6 +195,7 @@ const {
           :can-submit="canSubmit"
           :submit-block-reason="submitBlockReason"
           :is-api-kind="isApiKind"
+          :is-version-sale="isVersionSale"
           :submitting="submitting"
           :entry-label="currentEntryLabel"
           :selected-tag-count="selectedTagCount"

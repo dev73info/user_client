@@ -2,6 +2,7 @@ import { computed, reactive, ref, watch, type Ref } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 import type { McResourceKind } from '@/api/mcResources'
 import { listMyTeams, type TeamResponse } from '@/api/team'
+import type { ResourceCreationType, ResourcePaidMode } from '@/shared/resourceCreation'
 import {
   normalizeYuanPriceText,
   parsePointsPriceInput,
@@ -10,17 +11,8 @@ import {
 } from '@/shared/resourceSale'
 import { createResourceInitFormState, type ResourceInitFormState } from '@/shared/resourceInitForm'
 
-/**
- * 「发布资源」创建页的表单状态：字段、售价 / 推广分成的校验、归属团队、归类读数拼出的简介，
- * 以及提交载荷要用到的几个派生键。
- *
- * 类别由入口决定（`kind` prop → `resourceKind`），表单里没有这个选项（R028）：
- * 接口资源一律按「原创」归类、不选标签归类、没有积分价。
- *
- * 标签树与勾选不在这里——那是 `useResourceTagCatalog()`（本页没有已存资源，不传参即可）。
- */
+/** 创建页的字段、三类资源选择、价格校验与提交载荷派生值。 */
 export function useResourceInitForm(options: {
-  resourceKind: Ref<McResourceKind>
   selectedTagCount: Ref<number>
   /** 当前二级节点 / 平台（读数与简介、来源地址同一口径，来自 useResourceTagCatalog）。 */
   currentEntryKey: Ref<string>
@@ -29,7 +21,6 @@ export function useResourceInitForm(options: {
   currentPlatformLabel: Ref<string>
 }) {
   const {
-    resourceKind,
     selectedTagCount,
     currentEntryKey,
     currentEntryLabel,
@@ -41,13 +32,16 @@ export function useResourceInitForm(options: {
   const form = reactive<ResourceInitFormState>(createResourceInitFormState())
   /** 图标文件：只在用户选了本地文件时才有值，提交后单独上传，其余字段先落资源。 */
   const selectedIconFile = ref<File | null>(null)
+  const creationType = ref<ResourceCreationType>('free')
+  const paidMode = ref<ResourcePaidMode>('buyout')
+  const resourceKind = computed<McResourceKind>(() =>
+    creationType.value === 'api' ? 'api' : 'normal',
+  )
 
   const isApiKind = computed(() => resourceKind.value === 'api')
-
-  /**
-   * 接口资源一律按「原创」归类（不选标签归类、不属于任何根节点 / 二级节点），
-   * 表单里不再给「原创 / 转载」这个选择；普通资源仍按开发者选的值提交。
-   */
+  const isVersionSale = computed(
+    () => creationType.value === 'paid' && paidMode.value === 'version',
+  )
   const effectiveOriginType = computed<'original' | 'repost'>(() =>
     isApiKind.value ? 'original' : form.originType,
   )
@@ -75,8 +69,33 @@ export function useResourceInitForm(options: {
   const cashPriceDisabled = computed(() => hasPointsPrice.value)
   const pointsPriceDisabled = computed(() => hasCashPrice.value)
   const showCopyrightField = computed(
-    () => hasCashPrice.value || hasPointsPrice.value || form.copyrightDeclared,
+    () =>
+      creationType.value === 'paid' ||
+      hasCashPrice.value ||
+      hasPointsPrice.value ||
+      form.copyrightDeclared,
   )
+
+  watch(creationType, (type) => {
+    if (type === 'free') {
+      form.priceYuan = '0'
+      form.pricePoints = '0'
+      form.copyrightDeclared = false
+    } else if (type === 'api') {
+      form.pricePoints = '0'
+    } else if (paidMode.value === 'version') {
+      form.priceYuan = '0'
+      form.pricePoints = '0'
+    }
+  })
+
+  watch(paidMode, () => {
+    if (creationType.value === 'paid') {
+      form.priceYuan = '0'
+      form.pricePoints = '0'
+      form.copyrightDeclared = false
+    }
+  })
 
   /**
    * 售价（元）实时归一：只留数字与第一个小数点、小数最多两位，并去掉整数前导 0。
@@ -194,9 +213,12 @@ export function useResourceInitForm(options: {
   return {
     form,
     selectedIconFile,
+    creationType,
+    paidMode,
     resourceKind,
     currentPlatform,
     isApiKind,
+    isVersionSale,
     effectiveOriginType,
     parsedPriceFen,
     parsedPricePoints,

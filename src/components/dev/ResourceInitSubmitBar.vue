@@ -14,6 +14,7 @@ defineProps<{
   canSubmit: boolean
   submitBlockReason: string
   isApiKind: boolean
+  isVersionSale?: boolean
   submitting: boolean
   entryLabel: string
   selectedTagCount: number
@@ -58,7 +59,7 @@ const emit = defineEmits<{
         ><template #prefix
           ><TIcon><MagicStick /></TIcon
         ></template>
-        {{ isApiKind ? '创建接口' : '创建私有项目' }}
+        {{ isApiKind ? '创建接口' : isVersionSale ? '创建并发布首版' : '创建私有项目' }}
       </TButton>
       <TButton
         v-if="!isApiKind"
@@ -70,7 +71,7 @@ const emit = defineEmits<{
         ><template #prefix
           ><TIcon><MagicStick /></TIcon
         ></template>
-        发布公开项目
+        {{ isVersionSale ? '创建首版并申请公开' : '发布公开项目' }}
       </TButton>
     </div>
   </footer>

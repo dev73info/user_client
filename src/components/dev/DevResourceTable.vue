@@ -12,7 +12,11 @@ import {
 } from 'ui_73info'
 
 import type { McResourcePayload } from '@/api/mcResources'
-import { formatExposureStatus } from '@/shared/devResourceList'
+import {
+  formatDevResourcePrice,
+  formatExposureStatus,
+  hasDevResourcePrice,
+} from '@/shared/devResourceList'
 import {
   isApiResourceKind,
   isResourceRowActionAvailable,
@@ -26,31 +30,21 @@ import {
   resourceVisibilityLabel,
   resourceVisibilityTagType,
 } from '@/shared/resourcePresentation'
-import { formatResourcePriceLabel, isPricedResource } from '@/shared/resourceSale'
 
-/**
- * 资源列表的六列表格与「更多」菜单。
- *
- * 只画与派发：可见性标签、价格、锁定态用 `@/shared` 的纯口径，封面地址由视图传进来
- * （`apiUrl` 属于 `@/api/http`，组件里不碰 `@/api`）；点行 emit `edit`，
- * 「更多」菜单 emit `command`，分发与请求都在视图的 composable 里。
- */
-const props = defineProps<{
-  /** 当前页的行（视图那边的 `paged` 切片） */
-  rows: McResourcePayload[]
-  /** 列表加载中（表格遮罩） */
-  loading: boolean
-  /** 空态文案（加载中 / 筛不出来 / 还没有资源） */
-  emptyText: string
-  /** 正在提交公开审核的资源 id：对应菜单项置灰并改文案为「提交中...」 */
-  requestingReviewId: number | null
-  /** 正在设为私有的资源 id */
-  settingPrivateId: number | null
-  /** 正在删除的资源 id */
-  deletingId: number | null
-  /** 封面绝对地址：视图把 `apiUrl` 闭包进来，组件不直接依赖 `@/api/http` */
-  coverUrl: (resource: McResourcePayload) => string
-}>()
+/** 资源列表表格与行操作；价格、状态和封面都只读视图传入的数据。 */
+const props = withDefaults(
+  defineProps<{
+    rows: McResourcePayload[]
+    loading: boolean
+    emptyText: string
+    requestingReviewId: number | null
+    settingPrivateId: number | null
+    deletingId: number | null
+    coverUrl: (resource: McResourcePayload) => string
+    versionPrices?: Record<number, number>
+  }>(),
+  { versionPrices: () => ({}) },
+)
 
 const emit = defineEmits<{
   /** 点标题链接或整行：去「编辑资源主页」 */
@@ -131,15 +125,9 @@ function handleRowClick(event: MouseEvent) {
       <template #default="scope">
         <TTag
           variant="outline"
-          :tone="
-            isPricedResource(scope.row.buyout_price_fen, scope.row.price_points)
-              ? 'accent'
-              : 'neutral'
-          "
+          :tone="hasDevResourcePrice(scope.row, versionPrices) ? 'accent' : 'neutral'"
         >
-          {{
-            formatResourcePriceLabel(scope.row.buyout_price_fen ?? 0, scope.row.price_points ?? 0)
-          }}
+          {{ formatDevResourcePrice(scope.row, versionPrices) }}
         </TTag>
       </template>
     </TTableColumn>

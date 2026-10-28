@@ -78,9 +78,9 @@ import {
   tagTreeFixture,
 } from '@/__tests__/devResourceHomepageFixtures'
 
-function mountInit(props: { kind?: 'normal' | 'api' } = {}): VueWrapper {
+function mountInit(query: Record<string, unknown> = {}): VueWrapper {
+  mocks.route = { params: {}, query }
   return shallowMount(DevResourceInitView, {
-    props,
     global: {
       config: { warnHandler: () => {} },
       stubs: {
@@ -136,7 +136,7 @@ describe('DevResourceInitView：区块渲染与提交载荷', () => {
   })
 
   it('接口资源：渲染接口配置，不渲染标签归类与公开申请', async () => {
-    const wrapper = mountInit({ kind: 'api' })
+    const wrapper = mountInit({ type: 'api' })
     await flushPromises()
 
     const text = wrapper.text()
@@ -148,8 +148,8 @@ describe('DevResourceInitView：区块渲染与提交载荷', () => {
     wrapper.unmount()
   })
 
-  it('普通资源提交：创建请求逐字段正确', async () => {
-    const wrapper = mountInit()
+  it('付费买断提交：创建请求逐字段正确', async () => {
+    const wrapper = mountInit({ type: 'paid', mode: 'buyout' })
     await flushPromises()
     const view = state<InitState>(wrapper)
 
@@ -201,7 +201,7 @@ describe('DevResourceInitView：区块渲染与提交载荷', () => {
   })
 
   it('公开申请：提交审核走契约的 submit-review 端点，不再用 PATCH 重发整页字段', async () => {
-    const wrapper = mountInit()
+    const wrapper = mountInit({ type: 'paid', mode: 'buyout' })
     await flushPromises()
     const view = state<InitState>(wrapper)
 
@@ -221,12 +221,13 @@ describe('DevResourceInitView：区块渲染与提交载荷', () => {
   })
 
   it('接口资源提交：不提交标签、只走现金价，渠道配置载荷逐字段正确', async () => {
-    const wrapper = mountInit({ kind: 'api' })
+    const wrapper = mountInit({ type: 'api' })
     await flushPromises()
     const view = state<InitState>(wrapper)
 
     view.form.title = '接口示例'
     view.form.author = '开发者'
+    view.form.priceYuan = '9.90'
     view.form.apiCallbackUrl = ' https://shop.example.com/cb '
     view.form.apiAllowedOrigins = 'https://shop.example.com'
     view.form.apiRepeatPurchasable = true
@@ -245,6 +246,7 @@ describe('DevResourceInitView：区块渲染与提交载荷', () => {
         tag_selections: [],
         resource_kind: 'api',
         origin_type: 'original',
+        buyout_price_fen: 990,
         price_points: 0,
       }),
     )

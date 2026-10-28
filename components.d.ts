@@ -221,6 +221,7 @@ declare module 'vue' {
     ResourceSecretPlainDialog: typeof import('./src/components/dev/ResourceSecretPlainDialog.vue')['default']
     ResourceTagCatalogSection: typeof import('./src/components/dev/ResourceTagCatalogSection.vue')['default']
     ResourceTransferDialog: typeof import('./src/components/ResourceTransferDialog.vue')['default']
+    ResourceTypeSection: typeof import('./src/components/dev/ResourceTypeSection.vue')['default']
     ResourceVersionCreateDialog: typeof import('./src/components/dev/ResourceVersionCreateDialog.vue')['default']
     ResourceVersionDeleteDialog: typeof import('./src/components/dev/ResourceVersionDeleteDialog.vue')['default']
     ResourceVersionEditDialog: typeof import('./src/components/dev/ResourceVersionEditDialog.vue')['default']

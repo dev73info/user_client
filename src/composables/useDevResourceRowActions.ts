@@ -9,7 +9,11 @@ import {
   updateMcResourceHomepage,
   type McResourcePayload,
 } from '@/api/mcResources'
-import { resourceKindFromQuery } from '@/shared/resourceApi'
+import {
+  resolveResourceCreationType,
+  resolveResourcePaidMode,
+  resourceCreationRouteQuery,
+} from '@/shared/resourceCreation'
 import {
   canDeleteResource,
   isResourceArchiveLocked,
@@ -65,10 +69,11 @@ export function useDevResourceRowActions(deps: DevResourceRowActionDeps) {
     router.push({ name: 'dev-resource-versions', params: { resourceId: resource.id } })
   }
 
-  /** R028：发布入口分两条，各进各的创建页——普通资源 `dev-plugins`、接口资源 `dev-plugins-api`。 */
-  function goCreateResource(kind: unknown) {
+  function goCreateResource(kind: unknown, mode?: unknown) {
+    const type = resolveResourceCreationType(kind)
     void router.push({
-      name: resourceKindFromQuery(kind) === 'api' ? 'dev-plugins-api' : 'dev-plugins',
+      name: 'dev-plugins',
+      query: resourceCreationRouteQuery(type, resolveResourcePaidMode(mode)),
     })
   }
 

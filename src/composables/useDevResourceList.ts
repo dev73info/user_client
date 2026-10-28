@@ -2,7 +2,7 @@ import { computed, reactive, ref, watch } from 'vue'
 
 import { TMessage } from 'ui_73info'
 
-import { listMcResources, type McResourcePayload } from '@/api/mcResources'
+import { listMcResources, listMcResourceVersions, type McResourcePayload } from '@/api/mcResources'
 import { useClientPagination } from '@/composables/useClientPagination'
 import {
   countDevResources,
@@ -11,33 +11,35 @@ import {
   resourceListEmptyText,
   type DevResourceListFilters,
 } from '@/shared/devResourceList'
+import { isApiResourceKind } from '@/shared/resourceApi'
+import { isPricedResource } from '@/shared/resourceSale'
 import { useAuthStore } from '@/stores/auth'
 
-/**
- * 开发者资源列表的数据、筛选与客户端分页。
- *
- * 从 `views/DevResourceListView.vue` 抽出，逻辑逐段照搬：数据源一次取回全部自有资源
- * （团队资源走团队页，这里滤掉 `ownership_type === 'team'`），筛选与分页都在前端做。
- *
- * 分页与其余菜单页同构（需求大厅、收益钱包、团队资源、我的接单都带表尾分页器）；
- * 这里用 `useClientPagination` 的客户端切片，不走服务端页码。
- */
+async function loadCurrentVersionPrices(token: string, resources: McResourcePayload[]) {
+  const candidates = resources.filter(
+    (item) =>
+      !isApiResourceKind(item.resource_kind) &&
+      !isPricedResource(item.buyout_price_fen, item.price_points),
+  )
+  const entries = await Promise.all(
+    candidates.map(async (item) => {
+      const versions = await listMcResourceVersions(token, item.id)
+      const current = versions.find((version) => version.is_current) ?? versions[0]
+      return [item.id, current?.price_fen ?? 0] as const
+    }),
+  )
+  return Object.fromEntries(entries) as Record<number, number>
+}
+
+/** 开发者资源列表、前端筛选分页与当前单版本售价。 */
 export function useDevResourceList() {
   const auth = useAuthStore()
-
   const isLoading = ref(false)
   const resources = ref<McResourcePayload[]>([])
-
-  // 搜索与状态筛选都在前端做，所以没有「查询」按钮，输入即过滤（口径见 shared/devResourceList.ts）。
-  const filters = reactive<DevResourceListFilters>({
-    keyword: '',
-    visibility: '',
-  })
-
+  const versionPrices = ref<Record<number, number>>({})
+  const filters = reactive<DevResourceListFilters>({ keyword: '', visibility: '' })
   const hasActiveFilters = computed(() => hasResourceListFilters(filters))
   const filteredResources = computed(() => filterDevResources(resources.value, filters))
-
-  /* 筛选条件一变就回到第 1 页，否则从第 3 页开始筛会直接看到一张空表。 */
   const {
     page,
     pageSize,
@@ -59,7 +61,9 @@ export function useDevResourceList() {
     isLoading.value = true
     try {
       const all = await listMcResources(auth.token)
-      resources.value = all.filter((item) => item.ownership_type !== 'team')
+      const own = all.filter((item) => item.ownership_type !== 'team')
+      versionPrices.value = await loadCurrentVersionPrices(auth.token, own)
+      resources.value = own
     } catch (error) {
       const message = error instanceof Error ? error.message : '加载资源列表失败'
       TMessage.error(message)
@@ -71,6 +75,7 @@ export function useDevResourceList() {
   return {
     isLoading,
     resources,
+    versionPrices,
     filters,
     hasActiveFilters,
     filteredResources,

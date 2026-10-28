@@ -4,8 +4,8 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 /**
  * R028：接口资源不选标签归类、不属于任何根节点 / 二级节点，一律按「原创」归类。
  *
- * 创建页（DevResourceInitView）的入口分两条、类别由路由 props 决定，已有
- * `devResourceCreateEntry.spec.ts` 盯着；这里盯编辑页（DevResourceHomepageEditView）：
+ * 创建页的统一入口与类型查询由 `devResourceCreateEntry.spec.ts` 覆盖；
+ * 这里盯编辑页（DevResourceHomepageEditView）：
  * 类别是表单里可切换的字段（`resource_kind`），所以同一页要在两种类别间表现不同——
  * 接口资源隐藏「标签归类」整块与「类型」选择、不提交任何标签、提交 origin_type=original。
  *

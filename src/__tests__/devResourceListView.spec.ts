@@ -14,6 +14,7 @@ const mocks = vi.hoisted(() => ({
   confirm: vi.fn(),
   push: vi.fn(),
   listResources: vi.fn(),
+  listVersions: vi.fn(),
   updateHomepage: vi.fn(),
   submitReview: vi.fn(),
   deleteResource: vi.fn(),
@@ -46,6 +47,7 @@ vi.mock('ui_73info', async (importOriginal) => {
 })
 vi.mock('@/api/mcResources', () => ({
   listMcResources: mocks.listResources,
+  listMcResourceVersions: mocks.listVersions,
   updateMcResourceHomepage: mocks.updateHomepage,
   submitMcResourceReview: mocks.submitReview,
   deleteMcResource: mocks.deleteResource,
@@ -91,6 +93,7 @@ function mountList(): VueWrapper {
             'settingPrivateId',
             'deletingId',
             'coverUrl',
+            'versionPrices',
           ],
           template: '<div />',
         },
@@ -123,6 +126,7 @@ describe('DevResourceListView：列表、筛选与分页', () => {
     vi.clearAllMocks()
     mocks.confirm.mockResolvedValue(true)
     mocks.listResources.mockResolvedValue(resourceRows())
+    mocks.listVersions.mockResolvedValue([])
   })
 
   it('挂载后按 token 拉列表，团队资源滤掉，首页只渲染一页', async () => {
@@ -133,6 +137,19 @@ describe('DevResourceListView：列表、筛选与分页', () => {
     expect(state(wrapper).totalCount).toBe(12)
     expect(table(wrapper).props('rows')).toHaveLength(10)
     expect(table(wrapper).props('emptyText')).toBe('当前还没有资源记录')
+    wrapper.unmount()
+  })
+
+  it('零买断价普通资源读取当前单版本价并传给表格', async () => {
+    mocks.listResources.mockResolvedValue([
+      resourceFixture({ id: 22, buyout_price_fen: 0, price_points: 0, resource_kind: 'normal' }),
+    ])
+    mocks.listVersions.mockResolvedValue([{ id: 1, is_current: true, price_fen: 100 }])
+    const wrapper = mountList()
+    await flushPromises()
+
+    expect(mocks.listVersions).toHaveBeenCalledWith('test-token', 22)
+    expect(table(wrapper).props('versionPrices')).toEqual({ 22: 100 })
     wrapper.unmount()
   })
 
@@ -206,6 +223,7 @@ describe('DevResourceListView：动作的请求实参', () => {
     vi.clearAllMocks()
     mocks.confirm.mockResolvedValue(true)
     mocks.listResources.mockResolvedValue(resourceRows())
+    mocks.listVersions.mockResolvedValue([])
   })
 
   it('申请公开走契约的 submit-review 端点（不再 PATCH 整页字段），并重拉列表', async () => {

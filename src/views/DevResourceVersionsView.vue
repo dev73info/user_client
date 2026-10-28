@@ -7,6 +7,7 @@ import ResourceVersionsTable from '@/components/dev/ResourceVersionsTable.vue'
 import { LIST_PAGE_SIZES } from '@/composables/useClientPagination'
 import { useResourceVersionDialogs } from '@/composables/useResourceVersionDialogs'
 import { useResourceVersionList } from '@/composables/useResourceVersionList'
+import { useResourceVersionSaleFlow } from '@/composables/useResourceVersionSaleFlow'
 import {
   RESOURCE_ARCHIVE_LOCKED_MESSAGE,
   RESOURCE_ARCHIVE_LOCKED_TITLE,
@@ -59,6 +60,17 @@ const {
   downloadVersion,
 } = useResourceVersionList()
 
+const versionSaleFlow = useResourceVersionSaleFlow({
+  resource,
+  openCreateVersionDialog: () => openCreateVersionDialog(),
+})
+const {
+  requireVersionPrice,
+  reviewError: versionSaleReviewError,
+  reviewing: versionSaleReviewing,
+  completeVersionSale,
+} = versionSaleFlow
+
 const {
   createVersionDialogVisible,
   publishing,
@@ -79,6 +91,8 @@ const {
   resource,
   versionRows,
   loadPage,
+  requireVersionPrice,
+  onVersionCreated: completeVersionSale,
 })
 
 function handleVersionAction(command: string, version: McResourceVersionPayload) {
@@ -136,6 +150,19 @@ function handleVersionAction(command: string, version: McResourceVersionPayload)
     />
 
     <TLoading tag="section" class="dev-resource-versions__layout" :loading="loading">
+      <TAlert
+        v-if="versionSaleReviewError"
+        tone="danger"
+        variant="soft"
+        :title="versionSaleReviewError"
+      >
+        <template #actions>
+          <TButton size="sm" :loading="versionSaleReviewing" @click="completeVersionSale">
+            重试公开申请
+          </TButton>
+        </template>
+      </TAlert>
+
       <TCard class="dev-surface-card">
         <div class="dev-card-head">
           <div class="dev-card-head__title-block">
@@ -220,6 +247,7 @@ function handleVersionAction(command: string, version: McResourceVersionPayload)
     <ResourceVersionCreateDialog
       v-model:open="createVersionDialogVisible"
       :submitting="publishing"
+      :require-price="requireVersionPrice"
       @submit="submitVersion"
     />
 

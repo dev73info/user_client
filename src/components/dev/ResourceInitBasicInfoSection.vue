@@ -2,22 +2,15 @@
 import { ref } from 'vue'
 import { TCheckbox, TForm, TFormItem, TInput, TOption, TSelect } from 'ui_73info'
 import ResourceIconPicker from '@/components/ResourceIconPicker.vue'
+import type { ResourceCreationType, ResourcePaidMode } from '@/shared/resourceCreation'
 
 /**
- * 「基础信息」整块：图标、标题、归属、类型、版权、售价、推广分成、转载来源。
- *
- * 字段顺序按需求方定的口径：图标文件 → 资源标题 → 归属 → 类型 / 版权 → 售价（元）→
- * 售价（积分）→ 推广分成；转载来源那组字段随「类型 = 转载」在末尾展开，
- * 不插在上面几项中间。资源类别不在表单里：它是入口决定的（普通资源 / 接口资源各一条创建路由）。
- *
- * 排布见 dev-resource.css 的 `.dev-upload-grid--form`：flex-wrap + 按内容取宽，
- * 同行字段依次排满、放不下才换行，行尾余量交给可伸缩的字段（资源标题、原始出处链接、
- * 转载说明、推广分成）吃掉，所以不必给谁预留固定档位。
- *
- * 现金价输入框的底层元素通过 `cashPriceInput` 事件回传：实时归一前导 0 要改写 input
- * 的值与光标（规则在 `useResourceInitForm`）。
+ * 基础信息字段；资源类型由独立区块选择，这里只按类型展示适用字段。
+ * 现金价输入框的底层元素通过 `cashPriceInput` 事件回传，供实时归一使用。
  */
 defineProps<{
+  creationType: ResourceCreationType
+  paidMode: ResourcePaidMode
   isApiKind: boolean
   effectiveOriginType: 'original' | 'repost'
   hasJoinedTeam: boolean
@@ -123,10 +116,7 @@ function onCashPriceInput() {
           </div>
         </TFormItem>
 
-        <!-- 「类型」（原创 / 转载）说的是版权性质，与版权声明同属「版权」这一项，排在它前面；
-             两者各自按内容取宽：类型是下拉（短档），版权声明那句勾选文案要 310px 才不折行。
-             版权声明只在填了价格或已勾选时出现（见 showCopyrightField），
-             它不出现时后面的字段自然前移——不再为「整行落位稳定」预留半格空档。 -->
+        <!-- 原创 / 转载是版权性质；付费资源与已设售价的接口显示版权声明。 -->
         <!-- 接口资源一律「原创」（见 effectiveOriginType），不给这个选择 -->
         <TFormItem v-if="!isApiKind" label="类型" class="dev-form-item--short">
           <TSelect v-model="originType" style="width: 100%">
@@ -141,15 +131,16 @@ function onCashPriceInput() {
           </TCheckbox>
         </TFormItem>
 
-        <!-- 售价（元）/ 售价（积分）两项互斥、成对出现，绑在同一个 `.dev-price-group` 里
-             （见 dev-resource.css）：换行时不会被拆到两行去，各自宽度由那一组给。 -->
-        <div class="dev-price-group">
-          <TFormItem label="售价（元）">
+        <div
+          v-if="isApiKind || (creationType === 'paid' && paidMode === 'buyout')"
+          class="dev-price-group"
+        >
+          <TFormItem label="售价（元）" :required="creationType === 'paid'">
             <TInput
               ref="cashPriceInputRef"
               v-model="priceYuan"
               :disabled="cashPriceDisabled"
-              placeholder="0 表示免费"
+              :placeholder="isApiKind ? '0 表示免费' : '请输入买断价'"
               inputmode="decimal"
               :title="isApiKind ? undefined : '与售价（积分）互斥'"
               @input="onCashPriceInput"
@@ -159,7 +150,7 @@ function onCashPriceInput() {
             </p>
           </TFormItem>
 
-          <TFormItem v-if="!isApiKind" label="售价（积分）">
+          <TFormItem v-if="creationType === 'paid' && paidMode === 'buyout'" label="售价（积分）">
             <TInput
               v-model="pricePoints"
               :disabled="pointsPriceDisabled"
