@@ -23,7 +23,14 @@ const mocks = vi.hoisted(() => ({
 }))
 
 vi.mock('vue-router', () => ({
-  useRouter: () => ({ push: mocks.push, replace: mocks.replace, resolve: () => ({ href: '/' }) }),
+  useRouter: () => ({
+    push: mocks.push,
+    replace: mocks.replace,
+    resolve: (to: { query?: Record<string, unknown> }) => {
+      const query = new URLSearchParams((to.query ?? {}) as Record<string, string>).toString()
+      return { href: `/${query ? `?${query}` : ''}` }
+    },
+  }),
   useRoute: () => mocks.route,
 }))
 vi.mock('@/stores/auth', () => ({
