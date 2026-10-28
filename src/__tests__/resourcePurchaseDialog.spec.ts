@@ -29,6 +29,7 @@ function mountDialog(props: Record<string, unknown> = {}) {
       priceLabel: '¥9.90',
       showPromoHint: false,
       channel: 'alipay',
+      pointsMode: false,
       error: '',
       submitting: false,
       orderNo: '',

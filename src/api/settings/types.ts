@@ -18,7 +18,10 @@ export type UpdateProfileResponse = Schemas['UpdateProfileResponse']
 
 /** 订阅开关响应。 */
 export type SubscriptionResponse = Schemas['SubscriptionResponse']
-export type ProfileSubscriptionsResp = Schemas['SubscriptionResponse']
+export type ProfileSubscriptionsResp = Schemas['UpdateSubscriptionsRequest'] & {
+  subscribe_official_activity: boolean
+  subscribe_dev_hall_deposit_paid: boolean
+}
 
 /** 改订阅开关请求体：`null` / 缺省表示不改该项。 */
 export type UpdateSubscriptionsRequest = Schemas['UpdateSubscriptionsRequest']

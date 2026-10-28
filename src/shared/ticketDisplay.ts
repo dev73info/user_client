@@ -3,7 +3,10 @@ import type { TicketItem } from '@/api/tickets'
 export type TicketStatusFilter = 'all' | 'open' | 'processing' | 'resolved' | 'closed'
 export type TicketPriorityFilter = 'all' | 'low' | 'normal' | 'high' | 'urgent'
 
-export const TICKET_PRIORITY_OPTIONS = [
+export const TICKET_PRIORITY_OPTIONS: ReadonlyArray<{
+  value: TicketPriorityFilter
+  label: string
+}> = [
   { value: 'low', label: '低优先级' },
   { value: 'normal', label: '普通' },
   { value: 'high', label: '高优先级' },

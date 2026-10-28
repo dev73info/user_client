@@ -88,6 +88,7 @@ export const settledIncome = REQUIREMENT_SEEDS.filter((seed) => seed.finalPaid).
     refund_developer_cny: 0,
     amount_cny: amount,
     paid_at: datetime(-seed.updatedDaysAgo, 16, 10),
+    payment_stage: 'final',
     requirement_status: seed.status,
     refunded_at: null,
     requirement_refund_cny: 0,

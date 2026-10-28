@@ -40,7 +40,7 @@ class FakeSocket {
 }
 
 function latest() {
-  const socket = FakeSocket.instances.at(-1)
+  const socket = FakeSocket.instances[FakeSocket.instances.length - 1]
   if (!socket) throw new Error('还没有建立连接')
   return socket
 }
