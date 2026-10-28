@@ -6,6 +6,7 @@ export function useResourceVersionDraft() {
   const selectedVersionFileName = ref('')
   const versionForm = reactive({
     version: '',
+    priceYuan: '0',
     note: '',
   })
 
@@ -19,6 +20,7 @@ export function useResourceVersionDraft() {
 
   function reset() {
     versionForm.version = ''
+    versionForm.priceYuan = '0'
     versionForm.note = ''
     clearFileSelection()
   }

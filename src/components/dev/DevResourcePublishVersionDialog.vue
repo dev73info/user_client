@@ -5,13 +5,7 @@ import { TButton, TDialog, TForm, TFormItem, TInput } from 'ui_73info'
 
 import { useResourceVersionDraft } from '@/composables/useResourceVersionDraft'
 
-/**
- * 「发布版本」弹窗：只收集表单，不碰接口。
- *
- * 版本号 / 备注 / 文件选择的草稿由 `useResourceVersionDraft` 持有（它只碰 DOM），
- * 提交按钮把三个字段原样 emit 出去，校验、请求与成功后的关窗在
- * `useDevResourcePublishVersion` 里。
- */
+/** 快捷发布版本表单；金额校验与请求由 useDevResourcePublishVersion 处理。 */
 const props = defineProps<{
   /** 弹窗开关（`v-model:open`） */
   open: boolean
@@ -24,7 +18,7 @@ const props = defineProps<{
 const emit = defineEmits<{
   'update:open': [value: boolean]
   /** 表单原值，交给 `useDevResourcePublishVersion.submitVersion` 校验并发请求 */
-  submit: [payload: { version: string; note: string; file: File | null }]
+  submit: [payload: { version: string; note: string; priceYuan: string; file: File | null }]
 }>()
 
 const {
@@ -60,6 +54,14 @@ watch(
     <TForm label-position="top" class="dev-version-form">
       <TFormItem label="版本号" required>
         <TInput v-model="versionForm.version" :maxlength="80" placeholder="例如：1.20.1-2.0.0" />
+      </TFormItem>
+      <TFormItem label="单版本售价（元）">
+        <TInput
+          v-model="versionForm.priceYuan"
+          inputmode="decimal"
+          placeholder="0 表示不可单买"
+          aria-label="单版本售价（元）"
+        />
       </TFormItem>
       <TFormItem label="资源文件" required>
         <div class="dev-version-file-picker">
@@ -97,6 +99,7 @@ watch(
           emit('submit', {
             version: versionForm.version,
             note: versionForm.note,
+            priceYuan: versionForm.priceYuan,
             file: selectedVersionFile,
           })
         "

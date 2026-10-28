@@ -182,3 +182,42 @@ describe('版本管理：单版本售价', () => {
     expect(mocks.warning).toHaveBeenCalledWith('单版本售价必须低于买断价')
   })
 })
+
+describe('资源列表快捷发布：单版本售价', () => {
+  it('按元提交 price_fen，并在成功后刷新列表', async () => {
+    const onPublished = vi.fn().mockResolvedValue(undefined)
+    const composable = useDevResourcePublishVersion({ onPublished })
+    composable.openPublishVersionDialog({ ...resource(null), buyout_price_fen: 0 })
+
+    await composable.submitVersion({
+      version: 'v1.1.0',
+      note: '',
+      priceYuan: '5.00',
+      file: new File(['version'], 'version.zip'),
+    })
+
+    expect(mocks.createVersion).toHaveBeenCalledWith(
+      'test-token',
+      17,
+      expect.objectContaining({ price_fen: 500 }),
+    )
+    expect(onPublished).toHaveBeenCalledTimes(1)
+    expect(composable.publishDialogVisible.value).toBe(false)
+  })
+
+  it('快捷发布同样拒绝不低于买断价的单版本价', async () => {
+    const composable = useDevResourcePublishVersion()
+    composable.openPublishVersionDialog({ ...resource(null), buyout_price_fen: 250 })
+
+    await composable.submitVersion({
+      version: 'v1.1.0',
+      note: '',
+      priceYuan: '2.50',
+      file: new File(['version'], 'version.zip'),
+    })
+
+    expect(mocks.createVersion).not.toHaveBeenCalled()
+    expect(mocks.warning).toHaveBeenCalledWith('单版本售价必须低于买断价')
+    expect(composable.publishDialogVisible.value).toBe(true)
+  })
+})

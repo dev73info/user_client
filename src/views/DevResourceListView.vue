@@ -70,7 +70,7 @@ const {
   publishingResourceId,
   openPublishVersionDialog,
   submitVersion,
-} = useDevResourcePublishVersion()
+} = useDevResourcePublishVersion({ onPublished: loadResources })
 
 const {
   requestingReviewResourceId,
