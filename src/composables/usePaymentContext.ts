@@ -41,6 +41,8 @@ type UsePaymentContextOptions = {
   /** 资源中间页回填的支付参数 */
   resourcePayInfo: () => string
   adapayPayUrl: () => string
+  /** 服务端支付单的金额（分）；没拿到订单时为 `null` */
+  adapayOrderAmountFen: () => number | null
   /** 是否已拿到 Adapay 订单（拿不到时按内容判断「订单不匹配」） */
   hasAdapayPayment: () => boolean
   resourceOrder: () => { order_no: string; amount_fen: number; resource_id: number } | null
@@ -199,6 +201,8 @@ export function usePaymentContext(options: UsePaymentContextOptions) {
 
   const tipAmountCny = computed(() => fenToCny(options.tipOrder()?.amount_fen))
   const resourceAmountCny = computed(() => fenToCny(options.resourceOrder()?.amount_fen))
+  /** 服务端支付单金额：刷新页面后 query 上没有 `amount_cny`，以订单为准 */
+  const orderAmountCny = computed(() => fenToCny(options.adapayOrderAmountFen()))
 
   const displayAmountCny = computed(() =>
     pickDisplayAmountCny({
@@ -206,6 +210,7 @@ export function usePaymentContext(options: UsePaymentContextOptions) {
       isResourceWechat: ctx.value.isResourceWechat,
       tipAmountCny: tipAmountCny.value,
       resourceAmountCny: resourceAmountCny.value,
+      orderAmountCny: orderAmountCny.value,
       amountCny: ctx.value.amountCny,
     }),
   )

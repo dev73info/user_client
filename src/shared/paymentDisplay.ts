@@ -36,17 +36,24 @@ export function pickDisplayOrderNo(input: {
   return input.paymentId || (input.isIntentMode ? '待创建' : '')
 }
 
-/** 金额：中间页用回填订单的金额，主通道用 query 上的 amount_cny */
+/** 金额：中间页用回填订单的金额，主通道优先服务端订单金额，缺失才退回 query 上的 `amount_cny` */
 export function pickDisplayAmountCny(input: {
   isTipWechat: boolean
   isResourceWechat: boolean
   tipAmountCny: string
   resourceAmountCny: string
+  /**
+   * 服务端支付单上的金额。刷新页面、从订单列表点回来这类入口的 query 上没有 `amount_cny`，
+   * 只认 query 会让「支付金额」显示成空的 `¥`，而订单本身就是金额的权威来源。
+   */
+  orderAmountCny?: string
   amountCny: string
 }): string {
-  if (input.isTipWechat) return input.tipAmountCny
-  if (input.isResourceWechat) return input.resourceAmountCny
-  return input.amountCny
+  if (input.isTipWechat) return input.tipAmountCny || input.orderAmountCny || input.amountCny
+  if (input.isResourceWechat) {
+    return input.resourceAmountCny || input.orderAmountCny || input.amountCny
+  }
+  return input.orderAmountCny || input.amountCny
 }
 
 /** 「需求号 / 资源号 / 打赏给」 */

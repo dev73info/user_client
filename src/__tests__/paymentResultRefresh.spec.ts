@@ -172,3 +172,21 @@ describe('支付动作取值', () => {
     expect(mocks.qr).toHaveBeenCalledWith('https://qr.alipay.com/object-action', expect.anything())
   })
 })
+
+describe('支付金额取值', () => {
+  it('刷新后 query 上没有 amount_cny 时，金额取服务端订单', async () => {
+    mocks.getOrder.mockResolvedValue(paymentOrder({ amount_fen: 1, amount: 0.01 }))
+    mocks.refreshOrder.mockResolvedValue(paymentOrder({ amount_fen: 1, amount: 0.01 }))
+    // 刷新页面 / 从订单列表点回来时，入口参数只剩 payment_id 与渠道
+    route.query = {
+      adapay: '1',
+      payment_id: 'PAY-TEST-1',
+      channel: 'alipay',
+      client_platform: 'desktop',
+    }
+    wrapper = mount(PaymentView)
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('¥0.01')
+  })
+})

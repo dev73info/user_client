@@ -66,6 +66,7 @@ export function usePaymentPage() {
     tipPayInfo: () => backfill.tip.payInfoRaw.value,
     resourcePayInfo: () => backfill.resource.payInfoRaw.value,
     adapayPayUrl: adapayOrder.adapayPayUrl,
+    adapayOrderAmountFen: adapayOrder.adapayOrderAmountFen,
     hasAdapayPayment: adapayOrder.hasAdapayPayment,
     resourceOrder: () => backfill.resource.detail.value,
     tipOrder: () => backfill.tip.detail.value,

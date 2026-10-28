@@ -82,6 +82,8 @@ export function useAdapayOrder(options: UseAdapayOrderOptions) {
   )
 
   const hasAdapayPayment = () => Boolean(adapayPayment.value)
+  /** 服务端支付单金额（分）：支付页展示以它为准，query 上的 `amount_cny` 只是入口时的快照 */
+  const adapayOrderAmountFen = () => adapayPayment.value?.amount_fen ?? null
 
   async function loadAdapayPayment(paymentIdValue: string) {
     const ctx = options.ctx()
@@ -171,6 +173,7 @@ export function useAdapayOrder(options: UseAdapayOrderOptions) {
     confirming,
     resolvedChannel,
     hasAdapayPayment,
+    adapayOrderAmountFen,
     /** 订单上的支付动作（收银台地址 / 微信支付参数），前端据此跳转或渲二维码 */
     adapayPayUrl: () => extractPayUrl(adapayPayment.value?.client_action),
     confirmPayment,
