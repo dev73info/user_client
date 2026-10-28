@@ -142,7 +142,13 @@ describe('DevResourceListView：列表、筛选与分页', () => {
 
   it('零买断价普通资源读取当前单版本价并传给表格', async () => {
     mocks.listResources.mockResolvedValue([
-      resourceFixture({ id: 22, buyout_price_fen: 0, price_points: 0, resource_kind: 'normal' }),
+      resourceFixture({
+        id: 22,
+        ownership_type: 'individual',
+        buyout_price_fen: 0,
+        price_points: 0,
+        resource_kind: 'normal',
+      }),
     ])
     mocks.listVersions.mockResolvedValue([{ id: 1, is_current: true, price_fen: 100 }])
     const wrapper = mountList()
@@ -240,6 +246,55 @@ describe('DevResourceListView：动作的请求实参', () => {
     expect(mocks.updateHomepage).not.toHaveBeenCalled()
     // 提交成功后重拉一次（挂载时那次 + 这次）
     expect(mocks.listResources).toHaveBeenCalledTimes(2)
+    wrapper.unmount()
+  })
+
+  it('驳回资源可以重新申请公开', async () => {
+    const target = resourceFixture({
+      id: 3101,
+      ownership_type: 'individual',
+      visibility: 'rejected',
+      copyright_declared: true,
+    })
+    mocks.listResources.mockResolvedValue([target])
+    const wrapper = mountList()
+    await flushPromises()
+
+    state(wrapper).handleResourceCommand({ action: 'request-review', resource: target })
+    await flushPromises()
+
+    expect(mocks.submitReview).toHaveBeenCalledWith('test-token', 3101)
+    expect(mocks.updateHomepage).not.toHaveBeenCalled()
+    wrapper.unmount()
+  })
+
+  it('有付费版本但未声明版权时先回到主页确认，不提交审核', async () => {
+    const target = resourceFixture({
+      id: 3102,
+      ownership_type: 'individual',
+      visibility: 'draft',
+      buyout_price_fen: 0,
+      price_points: 0,
+      copyright_declared: false,
+    })
+    mocks.listResources.mockResolvedValue([target])
+    mocks.listVersions.mockResolvedValue([{ id: 501, price_fen: 500 }])
+    const wrapper = mountList()
+    await flushPromises()
+
+    state(wrapper).handleResourceCommand({ action: 'request-review', resource: target })
+    await flushPromises()
+
+    expect(mocks.listVersions).toHaveBeenCalledWith('test-token', 3102)
+    expect(mocks.submitReview).not.toHaveBeenCalled()
+    expect(mocks.push).toHaveBeenCalledWith({
+      name: 'dev-resource-homepage-edit',
+      params: { resourceId: '3102' },
+    })
+    expect(mocks.toast).toHaveBeenCalledWith(
+      '付费资源须先在「编辑主页」勾选版权声明，再申请公开',
+      'warning',
+    )
     wrapper.unmount()
   })
 
