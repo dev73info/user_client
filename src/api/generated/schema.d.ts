@@ -2415,8 +2415,8 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * 账号密码登录
-         * @description **免登录**：这里是用户拿到令牌的地方，不需要带 `Authorization` 头。登录成功后把响应里的 `token` 存下来，后续请求按 `Authorization: Bearer <token>` 携带。**`password` 必须是 `md5(明文密码)`：32 位小写十六进制。** 这一层格式判定排在查账号之前，所以密码格式不对（400 `INVALID_ARGUMENT`）不会泄露账号是否存在。账号不存在与密码不对统一回 401 `INVALID_CREDENTIALS`，不区分两者；账号被停用回 403 `ACCOUNT_DISABLED`，已注销回 403 `ACCOUNT_CLOSED`。开了两步验证的账号，不带 `two_factor_code` 时回 **202** 与 `TwoFactorRequiredResponse`，同时服务端把验证码发到账号主邮箱；带上正确的 `two_factor_code` 再调一次就能拿到令牌。账号没绑主邮箱时两步验证码发不出去，回 403 `TWO_FACTOR_EMAIL_REQUIRED`。限流：同一 IP 15 分钟 40 次、同一用户名 15 分钟 8 次，超限 429 并带 `Retry-After`。存量 bcrypt 哈希的账号会在这一步静默升级为 Argon2id，不推进令牌版本、不踢其他会话。
+         * 账号密码登录（用户名或主邮箱）
+         * @description **免登录**：这里是用户拿到令牌的地方，不需要带 `Authorization` 头。登录账号可填用户名或已绑定的主邮箱（邮箱大小写不敏感）。登录成功后把响应里的 `token` 存下来，后续请求按 `Authorization: Bearer <token>` 携带。**`password` 必须是 `md5(明文密码)`：32 位小写十六进制。** 这一层格式判定排在查账号之前，所以密码格式不对（400 `INVALID_ARGUMENT`）不会泄露账号是否存在。账号不存在与密码不对统一回 401 `INVALID_CREDENTIALS`，不区分两者；账号被停用回 403 `ACCOUNT_DISABLED`，已注销回 403 `ACCOUNT_CLOSED`。开了两步验证的账号，不带 `two_factor_code` 时回 **202** 与 `TwoFactorRequiredResponse`，同时服务端把验证码发到账号主邮箱；带上正确的 `two_factor_code` 再调一次就能拿到令牌。账号没绑主邮箱时两步验证码发不出去，回 403 `TWO_FACTOR_EMAIL_REQUIRED`。限流：同一 IP 15 分钟 40 次、同一用户名 15 分钟 8 次，超限 429 并带 `Retry-After`。1.0 迁移账号可额外提交 `legacy_password`（本次输入的原始密码）；只有库内仍是 bcrypt(明文密码) 且 md5 校验失败时才使用，成功后立即升级为 Argon2id。普通 2.0 账号不会使用该字段。
          */
         post: operations["auth_login"];
         delete?: never;
@@ -8173,7 +8173,7 @@ export interface paths {
         };
         /**
          * 取微信网页授权地址
-         * @description 微信 JSAPI 支付第一步：返回公众号网页授权地址，前端跳过去拿 code 再换 openid。需要买家本人登录态；**没有单独的权限码**，只用订单归属判（不是买家回 403）。订单已挂 openid 时返回空串并用 `authorized: true` 说明「不用再授权」；订单不在待支付状态回 409；公众号 AppID 或授权回跳地址没配回 503——这是渠道未就绪，不会拿一个空地址让前端去跳。
+         * @description 微信 JSAPI 支付第一步：返回公众号网页授权地址，前端跳过去拿 code，微信回调里由服务端换 openid 挂到订单上。认 `Authorization` 或 query 里的 `token`（中间页在另一台设备的微信里打开，没有请求头可用），两者都没有回 401；**没有单独的权限码**，只用订单归属判（不是买家回 403）。订单已挂 openid 时返回空串并用 `authorized: true` 说明「不用再授权」；订单不在待支付状态回 409；公众号 AppID 或授权回跳地址没配回 503——这是渠道未就绪，不会拿一个空地址让前端去跳。
          */
         get: operations["resource_purchase_wechat_auth_url"];
         put?: never;
@@ -8195,7 +8195,7 @@ export interface paths {
         put?: never;
         /**
          * 取微信 JSAPI 唤起参数
-         * @description 微信 JSAPI 支付第二步：把 openid 落到订单上（幂等）后交出渠道给的参数包，前端原样交给 `WeixinJSBridge` / `wx.requestPayment`，平台不解释字段。需要买家本人登录态；**没有单独的权限码**，只用订单归属判。openid 缺省时用订单上已经落库的那个，都没有回 409；订单已支付或不是微信渠道回 409。渠道没给参数包（`sdk_payload`）回 503，绝不返回空壳参数假装能拉起支付。
+         * @description 微信 JSAPI 支付第二步：把 openid 落到订单上（幂等）后交出整张订单与渠道给的参数包（`pay_info` 是渠道原始 JSON 文本），前端原样交给 `WeixinJSBridge` /`wx.requestPayment`，平台不解释字段。认 `Authorization` 或请求体 / query 里的 `token`（中间页在手机微信里打开，没有请求头可用），两者都没有回 401；**没有单独的权限码**，只用订单归属判。openid 缺省时用订单上已经落库的那个，都没有回 409；订单已支付或不是微信渠道回 409。渠道没给参数包（`sdk_payload`）回 503，绝不返回空壳参数假装能拉起支付。
          */
         post: operations["resource_purchase_wechat_jsapi"];
         delete?: never;
@@ -8213,7 +8213,7 @@ export interface paths {
         };
         /**
          * 微信中间页轮询订单状态
-         * @description 给微信支付中间页轮询用：返回订单状态、是否已支付、是否已拿到 openid 与拉起地址。需要买家本人登录态；**没有单独的权限码**，只用订单归属判。挂起中的单会顺手向渠道对一次账，所以这个轮询本身就能把 `pending` 推进到 `paid`。
+         * @description 给微信支付中间页轮询用：返回整张订单快照、是否已拿到 openid。认 `Authorization` 或 query 里的 `token`（中间页在手机微信里打开，没有请求头可用），两者都没有回 401；**没有单独的权限码**，只用订单归属判。挂起中的单会顺手向渠道对一次账，所以这个轮询本身就能把 `pending` 推进到 `paid`。
          */
         get: operations["resource_purchase_wechat_status"];
         put?: never;
@@ -14917,6 +14917,13 @@ export interface components {
         };
         /** @description 登录请求体：密码、两步验证码与人机校验令牌。 */
         LoginRequest: {
+            /**
+             * @description 1.0 迁移账号兼容用：客户端输入的原始密码。
+             *
+             *     2.0 的 Argon2id 账号不会使用该字段；只有库内仍是 1.0 bcrypt(明文密码)
+             *     且 md5 校验失败时才参与，并在登录成功后立即升级密码哈希。
+             */
+            legacy_password?: string | null;
             /** @description md5(明文密码)：32 位小写十六进制。服务端只接受这个格式，明文一律 400。 */
             password: string;
             /** @description 是否同时申请开发者角色。 */
@@ -19410,6 +19417,13 @@ export interface components {
         WechatAuthUrlQuery: {
             /** @description 授权完成后回跳地址；省略时用配置里的默认回跳地址。 */
             redirect_to?: string | null;
+            /**
+             * @description 平台会话令牌：中间页在**另一台设备**上打开（PC 出码、手机扫码），
+             *     那边没有 `Authorization` 头，只能把令牌随链接带过来。
+             *
+             *     与 `Authorization` 同时出现时以请求头为准；两者都没有回 401。
+             */
+            token?: string | null;
         };
         /** @description 微信授权地址响应（对应 legacy `ResourceWechatAuthUrlResponse`）。 */
         WechatAuthUrlResponse: {
@@ -19426,17 +19440,26 @@ export interface components {
              *     省略时用订单上已经落库的那个；都没有才报「请先完成微信授权」。
              */
             openid?: string | null;
+            /**
+             * @description 平台会话令牌（中间页在手机上打开时没有 `Authorization` 头）。
+             *
+             *     与 `Authorization` 同时出现时以请求头为准；两者都没有回 401。
+             */
+            token?: string | null;
         };
         /**
          * @description JSAPI 支付响应。
          *
-         *     `pay_info` 是渠道给的原始参数包（下单时随订单落库的 `pay_payload`），
-         *     原样交给 `WeixinJSBridge` / 小程序 `wx.requestPayment`，平台不解释字段。
+         *     与 legacy `ResourceWechatJsapiResponse` 同形：`order` 是落过 openid / 建过渠道单之后的
+         *     整张订单（中间页要靠它回填金额与单号），`pay_info` 是渠道给的原始参数包（JSON 文本），
+         *     前端原样交给 `WeixinJSBridge` / `wx.requestPayment`，平台不解释字段。
          *     渠道没给参数时端点直接回 502，绝不返回空壳参数假装能拉起支付。
          */
         WechatJsapiResponse: {
-            /** @description 微信 JSAPI 唤起参数（渠道原样透传）。 */
-            pay_info?: unknown;
+            /** @description 订单快照。 */
+            order: components["schemas"]["OrderResponse"];
+            /** @description 微信 JSAPI 唤起参数（渠道原样透传的 JSON 文本）。 */
+            pay_info: string;
         };
         /** @description 小程序登录请求体。 */
         WechatMiniprogramLoginRequest: {
@@ -19457,7 +19480,9 @@ export interface components {
         WechatStatusResponse: {
             /** @description 本单是否已挂付款人 openid。 */
             authorized: boolean;
-            /** @description 订单号。 */
+            /** @description 订单快照（中间页的金额 / 单号从这里读）。 */
+            order: components["schemas"]["OrderResponse"];
+            /** @description 订单号（与 `order.order_no` 相同，保留给只读状态位的调用方）。 */
             order_no: string;
             /** @description 是否已支付。 */
             paid: boolean;
@@ -41936,7 +41961,14 @@ export interface operations {
         parameters: {
             query?: {
                 /** @description 授权完成后回跳地址；省略时用配置里的默认回跳地址。 */
-                redirect_to?: string | null;
+                redirect_to?: string;
+                /**
+                 * @description 平台会话令牌：中间页在**另一台设备**上打开（PC 出码、手机扫码），
+                 *     那边没有 `Authorization` 头，只能把令牌随链接带过来。
+                 *
+                 *     与 `Authorization` 同时出现时以请求头为准；两者都没有回 401。
+                 */
+                token?: string;
             };
             header?: never;
             path: {
@@ -42007,7 +42039,7 @@ export interface operations {
             };
         };
         responses: {
-            /** @description 渠道给的 JSAPI 参数包 */
+            /** @description 订单快照与渠道给的 JSAPI 参数包 */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -42062,7 +42094,10 @@ export interface operations {
     };
     resource_purchase_wechat_status: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description 平台会话令牌（中间页在手机上打开时没有 `Authorization` 头）。 */
+                token?: string;
+            };
             header?: never;
             path: {
                 order_no: string;

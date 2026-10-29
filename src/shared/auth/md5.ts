@@ -3,6 +3,8 @@
  *
  * 用途只有一个：后端 2.0 的登录 / 注册 / 重置密码 / 改密接口只接受
  * `md5(明文密码)` 的 32 位小写十六进制，明文一律 400。
+ * 登录请求另带一个仅兼容 1.0 迁移账号的原始密码字段，服务端只对旧 bcrypt
+ * 哈希使用；这一差异由 `requestBody.ts` 收口。
  * 契约里写成「password: md5(明文密码)」，已在 `LoginRequest` / `RegisterRequest` /
  * `ResetPasswordRequest` / `UpdatePasswordRequest` 的字段说明里。
  *

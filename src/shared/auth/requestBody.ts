@@ -27,6 +27,8 @@ export type AuthBodyInput = {
  * 按契约各自的 requestBody 组装请求体。
  *
  * 密码一律 `md5(明文)` 的 32 位小写十六进制——后端只接受这个格式，明文一律 400。
+ * 登录额外携带 `legacy_password`，仅用于 1.0 迁移账号首次登录时兼容
+ * bcrypt(明文密码)；后端升级到 Argon2id 后不会再读取它。
  * 没有值的键直接不出现，不要用空串占位。
  */
 export function buildAuthBody(path: AuthPath, input: AuthBodyInput): Record<string, unknown> {
@@ -40,6 +42,7 @@ export function buildAuthBody(path: AuthPath, input: AuthBodyInput): Record<stri
   if (path === '/auth/login') {
     return {
       ...base,
+      ...(input.password ? { legacy_password: input.password } : {}),
       ...(input.twoFactorCode ? { two_factor_code: input.twoFactorCode } : {}),
     }
   }
