@@ -83,6 +83,46 @@ const domPurifyConfig = {
   ],
 }
 
+const legacyRepeatedBytesPattern = /^(?:\\x[0-9a-f]{2})+$/i
+const legacyHexPayloadPattern = /^\\x((?:[0-9a-f]{2})+)$/i
+
+/**
+ * 1.0 迁移数据里有一部分正文被整体写成了十六进制 UTF-8 字节串：
+ * 常见形态是开头一个 `\x` 后跟连续十六进制，也兼容每个字节都带 `\x` 的写法。
+ * 只在整段文本都由这种字节转义组成时还原，避免把普通正文里的代码示例误当迁移数据。
+ */
+export function decodeLegacyEscapedText(value: string): string {
+  const trimmed = value.trim()
+  let hexPayload = ''
+  if (legacyRepeatedBytesPattern.test(trimmed)) {
+    hexPayload = trimmed.replace(/\\x/gi, '')
+  } else {
+    hexPayload = trimmed.match(legacyHexPayloadPattern)?.[1] ?? ''
+  }
+  if (!hexPayload) {
+    return value
+  }
+
+  try {
+    const bytes = Array.from({ length: hexPayload.length / 2 }, (_, index) =>
+      Number.parseInt(hexPayload.slice(index * 2, index * 2 + 2), 16),
+    )
+    return new TextDecoder('utf-8', { fatal: true }).decode(new Uint8Array(bytes))
+  } catch {
+    return value
+  }
+}
+
+function normalizeStoredRichText(value: string): string {
+  const decoded = decodeLegacyEscapedText(value)
+  if (decoded === value) {
+    return value
+  }
+
+  const trimmed = decoded.trim()
+  return /<\/?[a-z][^>]*>/i.test(trimmed) ? trimmed : markdownRenderer.render(trimmed)
+}
+
 function normalizeFontSize(value: string): string {
   const normalizedValue = value.trim()
   const parsed = normalizedValue.match(/^(\d+(?:\.\d+)?)(?:px)?$/i)
@@ -158,7 +198,9 @@ function renderMarkdownCodeBlocks(value: string): string {
 }
 
 export function sanitizeRichHtml(value: string): string {
-  return keepAllowedInlineStyles(renderMarkdownCodeBlocks(purifyRichHtml(value)))
+  return keepAllowedInlineStyles(
+    renderMarkdownCodeBlocks(purifyRichHtml(normalizeStoredRichText(value))),
+  )
 }
 
 /**
@@ -166,5 +208,5 @@ export function sanitizeRichHtml(value: string): string {
  * 用于编辑器 onUpdate 等场景，避免将 language-md 代码块转为富文本导致编辑状态丢失。
  */
 export function sanitizeRichHtmlForEditing(value: string): string {
-  return keepAllowedInlineStyles(purifyRichHtml(value))
+  return keepAllowedInlineStyles(purifyRichHtml(normalizeStoredRichText(value)))
 }

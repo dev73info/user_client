@@ -32,6 +32,13 @@ vi.mock('@/components/RichTextEditor.vue', () => ({
   default: { template: '<div class="rich-editor-stub" />' },
 }))
 
+function legacyBytes(value: string): string {
+  const encoded = Array.from(new TextEncoder().encode(value))
+    .map((byte) => byte.toString(16).padStart(2, '0'))
+    .join('')
+  return `\\x${encoded}`
+}
+
 async function render(options: { authed?: boolean } = {}) {
   const router = createRouter({
     history: createMemoryHistory(),
@@ -128,6 +135,20 @@ describe('社区详情与评论', () => {
     })
     expect(wrapper.text()).toContain('新的回复')
     expect(wrapper.text()).toContain('2 条评论')
+    wrapper.unmount()
+  })
+
+  it('1.0 迁移的字节转义正文会还原后展示', async () => {
+    mocks.getPost.mockResolvedValueOnce(
+      makeCommunityPost({
+        content_html: legacyBytes('<p>迁移后的帖子正文</p>'),
+      }),
+    )
+    const { wrapper } = await render()
+
+    const content = wrapper.get('.community-detail-card__content')
+    expect(content.text()).toBe('迁移后的帖子正文')
+    expect(content.text()).not.toContain('\\x3c')
     wrapper.unmount()
   })
 
