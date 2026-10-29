@@ -216,14 +216,17 @@ export function useResourcePurchase(options: UseResourcePurchaseOptions) {
         await handlePaid(cashOrder)
         return
       }
-      // 微信渠道走**中间页**，不在这里出二维码。
+      // 微信渠道分两种形态，按**是不是在微信里**决定：
       //
-      // `wx_pub`（公众号支付）的产物是给 `WeixinJSBridge` 用的参数包 `pay_info`，
-      // 不是二维码内容；把它画成二维码，用户扫出来只会看到一段 JSON。
-      // 正确链路是：跳到中间页 → 微信内静默授权拿 openid → 后端建单拿 pay_info
-      //   → 前端 `WeixinJSBridge.invoke` 拉起收银台。中间页那套已经在
-      //   `useWechatMiddlePage` 里实现了，这里只负责把参数带过去。
-      if (cashOrder.pay_channel === 'wx_pub' || cashOrder.pay_channel === 'wx_lite') {
+      // - **PC 端**：后端给的是动态二维码（`qr_pay_url`），微信 / 支付宝扫同一张都能付，
+      //   不需要授权拿 openid。直接出码即可。
+      // - **微信内**：`wx_pub`（公众号 JSAPI）的产物是给 `WeixinJSBridge` 用的参数包，
+      //   不是二维码内容；把它画成二维码，用户扫出来只会看到一段 JSON。
+      //   那条链路要走中间页：静默授权拿 openid → 建单拿 pay_info → 拉起收银台。
+      const isWechatChannel =
+        cashOrder.pay_channel === 'wx_pub' || cashOrder.pay_channel === 'wx_lite'
+      const inWechatBrowser = /MicroMessenger/i.test(navigator.userAgent)
+      if (isWechatChannel && inWechatBrowser) {
         panelOpen.value = false
         void router.push({
           name: 'payment',
@@ -234,7 +237,7 @@ export function useResourcePurchase(options: UseResourcePurchaseOptions) {
             // 中间页用它拿订单详情与建支付单，与页面登录态是同一个令牌
             token: auth.token,
             channel: 'wechat',
-            client_platform: getAdapayClientPlatform() === 'mobile' ? 'mobile' : 'desktop',
+            client_platform: 'mobile',
             amount_cny: fenToYuanText(cashOrder.amount_fen),
           },
         })
