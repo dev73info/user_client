@@ -131,8 +131,8 @@
 }
 
 .portal-spotlight-card__cover-img + .portal-spotlight-card__badge {
-  background: color-mix(in srgb, var(--73-ink) 42%, transparent);
-  border-color: color-mix(in srgb, var(--73-surface-strong) 26%, transparent);
+  background: color-mix(in srgb, var(--73-ink) 62%, transparent);
+  border-color: color-mix(in srgb, var(--73-surface-strong) 38%, transparent);
 }
 
 .portal-spotlight-card__cover-img ~ .portal-spotlight-card__screen {
@@ -165,13 +165,15 @@
   max-width: calc(100% - 96px);
   padding: 5px 10px;
   border-radius: 999px;
-  background: color-mix(in srgb, var(--73-surface-strong) 16%, transparent);
-  border: 1px solid color-mix(in srgb, var(--73-surface-strong) 22%, transparent);
-  color: var(--73-accent-soft);
+  background: color-mix(in srgb, var(--73-ink) 52%, transparent);
+  border: 1px solid color-mix(in srgb, var(--73-surface-strong) 34%, transparent);
+  color: var(--73-surface-strong);
   font-size: 11px;
   font-weight: 700;
   letter-spacing: 0;
+  text-shadow: 0 1px 2px color-mix(in srgb, var(--73-ink) 58%, transparent);
   backdrop-filter: blur(8px);
+  box-shadow: 0 4px 12px color-mix(in srgb, var(--73-ink) 18%, transparent);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
