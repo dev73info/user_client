@@ -108,7 +108,8 @@ const filteredItems = computed(() => {
       }
 
       const selectedSet = new Set(section.selected)
-      const groupValues = card.groupTags[section.label] ?? []
+      // 标签树前三层都是分组，不同路径下允许出现同名组；筛选身份以 group_id 为准。
+      const groupValues = card.groupTagsById[section.id] ?? []
       const matched = groupValues.some((value) => selectedSet.has(value))
       if (!matched) {
         return false

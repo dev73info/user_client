@@ -22,6 +22,8 @@ export type MobileCard = {
   updatedAt: string
   img: string | null
   groupTags: Record<string, string[]>
+  /** 标签选择按分组 id 索引；四层树里不同路径可能出现同名分组。 */
+  groupTagsById: Record<number, string[]>
   tagsText: string
   originType: 'original' | 'repost'
   priceFen: number
@@ -48,6 +50,12 @@ export function mapResourceToCard(item: PublicMcResourceItem): MobileCard {
   const groupTags = Object.fromEntries(
     item.tag_selections.map((entry) => [entry.group_name, entry.tag_names]),
   )
+  const groupTagsById: Record<number, string[]> = {}
+  for (const entry of item.tag_selections) {
+    groupTagsById[entry.group_id] = Array.from(
+      new Set([...(groupTagsById[entry.group_id] ?? []), ...entry.tag_names]),
+    )
+  }
 
   const priceFen = item.buyout_price_fen ?? 0
   const pricePoints = item.price_points ?? 0
@@ -61,6 +69,7 @@ export function mapResourceToCard(item: PublicMcResourceItem): MobileCard {
     updatedAt: item.updated_at,
     img: item.cover_url ? apiUrl(item.cover_url) : null,
     groupTags,
+    groupTagsById,
     tagsText: item.tag_selections.flatMap((entry) => entry.tag_names).join(' '),
     originType: item.origin_type,
     priceFen,

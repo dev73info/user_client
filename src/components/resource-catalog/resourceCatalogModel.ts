@@ -24,6 +24,8 @@ export type McCardItem = {
   developerUsernameColor: string
   description: string
   groupTags: Record<string, string[]>
+  /** 标签选择按分组 id 索引；四层树里不同路径可能出现同名分组，不能只用组名当键。 */
+  groupTagsById: Record<number, string[]>
   tags: string[]
   updatedAt: string
   sourceUrl: string
@@ -53,6 +55,15 @@ export function mapResourceToCard(item: PublicMcResourceItem): McCardItem {
       entry.tag_names.map((tag) => normalizeTagName(tag)).filter(Boolean),
     ]),
   )
+  const groupTagsById: Record<number, string[]> = {}
+  for (const entry of item.tag_selections) {
+    groupTagsById[entry.group_id] = Array.from(
+      new Set([
+        ...(groupTagsById[entry.group_id] ?? []),
+        ...entry.tag_names.map((tag) => normalizeTagName(tag)).filter(Boolean),
+      ]),
+    )
+  }
 
   const priceFen = item.buyout_price_fen ?? 0
   const pricePoints = item.price_points ?? 0
@@ -69,6 +80,7 @@ export function mapResourceToCard(item: PublicMcResourceItem): McCardItem {
     developerUsernameColor: item.creator_username_color || '',
     description: item.description,
     groupTags,
+    groupTagsById,
     tags: tags.length > 0 ? tags : ['未标注'],
     updatedAt: item.updated_at,
     sourceUrl: item.source_url,

@@ -112,7 +112,8 @@ export function useResourceCatalogFiltering(options: {
           continue
         }
 
-        const groupValues = card.groupTags[section.label] ?? []
+        // 标签树前三层都是分组，不同路径下允许出现同名组；筛选身份以 group_id 为准。
+        const groupValues = card.groupTagsById[section.id] ?? []
         const matched = section.selected.some((tag) => groupValues.includes(tag))
         if (!matched) {
           return false
