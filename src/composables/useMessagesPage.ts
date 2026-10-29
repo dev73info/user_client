@@ -49,7 +49,7 @@ export function useMessagesPage() {
   const threads = useMessagesThreads({ conversations, requirements, username })
 
   // 消息中心有三个入口，页面内切换会话时保持停留在当前入口，避免把开发者带回用户工作台。
-  const MESSAGES_ROUTE_NAMES = ['messages', 'workbench-messages', 'dev-messages']
+  const MESSAGES_ROUTE_NAMES = ['messages', 'workbench', 'workbench-messages', 'dev-messages']
   const currentMessagesRouteName = computed(() =>
     MESSAGES_ROUTE_NAMES.includes(String(route.name ?? ''))
       ? String(route.name)

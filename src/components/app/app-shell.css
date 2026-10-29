@@ -12,8 +12,19 @@
   background: var(--73-surface-strong);
 }
 
+.app-shell--immersive,
+.app-content--immersive {
+  height: 100dvh;
+  min-height: 100dvh;
+  overflow: hidden;
+}
+
 .app-scrollbar {
   height: 100vh;
+}
+
+.app-shell-scrollbar--immersive {
+  height: 100dvh;
 }
 
 /* 页脚贴底：真正滚动的是 TScrollbar 内部的 `.t73-scrollbar__wrap`（`.app-scrollbar` 自身
@@ -29,6 +40,17 @@
 
 .app-view-container--no-footer {
   padding-bottom: 0;
+}
+
+.app-view-container--immersive {
+  height: 100dvh;
+  min-height: 100dvh;
+  overflow: hidden;
+  padding: 0;
+}
+
+.app-shell-scrollbar--immersive :deep(.t73-scrollbar__wrap) {
+  overflow: hidden;
 }
 
 /* 内容不足一屏时 margin-top: auto 吃掉剩余空间，把页脚压到视口底部；

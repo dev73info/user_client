@@ -12,7 +12,7 @@ export const workbenchRoutes: RouteRecordRaw[] = [
   {
     path: '/profile',
     name: 'profile',
-    redirect: { name: 'workbench' },
+    redirect: { name: 'workbench', query: { view: 'profile' } },
   },
   {
     path: '/workbench',
@@ -24,7 +24,10 @@ export const workbenchRoutes: RouteRecordRaw[] = [
       {
         path: '',
         name: 'workbench',
-        component: () => import('@/views/ProfileView.vue'),
+        component: () => import('@/views/WorkbenchHomeView.vue'),
+        meta: {
+          workbenchChat: true,
+        },
       },
       {
         path: 'requirements',
@@ -163,7 +166,10 @@ export const workbenchRoutes: RouteRecordRaw[] = [
       {
         path: 'messages',
         name: 'workbench-messages',
-        component: () => import('@/views/MessagesView.vue'),
+        component: () => import('@/components/workbench/WorkbenchChatView.vue'),
+        meta: {
+          workbenchChat: true,
+        },
       },
       {
         // 「我的定制」已并入「我的需求」：旧路径保留为跳转，避免站外旧链接 404。

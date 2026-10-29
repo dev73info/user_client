@@ -10,6 +10,7 @@ import SupportChatWidget from '@/components/SupportChatWidget.vue'
 import MockIdentitySwitcher from '@/mock/MockIdentitySwitcher.vue'
 import { TScrollbar } from 'ui_73info'
 import { useAppShellAuth } from '@/components/app/useAppShellAuth'
+import { isWorkbenchChatPage } from '@/shared/workbenchChatRoute'
 
 /**
  * 门户外壳：滚动容器 + 顶栏 + 路由出口 + 页脚 + 浮层。
@@ -24,17 +25,29 @@ useAppShellAuth()
 const showSiteFooter = computed(
   () => !route.matched.some((record) => record.meta.hideSiteFooter === true),
 )
+const immersiveWorkbench = computed(() =>
+  isWorkbenchChatPage(route.name, route.meta, route.query as Record<string, unknown>),
+)
 </script>
 
 <template>
-  <div class="app-shell">
-    <div class="app-content">
-      <TScrollbar class="app-scrollbar app-shell-scrollbar">
+  <div class="app-shell" :class="{ 'app-shell--immersive': immersiveWorkbench }">
+    <div class="app-content" :class="{ 'app-content--immersive': immersiveWorkbench }">
+      <TScrollbar
+        class="app-scrollbar app-shell-scrollbar"
+        :class="{ 'app-shell-scrollbar--immersive': immersiveWorkbench }"
+      >
         <div
           class="app-view-container"
-          :class="{ 'app-view-container--no-footer': !showSiteFooter }"
+          :class="{
+            'app-view-container--no-footer': !showSiteFooter,
+            'app-view-container--immersive': immersiveWorkbench,
+          }"
         >
-          <PortalTopNav :class="['app-top-nav', { 'app-top-nav--home': route.name === 'home' }]" />
+          <PortalTopNav
+            v-if="!immersiveWorkbench"
+            :class="['app-top-nav', { 'app-top-nav--home': route.name === 'home' }]"
+          />
           <RouterView v-slot="{ Component }">
             <Suspense>
               <component :is="Component" />
@@ -44,7 +57,7 @@ const showSiteFooter = computed(
           <AppSiteFooter v-if="showSiteFooter" />
         </div>
       </TScrollbar>
-      <PortalMobileDock />
+      <PortalMobileDock v-if="!immersiveWorkbench" />
     </div>
 
     <!-- mock 身份切换器：只在 pnpm dev 且开了 mock 时渲染，详见 src/mock/ -->
@@ -52,7 +65,7 @@ const showSiteFooter = computed(
 
     <!-- 全局资源下载进度浮层：切换路由不中断下载，浮层持续展示进度 -->
     <AppDownloadCard />
-    <SupportChatWidget />
+    <SupportChatWidget v-if="!immersiveWorkbench" />
   </div>
 </template>
 

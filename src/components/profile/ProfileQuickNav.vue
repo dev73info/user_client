@@ -13,7 +13,7 @@ import { Box, Compass, Document, EditPen, Files, Suitcase, TIcon, Tickets, Walle
   <nav class="overview-hero__quick" aria-label="快捷入口">
     <!-- 带 modal=publish 回到总览即弹出发布需求窗口（watch 在 `useProfilePublishRequirement` 里），
          关闭时会清掉这个参数 -->
-    <RouterLink :to="{ name: 'workbench', query: { modal: 'publish' } }">
+    <RouterLink :to="{ name: 'workbench', query: { view: 'profile', modal: 'publish' } }">
       <span class="overview-hero__quick-icon"
         ><TIcon :size="22"><EditPen /></TIcon
       ></span>

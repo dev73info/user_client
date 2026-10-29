@@ -1,0 +1,48 @@
+@media (max-width: 900px) {
+  .workbench-inbox {
+    height: 100%;
+    border-right: 0;
+    border-left: 0;
+    border-radius: 0;
+    box-shadow: none;
+  }
+
+  .workbench-inbox__header {
+    padding: 18px 18px 12px;
+  }
+
+  .workbench-inbox__list {
+    padding-bottom: 76px;
+  }
+}
+
+@media (max-width: 640px) {
+  .workbench-inbox__header {
+    padding: 15px 14px 10px;
+  }
+
+  .workbench-inbox__header h1 {
+    font-size: 21px;
+  }
+
+  .workbench-inbox__search {
+    margin: 0 12px 10px;
+  }
+
+  .workbench-inbox__list {
+    padding-right: 7px;
+    padding-left: 7px;
+  }
+
+  .workbench-inbox__row {
+    grid-template-columns: 46px minmax(0, 1fr) auto;
+    gap: 10px;
+    padding: 10px 9px;
+  }
+
+  .workbench-inbox__avatar {
+    width: 44px;
+    height: 44px;
+    font-size: 15px;
+  }
+}
