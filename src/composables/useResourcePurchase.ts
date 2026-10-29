@@ -216,6 +216,30 @@ export function useResourcePurchase(options: UseResourcePurchaseOptions) {
         await handlePaid(cashOrder)
         return
       }
+      // 微信渠道走**中间页**，不在这里出二维码。
+      //
+      // `wx_pub`（公众号支付）的产物是给 `WeixinJSBridge` 用的参数包 `pay_info`，
+      // 不是二维码内容；把它画成二维码，用户扫出来只会看到一段 JSON。
+      // 正确链路是：跳到中间页 → 微信内静默授权拿 openid → 后端建单拿 pay_info
+      //   → 前端 `WeixinJSBridge.invoke` 拉起收银台。中间页那套已经在
+      //   `useWechatMiddlePage` 里实现了，这里只负责把参数带过去。
+      if (cashOrder.pay_channel === 'wx_pub' || cashOrder.pay_channel === 'wx_lite') {
+        panelOpen.value = false
+        void router.push({
+          name: 'payment',
+          query: {
+            adapay: '1',
+            resource_wechat: '1',
+            order_no: cashOrder.order_no,
+            // 中间页用它拿订单详情与建支付单，与页面登录态是同一个令牌
+            token: auth.token,
+            channel: 'wechat',
+            client_platform: getAdapayClientPlatform() === 'mobile' ? 'mobile' : 'desktop',
+            amount_cny: fenToYuanText(cashOrder.amount_fen),
+          },
+        })
+        return
+      }
       await renderQr(cashOrder, requestedGeneration)
       if (requestedGeneration !== surfaceGeneration.value) {
         return
