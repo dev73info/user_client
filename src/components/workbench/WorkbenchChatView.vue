@@ -14,6 +14,7 @@ const isMobile = ref(false)
 let mediaQuery: MediaQueryList | null = null
 
 const {
+  isDevWorkbench,
   loading,
   allThreads,
   activeRequirementId,
@@ -81,7 +82,9 @@ function selectThread(thread: MessageThread) {
 }
 
 function composeConversation() {
-  void router.push({ name: 'workbench-requirements' })
+  void router.push(
+    isDevWorkbench.value ? { name: 'dev-requirement-hall' } : { name: 'workbench-requirements' },
+  )
 }
 </script>
 
@@ -108,7 +111,7 @@ function composeConversation() {
         display-mode="inline"
         :visible="true"
         :token="token"
-        api-mode="user"
+        :api-mode="isDevWorkbench ? 'dev' : 'user'"
         :current-username="username"
         :requirement-id="selectedThread.requirementId"
         :title="selectedThread.title"

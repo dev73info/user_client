@@ -19,6 +19,7 @@ export const workbenchRoutes: RouteRecordRaw[] = [
     component: () => import('@/views/UserWorkbenchView.vue'),
     meta: {
       hideSiteFooter: true,
+      workbenchShell: true,
     },
     children: [
       {

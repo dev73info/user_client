@@ -4,8 +4,8 @@
  *
  * 这一页只负责排版与组合：
  * - 模式（用户 / 开发者）、菜单、会话与角标、移动端抽屉 → `useWorkbenchShell`；
- * - 侧边栏（品牌行 + 整条菜单）→ `components/workbench/WorkbenchSidebar`；
- * - 移动端顶栏 → `components/workbench/WorkbenchMobileBar`；
+ * - 生产路由统一使用窄图标栏 → `components/workbench/WorkbenchIconRail`；
+ * - 旧侧边栏与移动端菜单仅保留给历史测试路由，不再进入生产页面；
  * - 外壳色板 `--uw-*` → `styles/workbench-shell.css`；
  * - 菜单数据与高亮判定 → `@/shared/workbenchMenu`，文案与时间格式化 → `@/shared/workbenchDisplay`。
  */
@@ -20,6 +20,9 @@ import WorkbenchMobileBar from '@/components/workbench/WorkbenchMobileBar.vue'
 import WorkbenchSidebar from '@/components/workbench/WorkbenchSidebar.vue'
 
 const route = useRoute()
+const usesIconShell = computed(() =>
+  route.matched.some((record) => record.meta.workbenchShell === true),
+)
 const isChatWorkspace = computed(() =>
   isWorkbenchChatPage(route.name, route.meta, route.query as Record<string, unknown>),
 )
@@ -68,13 +71,14 @@ const {
       'user-workbench--chat': isChatWorkspace,
       'user-workbench--mobile-menu-open': mobileMenuOpen,
       'user-workbench--mode-switching': modeSwitching,
+      'user-workbench--icon-shell': usesIconShell,
     }"
     @touchstart.passive="handleWorkbenchTouchStart"
     @touchend.passive="handleWorkbenchTouchEnd"
     @touchcancel.passive="touchTracking = false"
   >
     <button
-      v-if="mobileMenuOpen && !isChatWorkspace"
+      v-if="mobileMenuOpen && !usesIconShell"
       class="user-workbench__menu-backdrop"
       type="button"
       aria-label="关闭工作台菜单"
@@ -82,7 +86,7 @@ const {
     />
 
     <WorkbenchSidebar
-      v-if="!isChatWorkspace"
+      v-if="!usesIconShell"
       :is-dev-workbench-mode="isDevWorkbenchMode"
       :workbench-mode-key="workbenchModeKey"
       :workbench-brand-title="workbenchBrandTitle"
@@ -111,7 +115,8 @@ const {
     />
 
     <WorkbenchIconRail
-      v-if="isChatWorkspace"
+      v-if="usesIconShell"
+      :is-dev-workbench-mode="isDevWorkbenchMode"
       :unread-count="unreadMessageCount"
       :team-invitation-count="teamInvitationCount"
       @switch-mode="switchWorkbenchMode"
@@ -119,10 +124,13 @@ const {
 
     <section
       class="user-workbench__main"
-      :class="{ 'user-workbench__main--chat': isChatWorkspace }"
+      :class="{
+        'user-workbench__main--chat': isChatWorkspace,
+        'user-workbench__main--icon-shell': usesIconShell,
+      }"
     >
       <WorkbenchMobileBar
-        v-if="!isChatWorkspace"
+        v-if="!usesIconShell"
         :workbench-mode-key="workbenchModeKey"
         :workbench-brand-title="workbenchBrandTitle"
         :current-title="currentTitle"
@@ -131,7 +139,10 @@ const {
 
       <div
         class="user-workbench__content"
-        :class="{ 'user-workbench__content--chat': isChatWorkspace }"
+        :class="{
+          'user-workbench__content--chat': isChatWorkspace,
+          'user-workbench__content--workspace': usesIconShell && !isChatWorkspace,
+        }"
       >
         <RouterView v-slot="{ Component }">
           <Transition name="workbench-page" mode="out-in">

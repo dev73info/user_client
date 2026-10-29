@@ -6,13 +6,18 @@ import {
   Box,
   ChatDotRound,
   Clock,
+  Connection,
+  Document,
   Files,
   Grid,
+  OfficeBuilding,
   Promotion,
   Star,
   Switch,
   TIcon,
   User,
+  UserFilled,
+  Wallet,
 } from 'ui_73info'
 
 import { isWorkbenchChatPage, isWorkbenchProfileQuery } from '@/shared/workbenchChatRoute'
@@ -26,6 +31,7 @@ type RailItem = {
 }
 
 const props = defineProps<{
+  isDevWorkbenchMode: boolean
   unreadCount: number
   teamInvitationCount: number
 }>()
@@ -37,7 +43,7 @@ const emit = defineEmits<{
 const route = useRoute()
 const router = useRouter()
 
-const items: RailItem[] = [
+const userItems: RailItem[] = [
   {
     key: 'messages',
     label: '消息',
@@ -103,10 +109,98 @@ const items: RailItem[] = [
   },
 ]
 
+const devItems: RailItem[] = [
+  {
+    key: 'messages',
+    label: '消息',
+    icon: ChatDotRound,
+    to: { name: 'dev-messages' },
+    activeNames: ['dev-messages'],
+  },
+  {
+    key: 'home',
+    label: '开发者总览',
+    icon: UserFilled,
+    to: { name: 'dev-home' },
+    activeNames: ['dev-home', 'dev-dashboard'],
+  },
+  {
+    key: 'resources',
+    label: '资源项目',
+    icon: Files,
+    to: { name: 'dev-resource-list' },
+    activeNames: [
+      'dev-resource-list',
+      'dev-resource-versions',
+      'dev-resource-homepage-edit',
+      'dev-resource-sold-purchases',
+    ],
+  },
+  {
+    key: 'requirements',
+    label: '我的接单',
+    icon: Grid,
+    to: { name: 'dev-my-requirements' },
+    activeNames: ['dev-my-requirements'],
+  },
+  {
+    key: 'hall',
+    label: '需求大厅',
+    icon: Promotion,
+    to: { name: 'dev-requirement-hall' },
+    activeNames: ['dev-requirement-hall'],
+  },
+  {
+    key: 'clients',
+    label: '接入客户端',
+    icon: Connection,
+    to: { name: 'dev-oauth-clients' },
+    activeNames: ['dev-oauth-clients'],
+  },
+  {
+    key: 'teams',
+    label: '团队服务',
+    icon: OfficeBuilding,
+    to: { name: 'workbench-teams' },
+    activeNames: ['workbench-teams', 'workbench-team-detail', 'workbench-team-resources'],
+  },
+  {
+    key: 'wallet',
+    label: '收益钱包',
+    icon: Wallet,
+    to: { name: 'dev-wallet' },
+    activeNames: ['dev-wallet'],
+  },
+  {
+    key: 'invoices',
+    label: '我的发票',
+    icon: Document,
+    to: { name: 'dev-invoices' },
+    activeNames: ['dev-invoices'],
+  },
+  {
+    key: 'notifications',
+    label: '系统通知',
+    icon: Bell,
+    to: { name: 'dev-notifications' },
+    activeNames: ['dev-notifications'],
+  },
+]
+
 const query = computed(() => route.query as Record<string, unknown>)
 const currentName = computed(() => String(route.name ?? ''))
 const isChatActive = computed(() => isWorkbenchChatPage(currentName.value, route.meta, query.value))
 const isProfileActive = computed(() => isWorkbenchProfileQuery(currentName.value, query.value))
+const items = computed(() => (props.isDevWorkbenchMode ? devItems : userItems))
+const brandTarget = computed(() =>
+  props.isDevWorkbenchMode ? { name: 'dev-home' } : { name: 'home' },
+)
+const switchLabel = computed(() =>
+  props.isDevWorkbenchMode ? '回到用户工作台' : '进入开发者工作台',
+)
+const brandLabel = computed(() =>
+  props.isDevWorkbenchMode ? '进入开发者工作台首页' : '返回门户首页',
+)
 
 function isActive(item: RailItem) {
   if (item.key === 'messages') {
@@ -138,9 +232,9 @@ function badgeFor(key: string) {
     <button
       class="workbench-icon-rail__brand"
       type="button"
-      aria-label="进入消息工作台"
-      title="消息工作台"
-      @click="router.push({ name: 'workbench' })"
+      :aria-label="brandLabel"
+      :title="brandLabel"
+      @click="router.push(brandTarget)"
     >
       73
     </button>
@@ -170,14 +264,14 @@ function badgeFor(key: string) {
     <button
       class="workbench-icon-rail__item workbench-icon-rail__switch"
       type="button"
-      aria-label="进入开发者工作台"
-      title="进入开发者工作台"
+      :aria-label="switchLabel"
+      :title="switchLabel"
       @click="emit('switch-mode')"
     >
       <TIcon :size="22">
         <Switch />
       </TIcon>
-      <span class="workbench-icon-rail__tooltip">开发者工作台</span>
+      <span class="workbench-icon-rail__tooltip">{{ switchLabel }}</span>
     </button>
   </aside>
 </template>

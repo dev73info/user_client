@@ -59,11 +59,12 @@ export const devWorkbenchSharedRoutes: RouteRecordRaw[] = [
   {
     path: 'developer/messages',
     name: 'dev-messages',
-    component: () => import('@/views/MessagesView.vue'),
+    component: () => import('@/components/workbench/WorkbenchChatView.vue'),
     meta: {
       title: '消息中心',
       description: '查看需求会话与沟通记录。',
       devArea: true,
+      workbenchChat: true,
     },
   },
   // 系统通知与消息中心同一办法：用户工作台与开发者工作台共用同一个页面，

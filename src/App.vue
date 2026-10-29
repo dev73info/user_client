@@ -10,7 +10,6 @@ import SupportChatWidget from '@/components/SupportChatWidget.vue'
 import MockIdentitySwitcher from '@/mock/MockIdentitySwitcher.vue'
 import { TScrollbar } from 'ui_73info'
 import { useAppShellAuth } from '@/components/app/useAppShellAuth'
-import { isWorkbenchChatPage } from '@/shared/workbenchChatRoute'
 
 /**
  * 门户外壳：滚动容器 + 顶栏 + 路由出口 + 页脚 + 浮层。
@@ -26,7 +25,7 @@ const showSiteFooter = computed(
   () => !route.matched.some((record) => record.meta.hideSiteFooter === true),
 )
 const immersiveWorkbench = computed(() =>
-  isWorkbenchChatPage(route.name, route.meta, route.query as Record<string, unknown>),
+  route.matched.some((record) => record.meta.workbenchShell === true),
 )
 </script>
 

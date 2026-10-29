@@ -91,6 +91,18 @@ const routes = [
     path: '/workbench/requirements',
     component: { template: '<div />' },
   },
+  {
+    name: 'dev-messages',
+    path: '/workbench/developer/messages',
+    component: { template: '<div />' },
+    meta: { devArea: true, workbenchChat: true },
+  },
+  {
+    name: 'dev-requirement-hall',
+    path: '/workbench/developer/requirements/hall',
+    component: { template: '<div />' },
+    meta: { devArea: true },
+  },
 ]
 
 beforeEach(() => {
@@ -107,9 +119,9 @@ beforeEach(() => {
   mocks.subscribe.mockReturnValue(() => {})
 })
 
-async function render() {
+async function render(name = 'workbench') {
   const router = createRouter({ history: createMemoryHistory(), routes })
-  await router.push({ name: 'workbench' })
+  await router.push({ name })
   const wrapper = mount(WorkbenchChatView, {
     global: { plugins: [router] },
     attachTo: document.body,
@@ -167,6 +179,18 @@ describe('工作台聊天首页', () => {
     await wrapper.find('.workbench-inbox__compose').trigger('click')
     await flushPromises()
     expect(router.currentRoute.value.name).toBe('workbench-requirements')
+    wrapper.unmount()
+  })
+
+  it('开发者消息中心复用聊天布局，并走开发者会话模式', async () => {
+    const { router, wrapper } = await render('dev-messages')
+
+    expect(wrapper.findComponent({ name: 'RequirementConversationModal' }).props('apiMode')).toBe(
+      'dev',
+    )
+    await wrapper.find('.workbench-inbox__compose').trigger('click')
+    await flushPromises()
+    expect(router.currentRoute.value.name).toBe('dev-requirement-hall')
     wrapper.unmount()
   })
 })
