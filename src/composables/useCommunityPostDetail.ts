@@ -16,7 +16,12 @@ import { HttpError } from '@/api/http'
 import { useCommunityAccess } from '@/composables/useCommunityAccess'
 import { describeCommunityError } from '@/shared/community'
 
-export function useCommunityPostDetail() {
+type CommunityPostDetailOptions = {
+  /** 左右分栏里由父组件给 id；独立详情页不传，继续读路由参数。 */
+  postId?: () => number | null
+}
+
+export function useCommunityPostDetail(options: CommunityPostDetailOptions = {}) {
   const route = useRoute()
   const { auth, requireLogin } = useCommunityAccess()
   const post = ref<CommunityPost | null>(null)
@@ -29,8 +34,9 @@ export function useCommunityPostDetail() {
   let requestId = 0
 
   const postId = computed(() => {
-    const value = Number(route.params.id)
-    return Number.isSafeInteger(value) && value > 0 ? value : null
+    const value = options.postId ? options.postId() : Number(route.params.id)
+    if (value == null || !Number.isSafeInteger(value) || value <= 0) return null
+    return value
   })
   const isAuthor = computed(() =>
     Boolean(post.value && auth.username.trim() && post.value.author === auth.username.trim()),

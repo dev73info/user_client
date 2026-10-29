@@ -47,8 +47,7 @@ const SPOTLIGHT_ACCENTS = ['nebula', 'sunset', 'forest', 'frost'] as const
 /**
  * 精选资源卡片映射（R047 从 `views/HomeView.vue` 拆出）：资源 → 卡片，纯派生状态。
  *
- * - 候选集：有效精选 / 置顶 / 点赞达到阈值的资源；候选为空时**回退到全部已发布**，
- *   按同一套比较器排序，避免首页区块空白（这两步的顺序与旧实现逐字一致）。
+ * - 候选集：全部已发布资源；排序仍是精选 → 置顶 → 点赞 → 更新时间，普通资源也会展示。
  * - 封面兜底：加载失败过的地址记在 `failedCoverUrls` 里，`coverSrc` 返回空串让模板回落首字。
  *   集合只增不减 —— 翻页 / 定时刷新都会重渲染 <img>，清掉失败的地址会反复碎图闪烁。
  *
@@ -57,7 +56,6 @@ const SPOTLIGHT_ACCENTS = ['nebula', 'sunset', 'forest', 'frost'] as const
  */
 export function useSpotlightCards(options: {
   resources: Ref<readonly PublicMcResourceItem[]>
-  highLikeThreshold: Ref<number>
   /** 封面相对路径 → 绝对地址，默认过 `apiUrl`；单测可注入假的免得依赖运行时配置 */
   resolveCoverUrl?: (raw?: string | null) => string
 }) {
@@ -78,13 +76,7 @@ export function useSpotlightCards(options: {
   }
 
   const cards = computed<SpotlightCard[]>(() => {
-    const published = [...options.resources.value]
-    const threshold = options.highLikeThreshold.value
-    const hybrid = published.filter(
-      (item) => item.is_featured || item.is_pinned || (item.like_count ?? 0) >= threshold,
-    )
-    // 候选为空时回退到全部已发布，按同一套排序，避免首页区块空白。
-    const candidates = (hybrid.length > 0 ? hybrid : published).sort(compareSpotlightResources)
+    const candidates = [...options.resources.value].sort(compareSpotlightResources)
 
     return candidates.map((item, index) => {
       return {

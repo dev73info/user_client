@@ -14,8 +14,7 @@ import { requirementPaymentModeLabel } from '@/shared/requirementDisplay'
  * 底色沿用门户「发布方式胶囊」原有的口径（原 `.portal-page__pay-chip--*`）：
  * 担保 = 绿，自管 = 琥珀，都是浅底 + 深字。
  *
- * 需求大厅的卡片会把状态并进同一枚胶囊（「电签担保 · 待付尾款」），
- * 这种情况把后半句放进默认插槽。
+ * 标签只表示发布方式；卡片状态由卡片自己的状态/进度信息表达，不再拼进这枚胶囊。
  */
 const props = defineProps<{ mode: string }>()
 

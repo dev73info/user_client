@@ -16,7 +16,7 @@ import {
  * 精选资源区三支 composable（R047 从 `views/HomeView.vue` 拆出）的行为钉桩。
  *
  * 这里不测渲染，只测「搬走之后语义有没有变」的几处：
- * - 候选集：有效精选 / 置顶 / 点赞达阈值；**候选为空要回退到全部已发布**，否则首页区块空白；
+ * - 候选集：全部已发布资源，普通资源也要展示；
  * - 排序：精选 → 置顶 → 点赞 → 更新时间（比较器本身在 `resourceCardDisplay` 有自己的用例）；
  * - 封面：加载失败过的地址给空串（回落首字），其余过 `apiUrl`；
  * - 分页：每页 8 条、总数缩水时页码收回、跳页输入越界夹取；
@@ -44,27 +44,26 @@ beforeEach(() => {
 })
 
 describe('useSpotlightCards', () => {
-  it('精选、置顶、点赞达阈值都进候选，且按精选优先排序', () => {
+  it('普通资源也进候选，同时仍按精选优先排序', () => {
     const resources = ref([
       resourceFixture({ id: 1, like_count: 1, updated_at: '2026-03-01 00:00:00' }),
       resourceFixture({ id: 2, is_pinned: true, updated_at: '2026-02-01 00:00:00' }),
       resourceFixture({ id: 3, like_count: 9, updated_at: '2026-01-01 00:00:00' }),
       resourceFixture({ id: 4, is_featured: true, updated_at: '2026-01-15 00:00:00' }),
     ])
-    const { cards } = useSpotlightCards({ resources, highLikeThreshold: ref(5) })
+    const { cards } = useSpotlightCards({ resources })
 
-    // id 1 不精选、不置顶、点赞未达 5：被过滤掉；1 号之后按精选 → 置顶 → 点赞排序。
-    expect(cards.value.map((card) => card.resourceId)).toEqual([4, 2, 3])
-    expect(cards.value.map((card) => card.accent)).toEqual(['nebula', 'sunset', 'forest'])
+    expect(cards.value.map((card) => card.resourceId)).toEqual([4, 2, 3, 1])
+    expect(cards.value.map((card) => card.accent)).toEqual(['nebula', 'sunset', 'forest', 'frost'])
     expect(cards.value[0]!.mark).toBe('精选')
   })
 
-  it('没有任何候选时回退到全部已发布，首页区块不会空白', () => {
+  it('没有精选或置顶时仍展示全部已发布资源', () => {
     const resources = ref([
       resourceFixture({ id: 1, like_count: 1 }),
       resourceFixture({ id: 2, like_count: 2 }),
     ])
-    const { cards } = useSpotlightCards({ resources, highLikeThreshold: ref(5) })
+    const { cards } = useSpotlightCards({ resources })
 
     expect(cards.value).toHaveLength(2)
   })
@@ -73,7 +72,6 @@ describe('useSpotlightCards', () => {
     const resources = ref([resourceFixture({ id: 1, cover_url: '/uploads/cover.png' })])
     const { cards, coverSrc, handleCoverError } = useSpotlightCards({
       resources,
-      highLikeThreshold: ref(5),
     })
 
     const card = cards.value[0]!

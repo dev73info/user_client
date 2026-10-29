@@ -6,7 +6,7 @@ import SpotlightResourceSection from '@/components/home/SpotlightResourceSection
 import { publicResourceFixture as resourceFixture } from './homeSpotlightFixtures'
 
 /**
- * 首页「免费精选资源」整块（R047 从 `views/HomeView.vue` 拆出）。
+ * 首页「免费资源」整块（R047 从 `views/HomeView.vue` 拆出）。
  *
  * 重点钉住搬迁里最容易静默坏掉的三处：
  * - **分页每页 8 张**：栅格条数、页码数量、下一/上一页的翻动结果；
@@ -19,7 +19,7 @@ import { publicResourceFixture as resourceFixture } from './homeSpotlightFixture
 
 function renderSection(resources: PublicMcResourceItem[], likeSubmittingIds = new Set<number>()) {
   return mount(SpotlightResourceSection, {
-    props: { resources, highLikeThreshold: 5, likeSubmittingIds },
+    props: { resources, likeSubmittingIds },
   })
 }
 
@@ -84,6 +84,20 @@ describe('SpotlightResourceSection 精选资源区', () => {
 
     await wrapper.find('.portal-link-btn').trigger('click')
     expect(wrapper.emitted('more')).toHaveLength(1)
+  })
+
+  it('精选角标只显示星标，普通资源也进入同一列表', () => {
+    const wrapper = renderSection([
+      resourceFixture({ id: 1, title: '普通资源', is_featured: false }),
+      resourceFixture({ id: 2, title: '精选资源', is_featured: true }),
+    ])
+
+    expect(wrapper.get('.portal-section h2').text()).toBe('免费资源')
+    expect(wrapper.findAll('.portal-spotlight-card')).toHaveLength(2)
+    const mark = wrapper.get('.portal-spotlight-card__mark')
+    expect(mark.text()).toBe('')
+    expect(mark.attributes('aria-label')).toBe('精选')
+    expect(mark.find('svg').exists()).toBe(true)
   })
 
   it('没有资源时只显示空态，不渲染栅格与分页', () => {

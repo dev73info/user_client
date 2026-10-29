@@ -11,7 +11,6 @@ import {
   formatCnDateTime as formatTimeLabel,
   formatCny as formatMoney,
 } from '@/shared/requirementDisplay'
-import { requirementStatusLabel } from '@/shared/requirementStatus'
 import { requirementRichTextPreview } from '@/utils/requirementRichText'
 
 const props = defineProps<{
@@ -37,9 +36,7 @@ function open(): void {
     @keydown.space.prevent="open"
   >
     <div class="portal-page__card-topline">
-      <PaymentModeChip :mode="card.payment_mode">{{
-        requirementStatusLabel(card.status, card.payment_mode)
-      }}</PaymentModeChip>
+      <PaymentModeChip :mode="card.payment_mode" />
     </div>
     <h2>{{ card.title }}</h2>
     <p>{{ requirementRichTextPreview(card.description, '当前需求暂未补充详细描述。') }}</p>

@@ -6,7 +6,7 @@ import { useSpotlightCards, type SpotlightCard } from '@/composables/useSpotligh
 import { useSpotlightPagination } from '@/composables/useSpotlightPagination'
 
 /**
- * 首页「免费精选资源」整块（R047 从 `views/HomeView.vue` 拆出，模板与脚本原样搬来）。
+ * 首页「免费资源」整块（R047 从 `views/HomeView.vue` 拆出）。
  *
  * 卡片映射在 `useSpotlightCards`、分页在 `useSpotlightPagination`；这里只剩三处**三面耦合**的
  * 渲染状态（markup / `styles/home.css` / JS 必须一起改）：
@@ -25,8 +25,6 @@ import { useSpotlightPagination } from '@/composables/useSpotlightPagination'
 const props = defineProps<{
   /** 已发布资源（`usePublicResources` 持有的那一份，不在这里复制） */
   resources: PublicMcResourceItem[]
-  /** 高赞阈值（管理端配置，`usePublicResources` 持有） */
-  highLikeThreshold: number
   /** 正在提交点赞的资源 id：按钮据此置灰并显示 busy */
   likeSubmittingIds: ReadonlySet<number>
 }>()
@@ -39,7 +37,6 @@ const emit = defineEmits<{
 
 const { cards, coverSrc, handleCoverError } = useSpotlightCards({
   resources: computed(() => props.resources),
-  highLikeThreshold: computed(() => props.highLikeThreshold),
 })
 
 const gridRef = ref<HTMLElement | null>(null)
@@ -133,7 +130,7 @@ onBeforeUnmount(() => {
     <div class="portal-section__header">
       <div class="portal-section-title">
         <span class="portal-section-title__icon" aria-hidden="true">★</span>
-        <h2>免费精选资源</h2>
+        <h2>免费资源</h2>
       </div>
       <button class="portal-link-btn" type="button" @click="emit('more')">更多免费资源</button>
     </div>
@@ -165,9 +162,14 @@ onBeforeUnmount(() => {
             <span
               v-if="card.mark"
               class="portal-spotlight-card__mark portal-spotlight-card__mark--featured"
+              role="img"
+              :aria-label="card.mark"
             >
-              <span class="portal-spotlight-card__mark-dot" aria-hidden="true"></span>
-              {{ card.mark }}
+              <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                <path
+                  d="m12 2.8 2.8 5.7 6.3.9-4.6 4.5 1.1 6.3-5.6-2.9-5.6 2.9 1.1-6.3-4.6-4.5 6.3-.9L12 2.8Z"
+                />
+              </svg>
             </span>
             <div class="portal-spotlight-card__screen portal-spotlight-card__screen--primary"></div>
             <div

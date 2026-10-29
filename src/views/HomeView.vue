@@ -26,12 +26,7 @@ import { useHomePortalLifecycle } from '@/composables/useHomePortalLifecycle'
 import { useHomePublishCard } from '@/composables/useHomePublishCard'
 import { usePortalRanks } from '@/composables/usePortalRanks'
 import { usePublicResources } from '@/composables/usePublicResources'
-import {
-  buildMilestoneStats,
-  buildPortalNotices,
-  type PortalMilestoneStat,
-  type PortalNotice,
-} from '@/shared/home/portalDisplay'
+import { buildPortalNotices, type PortalNotice } from '@/shared/home/portalDisplay'
 import {
   HOME_HERO_SIGNALS,
   HOME_QUICK_PANELS,
@@ -39,17 +34,11 @@ import {
 } from '@/shared/home/portalSections'
 
 /**
- * 公开资源这一份状态由 `usePublicResources` 独占：侧栏榜单、公告卡、里程碑统计、
- * 精选资源区、点赞回写都读同一份，本视图不再自己建 ref（否则会出现两份数据源）。
+ * 公开资源这一份状态由 `usePublicResources` 独占：侧栏榜单、公告卡、资源区、
+ * 点赞回写都读同一份，本视图不再自己建 ref（否则会出现两份数据源）。
  */
-const {
-  publicResources,
-  highLikeThreshold,
-  resolveResourceRoute,
-  ensureTagTree,
-  applyResourceList,
-  applyLikeState,
-} = usePublicResources()
+const { publicResources, resolveResourceRoute, ensureTagTree, applyResourceList, applyLikeState } =
+  usePublicResources()
 const auth = useAuthStore()
 const {
   status: checkinStatus,
@@ -70,9 +59,7 @@ let isMounted = true
  * `useHomePortalLoaders`。押金比例那一路属支付域，跟着支付卡片走。
  */
 const {
-  metrics,
   latestDeals,
-  publicDeveloperCount,
   pendingRequirements,
   publicRequirementSpotlights,
   loadPendingRequirements,
@@ -193,14 +180,6 @@ const portalNotices = computed<PortalNotice[]>(() => {
     spotlight: publicRequirementSpotlights.value[0],
   })
 })
-
-const platformStats = computed<PortalMilestoneStat[]>(() =>
-  buildMilestoneStats({
-    developerCount: publicDeveloperCount.value,
-    resourceCount: publicResources.value.length,
-    completedLabel: metrics.value[0]?.value,
-  }),
-)
 </script>
 
 <template>
@@ -224,7 +203,6 @@ const platformStats = computed<PortalMilestoneStat[]>(() =>
           <!-- 精选资源区（卡片映射 / 分页 / 跑马灯 / 点赞回抛）在 components/home/SpotlightResourceSection.vue -->
           <SpotlightResourceSection
             :resources="publicResources"
-            :high-like-threshold="highLikeThreshold"
             :like-submitting-ids="spotlightLikeSubmittingIds"
             @open="portalActions.openSpotlight"
             @like="portalActions.toggleSpotlightLike"
@@ -234,8 +212,6 @@ const platformStats = computed<PortalMilestoneStat[]>(() =>
 
         <PortalSidebarColumn
           :notices="portalNotices"
-          :stats="platformStats"
-          :is-developer-account="isDeveloperAccount"
           :developer-ranks="developerRanks"
           :total-contrib-resources="totalContribResources"
           :team-ranks="teamRanks"
@@ -246,7 +222,6 @@ const platformStats = computed<PortalMilestoneStat[]>(() =>
           @checkin-reload="loadCheckin"
           @open-group="portalActions.openBetaGroup"
           @open-notice="portalActions.openPortalNotice"
-          @open-resource-init="portalActions.openResourceInit"
           @open-developer="portalActions.openDeveloperProfile"
           @open-team="portalActions.openTeamProfile"
         />

@@ -92,17 +92,16 @@
     top: 8px;
     left: 8px;
     max-width: calc(100% - 16px);
-    padding: 3px 7px;
-    font-size: 10px;
+    padding: 3px 6px;
+    font-size: 9px;
   }
 
   .portal-spotlight-card__mark {
     top: auto;
     right: 8px;
     bottom: 8px;
-    min-height: 20px;
-    padding: 3px 7px 3px 6px;
-    font-size: 10px;
+    width: 20px;
+    height: 20px;
     box-shadow: 0 4px 10px color-mix(in srgb, var(--73-ink) 14%, transparent);
   }
 
@@ -136,9 +135,9 @@
   }
 
   .portal-spotlight-card__meta-row strong {
-    min-height: 22px;
-    padding: 2px 8px;
-    font-size: 11px;
+    min-height: 19px;
+    padding: 2px 6px;
+    font-size: 10px;
   }
 
   .portal-spotlight-card__footer {
