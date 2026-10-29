@@ -9,7 +9,7 @@ import {
   type DevHomeMocks,
 } from './helpers/devHomeView'
 
-/** 顶部三档读数、四个跳转入口、我的需求与我的资源两张卡。 */
+/** 顶部三档读数、四个跳转入口、我的需求与资源项目两张卡。 */
 
 const mocks = vi.hoisted(() => ({
   wallet: vi.fn(),
@@ -95,6 +95,23 @@ describe('developer workbench overview', () => {
     wrapper.unmount()
   })
 
+  it('资源项目卡文案与看板图标按工作台口径展示', async () => {
+    const { wrapper } = await renderDevHome()
+    const resourcePanel = wrapper
+      .findAll('.dev-home__panel')
+      .find((panel) => panel.find('.dev-home__resources').exists())
+    const dashboardButton = wrapper.get('button[aria-label="打开实时看板"]')
+
+    if (!resourcePanel) {
+      throw new Error('未找到资源项目卡')
+    }
+    expect(resourcePanel.find('.dev-section-title').text()).toBe('资源项目')
+    expect(resourcePanel.find('.dev-home__more').text()).toBe('我的资源')
+    expect(dashboardButton.text()).toBe('')
+    expect(dashboardButton.find('svg').exists()).toBe(true)
+    wrapper.unmount()
+  })
+
   it('按接单时间倒序列出我的需求，终止态不进总览', async () => {
     mocks.requirements.mockResolvedValue([
       requirementWithStatus(1, 'in_development', { budget: 3000 }),
@@ -119,7 +136,7 @@ describe('developer workbench overview', () => {
     wrapper.unmount()
   })
 
-  it('我的资源列出标题、平台与可见性，草稿不画成已发布', async () => {
+  it('资源项目列出标题、平台与可见性，草稿不画成已发布', async () => {
     const { wrapper } = await renderDevHome()
     const rows = wrapper.findAll('.dev-home__resource')
 

@@ -15,10 +15,10 @@ import { useDevHomeLists } from '@/composables/useDevHomeLists'
 import { CHIP_TONES } from '@/shared/devHomeDisplay'
 
 /**
- * 开发者工作台总览：三档读数 + 钱包读数 + 近期到账 + 我的需求 + 我的资源 + 四个跳转入口。
+ * 开发者工作台总览：三档读数 + 钱包读数 + 近期到账 + 我的需求 + 资源项目 + 四个跳转入口。
  *
  * 本页三份读数由 `useDevHomeDashboard` 取；订单、资金、交付、漏斗与动态流的实时快照
- * 是**总览的全屏版**（点读数条左侧「看板」进入，返回总览退出），使用 2.0 看板 REST/WS 契约。
+ * 是**总览的全屏版**（点读数条左侧的看板图标进入，返回总览退出），使用 2.0 看板 REST/WS 契约。
  */
 
 /**
@@ -59,7 +59,7 @@ const {
 const router = useRouter()
 const route = useRoute()
 
-/** 实时看板是总览的**全屏版**，不是独立菜单页：点读数条左侧「看板」进来，返回总览出去。 */
+/** 实时看板是总览的**全屏版**，不是独立菜单页：点读数条左侧的看板图标进来，返回总览出去。 */
 const dashboardOpen = ref(route.query.dashboard === '1')
 
 function openDashboard() {
@@ -129,7 +129,12 @@ function openMyOrder(requirementId: string) {
 <template>
   <div class="dev-page dev-home" :class="{ 'dev-home--loading': loading }">
     <!-- 顶部三格读数：进行中 / 待交付 / 已完成，全部按「我的需求」的 status 现算 -->
-    <DevHomeMetaStrip :loading="loading" :cards="statCards" @refresh="loadPage" @open-dashboard="openDashboard" />
+    <DevHomeMetaStrip
+      :loading="loading"
+      :cards="statCards"
+      @refresh="loadPage"
+      @open-dashboard="openDashboard"
+    />
 
     <!-- 四个跳转入口：读数只报数，明细在各自菜单页 -->
     <nav class="dev-home__entries" aria-label="开发者工作台入口">
@@ -163,15 +168,15 @@ function openMyOrder(requirementId: string) {
           @open="openMyOrder"
         />
 
-        <!-- 我的资源：只列标题、平台与可见性，管主页与版本去「资源管理」 -->
+        <!-- 资源项目：只列标题、平台与可见性；完整个人资源去「我的资源」 -->
         <section class="dev-surface-card dev-home__panel">
           <div class="dev-card-head">
             <div class="dev-card-head__title-block">
-              <h3 class="dev-section-title">我的资源</h3>
+              <h3 class="dev-section-title">资源项目</h3>
             </div>
             <div class="dev-card-head__actions">
               <RouterLink class="dev-home__more" :to="{ name: 'dev-resource-list' }">
-                查看全部
+                我的资源
               </RouterLink>
             </div>
           </div>
@@ -216,7 +221,13 @@ function openMyOrder(requirementId: string) {
     <DevWithdrawalDialog ref="withdrawDialog" @submitted="reloadWallet" />
 
     <!-- 实时看板：总览的全屏版，不是独立页面。返回键回到总览。 -->
-    <div v-if="dashboardOpen" class="dev-dashboard-fullscreen" role="dialog" aria-modal="true" aria-label="实时看板">
+    <div
+      v-if="dashboardOpen"
+      class="dev-dashboard-fullscreen"
+      role="dialog"
+      aria-modal="true"
+      aria-label="实时看板"
+    >
       <div class="dev-dashboard-fullscreen__bar">
         <TButton variant="outline" @click="closeDashboard">返回总览</TButton>
       </div>

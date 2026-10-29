@@ -6,7 +6,7 @@
  * 从 `views/DevHomeView.vue` 抽出来。读数（进行中 / 待交付 / 已完成）的**数值**由视图给：
  * 它们从「我的需求」的 `status` 现算，口径留在 `useDevHomeBoard`——组件只画，刷新 `emit` 出去。
  */
-import { Refresh, TButton, TIcon, TLoading } from 'ui_73info'
+import { DataAnalysis, Refresh, TButton, TIcon, TLoading } from 'ui_73info'
 
 import WorkbenchBarSlot from '@/components/WorkbenchBarSlot.vue'
 import type { DevHomeStatCard } from '@/shared/devHomeDisplay'
@@ -36,7 +36,9 @@ const emit = defineEmits<{
       </template>
       <div class="dev-meta-strip__item dev-meta-strip__action">
         <TButton icon-only aria-label="打开实时看板" @click="emit('openDashboard')">
-          <span class="dev-meta-strip__dashboard-label">看板</span>
+          <TIcon>
+            <DataAnalysis />
+          </TIcon>
         </TButton>
         <TButton icon-only :loading="loading" aria-label="刷新概览" @click="emit('refresh')">
           <TIcon>
