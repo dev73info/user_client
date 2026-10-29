@@ -2,19 +2,17 @@ import { computed, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { TMessage } from 'ui_73info'
 
-import QRCode from 'qrcode'
 
 import { getAdapayClientPlatform } from '@/api/adapay'
 import { createResourcePurchase, type ResourcePurchaseOrder } from '@/api/resourcePurchase'
 import { useResourcePayment } from '@/composables/useResourcePayment'
+import { buildWechatPaySurface, renderWechatQr } from '@/composables/useWechatScanPay'
 import { describeBackendError } from '@/shared/backendErrorText'
 import {
   canReuseCashQrForChannel,
   fenToYuanText,
-  isWechatBrowser,
   isWechatPayChannel,
   normalizePromoCode,
-  wechatMiddleQuery,
   type ResourcePayChannelUi,
 } from '@/shared/resourceSale'
 import { useAuthStore } from '@/stores/auth'
@@ -221,31 +219,21 @@ export function useResourcePurchase(options: UseResourcePurchaseOptions) {
         await handlePaid(cashOrder)
         return
       }
-      // 微信渠道：码里放**支付中间页地址**，不是 `pay_info`。
-      // 手机微信扫开 → 静态授权拿 openid → 拉起收银台。详见 shared/resourceSale/wechatPay。
+      // 微信渠道：码里放**微信授权地址**，完整链路见 useWechatScanPay。
       if (isWechatPayChannel(cashOrder.pay_channel)) {
-        const query = wechatMiddleQuery({
-          orderNo: cashOrder.order_no,
+        const surface = await buildWechatPaySurface({
+          order: cashOrder,
           token: auth.token,
+          router,
+          userAgent: navigator.userAgent,
           clientPlatform: getAdapayClientPlatform() === 'mobile' ? 'mobile' : 'desktop',
-          amountCny: fenToYuanText(cashOrder.amount_fen),
         })
-        if (isWechatBrowser(navigator.userAgent)) {
+        if (surface.jumpToPayment) {
           panelOpen.value = false
-          void router.push({ name: 'payment', query })
+          void router.push({ name: 'payment', query: surface.query })
           return
         }
-        // PC：把中间页地址画成二维码，手机微信扫开后自动走授权与拉起。
-        const target = new URL(
-          router.resolve({ name: 'payment', query }).href,
-          window.location.origin,
-        ).toString()
-        let rendered = ''
-        try {
-          rendered = await QRCode.toDataURL(target, { width: 220, margin: 1 })
-        } catch {
-          rendered = ''
-        }
+        const rendered = await renderWechatQr(surface.qrTarget)
         if (requestedGeneration === surfaceGeneration.value) {
           order.value = cashOrder
           qrDataUrl.value = rendered
