@@ -2,6 +2,8 @@ import { computed, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { TMessage } from 'ui_73info'
 
+import QRCode from 'qrcode'
+
 import { getAdapayClientPlatform } from '@/api/adapay'
 import { createResourcePurchase, type ResourcePurchaseOrder } from '@/api/resourcePurchase'
 import { useResourcePayment } from '@/composables/useResourcePayment'
@@ -9,7 +11,10 @@ import { describeBackendError } from '@/shared/backendErrorText'
 import {
   canReuseCashQrForChannel,
   fenToYuanText,
+  isWechatBrowser,
+  isWechatPayChannel,
   normalizePromoCode,
+  wechatMiddleQuery,
   type ResourcePayChannelUi,
 } from '@/shared/resourceSale'
 import { useAuthStore } from '@/stores/auth'
@@ -216,31 +221,39 @@ export function useResourcePurchase(options: UseResourcePurchaseOptions) {
         await handlePaid(cashOrder)
         return
       }
-      // 微信渠道分两种形态，按**是不是在微信里**决定：
-      //
-      // - **PC 端**：后端给的是动态二维码（`qr_pay_url`），微信 / 支付宝扫同一张都能付，
-      //   不需要授权拿 openid。直接出码即可。
-      // - **微信内**：`wx_pub`（公众号 JSAPI）的产物是给 `WeixinJSBridge` 用的参数包，
-      //   不是二维码内容；把它画成二维码，用户扫出来只会看到一段 JSON。
-      //   那条链路要走中间页：静默授权拿 openid → 建单拿 pay_info → 拉起收银台。
-      const isWechatChannel =
-        cashOrder.pay_channel === 'wx_pub' || cashOrder.pay_channel === 'wx_lite'
-      const inWechatBrowser = /MicroMessenger/i.test(navigator.userAgent)
-      if (isWechatChannel && inWechatBrowser) {
-        panelOpen.value = false
-        void router.push({
-          name: 'payment',
-          query: {
-            adapay: '1',
-            resource_wechat: '1',
-            order_no: cashOrder.order_no,
-            // 中间页用它拿订单详情与建支付单，与页面登录态是同一个令牌
-            token: auth.token,
-            channel: 'wechat',
-            client_platform: 'mobile',
-            amount_cny: fenToYuanText(cashOrder.amount_fen),
-          },
+      // 微信渠道：码里放**支付中间页地址**，不是 `pay_info`。
+      // 手机微信扫开 → 静态授权拿 openid → 拉起收银台。详见 shared/resourceSale/wechatPay。
+      if (isWechatPayChannel(cashOrder.pay_channel)) {
+        const query = wechatMiddleQuery({
+          orderNo: cashOrder.order_no,
+          token: auth.token,
+          clientPlatform: getAdapayClientPlatform() === 'mobile' ? 'mobile' : 'desktop',
+          amountCny: fenToYuanText(cashOrder.amount_fen),
         })
+        if (isWechatBrowser(navigator.userAgent)) {
+          panelOpen.value = false
+          void router.push({ name: 'payment', query })
+          return
+        }
+        // PC：把中间页地址画成二维码，手机微信扫开后自动走授权与拉起。
+        const target = new URL(
+          router.resolve({ name: 'payment', query }).href,
+          window.location.origin,
+        ).toString()
+        let rendered = ''
+        try {
+          rendered = await QRCode.toDataURL(target, { width: 220, margin: 1 })
+        } catch {
+          rendered = ''
+        }
+        if (requestedGeneration === surfaceGeneration.value) {
+          order.value = cashOrder
+          qrDataUrl.value = rendered
+          if (!rendered) {
+            error.value = '二维码生成失败，请刷新后重试'
+          }
+        }
+        startPoll(cashOrder.order_no, requestedGeneration)
         return
       }
       await renderQr(cashOrder, requestedGeneration)

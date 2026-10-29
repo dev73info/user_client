@@ -64,3 +64,10 @@ export {
 export type { ParsePromoShareResult } from './resourceSale/promo'
 export { toResourcePayChannel, canReuseCashQrForChannel } from './resourceSale/payChannel'
 export type { ResourcePayChannelUi, ReusableCashQrOrderLike } from './resourceSale/payChannel'
+
+export {
+  isWechatPayChannel,
+  isWechatBrowser,
+  wechatMiddleQuery,
+} from './resourceSale/wechatPay'
+export type { WechatMiddleQuery } from './resourceSale/wechatPay'
