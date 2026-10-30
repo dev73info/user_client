@@ -98,6 +98,26 @@ defineProps<{
 }
 
 @media (max-width: 900px) {
+  .user-workbench__submenu {
+    gap: 2px;
+    margin: 2px 0 4px 32px;
+    padding: 4px;
+    border-left: 0;
+    border-radius: 14px;
+    background: color-mix(in srgb, var(--uw-blue-wash-faint) 52%, transparent);
+  }
+
+  .user-workbench__submenu :deep(.user-workbench__submenu-link) {
+    min-height: 34px;
+    padding: 6px 10px;
+    border-radius: 10px;
+  }
+
+  .user-workbench__submenu :deep(.user-workbench__submenu-link > span) {
+    font-size: 13px;
+    font-weight: 700;
+  }
+
   .user-workbench__submenu--messages {
     max-height: 160px;
   }
