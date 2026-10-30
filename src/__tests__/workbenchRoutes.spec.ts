@@ -181,8 +181,9 @@ describe('两种工作台各自的路由名', () => {
     expect(workbenchBrandTitleFor(true)).toBe('开发者工作台')
   })
 
-  it('消息中心插在用户端首组之后、开发者端末组之后', () => {
-    expect(messagesAnchorIndexFor(false, 3)).toBe(0)
+  it('消息中心插在用户端所有分组之前、开发者端末组之后', () => {
+    // -1 = 所有分组之前（与图标栏把「消息」排第一一致）
+    expect(messagesAnchorIndexFor(false, 3)).toBe(-1)
     expect(messagesAnchorIndexFor(true, 2)).toBe(1)
     expect(messagesAnchorIndexFor(true, 0)).toBe(0)
   })

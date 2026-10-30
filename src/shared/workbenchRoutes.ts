@@ -31,16 +31,15 @@ export function workbenchBrandTitleFor(isDevWorkbenchMode: boolean): string {
 }
 
 /**
- * 消息中心夹在分组之间、两端各只渲染一次，插在哪个位置两种工作台不一样：
- * 用户工作台插在第一个分组之后（我的需求与账户服务之间）；
+ * 消息中心夹在分组之间的哪个位置，两端各只渲染一次：
+ * 用户工作台放在最前（`-1` 表示「所有分组之前」，与图标栏把「消息」排第一个一致）；
  * 开发者工作台插在最后一个分组之后（团队服务之下、系统通知之上）。
- * 开发者侧多出「财务中心」一组后，仍按原来那一档排，不落到两组中间。
  */
 export function messagesAnchorIndexFor(
   isDevWorkbenchMode: boolean,
   visibleGroupCount: number,
 ): number {
-  return isDevWorkbenchMode ? Math.max(visibleGroupCount - 1, 0) : 0
+  return isDevWorkbenchMode ? Math.max(visibleGroupCount - 1, 0) : -1
 }
 
 /* ---------- 条目的链接与高亮 ---------- */

@@ -17,6 +17,7 @@ import { isWorkbenchChatPage } from '@/shared/workbenchChatRoute'
 
 import WorkbenchIconRail from '@/components/workbench/WorkbenchIconRail.vue'
 import WorkbenchMobileBar from '@/components/workbench/WorkbenchMobileBar.vue'
+import WorkbenchRailGroupNav from '@/components/workbench/WorkbenchRailGroupNav.vue'
 import WorkbenchSidebar from '@/components/workbench/WorkbenchSidebar.vue'
 
 const route = useRoute()
@@ -43,12 +44,15 @@ const {
   modeSwitching,
   modeSwitchSpinning,
   switchWorkbenchMode,
+  realnameApproved,
   openGroupKeys,
   visibleMenuGroups,
   messagesAnchorIndex,
   toggleGroup,
   toggleMessageCenter,
   openMessageCenter,
+  activeRailGroup,
+  isRailGroupItemActive,
   conversations,
   conversationLoading,
   conversationCount,
@@ -120,6 +124,7 @@ const {
       :is-dev-workbench-mode="isDevWorkbenchMode"
       :unread-count="unreadMessageCount"
       :team-invitation-count="teamInvitationCount"
+      :realname-approved="realnameApproved"
       @switch-mode="switchWorkbenchMode"
     />
 
@@ -128,6 +133,7 @@ const {
       :class="{
         'user-workbench__main--chat': isChatWorkspace,
         'user-workbench__main--icon-shell': usesIconShell,
+        'user-workbench__main--rail-group': Boolean(activeRailGroup) && !isChatWorkspace,
       }"
     >
       <WorkbenchMobileBar
@@ -135,6 +141,15 @@ const {
         :workbench-brand-title="workbenchBrandTitle"
         :current-title="currentTitle"
         @open-menu="openMobileMenu"
+      />
+
+      <!-- 分组入口：中栏列组内页面，右栏仍是 RouterView 的内容区（与消息中心同一骨架） -->
+      <WorkbenchRailGroupNav
+        v-if="activeRailGroup && !isChatWorkspace"
+        class="user-workbench__rail-group"
+        :group="activeRailGroup"
+        :is-item-active="isRailGroupItemActive"
+        @navigate="closeMobileMenu"
       />
 
       <div
@@ -157,3 +172,4 @@ const {
 </template>
 
 <style scoped src="./../components/workbench/user-workbench-shell.css"></style>
+<style scoped src="./../components/workbench/user-workbench-rail-group.css"></style>

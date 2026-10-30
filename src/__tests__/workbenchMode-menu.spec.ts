@@ -50,48 +50,57 @@ describe('workbench mode switch', () => {
     // 团队服务已搬进开发者工作台，用户侧边栏不再出现
     expect(sidebar(wrapper)).not.toContain('团队服务')
     expect(sidebar(wrapper)).not.toContain('我的团队')
-    // 「我的定制」已并入「我的需求」，该组只剩一个页面：整组收成一条一级条目「我的需求」
+    // 「我的定制」已并入「我的需求」：用户侧栏不再有单独的「需求协作」外壳
     expect(sidebar(wrapper)).not.toContain('我的定制')
-    expect(sidebar(wrapper)).toContain('我的需求')
     expect(sidebar(wrapper)).not.toContain('需求协作')
     expect(
       wrapper
         .findAll('.user-workbench__menu .user-workbench__menu-link--root')
         .map((link) => link.text()),
-    ).toEqual(['工作台总览', '我的需求', '系统通知', '退出登录'])
-    // 消息中心是一级条目：排在「我的需求」之后、「账户服务」之前，不再嵌在需求分组的子菜单里。
+    ).toEqual(['工作台总览', '系统通知', '退出登录'])
+    // 消息中心与三个分组（订单与合同 / 资产与权益 / 账户）都是折叠组
     expect(wrapper.findAll('.user-workbench__menu-group-head').map((head) => head.text())).toEqual([
       '消息中心',
-      '账户服务',
+      '订单与合同',
+      '资产与权益',
+      '账户',
     ])
     expect(wrapper.find('.user-workbench__submenu .user-workbench__menu-group-head').exists()).toBe(
       false,
     )
 
-    // 只剩一个页面的分组（「我的需求」）没有分组头，先挑出有分组头的那些。
+    // 先挑出「账户」那一组：桌面端账户那几条在齿轮弹层里，这里只留账户本身。
     const groups = wrapper
       .findAll('.user-workbench__menu-group')
       .filter((group) => group.find('.user-workbench__menu-group-head').exists())
-    const accountGroup = groups.find((group) =>
-      group.find('.user-workbench__menu-group-head').text().includes('账户服务'),
-    )!
-    const accountLinks = accountGroup.findAll('.user-workbench__submenu-link')
-    expect(accountLinks.map((link) => link.text())).toEqual([
-      '账户详情',
-      '已授权应用',
-      '工单中心',
+    const accountLinks = groups
+      .find((group) => group.find('.user-workbench__menu-group-head').text().includes('账户'))!
+      .findAll('.user-workbench__submenu-link')
+    expect(accountLinks.map((link) => link.text())).toEqual(['账户详情', '已授权应用', '工单中心'])
+
+    // 订单与合同：成交全流程；资产与权益：券 / 积分 / 权益
+    const ordersLinks = groups
+      .find((group) => group.find('.user-workbench__menu-group-head').text().includes('订单与合同'))!
+      .findAll('.user-workbench__submenu-link')
+    expect(ordersLinks.map((link) => link.text())).toEqual([
+      '我的需求',
       '我的合同',
       '我的发票',
+      '我的已购',
+      '过户与转移',
+    ])
+    const assetsLinks = groups
+      .find((group) => group.find('.user-workbench__menu-group-head').text().includes('资产与权益'))!
+      .findAll('.user-workbench__submenu-link')
+    expect(assetsLinks.map((link) => link.text())).toEqual([
       '我的收藏',
       '优惠券中心',
       '积分中心',
       '积分商城',
       '我的权益',
       '勋章与邀请',
-      '我的已购',
-      '过户与转移',
     ])
-    expect(accountLinks.find((link) => link.text() === '优惠券中心')?.attributes('href')).toBe(
+    expect(assetsLinks.find((link) => link.text() === '优惠券中心')?.attributes('href')).toBe(
       '/workbench/workbench-coupons',
     )
     wrapper.unmount()

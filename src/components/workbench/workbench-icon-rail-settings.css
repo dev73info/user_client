@@ -30,7 +30,8 @@
   background: color-mix(in srgb, var(--73-accent-soft) 84%, transparent);
 }
 
-.workbench-icon-rail__settings.is-open .workbench-icon-rail__settings-trigger {
+.workbench-icon-rail__settings.is-open .workbench-icon-rail__settings-trigger,
+.workbench-icon-rail__settings-trigger.is-active {
   color: var(--73-surface-strong);
   background: var(--73-app-grad-accent-02);
   box-shadow: 0 10px 22px color-mix(in srgb, var(--73-accent) 24%, transparent);

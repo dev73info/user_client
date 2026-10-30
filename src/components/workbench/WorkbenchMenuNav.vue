@@ -94,6 +94,26 @@ function isGroupActive(group: WorkbenchMenuGroup) {
       @navigate="emit('navigate')"
     />
 
+    <!-- 消息中心是一级条目，两端各一份：用户端的插在分组之前（与图标栏把「消息」排第一一致），
+         开发者端的插在最后一个分组之后。`messagesAnchorIndex < 0` 表示「所有分组之前」。 -->
+    <WorkbenchMessagesSection
+      v-if="props.messagesAnchorIndex < 0"
+      :open="messagesOpen"
+      :active="isMessagesRoute"
+      :conversations="props.conversations"
+      :loading="props.conversationLoading"
+      :total-count="props.conversationCount"
+      :hidden-count="props.hiddenConversationCount"
+      :unread-message-count="props.unreadMessageCount"
+      :route-name="props.messagesRouteName"
+      :is-messages-route="isMessagesRoute"
+      :active-requirement-id="activeRequirementId"
+      :username="props.username"
+      @toggle="emit('toggle-messages')"
+      @open-all="emit('open-all-messages')"
+      @navigate="emit('navigate')"
+    />
+
     <template v-for="(group, index) in props.visibleMenuGroups" :key="group.key">
       <WorkbenchMenuGroupSection
         :group="group"
@@ -104,7 +124,6 @@ function isGroupActive(group: WorkbenchMenuGroup) {
         @navigate="emit('navigate')"
       />
 
-      <!-- 消息中心已从需求分组里提出来做一级条目（原来嵌在子菜单里），两种工作台各一份 -->
       <WorkbenchMessagesSection
         v-if="index === props.messagesAnchorIndex"
         :open="messagesOpen"

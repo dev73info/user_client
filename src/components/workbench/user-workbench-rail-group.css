@@ -1,0 +1,31 @@
+/* 图标栏分组入口的版式：中栏列组内页面，右栏放内容，与消息中心的「列表 + 内容」同一骨架。
+   单独一份而不是塞进 user-workbench-shell.css：那份已经贴着 300 行预算，
+   而且这几条只跟图标栏的分组有关，未来调整分组版式不必碰外壳的其他规则。 */
+
+.user-workbench__main--rail-group {
+  height: 100%;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(228px, 268px) minmax(0, 1fr);
+  align-content: stretch;
+  gap: 10px;
+  padding: 10px 10px 10px 0;
+}
+
+.user-workbench__rail-group {
+  height: 100%;
+  min-height: 0;
+}
+
+@media (max-width: 900px) {
+  /* 移动端不占中栏：导航由抽屉侧边栏负责，内容区直接铺满 */
+  .user-workbench__main--rail-group {
+    display: block;
+    height: auto;
+    padding: 0;
+  }
+
+  .user-workbench__rail-group {
+    display: none;
+  }
+}

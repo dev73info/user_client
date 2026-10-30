@@ -11,6 +11,8 @@ import {
   Wallet,
 } from 'ui_73info'
 
+import { buildRailGroups } from './workbenchRailGroups'
+
 /**
  * 工作台外壳的菜单模型与路由判定（纯数据 + 纯函数）。
  *
@@ -146,29 +148,27 @@ export const teamMenuGroup: WorkbenchMenuGroup = {
   ],
 }
 
-// 分组头已经写着组名，因此这几类分组不再额外顶一行灰色小标题：
-// 账户服务、团队服务、财务中心都靠分组头识别，再加一行会把组名写成两遍。
-export const GROUPS_WITHOUT_SECTION_LABEL = ['account', 'team', 'finance']
+// 分组头已经写着组名，因此这几类分组不再额外顶一行灰色小标题：账户、订单与合同、
+// 资产与权益、团队服务、财务中心都靠分组头识别，再加一行会把组名写成两遍。
+export const GROUPS_WITHOUT_SECTION_LABEL = ['account', 'orders', 'assets', 'team', 'finance']
 
-/** 用户菜单的两个分组。`realnameApproved` 决定「我的合同」那一条在不在（实名通过后才出现）。 */
+/** 用户菜单的分组：与桌面图标栏共用一份分组数据（`buildRailGroups`），两端不再各排一套。 */
 export function buildMenuGroups(realnameApproved: boolean): WorkbenchMenuGroup[] {
   return [
-    {
-      // 只剩一个页面：侧边栏按一级条目渲染成「我的需求」（组名与页名一致，省掉无意义的「需求协作」外壳）。
-      key: 'collaboration',
-      label: '我的需求',
-      icon: Connection,
-      items: [
-        {
-          label: '我的需求',
-          name: 'workbench-requirements',
-          description: '查看支付、交付与验收进度',
-        },
-      ],
-    },
+    ...buildRailGroups(realnameApproved).map((group) => ({
+      key: group.key,
+      label: group.label,
+      icon: group.icon,
+      items: group.items.map((item) => ({
+        label: item.label,
+        name: item.name,
+        description: item.description,
+        activeNames: item.activeNames,
+      })),
+    })),
     {
       key: 'account',
-      label: '账户服务',
+      label: '账户',
       icon: Box,
       items: [
         { label: '账户详情', name: 'workbench-account', description: '管理账户' },
@@ -181,42 +181,6 @@ export function buildMenuGroups(realnameApproved: boolean): WorkbenchMenuGroup[]
           label: '工单中心',
           name: 'workbench-tickets',
           description: '提交问题与查看回复',
-        },
-        ...(realnameApproved
-          ? [
-              {
-                label: '我的合同',
-                name: 'workbench-signatures',
-                description: '查看合同与签署进度',
-                activeNames: ['workbench-signature-detail'],
-              },
-            ]
-          : []),
-        { label: '我的发票', name: 'workbench-invoices', description: '获取发票、查看与下载' },
-        {
-          label: '我的收藏',
-          name: 'workbench-favorites',
-          description: '查看收藏的社区帖子',
-        },
-        { label: '优惠券中心', name: 'workbench-coupons', description: '查看券包并复制券码' },
-        { label: '积分中心', name: 'workbench-points', description: '签到、积分明细与打赏' },
-        { label: '积分商城', name: 'mall', description: '兑换权益与道具卡' },
-        { label: '我的权益', name: 'workbench-perks', description: '佩戴主页与用户名权益' },
-        {
-          label: '勋章与邀请',
-          name: 'workbench-badges',
-          description: '查看与佩戴徽章、邀请好友与邀请记录',
-          activeNames: ['workbench-invite-leaderboard'],
-        },
-        {
-          label: '我的已购',
-          name: 'workbench-resource-purchases',
-          description: '已购数字资源，退款由卖家或平台发起',
-        },
-        {
-          label: '过户与转移',
-          name: 'workbench-purchase-transfers',
-          description: '处理资源所有权与订单使用权申请',
         },
       ],
     },

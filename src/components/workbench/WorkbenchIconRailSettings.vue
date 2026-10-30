@@ -35,6 +35,11 @@ function isActive(item: WorkbenchRailAccountMenuItem) {
   return currentName.value === item.to.name
 }
 
+/** 停在账户类页面时齿轮点亮（这些页面不再出现在图标栏上，齿轮就是它们的归属标记）。 */
+const accountModeActive = computed(
+  () => personalAccountActive.value || workbenchRailAccountMenuItems.some(isActive),
+)
+
 function close() {
   open.value = false
 }
@@ -89,10 +94,11 @@ onBeforeUnmount(() => {
     <button
       class="workbench-icon-rail__item workbench-icon-rail__settings-trigger"
       type="button"
-      aria-label="工作台账户菜单"
+      :class="{ 'is-active': accountModeActive }"
+      aria-label="账户菜单"
       aria-haspopup="menu"
       :aria-expanded="open"
-      title="账户与资产"
+      title="账户"
       @click="toggle"
     >
       <TIcon :size="22">
@@ -103,14 +109,14 @@ onBeforeUnmount(() => {
           />
         </svg>
       </TIcon>
-      <span class="workbench-icon-rail__tooltip">账户与资产</span>
+      <span class="workbench-icon-rail__tooltip">账户</span>
     </button>
 
     <section
       v-if="open"
       class="workbench-icon-rail__settings-menu"
       role="menu"
-      aria-label="账户与资产"
+      aria-label="账户"
       @click.stop
     >
       <button

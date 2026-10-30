@@ -274,6 +274,7 @@ declare module 'vue' {
     WorkbenchMenuNav: typeof import('./src/components/workbench/WorkbenchMenuNav.vue')['default']
     WorkbenchMessagesSection: typeof import('./src/components/workbench/WorkbenchMessagesSection.vue')['default']
     WorkbenchMobileBar: typeof import('./src/components/workbench/WorkbenchMobileBar.vue')['default']
+    WorkbenchRailGroupNav: typeof import('./src/components/workbench/WorkbenchRailGroupNav.vue')['default']
     WorkbenchSidebar: typeof import('./src/components/workbench/WorkbenchSidebar.vue')['default']
     WorkbenchStandaloneSection: typeof import('./src/components/workbench/WorkbenchStandaloneSection.vue')['default']
     WorkbenchSubmenu: typeof import('./src/components/workbench/WorkbenchSubmenu.vue')['default']

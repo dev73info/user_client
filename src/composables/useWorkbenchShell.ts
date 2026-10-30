@@ -11,6 +11,7 @@ import { useWorkbenchConversations } from './useWorkbenchConversations'
 import { useWorkbenchMenu } from './useWorkbenchMenu'
 import { useWorkbenchMobileMenu } from './useWorkbenchMobileMenu'
 import { useWorkbenchMode } from './useWorkbenchMode'
+import { useWorkbenchRailGroups } from './useWorkbenchRailGroups'
 
 /**
  * 工作台外壳的组合根：把模式、菜单、会话、角标、移动端抽屉接到一起。
@@ -44,6 +45,12 @@ export function useWorkbenchShell() {
   })
   const conversations = useWorkbenchConversations()
   const badges = useWorkbenchBadges({ isDevWorkbenchMode: mode.isDevWorkbenchMode })
+
+  // 图标栏的分组：只在用户模式生效（开发者模式那排是平铺的一级条目）。
+  const railGroups = useWorkbenchRailGroups({ realnameApproved: menu.realnameApproved })
+  const activeRailGroup = computed(() =>
+    mode.isDevWorkbenchMode.value ? null : railGroups.activeGroup.value,
+  )
 
   const routeTitle = computed(() => (typeof route.meta.title === 'string' ? route.meta.title : ''))
 
@@ -106,12 +113,16 @@ export function useWorkbenchShell() {
     modeSwitchSpinning: mode.modeSwitchSpinning,
     switchWorkbenchMode: mode.switchWorkbenchMode,
     // 菜单
+    realnameApproved: menu.realnameApproved,
     openGroupKeys: menu.openGroupKeys,
     visibleMenuGroups: menu.visibleMenuGroups,
     messagesAnchorIndex: menu.messagesAnchorIndex,
     toggleGroup: menu.toggleGroup,
     toggleMessageCenter: menu.toggleMessageCenter,
     openMessageCenter: menu.openMessageCenter,
+    // 图标栏的分组（中栏列表 + 右栏内容）
+    activeRailGroup,
+    isRailGroupItemActive: railGroups.isItemActive,
     // 会话与角标
     conversations: conversations.visibleConversations,
     conversationLoading: conversations.conversationLoading,

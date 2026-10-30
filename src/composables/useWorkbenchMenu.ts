@@ -161,6 +161,8 @@ export function useWorkbenchMenu(options: {
   )
 
   return {
+    // 实名状态：图标栏的「我的合同」也吃这一份，别为了同一件事再查一次
+    realnameApproved,
     // 侧边栏要用的
     openGroupKeys,
     visibleMenuGroups,

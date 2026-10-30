@@ -9,6 +9,7 @@ import {
   teamMenuGroup,
   type WorkbenchMenuItem,
 } from '@/shared/workbenchMenu'
+import { buildRailGroups } from '@/shared/workbenchRailGroups'
 import { menuItemBadgeText, menuItemTo } from '@/shared/workbenchRoutes'
 
 /** 只填展示层用得到的字段；其余字段与这些断言无关。 */
@@ -21,15 +22,30 @@ const itemOf = (overrides: Partial<WorkbenchMenuItem> = {}): WorkbenchMenuItem =
   }) as WorkbenchMenuItem
 
 describe('buildMenuGroups', () => {
-  it('用户菜单两个分组，顺序是「我的需求 / 账户服务」', () => {
-    // 「我的背包」（积分 / 商城 / 权益）整块下线：后端契约里没有积分与商城相关路径
-    expect(buildMenuGroups(false).map((group) => group.key)).toEqual(['collaboration', 'account'])
+  it('用户菜单三个分组，顺序是「订单与合同 / 资产与权益 / 账户」', () => {
+    expect(buildMenuGroups(false).map((group) => group.key)).toEqual(['orders', 'assets', 'account'])
   })
 
-  it('我的需求只保留一个直达菜单，不再提供需求方 AI 助手', () => {
-    const [collaboration] = buildMenuGroups(false)
+  it('分组与桌面图标栏共用一份数据，不再是两套排法', () => {
+    const fromMenu = buildMenuGroups(true).map((group) => ({
+      key: group.key,
+      items: group.items.map((item) => item.name),
+    }))
+    const fromRail = buildRailGroups(true).map((group) => ({
+      key: group.key,
+      items: group.items.map((item) => item.name),
+    }))
 
-    expect(collaboration?.items.map((item) => item.name)).toEqual(['workbench-requirements'])
+    // 前两组逐条相同；账户组是侧栏独有的（桌面端放在齿轮弹层里）
+    expect(fromMenu.slice(0, 2)).toEqual(fromRail)
+    expect(fromMenu[2]?.key).toBe('account')
+  })
+
+  it('我的需求不再单独成组，进了「订单与合同」', () => {
+    const orders = buildMenuGroups(false)[0]
+
+    expect(orders?.label).toBe('订单与合同')
+    expect(orders?.items.map((item) => item.name)).toContain('workbench-requirements')
   })
 
   it('需求方旧助手地址直接回到我的需求', () => {
@@ -41,9 +57,9 @@ describe('buildMenuGroups', () => {
     expect(assistant?.name).not.toBe('workbench-assistant')
   })
 
-  it('实名未通过时没有「我的合同」，通过后出现在账户服务里', () => {
-    const before = buildMenuGroups(false)[1]?.items.map((item) => item.name) ?? []
-    const after = buildMenuGroups(true)[1]?.items.map((item) => item.name) ?? []
+  it('实名未通过时没有「我的合同」，通过后出现在订单与合同里', () => {
+    const before = buildMenuGroups(false)[0]?.items.map((item) => item.name) ?? []
+    const after = buildMenuGroups(true)[0]?.items.map((item) => item.name) ?? []
 
     expect(before).not.toContain('workbench-signatures')
     expect(after.filter((name) => name === 'workbench-signatures')).toHaveLength(1)
@@ -51,7 +67,7 @@ describe('buildMenuGroups', () => {
   })
 
   it('合同详情的编辑页仍高亮「我的合同」', () => {
-    const signatures = buildMenuGroups(true)[1]?.items.find(
+    const signatures = buildMenuGroups(true)[0]?.items.find(
       (item) => item.name === 'workbench-signatures',
     )
 
@@ -60,9 +76,10 @@ describe('buildMenuGroups', () => {
 
   it('不重复划分组小标题的组名集合', () => {
     expect(GROUPS_WITHOUT_SECTION_LABEL).toContain('account')
+    expect(GROUPS_WITHOUT_SECTION_LABEL).toContain('orders')
+    expect(GROUPS_WITHOUT_SECTION_LABEL).toContain('assets')
     expect(GROUPS_WITHOUT_SECTION_LABEL).toContain('team')
     expect(GROUPS_WITHOUT_SECTION_LABEL).toContain('finance')
-    expect(GROUPS_WITHOUT_SECTION_LABEL).not.toContain('collaboration')
   })
 })
 
