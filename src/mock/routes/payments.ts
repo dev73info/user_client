@@ -14,7 +14,8 @@ import { defineRouteTable, type MockRoute } from '../router'
 
 import { devPaymentRoutes } from './payments/devRoutes'
 import { paymentOrderRoutes } from './payments/orderRoutes'
+import { prepaidRoutes } from './payments/prepaidRoutes'
 
-const routes: MockRoute[] = [...paymentOrderRoutes, ...devPaymentRoutes]
+const routes: MockRoute[] = [...paymentOrderRoutes, ...devPaymentRoutes, ...prepaidRoutes]
 
 export const paymentRoutes = defineRouteTable('payments', routes)

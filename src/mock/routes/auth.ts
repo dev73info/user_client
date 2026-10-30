@@ -89,6 +89,26 @@ const routes: MockRoute[] = [
   },
   {
     method: 'GET',
+    path: '/auth/users/privileges',
+    note: '当前登录人的生效权限码：漏了它首页会拿 undefined 当权限数组，整页白屏',
+    handler: (request) => {
+      const identity = identityOf(request)
+      const profile = MOCK_IDENTITY_PROFILES[identity]
+      // `scope.dev.access` 是 `auth.isDev` 的唯一口径（见 stores/auth/session.ts），
+      // 客户身份不能带这个码，否则「成为开发者」入口会看不见。
+      const permissions = identity === 'dev' ? ['scope.dev.access'] : []
+
+      return jsonResponse({
+        username: profile.username,
+        role: profile.role,
+        roles: [profile.role],
+        permissions,
+        is_super_admin: false,
+      })
+    },
+  },
+  {
+    method: 'GET',
     path: '/auth/dev-access-status',
     note: '开发者资格与入驻协议状态',
     handler: (request) => {

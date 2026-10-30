@@ -19,6 +19,19 @@ export const miscRoutes: MockRoute[] = [
   },
   {
     method: 'GET',
+    path: '/payment/availability',
+    note: '支付通道三态：mock 一律 ready，发布需求时才拦得到「渠道不可用」',
+    handler: () => jsonResponse({ available: true, status: 'ready', status_label: '可用' }),
+  },
+  {
+    method: 'GET',
+    path: '/support/channels/public',
+    note: '公开客服渠道：漏了它兜底回 []，客服挂件读 channels.find 会把整页打断',
+    handler: () =>
+      jsonResponse([{ channel_key: 'web_widget', label: '网页在线客服', enabled: true }]),
+  },
+  {
+    method: 'GET',
     path: '/teams/invitations',
     note: '我的团队邀请（演示数据没有团队邀请）',
     handler: () => jsonResponse([]),
