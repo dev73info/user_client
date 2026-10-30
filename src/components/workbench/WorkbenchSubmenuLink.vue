@@ -59,7 +59,7 @@ const emit = defineEmits<{
   min-height: 38px;
   padding: 8px 10px;
   border: 0;
-  border-radius: 12px;
+  border-radius: 8px;
   align-content: center;
   color: var(--uw-ink);
   font: inherit;
@@ -67,12 +67,7 @@ const emit = defineEmits<{
   text-decoration: none;
   transition:
     background 180ms ease,
-    color 180ms ease,
-    transform 180ms ease;
-}
-
-.user-workbench__submenu-link:hover {
-  transform: translateX(2px);
+    color 180ms ease;
 }
 
 .user-workbench__submenu-link span {
@@ -80,7 +75,7 @@ const emit = defineEmits<{
   text-overflow: ellipsis;
   white-space: nowrap;
   font-size: 13px;
-  font-weight: 800;
+  font-weight: 500;
 }
 
 .user-workbench__submenu-link small {
@@ -171,10 +166,6 @@ const emit = defineEmits<{
   .user-workbench__submenu-link,
   .user-workbench__submenu-link:not(.user-workbench__conversation-link) small {
     transition: none;
-  }
-
-  .user-workbench__submenu-link:hover {
-    transform: none;
   }
 }
 </style>

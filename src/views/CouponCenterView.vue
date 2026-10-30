@@ -109,11 +109,6 @@ onMounted(() => {
         </div>
       </div>
 
-      <p class="coupon-hint" role="note">
-        券码可复制留存。当前的支付链路（定金、尾款、资源购买、打赏）都不支持优惠券抵扣，
-        页面不提供「去使用」入口。
-      </p>
-
       <p v-if="loading" class="wb-empty" role="status">正在加载券包…</p>
       <p v-else-if="!coupons.length" class="wb-empty" role="status">
         <span class="wb-empty__title">暂无优惠券</span>
@@ -188,13 +183,6 @@ onMounted(() => {
    描边、圆角、悬停与状态标签都取统一层那一套。
    分组块（.coupon-group）与组名走统一层的 .wb-panel / .wb-subhead：
    它原先自带一份 12px 内边距 + 12px 圆角 + 13px 组名，与权益页的面板一格之差，两页各写一份。 */
-
-.coupon-hint {
-  margin: 0 0 12px;
-  color: var(--profile-text-sub);
-  font-size: 12px;
-  line-height: 1.6;
-}
 
 .coupon-groups {
   display: grid;

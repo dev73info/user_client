@@ -55,6 +55,12 @@ export function usePortalTopNavNav() {
         to: { name: 'community' },
         active: allowActive && ['community', 'community-post'].includes(currentName),
       },
+      // 积分商城是公开的兑换入口，不需要登录，所以挂在顶栏而不是工作台里。
+      {
+        label: '积分商城',
+        to: { name: 'mall' },
+        active: allowActive && currentName === 'mall',
+      },
     ]
 
     if (auth.isAuthed) {

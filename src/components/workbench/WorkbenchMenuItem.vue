@@ -118,7 +118,7 @@ const variant = computed(() => props.variant ?? 'link')
   min-height: 46px;
   padding: 10px;
   border: 0;
-  border-radius: 12px;
+  border-radius: 8px;
   background: transparent;
   color: var(--uw-ink);
   font: inherit;
@@ -237,7 +237,7 @@ const variant = computed(() => props.variant ?? 'link')
   place-items: center;
   width: 30px;
   height: 30px;
-  border-radius: 11px;
+  border-radius: 8px;
   background: var(--uw-blue-fill-soft);
   color: var(--uw-blue);
   transition:

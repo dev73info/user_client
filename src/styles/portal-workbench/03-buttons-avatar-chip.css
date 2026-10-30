@@ -17,13 +17,12 @@
   border-radius: var(--wb-radius-control);
   font: inherit;
   font-size: 13px;
-  font-weight: 700;
+  font-weight: 600;
   line-height: 1;
   white-space: nowrap;
   text-decoration: none;
   cursor: pointer;
   transition:
-    box-shadow 160ms ease,
     background-color 160ms ease,
     border-color 160ms ease,
     color 160ms ease;
@@ -35,10 +34,13 @@
   color: var(--73-surface-strong);
 }
 
+/* 主按钮只换底色深浅，不再叠彩色投影：每颗按钮下面垫一层蓝雾，
+   一屏里所有按钮都在发光，反而没有一个像是主行动。 */
 .wb-btn--primary:hover,
 .wb-btn--primary:focus-visible {
+  background: color-mix(in srgb, var(--wb-accent) 86%, var(--73-ink));
+  border-color: color-mix(in srgb, var(--wb-accent) 86%, var(--73-ink));
   color: var(--73-surface-strong);
-  box-shadow: 0 10px 22px color-mix(in srgb, var(--73-accent) 22%, transparent);
 }
 
 .wb-btn--ghost {
@@ -50,9 +52,7 @@
 .wb-btn--ghost:hover,
 .wb-btn--ghost:focus-visible {
   border-color: var(--wb-accent-line);
-  background: var(--wb-accent-soft);
   color: var(--wb-accent);
-  box-shadow: 0 8px 18px color-mix(in srgb, var(--73-accent) 10%, transparent);
 }
 
 .wb-btn--danger {
@@ -66,14 +66,12 @@
   border-color: color-mix(in srgb, var(--73-danger) 50%, transparent);
   background: var(--profile-danger-soft, color-mix(in srgb, var(--73-danger) 12%, transparent));
   color: var(--profile-danger-text, var(--73-danger));
-  box-shadow: 0 8px 18px color-mix(in srgb, var(--73-danger) 10%, transparent);
 }
 
 .wb-btn:disabled,
 .wb-btn[aria-disabled='true'] {
   opacity: 0.56;
   cursor: not-allowed;
-  box-shadow: none;
 }
 
 /* === 用户名首字头像 ===
@@ -96,7 +94,9 @@
 
 /* === 胶囊筛选 ===
    状态切换（全部 / 待我签署 / 已完成）用胶囊组，不用下拉：
-   选项少、要能一眼看出当前选中项，且选中项要报出条数。 */
+   选项少、要能一眼看出当前选中项，且选中项要报出条数。
+   未选中的胶囊是中性描边，只有选中那颗用主色实底——原来整组都是蓝底蓝字的胶囊，
+   一排放六个等于把一组筛选渲染成六个并列的「标签」。 */
 .wb-chip-group {
   display: flex;
   flex-wrap: wrap;
@@ -110,25 +110,25 @@
   gap: 6px;
   min-height: 28px;
   padding: 0 12px;
-  border: 1px solid color-mix(in srgb, var(--73-accent) 16%, transparent);
+  border: 1px solid var(--wb-line);
   border-radius: 999px;
-  background: var(--wb-accent-soft);
-  color: var(--wb-accent);
+  background: transparent;
+  color: var(--profile-text-sub, var(--73-ink-muted));
   font-size: 12px;
-  font-weight: 700;
+  font-weight: 500;
   white-space: nowrap;
 }
 
 .wb-chip__count {
   font-variant-numeric: tabular-nums;
-  font-weight: 700;
+  font-weight: 500;
   opacity: 0.8;
 }
 
 .wb-chip--button {
   font: inherit;
   font-size: 12px;
-  font-weight: 700;
+  font-weight: 500;
   cursor: pointer;
   transition:
     background 160ms ease,
@@ -138,6 +138,7 @@
 
 .wb-chip--button:hover {
   border-color: var(--wb-accent-line);
+  color: var(--wb-accent);
 }
 
 .wb-chip--button:focus-visible {
@@ -149,6 +150,7 @@
   background: var(--wb-accent);
   border-color: var(--wb-accent);
   color: var(--73-surface-strong);
+  font-weight: 600;
 }
 
 /* 中性档：终止态与「未选择 / 未关联」这类无强调语义的标签 */

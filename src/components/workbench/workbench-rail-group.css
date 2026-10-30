@@ -8,33 +8,22 @@
   flex-direction: column;
   overflow: hidden;
   border: 1px solid color-mix(in srgb, var(--73-accent-soft) 94%, transparent);
-  border-radius: 22px;
+  border-radius: 14px;
   background: color-mix(in srgb, var(--73-surface-strong) 94%, transparent);
-  box-shadow: 0 18px 50px color-mix(in srgb, var(--73-accent) 8%, transparent);
 }
 
 .workbench-rail-group__header {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 12px;
   flex: 0 0 auto;
-  padding: 26px 22px 12px;
+  padding: 20px 18px 10px;
 }
 
 .workbench-rail-group__header h1 {
   margin: 0;
-  color: var(--73-ink);
-  font-size: 24px;
-  line-height: 1.2;
-  letter-spacing: -0.03em;
-}
-
-.workbench-rail-group__header p {
-  margin: 5px 0 0;
-  color: var(--73-ink-placeholder);
-  font-size: 12px;
+  color: var(--73-ink-muted);
+  font-size: 13px;
+  font-weight: 600;
   line-height: 1.4;
+  letter-spacing: 0.02em;
 }
 
 .workbench-rail-group__list {
@@ -42,9 +31,9 @@
   display: flex;
   flex: 1 1 auto;
   flex-direction: column;
-  gap: 4px;
+  gap: 2px;
   overflow-y: auto;
-  padding: 0 10px 16px;
+  padding: 0 8px 14px;
   scrollbar-width: thin;
   scrollbar-color: color-mix(in srgb, var(--73-accent) 24%, transparent) transparent;
 }
@@ -54,24 +43,22 @@
   display: grid;
   gap: 2px;
   align-content: center;
-  min-height: 46px;
-  padding: 10px 14px;
-  border-radius: 14px;
+  min-height: 44px;
+  padding: 10px 12px;
+  border-radius: 8px;
   color: var(--73-ink);
   text-decoration: none;
   transition:
     background 160ms ease,
-    color 160ms ease,
-    transform 160ms ease;
+    color 160ms ease;
 }
 
 .workbench-rail-group__link:hover {
-  background: color-mix(in srgb, var(--73-accent-soft) 62%, transparent);
-  transform: translateX(2px);
+  background: color-mix(in srgb, var(--73-accent-soft) 52%, transparent);
 }
 
 .workbench-rail-group__link.active {
-  background: color-mix(in srgb, var(--73-accent-soft) 88%, transparent);
+  background: color-mix(in srgb, var(--73-accent-soft) 78%, transparent);
   color: var(--73-accent);
 }
 
@@ -80,7 +67,7 @@
   text-overflow: ellipsis;
   white-space: nowrap;
   font-size: 14px;
-  font-weight: 800;
+  font-weight: 600;
   line-height: 1.25;
 }
 
@@ -119,9 +106,5 @@
   .workbench-rail-group__link,
   .workbench-rail-group__link small {
     transition: none;
-  }
-
-  .workbench-rail-group__link:hover {
-    transform: none;
   }
 }

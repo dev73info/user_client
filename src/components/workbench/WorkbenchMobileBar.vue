@@ -149,11 +149,11 @@ const emit = defineEmits<{
     flex: 0 0 auto;
     min-height: 38px;
     padding: 0 12px;
-    border-radius: 12px;
+    border-radius: 8px;
     background: var(--uw-blue-fill);
     color: var(--uw-blue-ink);
     font-size: 13px;
-    font-weight: 800;
+    font-weight: 600;
   }
 
   /* 顶栏塞了读数时，「菜单」只留图标，把宽度让给读数（按钮自带 aria-label） */

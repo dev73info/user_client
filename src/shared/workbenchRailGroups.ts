@@ -10,7 +10,9 @@ import { Box, Tickets } from 'ui_73info'
  * 同一件事在两处、两个形状。现在按「一组一件事」收敛成两个分组，账户类留在齿轮里：
  *
  * - 订单与合同：成交全流程（我的需求 → 我的合同 → 我的发票 → 我的已购 → 过户与转移）；
- * - 资产与权益：券、积分、商城、权益、徽章这些「账户里的东西」。
+ * - 资产与权益：券、积分、权益、徽章这些「账户里的东西」。
+ *
+ * 积分商城不在这里：它是面向所有访客的兑换入口，挂在顶部菜单里，不走工作台图标栏。
  *
  * 与侧边栏的 `buildMenuGroups`（`workbenchMenu.ts`）分开放：那一份还喂着移动端抽屉的
  * 「账户服务」折叠组，两边的分组方式本来就不该绑在一起改。
@@ -94,7 +96,6 @@ export function buildRailGroups(realnameApproved: boolean): RailGroup[] {
       name: 'workbench-points',
       description: '签到、积分明细与打赏',
     },
-    { key: 'mall', label: '积分商城', name: 'mall', description: '兑换权益与道具卡' },
     {
       key: 'perks',
       label: '我的权益',

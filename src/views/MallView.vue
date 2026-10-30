@@ -115,10 +115,18 @@ function goUsePromoCards() {
   void router.push({ name: 'dev-resource-list' })
 }
 
+function goLogin() {
+  void router.push({
+    name: 'home',
+    query: { modal: 'auth', mode: 'login', redirect_to: '/mall' },
+  })
+}
+
 onMounted(async () => {
   auth.hydrate()
+  // 积分商城挂在顶栏（未登录也看得见），所以这里不再把游客弹回首页：
+  // 页面上给一条「登录后查看」的说明，登录完还能回到这一页。
   if (!auth.isAuthed) {
-    await router.replace('/')
     return
   }
   await loadAll()
@@ -129,12 +137,19 @@ onMounted(async () => {
   <main class="portal-page portal-page--nav mall-page">
     <div class="mall-balance">
       <h2>积分商城</h2>
-      <div class="mall-balance__num">
+      <div v-if="auth.isAuthed" class="mall-balance__num">
         <span>当前积分</span>
         <strong>{{ balance }}</strong>
       </div>
     </div>
-    <p v-if="loading" class="wb-empty" role="status">正在加载商城…</p>
+    <div v-if="!auth.isAuthed" class="wb-empty" role="status">
+      <span class="wb-empty__title">登录后查看积分商城</span>
+      积分商城用账号里的积分兑换权益与道具卡，登录后即可查看余额与可兑换内容。
+      <div class="wb-empty__actions">
+        <TButton variant="solid" tone="accent" @click="goLogin">去登录</TButton>
+      </div>
+    </div>
+    <p v-else-if="loading" class="wb-empty" role="status">正在加载商城…</p>
     <div v-else-if="loadError" class="wb-empty" role="alert">
       <span>{{ loadError }}</span>
       <TButton variant="outline" @click="loadAll">重试</TButton>
@@ -207,14 +222,14 @@ onMounted(async () => {
   gap: 16px;
   padding: 16px 20px;
   border-radius: 14px;
-  background: var(--73-app-grad-accent-soft-14);
-  border: 1px solid color-mix(in srgb, var(--73-accent-soft) 96%, transparent);
+  background: var(--73-surface-strong);
+  border: 1px solid var(--73-border-soft);
   color: var(--73-ink);
-  box-shadow: 0 12px 26px color-mix(in srgb, var(--73-accent) 8%, transparent);
 }
 .mall-balance h2 {
   margin: 0;
-  font-size: 20px;
+  font-size: 18px;
+  font-weight: 600;
 }
 .mall-balance__num {
   text-align: center;
@@ -227,14 +242,16 @@ onMounted(async () => {
   margin-bottom: 4px;
 }
 .mall-balance__num strong {
-  font-size: 32px;
+  font-size: 28px;
+  font-weight: 600;
   line-height: 1;
   color: var(--73-accent);
 }
 .mall-products h3,
 .mall-orders h3 {
-  font-size: 17px;
-  margin: 0 0 14px;
+  font-size: 16px;
+  font-weight: 600;
+  margin: 0 0 12px;
 }
 .mall-grid {
   display: grid;

@@ -99,12 +99,12 @@ const emit = defineEmits<{
   width: 100%;
   min-height: 34px;
   border: 0;
-  border-radius: 10px;
+  border-radius: 8px;
   background: var(--uw-blue-wash-soft);
   color: var(--uw-blue);
   font: inherit;
   font-size: 12px;
-  font-weight: 800;
+  font-weight: 500;
   cursor: pointer;
 }
 

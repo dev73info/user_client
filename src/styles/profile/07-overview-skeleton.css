@@ -32,7 +32,7 @@
   flex: 0 0 auto;
   color: var(--73-accent);
   font-size: 13px;
-  font-weight: 800;
+  font-weight: 500;
   text-decoration: none;
 }
 
@@ -51,14 +51,14 @@
   display: grid;
   gap: 6px;
   padding: 18px;
-  border: 1px dashed color-mix(in srgb, var(--73-accent-soft) 98%, transparent);
-  border-radius: 16px;
-  background: color-mix(in srgb, var(--73-accent-soft) 82%, transparent);
+  border: 1px dashed var(--73-border-soft);
+  border-radius: 10px;
+  background: transparent;
 }
 
 .profile-page .overview-empty-state strong {
   color: var(--profile-text-main);
-  font-weight: 800;
+  font-weight: 600;
 }
 
 .profile-page .overview-empty-state span {

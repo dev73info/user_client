@@ -16,25 +16,24 @@
   height: 48px;
   display: grid;
   place-items: center;
-  border-radius: 15px;
+  border-radius: 8px;
   background: transparent;
   color: var(--73-ink-placeholder);
   transition:
     color 150ms ease,
-    background 150ms ease,
-    box-shadow 150ms ease;
+    background 150ms ease;
 }
 
 .workbench-icon-rail__settings-trigger:hover {
-  color: var(--73-accent);
-  background: color-mix(in srgb, var(--73-accent-soft) 84%, transparent);
+  color: var(--73-ink);
+  background: color-mix(in srgb, var(--73-ink) 6%, transparent);
 }
 
+/* 与上方图标按钮同一套选中态：淡底 + 主色，不再用渐变和彩色投影 */
 .workbench-icon-rail__settings.is-open .workbench-icon-rail__settings-trigger,
 .workbench-icon-rail__settings-trigger.is-active {
-  color: var(--73-surface-strong);
-  background: var(--73-app-grad-accent-02);
-  box-shadow: 0 10px 22px color-mix(in srgb, var(--73-accent) 24%, transparent);
+  color: var(--73-accent);
+  background: color-mix(in srgb, var(--73-accent) 10%, transparent);
 }
 
 .workbench-icon-rail__settings-trigger:focus-visible,
@@ -64,13 +63,12 @@
   gap: 3px;
   padding: 8px;
   overflow-y: auto;
-  border: 1px solid color-mix(in srgb, var(--73-accent-soft) 94%, transparent);
-  border-radius: 16px;
-  background: color-mix(in srgb, var(--73-surface-strong) 97%, transparent);
-  box-shadow: 0 18px 42px color-mix(in srgb, var(--73-ink) 16%, transparent);
+  border: 1px solid var(--73-border-soft);
+  border-radius: 10px;
+  background: var(--73-surface-strong);
+  box-shadow: 0 12px 28px color-mix(in srgb, var(--73-ink) 14%, transparent);
   overscroll-behavior: contain;
   scrollbar-width: thin;
-  backdrop-filter: blur(18px);
 }
 
 .workbench-icon-rail__settings-option {
@@ -80,13 +78,13 @@
   gap: 9px;
   padding: 0 11px;
   border: 0;
-  border-radius: 9px;
+  border-radius: 6px;
   background: transparent;
   color: var(--73-ink);
   cursor: pointer;
   font: inherit;
   font-size: 13px;
-  font-weight: 700;
+  font-weight: 500;
   text-align: left;
   transition:
     color 140ms ease,
@@ -96,7 +94,7 @@
 .workbench-icon-rail__settings-option:hover,
 .workbench-icon-rail__settings-option.is-active {
   color: var(--73-accent);
-  background: color-mix(in srgb, var(--73-accent-soft) 88%, transparent);
+  background: color-mix(in srgb, var(--73-accent) 8%, transparent);
 }
 
 .workbench-icon-rail__settings-option svg {
@@ -127,7 +125,7 @@
   color: var(--73-ink);
   box-shadow: 0 8px 20px color-mix(in srgb, var(--73-ink) 12%, transparent);
   font-size: 12px;
-  font-weight: 700;
+  font-weight: 500;
   line-height: 1;
   white-space: nowrap;
   opacity: 0;

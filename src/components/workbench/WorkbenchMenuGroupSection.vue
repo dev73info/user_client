@@ -90,7 +90,7 @@ const showSectionLabel = computed(() => !GROUPS_WITHOUT_SECTION_LABEL.includes(p
   margin: 10px 4px 2px;
   color: var(--73-ink-placeholder);
   font-size: 12px;
-  font-weight: 800;
+  font-weight: 500;
   line-height: 1.2;
 }
 </style>

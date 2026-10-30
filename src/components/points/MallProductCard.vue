@@ -40,7 +40,7 @@ function actionLabel() {
         有效期：{{ durationLabel(product.duration_days) }} · 库存：{{ product.stock }}
       </p>
       <TButton
-        variant="solid"
+        variant="outline"
         tone="accent"
         :disabled="owned || insufficientPoints || product.stock <= 0"
         :loading="busy"

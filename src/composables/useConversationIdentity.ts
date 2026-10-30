@@ -1,7 +1,7 @@
 import { computed } from 'vue'
 
 import type { RequirementConversation } from '@/shared/conversations'
-import { avatarText, formatFullDateTime } from '@/shared/conversationTime'
+import { avatarText } from '@/shared/conversationTime'
 
 import type { RealtimeStatus } from '@/composables/useRequirementConversationSession'
 
@@ -82,26 +82,15 @@ export function useConversationIdentity(readSources: () => IdentitySources) {
     readSources().conversation ? participantLabel.value : readSources().requirementId,
   )
 
-  const lastMessageLabel = computed(() => {
-    const { conversation } = readSources()
-    if (!conversation?.last_message_at) {
-      return '尚无消息'
-    }
-    return `最近 ${formatFullDateTime(conversation.last_message_at)}`
-  })
-
+  /**
+   * 会话头副信息里的实时状态。
+   *
+   * 只报「出问题了」：连上、连接中、待连接都是正常过程，把这些状态一直挂在标题下面，
+   * 等于让每个会话头顶都顶着一行会自己变色的字；只有断线重连才值得占这一行。
+   */
   const realtimeStatusLabel = computed(() => {
     const status = readSources().realtimeStatus
-    if (status === 'connected') {
-      return '实时同步中'
-    }
-    if (status === 'error') {
-      return '实时重连中'
-    }
-    if (status === 'connecting') {
-      return '实时连接中'
-    }
-    return '实时待连接'
+    return status === 'error' ? '实时重连中' : ''
   })
 
   return {
@@ -113,7 +102,6 @@ export function useConversationIdentity(readSources: () => IdentitySources) {
     peerName,
     peerInitial,
     headerPeerLabel,
-    lastMessageLabel,
     realtimeStatusLabel,
   }
 }

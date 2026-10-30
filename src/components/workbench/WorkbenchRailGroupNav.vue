@@ -24,7 +24,6 @@ const emit = defineEmits<{
   <section class="workbench-rail-group" :aria-label="group.label">
     <header class="workbench-rail-group__header">
       <h1>{{ group.label }}</h1>
-      <p>{{ group.items.length }} 项</p>
     </header>
 
     <nav class="workbench-rail-group__list">

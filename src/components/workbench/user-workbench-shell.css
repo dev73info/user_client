@@ -32,6 +32,8 @@
   min-height: 0;
 }
 
+/* 图标工作台：整块底只是一层中性浅灰。原来还叠了一道左上角的蓝色径向渐变，
+   结果中栏与右栏各自又是白卡叠在白卡上，页面上没有一块能当「底」的地方。 */
 .user-workbench--icon-shell {
   width: 100%;
   height: calc(100dvh - var(--portal-header-footprint, 98px));
@@ -40,13 +42,7 @@
   gap: 0;
   margin: 0;
   overflow: hidden;
-  background:
-    radial-gradient(
-      circle at 8% 12%,
-      color-mix(in srgb, var(--73-accent-soft) 82%, transparent),
-      transparent 28%
-    ),
-    color-mix(in srgb, var(--73-accent-soft) 42%, var(--73-surface-strong));
+  background: var(--73-bg-soft);
 }
 
 .user-workbench__main--chat,
@@ -68,10 +64,9 @@
   min-height: 0;
   overflow-y: auto;
   padding: 18px;
-  border: 1px solid color-mix(in srgb, var(--73-accent-soft) 94%, transparent);
-  border-radius: 22px;
-  background: color-mix(in srgb, var(--73-surface-strong) 96%, transparent);
-  box-shadow: 0 18px 50px color-mix(in srgb, var(--73-accent) 8%, transparent);
+  border: 1px solid var(--73-border-soft);
+  border-radius: 14px;
+  background: var(--73-surface-strong);
   overscroll-behavior: contain;
 }
 
@@ -93,27 +88,27 @@
 }
 
 .user-workbench__content--workspace :deep(.community-page__header h1) {
-  font-size: 24px;
-  font-weight: 800;
-  letter-spacing: -0.03em;
+  font-size: 19px;
+  font-weight: 600;
+  letter-spacing: 0;
 }
 
 .user-workbench__content--workspace :deep(.community-page__tabs) {
-  gap: 8px;
+  gap: 6px;
 }
 
 .user-workbench__content--workspace :deep(.community-page__tabs button) {
-  min-height: 38px;
-  padding: 0 14px;
-  border-radius: 11px;
+  min-height: 34px;
+  padding: 0 12px;
+  border-radius: 8px;
   font-size: 13px;
 }
 
 .user-workbench__content--workspace :deep(.community-filters input),
 .user-workbench__content--workspace :deep(.community-filters select) {
-  min-height: 42px;
-  border-radius: 12px;
-  padding: 0 14px;
+  min-height: 38px;
+  border-radius: 8px;
+  padding: 0 12px;
   font-size: 13px;
 }
 
@@ -124,8 +119,8 @@
 
 .user-workbench__content--workspace :deep(.community-page__publish),
 .user-workbench__content--workspace :deep(.community-filters button) {
-  min-height: 40px;
-  border-radius: 12px;
+  min-height: 36px;
+  border-radius: 8px;
 }
 
 .user-workbench__content--workspace :deep(.community-page__results) {
@@ -167,8 +162,8 @@
 }
 
 .user-workbench__content :deep(.portal-page__panel) {
-  padding: 24px;
-  border-radius: 22px;
+  padding: 22px;
+  border-radius: var(--wb-radius-card, 14px);
 }
 
 .user-workbench__content :deep(.portal-page__stats) {
@@ -177,12 +172,13 @@
 
 .user-workbench__content :deep(.portal-page__stat-card) {
   padding: 16px;
-  border-radius: 16px;
+  border-radius: var(--wb-radius-item, 10px);
 }
 
 .user-workbench__content :deep(.portal-page__stat-card strong) {
   margin-bottom: 0;
-  font-size: 28px;
+  font-size: 24px;
+  font-weight: 600;
   line-height: 1;
 }
 

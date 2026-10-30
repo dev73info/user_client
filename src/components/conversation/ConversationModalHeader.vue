@@ -17,8 +17,8 @@ defineProps<{
   peerLabel: string
   realtimeStatus: RealtimeStatus
   realtimeError: string
+  /** 只有断线重连才有文案，正常时是空串（那一行就不渲染）。 */
   realtimeStatusLabel: string
-  lastMessageLabel: string
   /** 需求详情抽屉是否已经打开（详情按钮的高亮与 aria-expanded）。 */
   detailOpen: boolean
   loading: boolean
@@ -61,19 +61,19 @@ const emit = defineEmits<{
       @keydown.space.prevent="emit('toggle-detail')"
     >
       <h3>{{ conversationTitle }}</h3>
-      <!-- 副信息一行：对方 · 实时状态 · 最近动静。原来「实时同步中」「最近 9/29 15:30」
-           各占一枚同色胶囊，挨在一起看着像两个并列的标签；现在合成一行浅灰正文，
-           实时状态交给前面的小圆点，头部从三行收到两行。 -->
+      <!-- 副信息一行只报「对方是谁」。实时状态、最近一条消息都不放在这里：
+           前者每几秒自己变色，后者「尚无消息」在空会话里等于什么都没说，
+           两者叠在标题下面会一直抖动，也不让人更清楚这条会话是跟谁在谈。 -->
       <p class="conversation-modal__identity-meta">
         <span class="conversation-modal__peer">{{ peerLabel }}</span>
         <span
+          v-if="realtimeStatusLabel"
           class="conversation-modal__live"
           :class="`conversation-modal__live--${realtimeStatus}`"
           :title="realtimeError"
         >
           {{ realtimeStatusLabel }}
         </span>
-        <span class="conversation-modal__recent">{{ lastMessageLabel }}</span>
       </p>
     </div>
 
@@ -126,22 +126,14 @@ const emit = defineEmits<{
   color: var(--73-ink-muted);
 }
 
-/* 副信息一行：对方 · 实时状态 · 最近动静。段间用一个间隔点分开，不给每段套胶囊——
-   三枚同色胶囊并排会读成「三个标签」，其中时间本来就不是标签。 */
+/* 副信息一行：对方（+ 断线时的实时状态）。原来段间还夹着一个「·」与「最近 …」，
+   两段并排读成三个标签；现在只留对方，分隔点也一起删掉。 */
 .conversation-modal__identity-meta {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: 2px 6px;
   font-size: 12px;
-}
-
-/* 段间不留「· ●」两个点挨着：实时状态前面那颗彩色圆点本身就是分隔，
-   所以只在它后面补一个间隔点，把「最近 …」与前面分开。 */
-.conversation-modal__identity-meta > .conversation-modal__live::after {
-  content: '·';
-  margin-left: 6px;
-  color: var(--73-ink-disabled);
 }
 
 /* 一方名过长时自己省略，不要顶破标题栏 */
@@ -274,18 +266,9 @@ const emit = defineEmits<{
     height: 38px;
   }
 
+  /* 触屏档：标题与副信息都收一档，副信息只留对方 */
   .conversation-modal__identity h3 {
     font-size: 15px;
-  }
-
-  /* 触屏档：时间隐掉，副信息只留「对方 · 实时状态」；上一段末尾的间隔点也要一起收，
-     否则行尾吊着一个点 */
-  .conversation-modal__recent {
-    display: none;
-  }
-
-  .conversation-modal__identity-meta > .conversation-modal__live::after {
-    content: none;
   }
 
   .conversation-modal__header {

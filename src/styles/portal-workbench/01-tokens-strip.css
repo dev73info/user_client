@@ -14,16 +14,16 @@
 
    | 构件 | 本层 | 开发者侧 | 共同取值 |
    | --- | --- | --- | --- |
-   | 顶部读数条 | .wb-strip | .dev-meta-strip | 24px 圆角 / 12px 24px 内边距 / 描边 --line / 阴影 --shadow |
-   | 卡头 | .wb-card-head | .dev-card-head | 标题 18px/700、说明 13px、下边距 18px |
-   | 工具栏 | .wb-toolbar | .dev-toolbar | 控件 36px 高 / 10px 圆角、间距 10px、下边距 16px |
-   | 列表项 | .wb-item | .dev-stack-item | 12px 圆角 / 16px 18px 内边距 / 描边 --line / 无阴影 |
-   | 空态 | .wb-empty | .dev-empty-state | 12px 圆角 / 24px 内边距 / 虚线 --line |
-   | 内嵌块 | .wb-panel | —（开发者侧暂无对应构件） | 12px 内边距 / 12px 圆角 / 描边 --line |
-   | 组名 | .wb-subhead | —（同上） | 13px / 700 / 卡片标题色 |
+   | 顶部读数条 | .wb-strip | .dev-meta-strip | 14px 圆角 / 10px 20px 内边距 / 描边 --line / 一层贴地投影 |
+   | 卡头 | .wb-card-head | .dev-card-head | 标题 18px/600、说明 13px、下边距 18px |
+   | 工具栏 | .wb-toolbar | .dev-toolbar | 控件 36px 高 / 8px 圆角、间距 10px、下边距 16px |
+   | 列表项 | .wb-item | .dev-stack-item | 10px 圆角 / 16px 18px 内边距 / 描边 --line / 无阴影 |
+   | 空态 | .wb-empty | .dev-empty-state | 10px 圆角 / 24px 内边距 / 虚线 --line |
+   | 内嵌块 | .wb-panel | —（开发者侧暂无对应构件） | 12px 内边距 / 10px 圆角 / 描边 --line |
+   | 组名 | .wb-subhead | —（同上） | 13px / 600 / 卡片标题色 |
    | 提示文案 | .wb-note | —（同上） | 12px / 1.6 / 说明色 |
    | 胶囊 | .wb-chip | .dev-chip | 28px 高 / 0 12px 内边距 / 999px |
-   | 分页 | .wb-pager | .dev-pager | 控件 36px、页码 10px 圆角 |
+   | 分页 | .wb-pager | .dev-pager | 控件 36px、页码 8px 圆角 |
    | 主色 | --wb-accent | --dev-blue | var(--73-accent) |
 
    主色取 `var(--73-accent)`（设计规范登记的门户与开发者共同主色，也是工作台外壳顶栏与侧边栏用的那一支），
@@ -36,11 +36,15 @@
 /* 令牌挂在 :root 上（命名前缀 --wb- 已足够隔离），下面各构件直接引用，
    不必每个选择器再抄一份。 */
 :root {
-  /* 尺寸档与开发者侧同源：卡片 24px、内嵌块 12px、控件 10px + 36px 高、胶囊 999px。
-     改这里就等于同时改了两侧，不要再在页面里写这些 px。 */
-  --wb-radius-card: 24px;
-  --wb-radius-item: 12px;
-  --wb-radius-control: 10px;
+  /* 尺寸档与开发者侧同源：卡片 14px、内嵌块 10px、控件 8px + 36px 高、胶囊 999px。
+     改这里就等于同时改了两侧，不要再在页面里写这些 px。
+
+     这三档原来各是 24 / 12 / 10px。24px 的卡片圆角配上「每层卡片都再套一层卡片」的结构，
+     一屏里会同时出现四五个弧度相同的圆角盒子，眼睛得先数盒子才找到内容；
+     收到 14px 后卡片退成「纸」，只剩胶囊与按钮还是圆的。 */
+  --wb-radius-card: 14px;
+  --wb-radius-item: 10px;
+  --wb-radius-control: 8px;
   --wb-control-height: 36px;
   /* 主色与冷灰三件套：取值与 dev-base.css 的 --dev-blue / --dev-line / --dev-shadow /
      --dev-ink-soft / --dev-muted 完全相同，两边必须一起改。 */
@@ -51,7 +55,9 @@
   /* 中性标签底（.wb-badge 与卡片内的小角标共用；原来两处各写一遍同一个 rgba） */
   --wb-tag-bg: color-mix(in srgb, var(--73-ink-placeholder) 12%, transparent);
   --wb-ink-soft: var(--73-ink-soft);
-  --wb-shadow: 0 20px 44px color-mix(in srgb, var(--73-ink-soft) 10%, transparent);
+  /* 卡片只留一层贴地的投影：原来是 0 20px 44px（大而虚的那一支），
+     读数条、面板、列表行、内嵌块各来一层，页面下半截永远蒙着一片灰。 */
+  --wb-shadow: 0 1px 2px color-mix(in srgb, var(--73-ink) 5%, transparent);
 }
 
 /* 用户工作台的作用域根：`.profile-page` 是工作台各页的根元素，弹窗会被 teleport 到

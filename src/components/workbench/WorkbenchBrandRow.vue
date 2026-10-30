@@ -94,8 +94,8 @@ const emit = defineEmits<{
   min-width: 0;
   overflow: hidden;
   color: var(--uw-ink-strong);
-  font-size: 15px;
-  font-weight: 800;
+  font-size: 14px;
+  font-weight: 600;
   line-height: 1.2;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -115,7 +115,7 @@ const emit = defineEmits<{
 .user-workbench__brand span {
   color: var(--uw-blue-bright);
   font-size: 12px;
-  font-weight: 800;
+  font-weight: 500;
 }
 
 .user-workbench__brand em {
@@ -129,7 +129,7 @@ const emit = defineEmits<{
   color: var(--uw-blue-ink);
   font-size: 12px;
   font-style: normal;
-  font-weight: 800;
+  font-weight: 500;
 }
 
 .user-workbench__drawer-close {
@@ -157,7 +157,7 @@ const emit = defineEmits<{
   color: var(--uw-blue-ink);
   font: inherit;
   font-size: 12px;
-  font-weight: 800;
+  font-weight: 500;
   cursor: pointer;
   transition:
     border-color 180ms ease,

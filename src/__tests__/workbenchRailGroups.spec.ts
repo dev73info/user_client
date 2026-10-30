@@ -33,12 +33,11 @@ describe('buildRailGroups', () => {
     ])
   })
 
-  it('资产与权益按券 / 积分 / 权益排', () => {
+  it('资产与权益按券 / 积分 / 权益排（积分商城不在这里，走顶栏）', () => {
     expect(buildRailGroups(true)[1]?.items.map((item) => item.label)).toEqual([
       '我的收藏',
       '优惠券中心',
       '积分中心',
-      '积分商城',
       '我的权益',
       '勋章与邀请',
     ])
@@ -95,7 +94,7 @@ describe('图标栏不重复、也不漏入口', () => {
     expect(duplicates).toEqual([])
   })
 
-  it('用户点名的 15 个入口全部可达', () => {
+  it('用户点名的入口全部可达（积分商城走顶栏，见 usePortalTopNavNav）', () => {
     const names = reachableRouteNames(true)
 
     for (const name of [
@@ -108,7 +107,6 @@ describe('图标栏不重复、也不漏入口', () => {
       'workbench-favorites',
       'workbench-coupons',
       'workbench-points',
-      'mall',
       'workbench-perks',
       'workbench-badges',
       'workbench-resource-purchases',

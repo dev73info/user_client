@@ -2,7 +2,7 @@
    同一份顺序，既不重复写一遍声明，也不会因为两个组件各自覆写把最终颜色改成另一个值。
 
    1) 头像的底色 / 圆角 / 字重：会话头一颗（.conversation-modal__avatar），消息气泡左边一颗
-      （.conversation-message__avatar，尺寸与橙色覆写就在下面，跟基础形态同文件保证顺序）。
+      （.conversation-message__avatar，尺寸与浅灰覆写就在下面，跟基础形态同文件保证顺序）。
    2) 作曲器里所有按钮的底子（描边、圆角、指针、不收缩）：作曲器外壳里的「移除附件」、
       输入行里的表情 / 附件 / 发送，分在三个组件里，底子只在这里写一遍；
       每条后面的具体样式都比它更具体，谁先加载都不会被这两条盖掉。
@@ -38,16 +38,18 @@
   }
 }
 
+/* 会话头像：浅底 + 深色首字（会话头、消息气泡左侧同一做法）。
+   原来头像是蓝→青渐变、气泡里是橙→黄渐变，还各垫一层彩色投影，
+   同一条会话里两个头像两种风格，比消息正文还抢眼。 */
 .conversation-modal__avatar,
 .conversation-message__avatar {
-  background: var(--73-app-grad-accent-02);
-  box-shadow: 0 8px 18px color-mix(in srgb, var(--73-accent) 18%, transparent);
+  background: color-mix(in srgb, var(--73-accent) 9%, transparent);
+  color: var(--73-accent);
   display: inline-grid;
   place-items: center;
   flex: 0 0 auto;
   border-radius: 999px;
-  color: var(--73-surface-strong);
-  font-weight: 900;
+  font-weight: 600;
 }
 
 .conversation-message__avatar {
@@ -55,8 +57,8 @@
   height: 26px;
   font-size: 11px;
   margin-bottom: 1px;
-  background: var(--73-app-grad-warning-01);
-  box-shadow: 0 4px 10px color-mix(in srgb, var(--73-warning-text) 16%, transparent);
+  background: color-mix(in srgb, var(--73-ink) 6%, transparent);
+  color: var(--73-ink-muted);
 }
 
 .conversation-modal__composer .conversation-modal__tool-btn,

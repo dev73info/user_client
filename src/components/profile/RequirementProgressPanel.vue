@@ -86,9 +86,9 @@ const emit = defineEmits<{ select: [row: RequirementProgressRow] }>()
   align-items: center;
   min-height: 64px;
   padding: 16px 18px;
-  border: 1px solid color-mix(in srgb, var(--73-accent-soft) 78%, transparent);
-  border-radius: 14px;
-  background: color-mix(in srgb, var(--73-surface-strong) 86%, transparent);
+  border: 1px solid var(--73-border-soft);
+  border-radius: 10px;
+  background: var(--73-surface-strong);
 }
 
 .overview-requirement-list .overview-requirement-progress {
@@ -98,20 +98,21 @@ const emit = defineEmits<{ select: [row: RequirementProgressRow] }>()
 
 .overview-requirement-progress :deep(.req-progress) {
   padding: 16px 18px 14px;
-  border-color: color-mix(in srgb, var(--73-accent-soft) 76%, transparent);
-  border-radius: 12px;
-  background: color-mix(in srgb, var(--73-accent-soft) 78%, transparent);
+  border-color: var(--73-border-soft);
+  border-radius: 10px;
+  background: var(--73-bg-soft);
 }
 
 .overview-requirement-list li.clickable {
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition:
+    border-color 160ms ease,
+    background 160ms ease;
 }
 
 .overview-requirement-list li.clickable:hover {
-  border-color: color-mix(in srgb, var(--73-accent) 92%, transparent);
-  background: color-mix(in srgb, var(--73-accent-soft) 98%, transparent);
-  box-shadow: 0 12px 24px color-mix(in srgb, var(--73-accent) 10%, transparent);
+  border-color: color-mix(in srgb, var(--73-accent) 42%, transparent);
+  background: color-mix(in srgb, var(--73-ink) 3%, var(--73-surface-strong));
 }
 
 .overview-requirement-list div {
@@ -136,7 +137,7 @@ const emit = defineEmits<{ select: [row: RequirementProgressRow] }>()
   background: color-mix(in srgb, var(--73-warning) 14%, transparent);
   color: var(--73-warning-text);
   font-size: 12px;
-  font-weight: 800;
+  font-weight: 500;
   white-space: nowrap;
 }
 
@@ -168,7 +169,7 @@ const emit = defineEmits<{ select: [row: RequirementProgressRow] }>()
     gap: 8px;
     margin-top: 0;
     font-size: 15px;
-    font-weight: 800;
+    font-weight: 600;
   }
 
   .overview-focus-panel .overview-section-head h2::before {
@@ -207,11 +208,11 @@ const emit = defineEmits<{ select: [row: RequirementProgressRow] }>()
 
   .overview-requirement-list li + li {
     padding-top: 14px;
-    border-top: 1px solid color-mix(in srgb, var(--73-accent-soft) 96%, transparent);
+    border-top: 1px solid var(--73-border-soft);
   }
 
   .overview-requirement-list li.clickable:hover {
-    border-color: color-mix(in srgb, var(--73-accent-soft) 96%, transparent);
+    border-color: var(--73-border-soft);
     background: transparent;
     box-shadow: none;
   }
@@ -245,8 +246,8 @@ const emit = defineEmits<{ select: [row: RequirementProgressRow] }>()
   .overview-requirement-list small {
     grid-area: budget;
     color: var(--73-ink);
-    font-size: 16px;
-    font-weight: 800;
+    font-size: 15px;
+    font-weight: 600;
     font-variant-numeric: tabular-nums;
   }
 
@@ -258,8 +259,8 @@ const emit = defineEmits<{ select: [row: RequirementProgressRow] }>()
   .overview-requirement-progress :deep(.req-progress) {
     padding: 12px 6px 10px;
     border: 0;
-    border-radius: 12px;
-    background: var(--73-accent-soft);
+    border-radius: 8px;
+    background: var(--73-bg-soft);
   }
 
   /* 组件在 640px 以下会改成竖排五行，总览里保持横排：只留圆点和步骤名，说明文字收起 */
@@ -293,9 +294,9 @@ const emit = defineEmits<{ select: [row: RequirementProgressRow] }>()
 
   .overview-requirement-progress :deep(.req-progress__connector) {
     display: block;
-    top: 11px;
-    left: calc(50% + 14px);
-    right: calc(-50% + 14px);
+    top: 10px;
+    left: calc(50% + 13px);
+    right: calc(-50% + 13px);
   }
 }
 </style>

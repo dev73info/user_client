@@ -108,7 +108,7 @@ const emit = defineEmits<{
   overflow: hidden;
   padding: 0;
   border: 1px solid var(--uw-surface-line);
-  border-radius: 22px;
+  border-radius: 14px;
   background: var(--uw-surface);
   box-shadow: var(--uw-surface-shadow);
 }

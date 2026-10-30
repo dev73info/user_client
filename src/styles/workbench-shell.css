@@ -17,14 +17,17 @@
   --uw-ink-strong: var(--73-ink);
   --uw-ink: var(--73-ink-soft);
 
-  /* --- 表面、描边与阴影 --- */
-  --uw-surface: color-mix(in srgb, var(--73-surface-strong) 94%, transparent);
-  --uw-surface-hover: color-mix(in srgb, var(--73-accent-soft) 96%, transparent);
-  --uw-surface-line: color-mix(in srgb, var(--73-accent-soft) 96%, transparent);
-  --uw-line: color-mix(in srgb, var(--73-accent-soft) 95%, transparent);
-  --uw-line-faint: color-mix(in srgb, var(--73-border) 82%, transparent);
-  --uw-surface-shadow: 0 14px 34px color-mix(in srgb, var(--73-accent) 8%, transparent);
-  --uw-bar-shadow: 0 10px 24px color-mix(in srgb, var(--73-accent) 8%, transparent);
+  /* --- 表面、描边与阴影 ---
+     描边用中性 --73-border-soft、阴影只留 1px 贴地那一层：
+     原来是「主色 96% 混合的蓝边 + 14px/34px 的蓝雾」，侧边栏、品牌行、移动顶栏各自垫一层，
+     整页像蒙在蓝色光晕里。 */
+  --uw-surface: var(--73-surface-strong);
+  --uw-surface-hover: color-mix(in srgb, var(--73-ink) 5%, transparent);
+  --uw-surface-line: var(--73-border-soft);
+  --uw-line: var(--73-border-soft);
+  --uw-line-faint: var(--73-border-soft);
+  --uw-surface-shadow: 0 1px 2px color-mix(in srgb, var(--73-ink) 6%, transparent);
+  --uw-bar-shadow: 0 1px 2px color-mix(in srgb, var(--73-ink) 6%, transparent);
   --uw-backdrop: color-mix(in srgb, var(--73-ink) 36%, transparent);
 
   /* --- 强调蓝：外壳自有的三档（与 --wb-accent var(--73-accent) 并列，不合并） --- */

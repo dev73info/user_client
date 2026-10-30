@@ -45,6 +45,27 @@
   pointer-events: none;
 }
 
+/* 工作台与门户正文页的主按钮：底色一律取平色，不再压一层 135° 蓝渐变与蓝色投影。
+   渐变 + 投影这一对是「每颗按钮都在发光」的来源：一屏里出现四五个同样的蓝块，
+   读者分不出哪一个是这一页真正的主行动。选择器在前面挂一层页壳类，
+   特异性 (0,4,0) 压过 TButton 自己的 scoped 规则 (0,3,0)，不依赖样式表先后。 */
+.user-workbench .t73-button.t73-button--solid.t73-button--tone-accent,
+.portal-page .t73-button.t73-button--solid.t73-button--tone-accent {
+  background-image: none;
+}
+
+.user-workbench .t73-button.t73-button--solid:not(.t73-button--disabled):hover,
+.user-workbench .t73-button.t73-button--solid:not(.t73-button--disabled):focus-visible,
+.portal-page .t73-button.t73-button--solid:not(.t73-button--disabled):hover,
+.portal-page .t73-button.t73-button--solid:not(.t73-button--disabled):focus-visible {
+  box-shadow: none;
+}
+
+.user-workbench .t73-button.t73-button--outline:not(.t73-button--disabled):hover,
+.portal-page .t73-button.t73-button--outline:not(.t73-button--disabled):hover {
+  box-shadow: none;
+}
+
 /* 用户名渐变展示：由积分商城「权限」类商品兑换开启 */
 .username-gradient {
   background: var(--73-app-grad-danger-01);

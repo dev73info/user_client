@@ -24,9 +24,10 @@ const countLabel = computed(() =>
     : `${props.threads.length} 个会话`,
 )
 
+/** 头像取对方名的首字（「开发者：bob」取 bob）；未开启会话没有对方，退回需求标题首字。 */
 function avatarText(thread: MessageThread) {
-  const partner = thread.partnerLabel.replace(/^.*?：/, '').trim()
-  const source = partner || thread.title
+  const partner = thread.kind === 'conversation' ? thread.partnerLabel.replace(/^.*?：/, '') : ''
+  const source = partner.trim() || thread.title
   return Array.from(source)[0]?.toUpperCase() || '聊'
 }
 
@@ -120,7 +121,10 @@ function formatTime(thread: MessageThread) {
               <strong>{{ thread.title }}</strong>
               <time>{{ formatTime(thread) }}</time>
             </span>
-            <span class="workbench-inbox__meta">{{ thread.partnerLabel }}</span>
+            <!-- 只有真会话才报对方是谁；「会话待开启」那一行的状态已经写在状态胶囊里，不再重复一行 -->
+            <span v-if="thread.kind === 'conversation'" class="workbench-inbox__meta">
+              {{ thread.partnerLabel }}
+            </span>
             <span class="workbench-inbox__preview">{{ thread.description }}</span>
           </span>
 

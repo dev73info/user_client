@@ -79,7 +79,3 @@
   min-width: 0;
   text-overflow: ellipsis;
 }
-
-#workbench-mobile-bar-extra .conversation-modal__recent {
-  display: none;
-}

@@ -119,7 +119,6 @@ const {
   conversationTitle,
   headerPeerLabel,
   peerInitial,
-  lastMessageLabel,
   realtimeStatusLabel,
 } = useConversationIdentity(() => ({
   title: props.title,
@@ -246,7 +245,6 @@ function handleBackdropClick() {
             :realtime-status="realtimeStatus"
             :realtime-error="realtimeError"
             :realtime-status-label="realtimeStatusLabel"
-            :last-message-label="lastMessageLabel"
             :detail-open="detailDrawerOpen"
             :loading="loading"
             @close="closeModal"

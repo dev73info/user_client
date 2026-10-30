@@ -38,25 +38,24 @@
   display: grid;
   place-items: center;
   flex: 0 0 auto;
-  border-radius: 15px;
+  border-radius: 8px;
   background: transparent;
   color: var(--73-ink-placeholder);
   transition:
     color 150ms ease,
-    background 150ms ease,
-    transform 150ms ease,
-    box-shadow 150ms ease;
+    background 150ms ease;
 }
 
 .workbench-icon-rail__item:hover {
-  color: var(--73-accent);
-  background: color-mix(in srgb, var(--73-accent-soft) 84%, transparent);
+  color: var(--73-ink);
+  background: color-mix(in srgb, var(--73-ink) 6%, transparent);
 }
 
+/* 选中态只做「淡底 + 主色图标」，不用渐变、不用彩色投影：
+   图标栏是导航骨架，它比内容区更亮就会抢走视觉中心。 */
 .workbench-icon-rail__item.is-active {
-  color: var(--73-surface-strong);
-  background: var(--73-app-grad-accent-02);
-  box-shadow: 0 10px 22px color-mix(in srgb, var(--73-accent) 24%, transparent);
+  color: var(--73-accent);
+  background: color-mix(in srgb, var(--73-accent) 10%, transparent);
 }
 
 .workbench-icon-rail__item:focus-visible {
@@ -78,7 +77,7 @@
   background: var(--73-danger);
   color: var(--73-surface-strong);
   font-size: 10px;
-  font-weight: 800;
+  font-weight: 600;
   line-height: 1;
 }
 
@@ -94,7 +93,7 @@
   color: var(--73-ink);
   box-shadow: 0 8px 20px color-mix(in srgb, var(--73-ink) 12%, transparent);
   font-size: 12px;
-  font-weight: 700;
+  font-weight: 600;
   line-height: 1;
   white-space: nowrap;
   opacity: 0;

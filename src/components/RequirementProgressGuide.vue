@@ -211,9 +211,9 @@ function isStepCurrent(step: Step): boolean {
 <style scoped>
 .req-progress {
   padding: 14px 16px;
-  border: 1px solid color-mix(in srgb, var(--73-ink-placeholder) 24%, transparent);
-  border-radius: 14px;
-  background: color-mix(in srgb, var(--73-surface-strong) 72%, transparent);
+  border: 1px solid var(--73-border-soft);
+  border-radius: 10px;
+  background: var(--73-surface-strong);
 }
 
 .req-progress__steps {
@@ -236,18 +236,20 @@ function isStepCurrent(step: Step): boolean {
 }
 
 .req-progress__dot {
-  width: 26px;
-  height: 26px;
+  width: 24px;
+  height: 24px;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 12px;
-  font-weight: 700;
+  font-weight: 600;
   background: var(--dev-line);
   color: var(--dev-muted);
   border: 2px solid transparent;
-  transition: all 0.2s ease;
+  transition:
+    background 160ms ease,
+    color 160ms ease;
   z-index: 1;
 }
 
@@ -256,11 +258,12 @@ function isStepCurrent(step: Step): boolean {
   color: var(--73-surface-strong);
 }
 
+/* 当前步只靠描边区分，不再套一圈 4px 的绿光晕：
+   光晕那一条挂在五个步骤上，进度条就成了整页最亮的一块。 */
 .req-progress__step.is-current .req-progress__dot {
   background: var(--73-surface-strong);
   color: var(--dev-cyan);
   border-color: var(--dev-cyan);
-  box-shadow: 0 0 0 4px color-mix(in srgb, var(--73-success) 14%, transparent);
 }
 
 .req-progress__copy {
@@ -271,7 +274,7 @@ function isStepCurrent(step: Step): boolean {
 
 .req-progress__step-title {
   font-size: 12px;
-  font-weight: 700;
+  font-weight: 500;
   color: var(--dev-ink-soft);
 }
 
@@ -288,9 +291,9 @@ function isStepCurrent(step: Step): boolean {
 
 .req-progress__connector {
   position: absolute;
-  top: 13px;
-  left: calc(50% + 16px);
-  right: calc(-50% + 16px);
+  top: 12px;
+  left: calc(50% + 15px);
+  right: calc(-50% + 15px);
   height: 2px;
   background: var(--dev-line);
 }
