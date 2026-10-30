@@ -32,21 +32,6 @@ export const miscRoutes: MockRoute[] = [
   },
   {
     method: 'GET',
-    path: '/teams',
-    note: '我的团队（演示数据没有团队）',
-    // 原来这条写成了 `/teams/teams`：别名表把 `/team/teams` 翻成 `/teams`，
-    // 声明的 `/teams/teams` 归一化后是 `teams/teams`，和请求的 `teams` 永远对不上，
-    // 于是它是一条死路由，团队下拉全靠兜底的 `[]`。
-    handler: () => jsonResponse([]),
-  },
-  {
-    method: 'GET',
-    path: '/teams/invitations',
-    note: '我的团队邀请（演示数据没有团队邀请）',
-    handler: () => jsonResponse([]),
-  },
-  {
-    method: 'GET',
     path: '/ticket',
     note: '我的工单（演示数据没有工单；形状是裸数组，兜底的 [] 也对，这里只是让名字落到表里）',
     handler: () => jsonResponse([]),

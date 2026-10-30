@@ -10,6 +10,7 @@ import {
   versionsOf,
 } from '../../db'
 import { jsonResponse, noContentResponse, textResponse } from '../../response'
+import { mockTeamResources } from '../../db/teams'
 import { myResources, nowIso } from './helpers'
 
 export const devResourceRoutes: MockRoute[] = [
@@ -64,8 +65,11 @@ export const devResourceRoutes: MockRoute[] = [
   {
     method: 'GET',
     path: '/dev/resources/resources/team',
-    note: '团队资源（演示数据里没有团队资源）',
-    handler: () => jsonResponse([]),
+    note: '团队资源：工作台总览的「资源项目」卡读的就是这一份',
+    // 之前固定回 []，于是总览那张卡永远是「还没有资源」，而「资源列表」页明明有 4 个资源：
+    // 两者是两份数据（团队资源 / 个人资源），演示数据里没有团队时这个差别看起来就像页面坏了。
+    // 数据在 `db/teams.ts`，与个人资源分开，不混进「我的资源」。
+    handler: () => jsonResponse(mockTeamResources),
   },
   {
     method: 'GET',
