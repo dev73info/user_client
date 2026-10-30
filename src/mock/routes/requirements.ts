@@ -10,6 +10,7 @@
 
 import { defineRouteTable, type MockRoute } from '../router'
 
+import { agentRoutes } from './requirements/agentRoutes'
 import { clientRequirementRoutes } from './requirements/clientRoutes'
 import { dashboardRoutes } from './requirements/dashboardRoutes'
 import { requirementDetailRoutes } from './requirements/detailRoutes'
@@ -20,6 +21,7 @@ const routes: MockRoute[] = [
   ...requirementDetailRoutes,
   ...devRequirementRoutes,
   ...dashboardRoutes,
+  ...agentRoutes,
 ]
 
 export const requirementRoutes = defineRouteTable('requirements', routes)
