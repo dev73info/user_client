@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref, watch, type Component } from 'vue'
+import { computed, type Component } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import {
   Bell,
@@ -13,13 +13,14 @@ import {
   OfficeBuilding,
   Promotion,
   Star,
-  Switch,
   TIcon,
   UserFilled,
   Wallet,
 } from 'ui_73info'
 
 import { isWorkbenchChatPage } from '@/shared/workbenchChatRoute'
+
+import WorkbenchIconRailSettings from './WorkbenchIconRailSettings.vue'
 
 type RailItem = {
   key: string
@@ -41,8 +42,6 @@ const emit = defineEmits<{
 
 const route = useRoute()
 const router = useRouter()
-const settingsOpen = ref(false)
-const settingsRoot = ref<HTMLElement | null>(null)
 
 const userItems: RailItem[] = [
   {
@@ -65,13 +64,6 @@ const userItems: RailItem[] = [
     icon: Grid,
     to: { name: 'workbench-requirements' },
     activeNames: ['workbench-requirements'],
-  },
-  {
-    key: 'hall',
-    label: '需求大厅',
-    icon: Promotion,
-    to: { name: 'workbench-requirement-hall' },
-    activeNames: ['workbench-requirement-hall'],
   },
   {
     key: 'tickets',
@@ -189,23 +181,6 @@ const switchLabel = computed(() =>
   props.isDevWorkbenchMode ? '回到用户工作台' : '进入开发者工作台',
 )
 
-const settingsItems = [
-  {
-    key: 'profile',
-    label: '个人账户',
-    to: { name: 'workbench', query: { view: 'profile' } },
-  },
-  {
-    key: 'account',
-    label: '账户详情',
-    to: { name: 'workbench-account' },
-  },
-] satisfies Array<{
-  key: string
-  label: string
-  to: { name: string; query?: Record<string, string> }
-}>
-
 function isActive(item: RailItem) {
   if (item.key === 'messages') {
     return isChatActive.value
@@ -226,54 +201,6 @@ function badgeFor(key: string) {
   }
   return 0
 }
-
-function closeSettings() {
-  settingsOpen.value = false
-}
-
-function toggleSettings() {
-  settingsOpen.value = !settingsOpen.value
-}
-
-function openSettingsItem(to: { name: string; query?: Record<string, string> }) {
-  closeSettings()
-  void router.push(to)
-}
-
-function switchWorkbenchMode() {
-  closeSettings()
-  emit('switch-mode')
-}
-
-function handleDocumentPointerDown(event: PointerEvent) {
-  if (!settingsOpen.value || !(event.target instanceof Node)) {
-    return
-  }
-  if (!settingsRoot.value?.contains(event.target)) {
-    closeSettings()
-  }
-}
-
-function handleDocumentKeydown(event: KeyboardEvent) {
-  if (event.key === 'Escape' && settingsOpen.value) {
-    closeSettings()
-  }
-}
-
-watch(
-  () => route.fullPath,
-  () => closeSettings(),
-)
-
-onMounted(() => {
-  document.addEventListener('pointerdown', handleDocumentPointerDown, true)
-  document.addEventListener('keydown', handleDocumentKeydown)
-})
-
-onBeforeUnmount(() => {
-  document.removeEventListener('pointerdown', handleDocumentPointerDown, true)
-  document.removeEventListener('keydown', handleDocumentKeydown)
-})
 </script>
 
 <template>
@@ -300,60 +227,7 @@ onBeforeUnmount(() => {
       </button>
     </nav>
 
-    <div
-      ref="settingsRoot"
-      class="workbench-icon-rail__settings"
-      :class="{ 'is-open': settingsOpen }"
-    >
-      <button
-        class="workbench-icon-rail__item workbench-icon-rail__settings-trigger"
-        type="button"
-        aria-label="工作台设置"
-        aria-haspopup="menu"
-        :aria-expanded="settingsOpen"
-        title="工作台设置"
-        @click="toggleSettings"
-      >
-        <TIcon :size="22">
-          <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
-            <circle cx="12" cy="12" r="3.2" />
-            <path
-              d="M19.2 13.5a7.8 7.8 0 0 0 0-3l2-1.5-2-3.5-2.4 1a8.8 8.8 0 0 0-2.7-1.5L13.8 2h-3.6L10 4.9A8.8 8.8 0 0 0 7.2 6.4l-2.4-1-2 3.5 2 1.5a7.8 7.8 0 0 0 0 3l-2 1.5 2 3.5 2.4-1a8.8 8.8 0 0 0 2.8 1.5l.2 2.9h3.6l.2-2.9a8.8 8.8 0 0 0 2.7-1.5l2.4 1 2-3.5-2-1.5Z"
-            />
-          </svg>
-        </TIcon>
-        <span class="workbench-icon-rail__tooltip">工作台设置</span>
-      </button>
-
-      <section
-        v-if="settingsOpen"
-        class="workbench-icon-rail__settings-menu"
-        role="menu"
-        aria-label="工作台设置"
-        @click.stop
-      >
-        <button
-          v-for="item in settingsItems"
-          :key="item.key"
-          class="workbench-icon-rail__settings-option"
-          type="button"
-          role="menuitem"
-          @click="openSettingsItem(item.to)"
-        >
-          {{ item.label }}
-        </button>
-        <span class="workbench-icon-rail__settings-divider" aria-hidden="true"></span>
-        <button
-          class="workbench-icon-rail__settings-option workbench-icon-rail__settings-switch"
-          type="button"
-          role="menuitem"
-          @click="switchWorkbenchMode"
-        >
-          <Switch />
-          <span>{{ switchLabel }}</span>
-        </button>
-      </section>
-    </div>
+    <WorkbenchIconRailSettings :switch-label="switchLabel" @switch-mode="emit('switch-mode')" />
   </aside>
 </template>
 

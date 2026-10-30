@@ -268,6 +268,7 @@ declare module 'vue' {
     WorkbenchChatInbox: typeof import('./src/components/workbench/WorkbenchChatInbox.vue')['default']
     WorkbenchChatView: typeof import('./src/components/workbench/WorkbenchChatView.vue')['default']
     WorkbenchIconRail: typeof import('./src/components/workbench/WorkbenchIconRail.vue')['default']
+    WorkbenchIconRailSettings: typeof import('./src/components/workbench/WorkbenchIconRailSettings.vue')['default']
     WorkbenchMenuGroupSection: typeof import('./src/components/workbench/WorkbenchMenuGroupSection.vue')['default']
     WorkbenchMenuItem: typeof import('./src/components/workbench/WorkbenchMenuItem.vue')['default']
     WorkbenchMenuNav: typeof import('./src/components/workbench/WorkbenchMenuNav.vue')['default']

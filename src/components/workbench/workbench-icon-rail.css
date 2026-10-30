@@ -59,89 +59,9 @@
   box-shadow: 0 10px 22px color-mix(in srgb, var(--73-accent) 24%, transparent);
 }
 
-.workbench-icon-rail__item:focus-visible,
-.workbench-icon-rail__settings-option:focus-visible {
+.workbench-icon-rail__item:focus-visible {
   outline: 2px solid var(--73-accent);
   outline-offset: 3px;
-}
-
-.workbench-icon-rail__settings {
-  position: relative;
-  flex: 0 0 auto;
-  margin-top: auto;
-}
-
-.workbench-icon-rail__settings-trigger svg {
-  width: 22px;
-  height: 22px;
-  stroke: currentColor;
-  stroke-width: 1.8;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-}
-
-.workbench-icon-rail__settings.is-open .workbench-icon-rail__settings-trigger {
-  color: var(--73-surface-strong);
-  background: var(--73-app-grad-accent-02);
-  box-shadow: 0 10px 22px color-mix(in srgb, var(--73-accent) 24%, transparent);
-}
-
-.workbench-icon-rail__settings-menu {
-  position: absolute;
-  right: auto;
-  bottom: 0;
-  left: calc(100% + 12px);
-  z-index: 90;
-  width: 196px;
-  display: grid;
-  gap: 4px;
-  padding: 8px;
-  border: 1px solid color-mix(in srgb, var(--73-accent-soft) 94%, transparent);
-  border-radius: 16px;
-  background: color-mix(in srgb, var(--73-surface-strong) 97%, transparent);
-  box-shadow: 0 18px 42px color-mix(in srgb, var(--73-ink) 16%, transparent);
-  backdrop-filter: blur(18px);
-}
-
-.workbench-icon-rail__settings-option {
-  min-height: 38px;
-  display: flex;
-  align-items: center;
-  gap: 9px;
-  padding: 0 11px;
-  border: 0;
-  border-radius: 10px;
-  background: transparent;
-  color: var(--73-ink);
-  cursor: pointer;
-  font: inherit;
-  font-size: 13px;
-  font-weight: 700;
-  text-align: left;
-  transition:
-    color 140ms ease,
-    background 140ms ease;
-}
-
-.workbench-icon-rail__settings-option:hover {
-  color: var(--73-accent);
-  background: color-mix(in srgb, var(--73-accent-soft) 88%, transparent);
-}
-
-.workbench-icon-rail__settings-option svg {
-  width: 17px;
-  height: 17px;
-  flex: 0 0 auto;
-}
-
-.workbench-icon-rail__settings-divider {
-  height: 1px;
-  margin: 3px 5px;
-  background: color-mix(in srgb, var(--73-border) 82%, transparent);
-}
-
-.workbench-icon-rail__settings-switch {
-  color: var(--73-accent);
 }
 
 .workbench-icon-rail__badge {

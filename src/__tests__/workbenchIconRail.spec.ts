@@ -7,7 +7,18 @@ import WorkbenchIconRail from '@/components/workbench/WorkbenchIconRail.vue'
 const routes = [
   'workbench',
   'workbench-account',
-  'workbench-requirement-hall',
+  'workbench-authorized-apps',
+  'workbench-tickets',
+  'workbench-signatures',
+  'workbench-invoices',
+  'workbench-favorites',
+  'workbench-coupons',
+  'workbench-points',
+  'mall',
+  'workbench-perks',
+  'workbench-badges',
+  'workbench-resource-purchases',
+  'workbench-purchase-transfers',
   'dev-home',
   'dev-messages',
   'dev-resource-list',
@@ -33,23 +44,17 @@ async function render(name: string, isDevWorkbenchMode: boolean) {
 }
 
 describe('工作台图标栏', () => {
-  it('用户模式保留消息与核心业务入口，需求大厅留在工作台外壳内', async () => {
-    const { router, wrapper } = await render('workbench', false)
+  it('用户模式保留消息与核心业务入口，不再显示需求大厅图标', async () => {
+    const { wrapper } = await render('workbench', false)
 
-    expect(wrapper.findAll('.workbench-icon-rail__item')).toHaveLength(9)
+    expect(wrapper.findAll('.workbench-icon-rail__item')).toHaveLength(8)
     expect(wrapper.text()).toContain('消息')
     expect(wrapper.text()).toContain('我的需求')
     expect(wrapper.text()).toContain('系统通知')
+    expect(wrapper.text()).not.toContain('需求大厅')
     expect(wrapper.text()).not.toContain('我的\n')
     expect(wrapper.find('.workbench-icon-rail__item.is-active').text()).toContain('消息')
     expect(wrapper.find('.workbench-icon-rail__badge').text()).toBe('3')
-
-    const hall = wrapper
-      .findAll('.workbench-icon-rail__item')
-      .find((item) => item.attributes('title') === '需求大厅')
-    await hall!.trigger('click')
-    await flushPromises()
-    expect(router.currentRoute.value.name).toBe('workbench-requirement-hall')
     wrapper.unmount()
   })
 
@@ -60,9 +65,26 @@ describe('工作台图标栏', () => {
     expect(wrapper.find('.workbench-icon-rail__item.is-active').text()).toContain('开发者总览')
 
     await wrapper.find('.workbench-icon-rail__settings-trigger').trigger('click')
-    expect(wrapper.find('[role="menu"]').text()).toContain('个人账户')
-    expect(wrapper.find('[role="menu"]').text()).toContain('账户详情')
-    expect(wrapper.find('[role="menu"]').text()).toContain('回到用户工作台')
+    const labels = wrapper
+      .findAll('.workbench-icon-rail__settings-option')
+      .map((item) => item.text())
+    expect(labels).toEqual([
+      '个人账户',
+      '账户详情',
+      '已授权应用',
+      '工单中心',
+      '我的合同',
+      '我的发票',
+      '我的收藏',
+      '优惠券中心',
+      '积分中心',
+      '积分商城',
+      '我的权益',
+      '勋章与邀请',
+      '我的已购',
+      '过户与转移',
+      '回到用户工作台',
+    ])
 
     await wrapper.find('.workbench-icon-rail__settings-switch').trigger('click')
     expect(wrapper.emitted('switch-mode')).toHaveLength(1)
