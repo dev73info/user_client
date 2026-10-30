@@ -1,7 +1,7 @@
 import type { MockRoute } from '../../router'
 
 import { bindRequirementRecord, devWallet, requirements, settledIncome } from '../../db'
-import { jsonResponse, readInt } from '../../response'
+import { jsonResponse } from '../../response'
 import { applyHallQuery, devRequirements, hallRequirements } from './helpers'
 
 export const devRequirementRoutes: MockRoute[] = [
@@ -9,20 +9,12 @@ export const devRequirementRoutes: MockRoute[] = [
   {
     method: 'GET',
     path: '/dev/requirements/hall/query',
-    note: '需求大厅（可接取的需求分页）',
-    handler: (request) => {
-      const page = readInt(request.query, 'page', 1)
-      const pageSize = readInt(request.query, 'page_size', 20)
-      const filtered = applyHallQuery(hallRequirements(), request.query)
-      const start = Math.max(page - 1, 0) * pageSize
-
-      return jsonResponse({
-        total: filtered.length,
-        page,
-        page_size: pageSize,
-        items: filtered.slice(start, start + pageSize),
-      })
-    },
+    note: '需求大厅：契约是不带查询参数、一次回全量数组；排序与分页在前端做',
+    handler: (request) =>
+      // 这里原本回的是 `{total, page, page_size, items}` 的分页对象，
+      // 而 `listRequirementHall` 按契约读的是裸数组，`payload.filter` 一调就抛，
+      // 于是大厅永远显示「没有可接的待关联需求」。形状按前端实际消费的那一种给。
+      jsonResponse(applyHallQuery(hallRequirements(), request.query)),
   },
   {
     method: 'GET',
