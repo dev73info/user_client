@@ -7,6 +7,7 @@ import { contractRoutes } from './contracts'
 import { conversationRoutes } from './conversations'
 import { invoiceRoutes } from './invoices'
 import { paymentRoutes } from './payments'
+import { pointsRoutes } from './points'
 import { requirementRoutes } from './requirements'
 import { resourceRoutes } from './resources'
 
@@ -23,6 +24,7 @@ export const mockRouteTables: readonly MockRouteTable[] = [
   paymentRoutes,
   invoiceRoutes,
   resourceRoutes,
+  pointsRoutes,
   conversationRoutes,
   communityRoutes,
   commonRoutes,
