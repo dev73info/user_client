@@ -129,6 +129,13 @@ function selectIdentity(target: (typeof MOCK_IDENTITIES)[number]) {
   line-height: 1.5;
 }
 
+:global(body:has(.user-workbench--icon-shell) .mock-switch) {
+  top: auto;
+  right: 16px;
+  bottom: 16px;
+  left: auto;
+}
+
 .mock-switch__fab {
   display: inline-flex;
   gap: 6px;
@@ -298,15 +305,31 @@ function selectIdentity(target: (typeof MOCK_IDENTITIES)[number]) {
   color: var(--73-danger);
 }
 
+@media (max-width: 900px) {
+  :global(body:has(.user-workbench--icon-shell) .mock-switch) {
+    top: auto;
+    right: 12px;
+    bottom: 74px;
+    left: auto;
+  }
+}
+
 @media (max-width: 640px) {
+  .mock-switch__fab-text,
+  .mock-switch__tip {
+    display: none;
+  }
+
   .mock-switch {
     top: 8px;
     left: 8px;
   }
 
-  .mock-switch__fab-text,
-  .mock-switch__tip {
-    display: none;
+  :global(body:has(.user-workbench--icon-shell) .mock-switch) {
+    top: auto;
+    right: 8px;
+    bottom: 70px;
+    left: auto;
   }
 }
 </style>

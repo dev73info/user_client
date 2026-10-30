@@ -150,6 +150,7 @@ describe('社区列表', () => {
     await flushPromises()
     expect(mocks.listFavorites).toHaveBeenCalledWith('token', { limit: 10, offset: 0 })
     expect(wrapper.text()).toContain('已收藏')
+    expect(wrapper.find('form.community-filters').exists()).toBe(false)
     wrapper.unmount()
   })
 
@@ -161,6 +162,7 @@ describe('社区列表', () => {
     await wrapper.get('.community-error button').trigger('click')
     await flushPromises()
     expect(wrapper.text()).toContain('暂时没有社区帖子')
+    expect(wrapper.find('.t73-empty--plain').exists()).toBe(true)
     wrapper.unmount()
   })
 

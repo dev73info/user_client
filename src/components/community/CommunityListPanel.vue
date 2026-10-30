@@ -91,7 +91,11 @@ async function submitPost(payload: CreateCommunityPostPayload) {
       </button>
     </div>
 
-    <form class="community-filters" @submit.prevent="list.applyFilters">
+    <form
+      v-if="list.mode !== 'favorites'"
+      class="community-filters"
+      @submit.prevent="list.applyFilters"
+    >
       <input
         v-model="list.keyword"
         class="community-filters__keyword"
@@ -99,9 +103,8 @@ async function submitPost(payload: CreateCommunityPostPayload) {
         maxlength="80"
         placeholder="搜索标题、作者或标签"
         aria-label="搜索社区帖子"
-        :disabled="list.mode === 'favorites'"
       />
-      <select v-if="list.mode !== 'favorites'" v-model="list.tag" aria-label="按标签筛选">
+      <select v-model="list.tag" aria-label="按标签筛选">
         <option value="">全部标签</option>
         <option v-for="item in list.tags" :key="item.id" :value="item.name">{{ item.name }}</option>
       </select>
@@ -111,7 +114,7 @@ async function submitPost(payload: CreateCommunityPostPayload) {
           {{ item.label }}
         </option>
       </select>
-      <TButton variant="solid" tone="accent" type="submit" :disabled="list.mode === 'favorites'">
+      <TButton variant="solid" tone="accent" type="submit">
         搜索
       </TButton>
       <TButton type="button" @click="list.resetFilters">重置</TButton>
@@ -127,7 +130,7 @@ async function submitPost(payload: CreateCommunityPostPayload) {
           <span>{{ list.error }}</span>
           <TButton @click="list.load">重新加载</TButton>
         </div>
-        <TEmpty v-else-if="!list.posts.length" :description="list.emptyText" />
+        <TEmpty v-else-if="!list.posts.length" :description="list.emptyText" variant="plain" />
         <div v-else class="community-page__posts">
           <CommunityPostCard
             v-for="post in list.posts"
