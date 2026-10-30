@@ -24,6 +24,11 @@
   height: 100%;
   min-height: 0;
   overflow: hidden;
+  /* 工作台（沉浸态）整块底与工作台网格同一档底色。
+     原来这一层是 --73-surface-strong（纯白），而工作台自己是 --73-bg-soft：
+     顶栏四周有 10px 外边距、下方又是整屏网格，白边与灰底接在一起就是一道横向分界，
+     看着像「顶栏浮在另一个页面上面」。统一到同一档之后，顶栏只是一张浮在灰底上的白卡。 */
+  background: var(--73-bg-soft);
 }
 
 .app-scrollbar {
