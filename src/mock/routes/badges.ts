@@ -60,21 +60,22 @@ const routes: MockRoute[] = [
   {
     method: 'GET',
     path: '/invite/leaderboard',
-    note: '邀请排行榜：只给当前身份一条，够撑住页面',
-    handler: () => {
+    note: '邀请排行榜（契约 `InviteLeaderboardResponse`：列表字段是 `leaderboard`）',
+    handler: (request) => {
       const profile = currentMockProfile()
+      const period = (request.query.get('period') ?? '').trim() || 'weekly'
+      const count = inviteStats().total_invited
 
+      // 字段名必须是契约的 `leaderboard`：原来写成了 `entries`，
+      // 组件读 `leaderboard.leaderboard` 拿到 undefined，排行榜永远停在「正在加载」。
       return jsonResponse({
-        period: 'alltime',
-        entries: [
-          {
-            rank: 1,
-            username: profile.username,
-            avatar_url: null,
-            count: inviteStats().total_invited,
-            badges: [],
-          },
+        period,
+        leaderboard: [
+          { rank: 1, username: 'toolsmith_demo', avatar_url: null, count: 42, badges: [] },
+          { rank: 2, username: profile.username, avatar_url: null, count, badges: [] },
+          { rank: 3, username: 'zhang_demo', avatar_url: null, count: 5, badges: [] },
         ],
+        my_rank: { rank: 2, count },
       })
     },
   },

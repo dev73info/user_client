@@ -18,6 +18,7 @@ import { miscRoutes } from './common/miscRoutes'
 import { oauthClientRoutes } from './common/oauthClientRoutes'
 import { realnameRoutes } from './common/realnameRoutes'
 import { settlementRoutes } from './common/settlementRoutes'
+import { shareRoutes } from './common/shareRoutes'
 import { tipRoutes } from './common/tipRoutes'
 
 const routes: MockRoute[] = [
@@ -26,6 +27,7 @@ const routes: MockRoute[] = [
   ...settlementRoutes,
   ...tipRoutes,
   ...oauthClientRoutes,
+  ...shareRoutes,
   ...miscRoutes,
 ]
 
