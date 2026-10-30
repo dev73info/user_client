@@ -82,7 +82,7 @@ const {
 </script>
 
 <template>
-  <main class="page-shell custom-page-shell profile-page my-requirements-page">
+  <main class="page-shell custom-page-shell profile-page my-requirements-page wb-sheet">
     <RequirementStrip
       :stats="requirementStats"
       :loading="requirementLoading || conversationLoading"

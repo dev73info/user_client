@@ -58,7 +58,7 @@ const {
 </script>
 
 <template>
-  <main class="page-shell custom-page-shell profile-page points-page" :aria-busy="loading">
+  <main class="page-shell custom-page-shell profile-page points-page wb-sheet" :aria-busy="loading">
     <PointsSummaryStrip
       :loading="loading"
       :transfer-loading="transferLoading"

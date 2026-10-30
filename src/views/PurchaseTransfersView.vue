@@ -60,7 +60,7 @@ onMounted(() => {
 </script>
 
 <template>
-  <main class="page-shell custom-page-shell profile-page" :aria-busy="loading">
+  <main class="page-shell custom-page-shell profile-page wb-sheet" :aria-busy="loading">
     <WorkbenchBarSlot>
       <div class="wb-strip" aria-label="过户申请概览">
         <div class="wb-strip__item">

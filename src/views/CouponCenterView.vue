@@ -76,7 +76,7 @@ onMounted(() => {
 </script>
 
 <template>
-  <main class="page-shell custom-page-shell profile-page coupons-page" :aria-busy="loading">
+  <main class="page-shell custom-page-shell profile-page coupons-page wb-sheet" :aria-busy="loading">
     <!-- 顶部读数条：读数在最左，页面级刷新固定在右上角 -->
     <WorkbenchBarSlot>
       <div class="wb-strip" aria-label="优惠券概览">

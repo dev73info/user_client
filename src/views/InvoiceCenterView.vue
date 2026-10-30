@@ -67,7 +67,10 @@ const selectedIds = computed(() =>
 </script>
 
 <template>
-  <main class="page-shell custom-page-shell profile-page invoice-center-page" :aria-busy="loading">
+  <main
+    class="page-shell custom-page-shell profile-page invoice-center-page wb-sheet"
+    :aria-busy="loading"
+  >
     <InvoiceSummaryStrip :loading="loading" :stats="stats" @refresh="loadData" />
 
     <section class="wallet-section">
@@ -116,14 +119,11 @@ const selectedIds = computed(() =>
         <span class="wb-empty__title">{{
           groups.length ? '没有符合条件的发票' : '还没有发票记录'
         }}</span>
-        <template v-if="groups.length">
-          <div class="wb-empty__actions">
-            <TButton variant="outline" @click="resetFilters">
-              <TIcon><RefreshLeft /></TIcon><span>清除筛选</span>
-            </TButton>
-          </div>
-        </template>
-        <template v-else>获取发票的入口在对应需求的操作栏里，提交后会在这里出现。</template>
+        <div v-if="groups.length" class="wb-empty__actions">
+          <TButton variant="outline" @click="resetFilters">
+            <TIcon><RefreshLeft /></TIcon><span>清除筛选</span>
+          </TButton>
+        </div>
       </div>
       <template v-else>
         <input

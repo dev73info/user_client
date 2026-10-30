@@ -130,7 +130,7 @@ function openDetail(item: MyContractSummary) {
 </script>
 
 <template>
-  <main class="page-shell custom-page-shell profile-page signatures" :aria-busy="loading">
+  <main class="page-shell custom-page-shell profile-page signatures wb-sheet" :aria-busy="loading">
     <!-- 顶部读数条：读数在最左，页面级刷新固定在右上角 -->
     <WorkbenchBarSlot>
       <div class="wb-strip" aria-label="签署概览">
@@ -208,14 +208,11 @@ function openDetail(item: MyContractSummary) {
         <span class="wb-empty__title">{{
           contracts.length ? '没有符合条件的签署记录' : '暂无签署记录'
         }}</span>
-        <template v-if="contracts.length">
-          <div class="wb-empty__actions">
-            <TButton variant="outline" @click="resetFilters">
-              <TIcon><RefreshLeft /></TIcon><span>清除筛选</span>
-            </TButton>
-          </div>
-        </template>
-        <template v-else>需求进入签约环节后，这里会出现待你签署的合同。</template>
+        <div v-if="contracts.length" class="wb-empty__actions">
+          <TButton variant="outline" @click="resetFilters">
+            <TIcon><RefreshLeft /></TIcon><span>清除筛选</span>
+          </TButton>
+        </div>
       </div>
       <template v-else>
         <!-- 行式与需求协作同一口径：上半信息行（标题/编号 + 右侧状态与时间），下半操作条。 -->

@@ -75,7 +75,7 @@ onMounted(() => {
 </script>
 
 <template>
-  <main class="page-shell custom-page-shell profile-page" :aria-busy="loading">
+  <main class="page-shell custom-page-shell profile-page wb-sheet" :aria-busy="loading">
     <WorkbenchBarSlot>
       <div class="wb-strip" aria-label="已授权应用概览">
         <div class="wb-strip__item">
@@ -107,7 +107,6 @@ onMounted(() => {
       </div>
       <div v-else-if="!items.length" class="wb-empty">
         <span class="wb-empty__title">还没有授权任何应用</span>
-        <span>在接口资源站点通过平台登录授权后，会显示在这里。</span>
       </div>
       <ul v-else class="authorized-apps" aria-label="已授权应用">
         <li v-for="item in items" :key="item.developer_username" class="authorized-app">

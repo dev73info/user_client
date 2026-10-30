@@ -27,7 +27,7 @@ async function reload() {
 </script>
 
 <template>
-  <main class="page-shell custom-page-shell profile-page badges-center-page">
+  <main class="page-shell custom-page-shell profile-page badges-center-page wb-sheet">
     <WorkbenchBarSlot>
       <div class="wb-strip" aria-label="勋章与邀请概览">
         <div class="wb-strip__item">

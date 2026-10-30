@@ -207,6 +207,17 @@
   padding: 0;
 }
 
+/* 单纸页（页根挂 .wb-sheet，规则见 portal-workbench/08-sheet-page.css）同理：
+   读数条是这张卡自己的纸头，面板是纸身，内边距归零后整页只剩一层圆角与边界。 */
+.user-workbench__content--workspace:has(.wb-sheet) {
+  padding: 0;
+}
+
+/* 纸内各段靠自己的分隔线与内边距排布，页根那 16px 栅格间距会把纸头与纸身裂开一道缝 */
+.user-workbench__content--workspace :deep(.page-shell.wb-sheet) {
+  gap: 0;
+}
+
 .workbench-page-enter-active,
 .workbench-page-leave-active {
   transition:

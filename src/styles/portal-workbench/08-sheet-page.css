@@ -1,0 +1,79 @@
+/* === 单纸页（.wb-sheet）：读数条与面板合成一张纸 ===
+   工作台里这些页原来是「内容区大卡 → 读数条卡 → 面板卡 → 列表行」四层同心圆角＋描边＋阴影，
+   一屏看下去像套了四层盒子，层级全是装饰、没有一层在传递信息。
+
+   页根挂上 .wb-sheet 后改成一页一张纸：内容区那张卡就是唯一的外框，内边距归零，
+   顶部读数条变成纸头的一条读数带（只留一条分隔线），下面的 .wallet-section 退回纯排版容器，
+   列表行（.wb-item）/ 空态仍在纸上分层。层级从四层降到两层：纸 → 行。
+
+   与「系统通知」页（NotificationCenterView 自带的 `:not(.dev-page)` 那几条）同一套做法，
+   区别只是这里收成统一层的一条规则，各页不必各写一遍。
+
+   不加 .wb-sheet 的页面（工单中心、需求助手、账户与优惠券这类本来就是多栏或多块的版式）
+   继续沿用 .wb-strip / .wallet-section 的卡片外观——那里的卡片是栏与栏之间的边界，不是装饰。
+
+   读数条由 WorkbenchBarSlot 包着：桌面端原地渲染（就是这个页根的直接子元素），
+   ≤900px 被 Teleport 进工作台顶栏，那时它是顶栏的子元素，`>` 选择器自然不再命中，
+   顶栏里本来就有一套无卡片样式的规则（见 06-responsive-900-640.css）。 */
+
+/* 纸内各段的间距改由分隔线与内边距承担：页根不再留 16px 的栅格间距
+   （那条栅格规则在工作台外壳里，`gap: 0` 与它一起写在 user-workbench-shell.css）。 */
+
+.wb-sheet > .wb-strip {
+  flex: 0 0 auto;
+  margin: 0;
+  padding: 14px 24px;
+  border: 0;
+  border-bottom: 1px solid color-mix(in srgb, var(--73-accent-soft) 92%, transparent);
+  border-radius: 0;
+  background: color-mix(in srgb, var(--73-accent-soft) 24%, transparent);
+  box-shadow: none;
+}
+
+.wb-sheet > .wallet-section {
+  margin-top: 0;
+  padding: 22px 24px 24px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+/* 同一页有多块面板时（勋章墙 + 邀请记录，账户优惠券的分块），用一条分隔线代替两张卡 */
+.wb-sheet > .wallet-section + .wallet-section {
+  padding-top: 22px;
+  border-top: 1px solid color-mix(in srgb, var(--73-accent-soft) 92%, transparent);
+}
+
+/* 中栏已经用高亮项写着这一页的名字（「订单与合同 → 我的发票」），纸上再挂一遍同名卡头就是第三遍同样的字。
+   只在有中栏的版式里收这条：同样挂 .wb-sheet、但没有中栏的页面（已授权应用）靠这个卡头当页面标题。
+   卡头右侧带动作的（需求列表的「发布新需求」、已购的「过户与转移」）整条保留。
+   窄屏本来就由 07-mobile-app-list.css 收掉无动作卡头，这里只是把同一口径延伸到有中栏的桌面宽度。 */
+.user-workbench__main--rail-group
+  .wb-sheet
+  > .wallet-section
+  > .wb-card-head:not(:has(.wb-card-head__actions > *)) {
+  display: none;
+}
+
+/* 空态在这张纸上不再是一层虚线盒子：没有内容时只留一行居中的说明。
+   只收「面板直属的空态」与「面板里再分一栏的列表空态」（过户与转移的「待我接收 / 我发起的」），
+   券包里那种内嵌块（.wb-panel）自己的小空态仍然是块，那是组内层级，不是页内层级。 */
+.wb-sheet > .wallet-section > .wb-empty,
+.wb-sheet > .wallet-section > section > .wb-empty {
+  margin: 0;
+  padding: 28px 0;
+  border: 0;
+  background: transparent;
+}
+
+@media (max-width: 900px) {
+  /* 读数带在窄屏整条搬进顶栏（见上），这里剩下的只有面板：收窄左右内边距，与顶栏对齐 */
+  .wb-sheet > .wallet-section {
+    padding: 16px 16px 20px;
+  }
+
+  .wb-sheet > .wallet-section + .wallet-section {
+    padding-top: 16px;
+  }
+}

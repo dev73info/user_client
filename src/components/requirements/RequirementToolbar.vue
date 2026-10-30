@@ -86,14 +86,11 @@ const selectedState = defineModel<RequirementFilterKey>('selectedState', { requi
     <span class="wb-empty__title">
       {{ totalCount ? '没有符合条件的需求单' : '还没有提交过需求单' }}
     </span>
-    <template v-if="totalCount">
-      <div class="wb-empty__actions">
-        <TButton variant="outline" @click="emit('resetFilters')">
-          <TIcon><RefreshLeft /></TIcon><span>清除筛选</span>
-        </TButton>
-      </div>
-    </template>
-    <template v-else>点击右上角「发布新需求」即可创建你的第一个需求。</template>
+    <div v-if="totalCount" class="wb-empty__actions">
+      <TButton variant="outline" @click="emit('resetFilters')">
+        <TIcon><RefreshLeft /></TIcon><span>清除筛选</span>
+      </TButton>
+    </div>
   </div>
 </template>
 

@@ -3,7 +3,7 @@
    分片只搬运不修改：声明、选择器、媒体查询一字未改，色值也没动；改顺序会让级联悄悄变样。
    01 令牌与顶部读数条 / 02 卡头与工具栏 / 03 按钮、头像与胶囊筛选 /
    04 列表与列表项 / 05 分页、空态、内嵌块与状态徽标 / 06 窄屏与移动端读数条 /
-   07 移动端 App 化列表 */
+   07 移动端 App 化列表 / 08 单纸页（读数条与面板合成一张卡） */
 @import './portal-workbench/01-tokens-strip.css';
 @import './portal-workbench/02-card-head-toolbar.css';
 @import './portal-workbench/03-buttons-avatar-chip.css';
@@ -11,3 +11,4 @@
 @import './portal-workbench/05-pager-empty-panel-badge.css';
 @import './portal-workbench/06-responsive-900-640.css';
 @import './portal-workbench/07-mobile-app-list.css';
+@import './portal-workbench/08-sheet-page.css';

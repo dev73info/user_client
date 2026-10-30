@@ -81,7 +81,7 @@ function openTransfer(order: ResourcePurchaseOrder) {
 </script>
 
 <template>
-  <main class="page-shell custom-page-shell profile-page" :aria-busy="loading">
+  <main class="page-shell custom-page-shell profile-page wb-sheet" :aria-busy="loading">
     <PurchaseStatsStrip
       :stats="stats"
       :loading="loading"
@@ -143,16 +143,11 @@ function openTransfer(order: ResourcePurchaseOrder) {
         <span class="wb-empty__title">
           {{ hasActiveFilters ? '没有符合条件的订单' : '还没有购买记录' }}
         </span>
-        <template v-if="hasActiveFilters">
-          <div class="wb-empty__actions">
-            <TButton variant="outline" @click="resetFilters">
-              <TIcon><RefreshLeft /></TIcon><span>清除筛选</span>
-            </TButton>
-          </div>
-        </template>
-        <template v-else>
-          在资源详情页购买付费资源后，订单会出现在这里。退款由卖家或平台发起，如需退款请联系卖家或客服。
-        </template>
+        <div v-if="hasActiveFilters" class="wb-empty__actions">
+          <TButton variant="outline" @click="resetFilters">
+            <TIcon><RefreshLeft /></TIcon><span>清除筛选</span>
+          </TButton>
+        </div>
       </div>
       <template v-else>
         <ul class="wb-list" aria-label="已购资源订单">
