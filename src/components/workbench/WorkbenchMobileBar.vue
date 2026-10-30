@@ -138,7 +138,7 @@ const emit = defineEmits<{
   .user-workbench__mobile-bar span {
     color: var(--73-ink-muted);
     font-size: 12px;
-    font-weight: 700;
+    font-weight: 600;
     line-height: 1.2;
   }
 

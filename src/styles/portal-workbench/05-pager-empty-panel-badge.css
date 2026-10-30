@@ -84,7 +84,7 @@
   margin: 0;
   color: var(--profile-text-main, var(--73-ink));
   font-size: 13px;
-  font-weight: 700;
+  font-weight: 600;
 }
 
 /* === 底部提示文案 ===
@@ -111,7 +111,7 @@
   background: var(--wb-tag-bg, color-mix(in srgb, var(--73-ink-placeholder) 12%, transparent));
   color: var(--profile-text-sub, var(--73-ink-muted));
   font-size: 12px;
-  font-weight: 700;
+  font-weight: 600;
   white-space: nowrap;
 }
 

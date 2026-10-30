@@ -243,10 +243,11 @@ const flags = computed(() => {
   min-width: 0;
 }
 
-/* 卡片式列表的行标题取统一层的 .dev-stack-item__title 档位（16px），
-   原来是 17px，比同一页的其他行标题大一档 */
+/* 卡片式列表的行标题取统一层的 .dev-stack-item__title 档位（15px / 600），
+   原来是 17px 加粗，比同一页的其他行标题大一档 */
 .dev-requirement-card__title-block .dev-requirement-hall__title {
-  font-size: 16px;
+  font-size: 15px;
+  font-weight: 600;
 }
 
 /* 补充行（需求已解绑）那一句占位。样式与 `DevRequirementBriefField` 里的正文容器是同一份：
@@ -306,7 +307,7 @@ const flags = computed(() => {
   padding: 0 8px;
   border-radius: 999px;
   font-size: 11px;
-  font-weight: 800;
+  font-weight: 600;
   white-space: nowrap;
 }
 

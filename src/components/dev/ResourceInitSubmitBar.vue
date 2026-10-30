@@ -61,10 +61,11 @@ const emit = defineEmits<{
         ></template>
         {{ isApiKind ? '创建接口' : isVersionSale ? '创建并发布首版' : '创建私有项目' }}
       </TButton>
+      <!-- 两条提交动作原来是蓝实底 + 绿实底并排：同一行两颗「主按钮」互相抢，
+          发布公开这一条本来也比私有项目多一步审核。次一级的那条改描边，只在主次明确时保留颜色。 -->
       <TButton
         v-if="!isApiKind"
-        variant="solid"
-        tone="success"
+        variant="outline"
         :disabled="!canSubmit"
         :loading="submitting"
         @click="emit('submit', 'public')"

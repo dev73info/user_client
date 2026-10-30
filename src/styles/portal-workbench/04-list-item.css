@@ -28,10 +28,12 @@
   min-width: 0;
 }
 
+/* 行标题 15px/600：原来是 16px/700，一整屏十几行时中文黑体加粗会糊成一片，
+   与卡片标题（17px/600）拉开一档就够，不靠加粗强调。 */
 .wb-item__title {
   color: var(--profile-text-main, var(--73-ink));
-  font-size: 16px;
-  font-weight: 700;
+  font-size: 15px;
+  font-weight: 600;
   line-height: 1.5;
 }
 
@@ -81,5 +83,5 @@
   min-height: 32px;
   height: 32px;
   border-radius: var(--wb-radius-control);
-  font-weight: 700;
+  font-weight: 600;
 }

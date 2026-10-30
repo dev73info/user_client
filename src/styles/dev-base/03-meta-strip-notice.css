@@ -74,7 +74,7 @@
 
 .dev-meta-strip__value {
   font-size: 15px;
-  font-weight: 700;
+  font-weight: 600;
   font-variant-numeric: tabular-nums;
   color: var(--dev-ink);
   white-space: nowrap;
@@ -129,7 +129,7 @@
 .dev-notice__copy strong {
   color: var(--dev-ink);
   font-size: 15px;
-  font-weight: 700;
+  font-weight: 600;
   line-height: 1.4;
 }
 

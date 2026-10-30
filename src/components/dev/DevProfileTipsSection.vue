@@ -63,8 +63,8 @@ defineProps<{
 
 .dev-profile__tips-stat strong {
   color: var(--dp-tip-ink-strong);
-  font-size: 24px;
-  font-weight: 800;
+  font-size: 22px;
+  font-weight: 600;
 }
 
 .dev-profile__tips-stat span {

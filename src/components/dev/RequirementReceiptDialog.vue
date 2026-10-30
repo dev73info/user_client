@@ -174,7 +174,7 @@ const emit = defineEmits<{
 /* 单笔金额同样用金色（与累计读数、钱包里的入账金额同一支） */
 .dev-receipt-detail__item-amount {
   font-size: 18px;
-  font-weight: 800;
+  font-weight: 600;
   color: var(--dev-gold);
   font-variant-numeric: tabular-nums;
 }

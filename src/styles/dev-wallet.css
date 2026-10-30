@@ -51,7 +51,7 @@
 /* 「可提现余额」「可提现保证金」两个小标题已删：卡片头上已有「接单收入」「保证金余额」，
    这里只留大数。原来那两条 13px 的 __label 规则随之移除。 */
 
-/* 金额大数：走统一层的 .dev-figure（30px / 800 / 金）与 .dev-figure--muted（不可提时压弱），
+/* 金额大数：走统一层的 .dev-figure（26px / 600 / 金）与 .dev-figure--muted（不可提时压弱），
    本页原来自带 .wallet-hero__amount 的 36px，与总览页同一组读数差一个字号，已删。 */
 
 .wallet-hero__tags {
@@ -184,7 +184,7 @@
 
 .dev-recharge-dialog__notes strong {
   color: var(--dev-ink-soft);
-  font-weight: 800;
+  font-weight: 600;
 }
 
 /* R047 断点收敛：原档位 720px → 640px */
@@ -220,7 +220,7 @@
   }
 
   .wallet-hero__main .dev-figure {
-    font-size: 26px;
+    font-size: 22px;
     line-height: 1.2;
   }
 

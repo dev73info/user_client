@@ -101,8 +101,8 @@ const emit = defineEmits<{ save: [] }>()
 .dev-profile-modal__header h2 {
   margin: 0;
   color: var(--dp-ink);
-  font-size: 20px;
-  font-weight: 800;
+  font-size: 18px;
+  font-weight: 600;
 }
 
 .dev-profile-modal__close {

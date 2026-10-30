@@ -90,25 +90,26 @@
 .portal-card__title--rank h2,
 .portal-card__title--team h2 {
   font-size: 16px;
-  font-weight: 800;
+  font-weight: 600;
 }
 
+/* 卡片标题前的小图标：平铺淡底 + 主色字，不加彩色投影。
+   原来每个标题都套一层渐变 + 一层蓝雾，四张侧栏卡并排时就是四块发光的方块，
+   比卡片内容本身更抢眼。 */
 .portal-card-title-icon {
   display: grid;
   width: 30px;
   height: 30px;
   place-items: center;
   flex: 0 0 auto;
-  border-radius: 10px;
-  background: var(--73-app-grad-accent-soft-09);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--73-accent) 8%, transparent);
   color: var(--73-accent);
-  box-shadow: 0 8px 18px color-mix(in srgb, var(--73-accent) 14%, transparent);
 }
 
 .portal-card-title-icon--team {
-  background: var(--73-app-grad-warning-03);
+  background: color-mix(in srgb, var(--73-warning) 10%, transparent);
   color: var(--73-warning);
-  box-shadow: 0 8px 18px color-mix(in srgb, var(--73-warning) 14%, transparent);
 }
 
 .portal-card-title-icon svg {
@@ -121,9 +122,12 @@
   stroke-linejoin: round;
 }
 
+/* 侧栏这几个小卡片头：16px / 600，与全站卡片标题同一档粗细。
+   原来 800 的字重让「平台公告」「今日数据」这类小标题比页面主标题还黑，
+   一屏里出现四五处同等级的黑色大字，视觉中心就散了。 */
 .portal-card__title--notice h2 {
   font-size: 16px;
-  font-weight: 800;
+  font-weight: 600;
 }
 
 .portal-card__header--notice {
@@ -136,7 +140,7 @@
 
 .portal-card__title--stats h2 {
   font-size: 16px;
-  font-weight: 800;
+  font-weight: 600;
 }
 
 /* 这条浅色条只承载右上角的动作入口，文案已按「副标题非必要不用」删掉，
@@ -148,8 +152,8 @@
   gap: 10px;
   margin: 0 0 12px;
   padding: 8px 12px;
-  border-radius: 12px;
-  background: var(--73-app-grad-soft-37);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--73-accent) 5%, var(--73-surface-strong));
   color: var(--73-ink-soft);
   font-size: 12px;
   line-height: 1.5;
@@ -161,17 +165,14 @@
   background: transparent;
   padding: 0;
   color: var(--73-accent);
-  font-weight: 800;
+  font-weight: 600;
   cursor: pointer;
   white-space: nowrap;
-  transition:
-    color 120ms ease,
-    transform 120ms ease;
+  transition: color 120ms ease;
 }
 
 .portal-milestone__cta:hover {
   color: var(--73-app-accent-strong);
-  transform: translateX(1px);
 }
 
 .portal-link-btn,
@@ -182,16 +183,13 @@
   padding: 0;
   background: transparent;
   color: var(--73-accent);
-  font-weight: 700;
-  transition:
-    color 120ms ease,
-    transform 120ms ease;
+  font-weight: 600;
+  transition: color 120ms ease;
 }
 
 .portal-link-btn:hover:not(:disabled),
 .portal-inline-action:hover {
-  color: var(--73-accent);
-  transform: translateX(1px);
+  color: var(--73-app-accent-strong);
 }
 
 .portal-link-btn:disabled {
@@ -218,7 +216,7 @@
   background: color-mix(in srgb, var(--73-accent) 12%, transparent);
   color: var(--73-accent);
   font-size: 12px;
-  font-weight: 800;
+  font-weight: 600;
 }
 
 .portal-stats-head__icon {
@@ -230,5 +228,5 @@
   background: color-mix(in srgb, var(--73-accent) 12%, transparent);
   color: var(--73-accent);
   font-size: 11px;
-  font-weight: 800;
+  font-weight: 600;
 }

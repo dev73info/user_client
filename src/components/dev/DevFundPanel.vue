@@ -264,7 +264,7 @@ function readable(value: number | null): string {
   margin: 0;
   color: var(--dev-ink);
   font-size: 15px;
-  font-weight: 800;
+  font-weight: 600;
   line-height: 1.2;
   font-variant-numeric: tabular-nums;
   overflow-wrap: anywhere;
@@ -347,7 +347,7 @@ function readable(value: number | null): string {
   flex: 0 0 auto;
   color: var(--dev-gold);
   font-size: 14px;
-  font-weight: 800;
+  font-weight: 600;
   font-variant-numeric: tabular-nums;
 }
 

@@ -14,13 +14,12 @@
   border-radius: var(--dev-radius-control);
   font: inherit;
   font-size: 13px;
-  font-weight: 700;
+  font-weight: 600;
   line-height: 1;
   white-space: nowrap;
   text-decoration: none;
   cursor: pointer;
   transition:
-    box-shadow 160ms ease,
     background-color 160ms ease,
     border-color 160ms ease,
     color 160ms ease;
@@ -36,10 +35,13 @@
   color: var(--73-surface-strong);
 }
 
+/* 主按钮只换底色深浅，不再叠彩色投影：每颗按钮下面垫一层蓝雾，
+   一屏里所有按钮都在发光，反而没有一个像是主行动（与门户侧 .wb-btn--primary 同口径）。 */
 .dev-btn--primary:hover,
 .dev-btn--primary:focus-visible {
+  background: color-mix(in srgb, var(--dev-blue) 86%, var(--73-ink));
+  border-color: color-mix(in srgb, var(--dev-blue) 86%, var(--73-ink));
   color: var(--73-surface-strong);
-  box-shadow: 0 10px 22px color-mix(in srgb, var(--73-accent) 22%, transparent);
 }
 
 .dev-btn--ghost {
@@ -53,11 +55,10 @@
   border-color: color-mix(in srgb, var(--73-accent) 32%, transparent);
   background: color-mix(in srgb, var(--73-accent) 8%, transparent);
   color: var(--dev-blue);
-  box-shadow: 0 8px 18px color-mix(in srgb, var(--73-accent) 10%, transparent);
 }
 
 /* 金色变体：给「金额与提示」这一类动作用（保证金不足时的充值、金色读数旁的按钮）。
-   悬停与 --primary 同口径——只加一层投影，不提亮底色。 */
+   悬停与 --primary 同口径——只加深底色，不提亮也不投影。 */
 .dev-btn--gold {
   background: var(--dev-gold);
   border-color: var(--dev-gold);
@@ -66,8 +67,9 @@
 
 .dev-btn--gold:hover,
 .dev-btn--gold:focus-visible {
+  background: color-mix(in srgb, var(--dev-gold) 86%, var(--73-ink));
+  border-color: color-mix(in srgb, var(--dev-gold) 86%, var(--73-ink));
   color: var(--73-surface-strong);
-  box-shadow: 0 10px 22px color-mix(in srgb, var(--73-warning) 24%, transparent);
 }
 
 .dev-btn--danger {
@@ -81,7 +83,6 @@
   border-color: color-mix(in srgb, var(--73-danger) 50%, transparent);
   background: color-mix(in srgb, var(--73-danger) 8%, transparent);
   color: var(--73-danger);
-  box-shadow: 0 8px 18px color-mix(in srgb, var(--73-danger) 10%, transparent);
 }
 
 .dev-btn:disabled,
@@ -95,20 +96,21 @@
    同一笔钱在两个页面必须长一样。总览页的「资金概览」与收益钱包页的「接单收入 / 保证金余额」
    报的是同一组读数（可提现余额、可用保证金），原来却是 30px 与 36px 两种字号、
    金色与墨色两种颜色，切菜单时会看到数字「跳」一下。
-   现在统一走这两个类：金（设计规范里「金额与提示」那一支）+ 30px + 800 字重；
-   内嵌块里的次级金额用 --sm 一档。计数与金额都必须带 tabular-nums。 */
+   现在统一走这两个类：金（设计规范里「金额与提示」那一支）+ 26px + 600 字重；
+   内嵌块里的次级金额用 --sm 一档。计数与金额都必须带 tabular-nums。
+   原来是 30px / 800：中文黑体在这个字号上加到 800，笔画的粗细差被放大，
+   读数看着像标题里的「强调大字」而不是一组数字，也会盖过页面里真正的主标题。 */
 .dev-figure {
   color: var(--dev-gold);
-  font-size: 30px;
-  font-weight: 800;
-  letter-spacing: -0.02em;
-  line-height: 1.1;
+  font-size: 26px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  line-height: 1.15;
   font-variant-numeric: tabular-nums;
 }
 
 .dev-figure--sm {
-  font-size: 24px;
-  letter-spacing: -0.01em;
+  font-size: 21px;
 }
 
 /* 不可提 / 不满足条件的金额：压成弱字，尺寸与其他大数保持一致 */

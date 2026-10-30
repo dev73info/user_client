@@ -18,13 +18,13 @@ const paidMode = defineModel<ResourcePaidMode>('paidMode', { required: true })
       </section>
     </header>
 
-    <div class="dev-resource-type__options" role="group" aria-label="资源类型">
+    <div class="dev-segmented" role="group" aria-label="资源类型">
       <button
         v-for="option in RESOURCE_CREATION_TYPE_OPTIONS"
         :key="option.value"
         type="button"
-        class="dev-btn"
-        :class="{ 'dev-btn--primary': creationType === option.value }"
+        class="dev-segmented__item"
+        :class="{ 'is-active': creationType === option.value }"
         :aria-pressed="creationType === option.value"
         @click="creationType = option.value"
       >
@@ -34,13 +34,13 @@ const paidMode = defineModel<ResourcePaidMode>('paidMode', { required: true })
 
     <div v-if="creationType === 'paid'" class="dev-resource-type__paid">
       <span class="dev-resource-type__label">付费方式</span>
-      <div class="dev-resource-type__options" role="group" aria-label="付费方式">
+      <div class="dev-segmented" role="group" aria-label="付费方式">
         <button
           v-for="option in RESOURCE_PAID_MODE_OPTIONS"
           :key="option.value"
           type="button"
-          class="dev-btn"
-          :class="{ 'dev-btn--primary': paidMode === option.value }"
+          class="dev-segmented__item"
+          :class="{ 'is-active': paidMode === option.value }"
           :aria-pressed="paidMode === option.value"
           @click="paidMode = option.value"
         >
@@ -58,33 +58,24 @@ const paidMode = defineModel<ResourcePaidMode>('paidMode', { required: true })
   gap: 16px;
 }
 
-.dev-resource-type__options {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 12px;
-}
-
 .dev-resource-type {
   margin-bottom: 18px;
 }
 
-.dev-resource-type__options .dev-btn {
+/* 资源类型三档铺满整行：它决定下面整张表单的形态，是这一屏的主选择，给足宽度。 */
+.dev-resource-type > .dev-segmented {
+  display: flex;
   width: 100%;
 }
 
-.dev-resource-type__options .dev-btn:not(.dev-btn--primary) {
-  background: var(--dev-surface-strong);
-  border-color: var(--dev-line);
-  color: var(--dev-ink-soft);
+.dev-resource-type > .dev-segmented .dev-segmented__item {
+  flex: 1 1 0;
+  min-width: 0;
 }
 
 .dev-resource-type__paid {
-  grid-template-columns: auto minmax(0, 320px);
+  grid-template-columns: auto minmax(0, 360px);
   align-items: center;
-}
-
-.dev-resource-type__paid .dev-resource-type__options {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
 .dev-resource-type__label {

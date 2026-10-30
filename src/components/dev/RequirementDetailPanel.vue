@@ -95,7 +95,7 @@ const acceptanceHtml = computed(() =>
 .dev-requirement-detail__stat span {
   color: var(--dev-muted);
   font-size: 11px;
-  font-weight: 800;
+  font-weight: 500;
 }
 
 .dev-requirement-detail__stat strong {

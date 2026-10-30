@@ -249,7 +249,7 @@ function rowButtonLabel(row: RequirementItem): string {
     flex: 0 0 auto;
     color: var(--dev-amount);
     font-size: 16px;
-    font-weight: 800;
+    font-weight: 600;
     font-variant-numeric: tabular-nums;
   }
 

@@ -16,11 +16,11 @@
   color: var(--dev-blue);
 }
 
-/* 需求表格单元格的主/次文字与其余菜单页表格同档：14px 加粗 + 12px 弱字，
+/* 需求表格单元格的主/次文字与其余菜单页表格同档：14px + 12px 弱字，
    与 dev-base.css 的 .dev-table__strong / .dev-table__sub 一致（原来是 15 / 13）。 */
 .dev-requirement-hall__title {
   font-size: 14px;
-  font-weight: 700;
+  font-weight: 600;
   color: var(--dev-ink);
 }
 
@@ -102,7 +102,7 @@
    的金不是同一个值，同一页会出现两种警示黄。 */
 .dev-requirement-hall__confirm-title {
   font-size: 14px;
-  font-weight: 800;
+  font-weight: 600;
   color: var(--dev-gold);
 }
 

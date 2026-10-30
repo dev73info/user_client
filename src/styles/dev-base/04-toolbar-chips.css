@@ -75,10 +75,9 @@
 
 .dev-filter-label {
   font-size: 12px;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--dev-blue);
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--dev-muted);
 }
 
 /* === 胶囊标签 / 胶囊筛选按钮 ===
@@ -90,20 +89,23 @@
    原来基础档写的是 padding: 8px 12px（高度跟着父级行高走），于是同一枚胶囊在总览页 27px、
    在消息中心（行高更大的卡片头里）35px，横向并排时会一高一低。改成定高后三种场合一致。
 
-   字重口径：一律 700。基础档原来写 600，于是同一枚状态胶囊「消息中心用 .dev-chip 是 600、
-   我的接单用 el-tag 是 700、总览页的筛选胶囊 .dev-chip--button 又是 700」，
-   同尺寸同配色的胶囊换个页面字就细一档。这里跟着多数档位统一到 700。 */
+   字重口径：一律 600。原来基础档写 600、筛选胶囊写 700，同一枚状态胶囊换个页面字就粗一档。
+   600 而不是 700：12px 的中文在 700 下笔画会糊在一起，读起来像一个个黑块。
+
+   配色口径：未选中的胶囊是中性描边 + 透明底，只有选中那一档用主色浅底主色字。
+   原来基础档就是「主色 8% 底 + 主色字」，一排放六个筛选时整组都是一片蓝，
+   看的人分不出哪个是当前筛选。 */
 .dev-chip {
   display: inline-flex;
   align-items: center;
   min-height: 28px;
   padding: 0 12px;
   border-radius: 999px;
-  border: 1px solid color-mix(in srgb, var(--73-accent) 16%, transparent);
-  background: color-mix(in srgb, var(--73-accent) 8%, transparent);
+  border: 1px solid var(--dev-line);
+  background: transparent;
   font-size: 12px;
-  font-weight: 700;
-  color: var(--dev-blue);
+  font-weight: 600;
+  color: var(--dev-ink-soft);
 }
 
 /* 一组胶囊筛选（列表的状态切换）：总览页两处列表、钱包的记录切换都用它，
@@ -115,21 +117,19 @@
   gap: 6px;
 }
 
-/* 筛选胶囊的三种态与门户侧 .wb-chip--button 逐一对应（未选中=主色浅底主色字、
-   悬停=描边加深、选中=实心主色白字）。
-   原来这里是「未选中中性灰、选中主色浅底」：同一组筛选胶囊在开发者模式是灰底、切到用户模式
-   变成浅蓝底、选中项还会从浅蓝块变成实心蓝块，等于同一控件换模式就换一套配色。
-   中性灰这一档仍然保留，但只给 .dev-chip--muted（终止态、未关联这类没有筛选语义的状态标签）。 */
+/* 筛选胶囊的三种态与门户侧 .wb-chip--button 逐一对应（未选中=中性描边透明底、悬停=主色描边、
+   选中=实心主色白字）。原来这里是「未选中就是主色浅底主色字、选中变实心主色」，
+   同一组筛选胶囊换一次模式就换一套配色。 */
 .dev-chip--button {
   appearance: none;
   min-height: 28px;
   padding: 0 12px;
-  border-color: color-mix(in srgb, var(--73-accent) 16%, transparent);
-  background: color-mix(in srgb, var(--73-accent) 8%, transparent);
-  color: var(--dev-blue);
+  border-color: var(--dev-line);
+  background: transparent;
+  color: var(--dev-muted);
   font: inherit;
   font-size: 12px;
-  font-weight: 700;
+  font-weight: 600;
   cursor: pointer;
   transition:
     background-color 160ms ease,
@@ -139,6 +139,7 @@
 
 .dev-chip--button:hover {
   border-color: color-mix(in srgb, var(--73-accent) 32%, transparent);
+  color: var(--dev-blue);
 }
 
 .dev-chip--button.is-active {
@@ -159,6 +160,58 @@
 .dev-chip__count {
   margin-left: 6px;
   font-variant-numeric: tabular-nums;
-  font-weight: 700;
+  font-weight: 600;
   opacity: 0.8;
+}
+
+/* === 分段控件（互斥选择） ===
+   资源类型（免费 / 付费 / 接口）、付费方式（明确标价 / 免费试用）这类「几选一」的分段，
+   原来是一排等宽的 .dev-btn--primary 实心蓝按钮：三个都是主的，等于没有主次，
+   而且同一屏里再出现别的蓝按钮就分不清哪个才是要点的那个。
+   分段控件是「一个控件的三个档位」，不是三个按钮：整组一个描边盒子，
+   选中的那一档用浅底 + 主色字，未选中的是透明底。
+   高度沿用 --dev-control-height，与同页的输入框、按钮同高。 */
+.dev-segmented {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 2px;
+  border: 1px solid var(--dev-line);
+  border-radius: var(--dev-radius-control);
+  background: var(--dev-surface-strong);
+}
+
+.dev-segmented__item {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: calc(var(--dev-control-height) - 8px);
+  padding: 0 16px;
+  border: 0;
+  border-radius: calc(var(--dev-radius-control) - 3px);
+  background: transparent;
+  color: var(--dev-ink-soft);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  white-space: nowrap;
+  cursor: pointer;
+  transition:
+    background-color 160ms ease,
+    color 160ms ease;
+}
+
+.dev-segmented__item:hover {
+  color: var(--dev-blue);
+}
+
+.dev-segmented__item.is-active {
+  background: color-mix(in srgb, var(--73-accent) 10%, transparent);
+  color: var(--dev-blue);
+  font-weight: 600;
+}
+
+.dev-segmented__item:focus-visible {
+  outline: 2px solid var(--dev-blue);
+  outline-offset: 1px;
 }

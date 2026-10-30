@@ -115,7 +115,7 @@ defineProps<{
 
   .user-workbench__submenu :deep(.user-workbench__submenu-link > span) {
     font-size: 13px;
-    font-weight: 700;
+    font-weight: 600;
   }
 
   .user-workbench__submenu--messages {

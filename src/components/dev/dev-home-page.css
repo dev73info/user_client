@@ -70,7 +70,7 @@
 .dev-home__error-copy strong {
   color: var(--dev-ink);
   font-size: 13px;
-  font-weight: 800;
+  font-weight: 600;
 }
 
 .dev-home__error-copy p {

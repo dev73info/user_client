@@ -11,7 +11,7 @@
    钱包记录的行内文字都走它们，不要在各页另写一套字号（原来是 13/12、14/12、15/13 三种）。 */
 .dev-table__strong {
   font-size: 14px;
-  font-weight: 700;
+  font-weight: 600;
   color: var(--dev-ink);
 }
 
@@ -116,7 +116,7 @@
   min-height: 32px;
   height: 32px;
   border-radius: var(--dev-radius-control);
-  font-weight: 700;
+  font-weight: 600;
 }
 
 .dev-stack-list {
@@ -142,8 +142,8 @@
 }
 
 .dev-stack-item__title {
-  font-size: 16px;
-  font-weight: 700;
+  font-size: 15px;
+  font-weight: 600;
   color: var(--dev-ink);
 }
 

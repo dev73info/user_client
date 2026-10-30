@@ -86,6 +86,16 @@ const emit = defineEmits<{
   padding-left: 12px;
   border-left: 1px solid var(--wb-line);
 }
+
+/* 打赏方向是「打赏记录」这一档里的二级筛选，不能和上面那排 Tab 一样用实心主色：
+   同一行出现两颗实心蓝胶囊时，读的人分不出哪个是当前页签、哪个是页签内的更细一层。
+   这里只在打赏方向这一组里把选中态降一档（浅底 + 主色字）。 */
+.points-records__scopes .wb-chip--button.is-active {
+  background: var(--wb-accent-soft);
+  border-color: var(--wb-accent-line);
+  color: var(--wb-accent);
+}
+
 @media (max-width: 640px) {
   .points-records__scopes {
     padding-left: 0;

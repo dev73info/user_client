@@ -119,7 +119,7 @@ defineProps<{ item: DevMyOrderRow['item'] }>()
   flex: 0 0 auto;
   color: var(--dev-ink);
   font-size: 13px;
-  font-weight: 800;
+  font-weight: 600;
   font-variant-numeric: tabular-nums;
 }
 

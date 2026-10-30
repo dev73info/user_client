@@ -87,10 +87,12 @@ a {
   margin: 0 auto;
 }
 
+/* 卡片标题与门户侧 .wb-card-head__title 同口径（17px / 600）：
+   原来这里是 18px / 700，切一次模式标题就换一档粗细与字号。 */
 .dev-section-title {
   margin: 0;
-  font-size: 18px;
-  font-weight: 700;
+  font-size: 17px;
+  font-weight: 600;
   color: var(--dev-ink);
 }
 
