@@ -187,7 +187,8 @@ onMounted(() => {
 }
 .badge-wall__badge.acquired {
   border-color: var(--wb-accent-line);
-  background: var(--73-app-grad-soft-03);
+  /* 已获得只做「淡底」：徽章墙是一整片小格子，用渐变会让每格都在发光，看不出哪块是重点。 */
+  background: color-mix(in srgb, var(--73-accent) 5%, var(--73-surface-strong));
   color: var(--73-ink);
   filter: none;
 }
