@@ -27069,6 +27069,34 @@
         }
       }
     },
+    "/api/system/mail/secret": {
+      "get": {
+        "tags": [
+          "system"
+        ],
+        "summary": "查看 SMTP 授权码明文",
+        "description": "**仅 super_admin**。主读接口把 `password` 回显成 `***`；要核对 SMTP 授权码是否过期 / 填错时用这个端点。每次调用写一条操作日志；审计写失败仍回 200，但带 `X-Audit-Logged: false`。不是 super_admin 回 403。",
+        "operationId": "system_reveal_mail_secret",
+        "responses": {
+          "200": {
+            "description": "SMTP 授权码明文",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RevealedSecret"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "未登录，或令牌无效 / 已吊销"
+          },
+          "403": {
+            "description": "不是 super_admin"
+          }
+        }
+      }
+    },
     "/api/system/official-activities": {
       "get": {
         "tags": [
@@ -29981,6 +30009,48 @@
           },
           "500": {
             "description": "校验操作权限失败，或配置写盘失败"
+          }
+        }
+      }
+    },
+    "/api/user/oauth/{provider}/system/secret": {
+      "get": {
+        "tags": [
+          "identity-config"
+        ],
+        "summary": "查看第三方登录渠道密钥明文",
+        "description": "**仅 super_admin**。主读接口一律把 `client_secret` 回显成 `***`；要核对密钥是否配错时用这个端点拿明文。单独一个端点而不是给主接口加 `?reveal=1`，是为了让每次查看在访问日志与操作日志里都留得下独立记录——明文密钥不该能被顺手带走。每次调用写一条操作日志（`action=config.secret.reveal`）；审计写失败仍回 200，但带 `X-Audit-Logged: false`。不是 super_admin 回 403；渠道未知回 404。",
+        "operationId": "identity_config_reveal_oauth_secret",
+        "parameters": [
+          {
+            "name": "provider",
+            "in": "path",
+            "description": "渠道，支持 `github` / `gitee` / `wechat` / `qq`",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "密钥明文",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RevealedSecret"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "未登录，或令牌无效 / 已吊销"
+          },
+          "403": {
+            "description": "不是 super_admin"
+          },
+          "404": {
+            "description": "未知的第三方登录渠道（纯文本原因）"
           }
         }
       }
@@ -44541,6 +44611,29 @@
           "decision": {
             "type": "string",
             "description": "`approved` 或 `rejected`。"
+          }
+        }
+      },
+      "RevealedSecret": {
+        "type": "object",
+        "description": "密钥明文回显的响应体。",
+        "required": [
+          "target",
+          "field",
+          "value"
+        ],
+        "properties": {
+          "field": {
+            "type": "string",
+            "description": "字段名，便于前端把值贴回对应输入框。"
+          },
+          "target": {
+            "type": "string",
+            "description": "目标标识（渠道名 / 配置段名）。"
+          },
+          "value": {
+            "type": "string",
+            "description": "**明文密钥**。原值为空时回空串。"
           }
         }
       },

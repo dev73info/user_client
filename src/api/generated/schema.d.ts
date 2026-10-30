@@ -9814,6 +9814,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/system/mail/secret": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 查看 SMTP 授权码明文
+         * @description **仅 super_admin**。主读接口把 `password` 回显成 `***`；要核对 SMTP 授权码是否过期 / 填错时用这个端点。每次调用写一条操作日志；审计写失败仍回 200，但带 `X-Audit-Logged: false`。不是 super_admin 回 403。
+         */
+        get: operations["system_reveal_mail_secret"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/system/official-activities": {
         parameters: {
             query?: never;
@@ -10883,6 +10903,26 @@ export interface paths {
          * @description **需要登录 + `user.config.put`**。整体覆盖某个渠道的配置并落盘到 `config/local.toml`。密钥纪律：`client_secret` 传 `***` 或空串表示**保持原值**，传其它值才会被替换；响应里回显的一律是 `***`，不会把明文吐回来。启用校验：`enabled=true` 时 `client_id` 与 `client_secret` 都不能为空，否则回 400 与纯文本原因（`client_secret` 说的是「改完之后」的值，原值已配置就能通过）。`provider` 支持 `github` / `gitee` / `wechat` / `qq`，其它取值回 404。微信只写开放平台 AppID（`mp_app_id` 原值保留），QQ 的 `app_key` 与微信的 `app_secret`都按 `client_secret` 的同一套掩码规则处理。**保存不等于生效**：运行中的进程仍用启动时那一份配置，响应带 `restart_required: true`，前端要按它提示「需重启后生效」，不要假装热更新。写盘失败（权限、路径、磁盘）回 500，原因只进日志。
          */
         put: operations["identity_config_put_oauth"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/user/oauth/{provider}/system/secret": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 查看第三方登录渠道密钥明文
+         * @description **仅 super_admin**。主读接口一律把 `client_secret` 回显成 `***`；要核对密钥是否配错时用这个端点拿明文。单独一个端点而不是给主接口加 `?reveal=1`，是为了让每次查看在访问日志与操作日志里都留得下独立记录——明文密钥不该能被顺手带走。每次调用写一条操作日志（`action=config.secret.reveal`）；审计写失败仍回 200，但带 `X-Audit-Logged: false`。不是 super_admin 回 403；渠道未知回 404。
+         */
+        get: operations["identity_config_reveal_oauth_secret"];
+        put?: never;
         post?: never;
         delete?: never;
         options?: never;
@@ -16782,6 +16822,15 @@ export interface components {
         RespondDisclosureRequest: {
             /** @description `approved` 或 `rejected`。 */
             decision: string;
+        };
+        /** @description 密钥明文回显的响应体。 */
+        RevealedSecret: {
+            /** @description 字段名，便于前端把值贴回对应输入框。 */
+            field: string;
+            /** @description 目标标识（渠道名 / 配置段名）。 */
+            target: string;
+            /** @description **明文密钥**。原值为空时回空串。 */
+            value: string;
         };
         /** @description 红冲。 */
         ReversalRequest: {
@@ -47357,6 +47406,40 @@ export interface operations {
             };
         };
     };
+    system_reveal_mail_secret: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description SMTP 授权码明文 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RevealedSecret"];
+                };
+            };
+            /** @description 未登录，或令牌无效 / 已吊销 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 不是 super_admin */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     system_official_activity_list: {
         parameters: {
             query?: never;
@@ -50629,6 +50712,50 @@ export interface operations {
             };
             /** @description 校验操作权限失败，或配置写盘失败 */
             500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    identity_config_reveal_oauth_secret: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description 渠道，支持 `github` / `gitee` / `wechat` / `qq` */
+                provider: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 密钥明文 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RevealedSecret"];
+                };
+            };
+            /** @description 未登录，或令牌无效 / 已吊销 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 不是 super_admin */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 未知的第三方登录渠道（纯文本原因） */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };

@@ -34,7 +34,7 @@ async function mountAuthModal(overrides: Record<string, unknown> = {}) {
   })
 }
 
-/** 勾选"我已阅读并理解上述重要条款提示"（R043 任务-03 的二次确认）。 */
+/** 覆盖端内一键登录布局，以及「其他方式登录」四颗按钮的可用性。 */
 describe('AuthModal 端内一键登录布局', () => {
   afterEach(() => {
     vi.restoreAllMocks()
@@ -97,14 +97,6 @@ describe('AuthModal 端内一键登录布局', () => {
     wrapper.unmount()
   })
 
-  it('微信内未勾选协议时一键登录按钮禁用', async () => {
-    vi.spyOn(window.navigator, 'userAgent', 'get').mockReturnValue('MicroMessenger/8.0.40')
-    const wrapper = await mountAuthModal({ acceptTerms: false })
-    const btn = wrapper.find('.auth-inapp-login__btn')
-    expect(btn.attributes('disabled')).toBeDefined()
-    wrapper.unmount()
-  })
-
   it('微信内未勾协议时一键登录按钮禁用', async () => {
     vi.spyOn(window.navigator, 'userAgent', 'get').mockReturnValue('MicroMessenger/8.0.40')
     const wrapper = await mountAuthModal({ acceptTerms: false })
@@ -118,6 +110,30 @@ describe('AuthModal 端内一键登录布局', () => {
     const wrapper = await mountAuthModal({ acceptTerms: true })
     await wrapper.find('.auth-inapp-login__btn').trigger('click')
     expect(wrapper.emitted('loginWithWechat')).toHaveLength(1)
+    wrapper.unmount()
+  })
+
+  it('普通浏览器未勾协议时其他方式登录全部禁用', async () => {
+    vi.spyOn(window.navigator, 'userAgent', 'get').mockReturnValue('Mozilla/5.0 Chrome/120.0.0.0')
+    const wrapper = await mountAuthModal({ acceptTerms: false })
+    const buttons = wrapper.findAll('.auth-login-method')
+    expect(buttons.length).toBe(3)
+    for (const btn of buttons) {
+      expect(btn.attributes('disabled')).toBeDefined()
+    }
+    wrapper.unmount()
+  })
+
+  it('普通浏览器勾选协议后其他方式登录可点击', async () => {
+    vi.spyOn(window.navigator, 'userAgent', 'get').mockReturnValue('Mozilla/5.0 Chrome/120.0.0.0')
+    const wrapper = await mountAuthModal({ acceptTerms: true })
+    const buttons = wrapper.findAll('.auth-login-method')
+    expect(buttons.length).toBe(3)
+    for (const btn of buttons) {
+      expect(btn.attributes('disabled')).toBeUndefined()
+    }
+    await buttons[0]!.trigger('click')
+    expect(wrapper.emitted('loginWithGithub')).toHaveLength(1)
     wrapper.unmount()
   })
 })

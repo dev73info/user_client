@@ -13,7 +13,6 @@ const props = defineProps({
   giteeLoginLoading: { type: Boolean, default: false },
   authMode: { type: String, required: true },
   acceptTerms: { type: Boolean, default: false },
-  noticeAccepted: { type: Boolean, default: false },
   preferInAppOauth: { type: Boolean, default: false },
 })
 
@@ -43,8 +42,9 @@ const showQqLogin = computed(
 const showGiteeLogin = computed(
   () => props.authMode === 'login' && props.giteeLoginAvailable && !props.preferInAppOauth,
 )
+/** 快捷登录同样只需勾「同意协议」；重要条款提示已于 #52 下线，别再加第二个勾选。 */
 function agreementSatisfied(): boolean {
-  return props.acceptTerms && props.noticeAccepted
+  return props.acceptTerms
 }
 </script>
 
