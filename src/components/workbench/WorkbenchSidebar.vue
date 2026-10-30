@@ -132,8 +132,10 @@ const emit = defineEmits<{
 }
 
 .user-workbench__aside-scrollbar :deep(.t73-scrollbar__wrap) {
+  overflow-y: auto;
   scrollbar-width: none;
   -ms-overflow-style: none;
+  overscroll-behavior: contain;
 }
 
 .user-workbench__aside-scrollbar :deep(.t73-scrollbar__wrap::-webkit-scrollbar) {
@@ -157,12 +159,14 @@ const emit = defineEmits<{
   .user-workbench__aside {
     position: fixed;
     top: 0;
-    bottom: 0;
+    bottom: auto;
     left: 0;
     z-index: 80;
     width: min(84vw, 320px);
-    height: auto;
-    max-height: none;
+    height: 100vh;
+    height: 100dvh;
+    max-height: 100vh;
+    max-height: 100dvh;
     border-radius: 0 22px 22px 0;
     visibility: hidden;
     transform: translateX(-104%);
@@ -183,12 +187,13 @@ const emit = defineEmits<{
 
   .user-workbench__aside-scrollbar {
     height: 100%;
+    min-height: 0;
     max-height: none !important;
   }
 
   .user-workbench__aside-inner {
     min-height: 100%;
-    padding: 16px;
+    padding: 16px 16px calc(96px + env(safe-area-inset-bottom));
   }
 }
 </style>
