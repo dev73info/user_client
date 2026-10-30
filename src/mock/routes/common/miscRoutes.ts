@@ -57,13 +57,4 @@ export const miscRoutes: MockRoute[] = [
     note: '我参与的争议案件（演示数据没有案件；契约是裸数组）',
     handler: () => jsonResponse([]),
   },
-  {
-    method: 'GET',
-    path: '/payment/settlement-account',
-    note: '我的收款账户：**没开户回 null，不是 404**',
-    // 契约明写「还没开户是常态」。兜底给的是 `[]`，而 `[]` 在 JS 里是真值，
-    // 适配层 `account ? toSnapshot(account) : null` 会把空数组当成账户对象，
-    // 账户页就永远停在「正在自动开通收款账户，稍后刷新查看」——一个永远不会结束的等待。
-    handler: () => jsonResponse(null),
-  },
 ]
