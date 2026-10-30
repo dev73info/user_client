@@ -170,6 +170,31 @@ describe('工作台聊天首页', () => {
     wrapper.unmount()
   })
 
+  it('桌面会话列表提供可拖拽、可键盘调整的分隔条', async () => {
+    const { wrapper } = await render()
+    const chat = wrapper.find('.workbench-chat')
+    vi.spyOn(chat.element, 'getBoundingClientRect').mockReturnValue({
+      x: 0,
+      y: 0,
+      left: 0,
+      top: 0,
+      right: 1000,
+      bottom: 700,
+      width: 1000,
+      height: 700,
+      toJSON: () => ({}),
+    })
+
+    const resizer = wrapper.find('.workbench-chat__resizer')
+    expect(resizer.attributes('role')).toBe('separator')
+    expect(resizer.attributes('aria-valuemin')).toBe('280')
+    expect(resizer.attributes('aria-valuemax')).toBe('520')
+
+    await resizer.trigger('keydown', { key: 'ArrowRight' })
+    expect(chat.attributes('style')).toContain('--workbench-chat-inbox-width: 376px')
+    wrapper.unmount()
+  })
+
   it('新建会话进入我的需求；没有会话时右侧显示空态', async () => {
     mocks.conversations.mockResolvedValue([])
     mocks.requirements.mockResolvedValue([])
@@ -191,6 +216,17 @@ describe('工作台聊天首页', () => {
     await wrapper.find('.workbench-inbox__compose').trigger('click')
     await flushPromises()
     expect(router.currentRoute.value.name).toBe('dev-requirement-hall')
+    wrapper.unmount()
+  })
+
+  it('需求接口返回空壳数组时仍保留会话，不因空项中断页面', async () => {
+    mocks.requirements.mockResolvedValue([
+      null,
+    ] as unknown as import('@/api/requirements').RequirementItem[])
+    const { wrapper } = await render()
+
+    expect(wrapper.find('.workbench-chat').exists()).toBe(true)
+    expect(wrapper.findAll('.workbench-inbox__row')).toHaveLength(1)
     wrapper.unmount()
   })
 })

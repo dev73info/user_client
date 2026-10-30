@@ -29,19 +29,27 @@ export function useMessagesThreads(options: {
   const activeFilter = ref<MessageFilter>('all')
   const searchKeyword = ref('')
 
+  const validConversations = computed(() =>
+    options.conversations.value.filter((item): item is RequirementConversation =>
+      Boolean(item && item.conversation_id && item.requirement_id),
+    ),
+  )
+  const validRequirements = computed(() =>
+    options.requirements.value.filter((item): item is RequirementItem =>
+      Boolean(item && item.requirement_id),
+    ),
+  )
   const requirementById = computed(() =>
-    Object.fromEntries(options.requirements.value.map((item) => [item.requirement_id, item])),
+    Object.fromEntries(validRequirements.value.map((item) => [item.requirement_id, item])),
   )
   const conversationRequirementIds = computed(
-    () => new Set(options.conversations.value.map((item) => item.requirement_id)),
+    () => new Set(validConversations.value.map((item) => item.requirement_id)),
   )
   const activeConversations = computed(() =>
-    options.conversations.value.filter((item) => item.status === 'open'),
+    validConversations.value.filter((item) => item.status === 'open'),
   )
   const readyRequirements = computed(() =>
-    options.requirements.value.filter(
-      (item) => hasBoundResource(item) && item.status !== 'completed',
-    ),
+    validRequirements.value.filter((item) => hasBoundResource(item) && item.status !== 'completed'),
   )
   /** 已接取、但本地还没拿到会话记录——打开后才建会话，列表里单独一组「会话待开启」。 */
   const pendingRequirements = computed(() =>
