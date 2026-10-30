@@ -201,6 +201,12 @@
   margin: 0;
 }
 
+/* 系统通知页自己把读数条、面板和空态组织成一张连续的工作区卡；
+   去掉内容区默认内边距后，三段才能共用同一层圆角与边界。 */
+.user-workbench__content--workspace:has(.notifications-page:not(.dev-page)) {
+  padding: 0;
+}
+
 .workbench-page-enter-active,
 .workbench-page-leave-active {
   transition:

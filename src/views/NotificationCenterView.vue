@@ -145,6 +145,47 @@ const { votingId, vote } = useNotificationCardActions({
   align-content: start;
 }
 
+/* 用户工作台的内容区本身已经是一张 22px 圆角的大卡。
+   这里不再让读数条、通知面板和空态各套一层卡，改成同一张卡里的三段式层级：
+   顶部读数带 → 面板标题 → 居中空态 / 列表。开发者工作台继续沿用 dev-page。 */
+.notifications-page:not(.dev-page) {
+  height: 100%;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.notifications-page:not(.dev-page) :deep(.wb-strip) {
+  flex: 0 0 auto;
+  padding: 14px 24px;
+  border: 0;
+  border-bottom: 1px solid color-mix(in srgb, var(--73-accent-soft) 92%, transparent);
+  border-radius: 0;
+  background: color-mix(in srgb, var(--73-accent-soft) 24%, transparent);
+  box-shadow: none;
+}
+
+.notifications-page:not(.dev-page) > .notifications-panel {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  padding: 22px 24px 24px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.notifications-page:not(.dev-page) > .notifications-panel :deep(.notifications-empty) {
+  flex: 1 1 auto;
+  min-height: 260px;
+  justify-content: center;
+  border: 0;
+  background: transparent;
+}
+
 /* 卡头右侧的「待我处理」计数：与读数条呼应，提醒这一页有动作要做 */
 .notifications-pending {
   display: inline-flex;
@@ -176,17 +217,13 @@ const { votingId, vote } = useNotificationCardActions({
 
 /* 列表像会话一样贴底：面板撑满顶栏以下的一屏，搜索留在上方，通知压到底部，最新一条最靠近底边 */
 @media (max-width: 900px) {
-  .notifications-panel {
-    display: flex;
-    flex-direction: column;
-    /* 扣掉顶栏以上 73px，以及底部给快捷导航让出的 80px + 内容区下内边距 22px（见 App.vue），
-       一屏放得下时外层不出滚动，搜索框不会被滚出去 */
-    min-height: calc(100dvh - 73px - 102px);
+  .notifications-page:not(.dev-page) {
+    min-height: 100%;
   }
 
-  .notifications-panel > .wb-list,
-  .notifications-panel > .wb-empty {
-    margin-top: auto;
+  .notifications-page:not(.dev-page) > .notifications-panel {
+    min-height: 0;
+    padding: 18px 16px 24px;
   }
 }
 
