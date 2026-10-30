@@ -25,6 +25,9 @@ const backendPathAliases: ReadonlyArray<readonly [string, string]> = [
   ['/team/teams', '/teams'],
   ['/team/invitations', '/teams/invitations'],
   ['/requirements', '/requirement'],
+  // 会话域后端是单数 `/api/conversation`（actix 逐字匹配，复数路径 404）。
+  // 前端与 mock 都沿用了复数写法，在这里统一翻译一次，两边就不会各写一套。
+  ['/conversations', '/conversation'],
   ['/settings', '/system/settings'],
   ['/resources/tags', '/tag/tags'],
 ]
