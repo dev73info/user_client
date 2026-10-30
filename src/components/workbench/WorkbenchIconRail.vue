@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, type Component } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, type Component } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import {
   Bell,
@@ -201,6 +201,46 @@ function badgeFor(key: string) {
   }
   return 0
 }
+
+/**
+ * 导航按钮的悬浮提示。
+ *
+ * 提示不能挂在按钮内部：按钮都在 `.workbench-icon-rail__items` 里，那是个
+ * `overflow-y: auto` 的滚动容器（为了放得下十几个入口必须滚），横向也一并
+ * 裁切，挂在里面的气泡会被切掉大半 —— 表现为「只有齿轮图标有提示，上面一排
+ * 一个都不亮」。所以这里把气泡 Teleport 到 body，用按钮的视口坐标定位，
+ * 滚动容器裁不到它。
+ */
+const tooltipLabel = ref('')
+const tooltipStyle = ref<Record<string, string>>({})
+const tooltipVisible = ref(false)
+
+function showTooltip(item: RailItem, event: Event) {
+  const button = event.currentTarget
+  if (!(button instanceof HTMLElement)) {
+    return
+  }
+  const rect = button.getBoundingClientRect()
+  tooltipLabel.value = item.label
+  tooltipStyle.value = {
+    top: `${rect.top + rect.height / 2}px`,
+    left: `${rect.right + 10}px`,
+  }
+  tooltipVisible.value = true
+}
+
+function hideTooltip() {
+  tooltipVisible.value = false
+}
+
+// 一滚就收起：气泡是按滚动前的坐标算的，跟着滚会飘到别处。
+onMounted(() => {
+  window.addEventListener('scroll', hideTooltip, true)
+})
+
+onBeforeUnmount(() => {
+  window.removeEventListener('scroll', hideTooltip, true)
+})
 </script>
 
 <template>
@@ -214,8 +254,11 @@ function badgeFor(key: string) {
         type="button"
         :aria-label="item.label"
         :aria-current="isActive(item) ? 'page' : undefined"
-        :title="item.label"
         @click="open(item)"
+        @mouseenter="showTooltip(item, $event)"
+        @focus="showTooltip(item, $event)"
+        @mouseleave="hideTooltip"
+        @blur="hideTooltip"
       >
         <TIcon :size="23">
           <component :is="item.icon" />
@@ -223,9 +266,19 @@ function badgeFor(key: string) {
         <span v-if="badgeFor(item.key) > 0" class="workbench-icon-rail__badge">
           {{ badgeFor(item.key) > 99 ? '99+' : badgeFor(item.key) }}
         </span>
-        <span class="workbench-icon-rail__tooltip">{{ item.label }}</span>
       </button>
     </nav>
+
+    <Teleport to="body">
+      <span
+        v-if="tooltipVisible"
+        class="workbench-icon-rail__tooltip workbench-icon-rail__tooltip--floating"
+        :style="tooltipStyle"
+        role="tooltip"
+      >
+        {{ tooltipLabel }}
+      </span>
+    </Teleport>
 
     <WorkbenchIconRailSettings :switch-label="switchLabel" @switch-mode="emit('switch-mode')" />
   </aside>

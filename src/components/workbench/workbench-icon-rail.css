@@ -111,6 +111,18 @@
   transform: translate(0, -50%);
 }
 
+/**
+ * 导航按钮的悬浮提示挂在 body 上（见 WorkbenchIconRail.vue 的 Teleport 注释），
+ * 所以它不受上面那条 `overflow` 裁切规则的影响，改用视口坐标定位、常显。
+ */
+.workbench-icon-rail__tooltip--floating {
+  z-index: 1000;
+  position: fixed;
+  opacity: 1;
+  transform: translate(0, -50%);
+  pointer-events: none;
+}
+
 @media (max-width: 900px) {
   .workbench-icon-rail {
     display: none;
