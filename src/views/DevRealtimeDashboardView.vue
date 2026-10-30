@@ -5,6 +5,7 @@ import { devDashboardWsUrl, getDevDashboard, type DevDashboardSnapshot } from '@
 import { useDevDashboardSocket } from '@/composables/useDevDashboardSocket'
 import { describeBackendError } from '@/shared/backendErrorText'
 import { formatFenAsCny } from '@/shared/money'
+import { requirementStatusLabel } from '@/shared/requirementStatus'
 import { useAuthStore } from '@/stores/auth'
 import { TButton } from 'ui_73info'
 
@@ -48,6 +49,24 @@ const overdueCount = computed(
         project.deadlines.final_pay_overdue,
     ).length ?? 0,
 )
+
+/**
+ * 动态条目的类型名。
+ *
+ * 契约里 `kind` 是 `income` / `delivery` / `status` / `withdrawal` / `deposit` 这样的英文枚举，
+ * 直接印在页面上等于把接口字段露给用户看；这里翻成人话，认不出来的取值原样显示（不吞掉）。
+ */
+const FEED_KIND_LABELS: Record<string, string> = {
+  income: '到账',
+  delivery: '交付',
+  status: '状态变更',
+  withdrawal: '提现',
+  deposit: '保证金',
+}
+
+function feedKindLabel(kind: string): string {
+  return FEED_KIND_LABELS[kind] ?? kind
+}
 
 function money(value: number | null | undefined) {
   return `¥${formatFenAsCny(value)}`
@@ -140,7 +159,8 @@ onMounted(() => {
               <div>
                 <strong>{{ project.title }}</strong>
                 <span
-                  >{{ project.requirement_id }} · {{ project.status }} ·
+                  >{{ project.requirement_id }} ·
+                  {{ requirementStatusLabel(project.status, project.payment_mode) }} ·
                   {{ money(project.budget_fen) }}</span
                 >
               </div>
@@ -188,7 +208,7 @@ onMounted(() => {
               <div>
                 <strong>{{ item.title }}</strong>
                 <span
-                  >{{ item.kind
+                  >{{ feedKindLabel(item.kind)
                   }}<template v-if="item.requirement_id">
                     · {{ item.requirement_id }}</template
                   ></span

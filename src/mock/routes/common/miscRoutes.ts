@@ -32,14 +32,38 @@ export const miscRoutes: MockRoute[] = [
   },
   {
     method: 'GET',
+    path: '/teams',
+    note: '我的团队（演示数据没有团队）',
+    // 原来这条写成了 `/teams/teams`：别名表把 `/team/teams` 翻成 `/teams`，
+    // 声明的 `/teams/teams` 归一化后是 `teams/teams`，和请求的 `teams` 永远对不上，
+    // 于是它是一条死路由，团队下拉全靠兜底的 `[]`。
+    handler: () => jsonResponse([]),
+  },
+  {
+    method: 'GET',
     path: '/teams/invitations',
     note: '我的团队邀请（演示数据没有团队邀请）',
     handler: () => jsonResponse([]),
   },
   {
     method: 'GET',
-    path: '/teams/teams',
-    note: '我的团队（演示数据没有团队）',
+    path: '/ticket',
+    note: '我的工单（演示数据没有工单；形状是裸数组，兜底的 [] 也对，这里只是让名字落到表里）',
     handler: () => jsonResponse([]),
+  },
+  {
+    method: 'GET',
+    path: '/dispute/cases',
+    note: '我参与的争议案件（演示数据没有案件；契约是裸数组）',
+    handler: () => jsonResponse([]),
+  },
+  {
+    method: 'GET',
+    path: '/payment/settlement-account',
+    note: '我的收款账户：**没开户回 null，不是 404**',
+    // 契约明写「还没开户是常态」。兜底给的是 `[]`，而 `[]` 在 JS 里是真值，
+    // 适配层 `account ? toSnapshot(account) : null` 会把空数组当成账户对象，
+    // 账户页就永远停在「正在自动开通收款账户，稍后刷新查看」——一个永远不会结束的等待。
+    handler: () => jsonResponse(null),
   },
 ]

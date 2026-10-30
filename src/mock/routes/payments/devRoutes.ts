@@ -67,6 +67,15 @@ export const devPaymentRoutes: MockRoute[] = [
     },
   },
   {
+    method: 'POST',
+    path: '/payment/refunds/sync',
+    note: '主动回查在途退款（契约 `RefundSyncOutcome`）',
+    // 钱包页每次刷新都会先调一次它再读余额，漏了它就会一直落在 `uncovered` 名单里。
+    // 假数据没有真渠道可回查，回一份「查了 0 笔」的干净结果即可：形状必须齐，
+    // 前端按 `errors.length` 决定要不要弹提示，缺字段会直接抛。
+    handler: () => jsonResponse({ checked: 0, settled: 0, still_pending: 0, errors: [] }),
+  },
+  {
     method: 'GET',
     path: '/payment/withdrawal-limits/system',
     note: '提现限额（契约 `WithdrawalConfig`）',
