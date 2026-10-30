@@ -10875,12 +10875,12 @@ export interface paths {
         };
         /**
          * 读第三方登录渠道配置（平台级）
-         * @description **需要登录 + `user.config.get`**。读平台级的第三方登录渠道配置，路径里的 `system` 表示「平台级」，与同前缀下用户自己的绑定状态区分开。`provider` 只支持 `github` / `gitee`，其它取值回 404 与**纯文本**「未知的第三方登录渠道」。**`client_secret` 永远回显成 `***`**，明文不出服务端；原值为空时回空串。没有权限回 403；权限查询失败回 500，不当有权限放行。
+         * @description **需要登录 + `user.config.get`**。读平台级的第三方登录渠道配置，路径里的 `system` 表示「平台级」，与同前缀下用户自己的绑定状态区分开。`provider` 支持 `github` / `gitee` / `wechat` / `qq`，其它取值回 404 与**纯文本**「未知的第三方登录渠道」。四个渠道对外是同一形状：微信的 `app_id` / `app_secret` 与 QQ 的 `app_id` / `app_key` 都映射成`client_id` / `client_secret`。微信只暴露开放平台 AppID，公众号网页授权用的 `mp_app_id` 不在此端点读写。**`client_secret` 永远回显成 `***`**，明文不出服务端；原值为空时回空串。没有权限回 403；权限查询失败回 500，不当有权限放行。
          */
         get: operations["identity_config_get_oauth"];
         /**
          * 改第三方登录渠道配置（平台级）
-         * @description **需要登录 + `user.config.put`**。整体覆盖某个渠道的配置并落盘到 `config/local.toml`。密钥纪律：`client_secret` 传 `***` 或空串表示**保持原值**，传其它值才会被替换；响应里回显的一律是 `***`，不会把明文吐回来。启用校验：`enabled=true` 时 `client_id` 与 `client_secret` 都不能为空，否则回 400 与纯文本原因（`client_secret` 说的是「改完之后」的值，原值已配置就能通过）。`provider` 只支持 `github` / `gitee`，其它取值回 404。**保存不等于生效**：运行中的进程仍用启动时那一份配置，响应带 `restart_required: true`，前端要按它提示「需重启后生效」，不要假装热更新。写盘失败（权限、路径、磁盘）回 500，原因只进日志。
+         * @description **需要登录 + `user.config.put`**。整体覆盖某个渠道的配置并落盘到 `config/local.toml`。密钥纪律：`client_secret` 传 `***` 或空串表示**保持原值**，传其它值才会被替换；响应里回显的一律是 `***`，不会把明文吐回来。启用校验：`enabled=true` 时 `client_id` 与 `client_secret` 都不能为空，否则回 400 与纯文本原因（`client_secret` 说的是「改完之后」的值，原值已配置就能通过）。`provider` 支持 `github` / `gitee` / `wechat` / `qq`，其它取值回 404。微信只写开放平台 AppID（`mp_app_id` 原值保留），QQ 的 `app_key` 与微信的 `app_secret`都按 `client_secret` 的同一套掩码规则处理。**保存不等于生效**：运行中的进程仍用启动时那一份配置，响应带 `restart_required: true`，前端要按它提示「需重启后生效」，不要假装热更新。写盘失败（权限、路径、磁盘）回 500，原因只进日志。
          */
         put: operations["identity_config_put_oauth"];
         post?: never;
@@ -50528,7 +50528,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                /** @description 渠道，只支持 `github` / `gitee` */
+                /** @description 渠道，支持 `github` / `gitee` / `wechat` / `qq` */
                 provider: string;
             };
             cookie?: never;
@@ -50579,7 +50579,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                /** @description 渠道，只支持 `github` / `gitee` */
+                /** @description 渠道，支持 `github` / `gitee` / `wechat` / `qq` */
                 provider: string;
             };
             cookie?: never;
