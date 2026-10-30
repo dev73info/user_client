@@ -44,8 +44,13 @@ const immersiveWorkbench = computed(() =>
           }"
         >
           <PortalTopNav
-            v-if="!immersiveWorkbench"
-            :class="['app-top-nav', { 'app-top-nav--home': route.name === 'home' }]"
+            :class="[
+              'app-top-nav',
+              {
+                'app-top-nav--home': route.name === 'home',
+                'app-top-nav--workbench': immersiveWorkbench,
+              },
+            ]"
           />
           <RouterView v-slot="{ Component }">
             <Suspense>

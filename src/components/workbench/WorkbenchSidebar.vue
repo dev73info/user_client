@@ -15,6 +15,7 @@ import WorkbenchMenuNav from './WorkbenchMenuNav.vue'
  * 跨了 scoped 边界，所以这里用 `:global()` 指回去——选择器与拆分前逐字一致。
  */
 defineProps<{
+  open?: boolean
   isDevWorkbenchMode: boolean
   workbenchModeKey: string
   workbenchBrandTitle: string
@@ -47,7 +48,11 @@ const emit = defineEmits<{
 </script>
 
 <template>
-  <aside class="user-workbench__aside" aria-label="统一工作台菜单">
+  <aside
+    class="user-workbench__aside"
+    :class="{ 'is-mobile-open': open }"
+    aria-label="统一工作台菜单"
+  >
     <TScrollbar
       class="app-scrollbar user-workbench__aside-scrollbar"
       max-height="calc(100vh - var(--portal-header-footprint, 98px) - 22px)"
@@ -108,6 +113,10 @@ const emit = defineEmits<{
   box-shadow: var(--uw-surface-shadow);
 }
 
+.user-workbench__aside--mobile-only {
+  display: none;
+}
+
 /* 侧边栏内层用纵向 flex，菜单组之间保持固定间距。
    不要改用 flex-grow 撑菜单——菜单是 grid，多出来的高度会把条目间距拉开。 */
 .user-workbench__aside-inner {
@@ -155,13 +164,21 @@ const emit = defineEmits<{
     height: auto;
     max-height: none;
     border-radius: 0 22px 22px 0;
+    visibility: hidden;
     transform: translateX(-104%);
-    transition: transform 220ms cubic-bezier(0.2, 0.8, 0.2, 1);
+    transition:
+      transform 220ms cubic-bezier(0.2, 0.8, 0.2, 1),
+      visibility 0s linear 220ms;
   }
 
-  /* 抽屉打开时滑进来：状态挂在外壳根节点上（跨 scoped 边界，用 :global 指回去） */
-  :global(.user-workbench--mobile-menu-open) .user-workbench__aside {
+  .user-workbench__aside--mobile-only {
+    display: block;
+  }
+
+  .user-workbench__aside.is-mobile-open {
+    visibility: visible;
     transform: translateX(0);
+    transition-delay: 0s;
   }
 
   .user-workbench__aside-scrollbar {

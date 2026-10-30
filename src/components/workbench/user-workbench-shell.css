@@ -26,11 +26,15 @@
   padding-bottom: 22px;
 }
 
-.user-workbench--icon-shell {
-  --portal-header-footprint: 0px;
-
+.user-workbench__route {
   width: 100%;
-  height: 100dvh;
+  height: 100%;
+  min-height: 0;
+}
+
+.user-workbench--icon-shell {
+  width: 100%;
+  height: calc(100dvh - var(--portal-header-footprint, 98px));
   min-height: 0;
   grid-template-columns: 76px minmax(0, 1fr);
   gap: 0;
@@ -242,7 +246,7 @@
   .user-workbench__main--chat,
   .user-workbench__main--icon-shell {
     height: 100%;
-    padding: 0 0 70px;
+    padding: 0;
   }
 
   .user-workbench__content--chat,

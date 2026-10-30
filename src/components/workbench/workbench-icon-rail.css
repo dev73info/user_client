@@ -9,26 +9,10 @@
   color: var(--73-ink-soft);
 }
 
-.workbench-icon-rail__brand,
 .workbench-icon-rail__item {
   border: 0;
   font: inherit;
   cursor: pointer;
-}
-
-.workbench-icon-rail__brand {
-  width: 42px;
-  height: 42px;
-  display: grid;
-  place-items: center;
-  flex: 0 0 auto;
-  border-radius: 15px;
-  background: var(--73-app-grad-accent-02);
-  color: var(--73-surface-strong);
-  font-size: 15px;
-  font-weight: 900;
-  letter-spacing: -0.04em;
-  box-shadow: 0 10px 24px color-mix(in srgb, var(--73-accent) 24%, transparent);
 }
 
 .workbench-icon-rail__items {
@@ -76,13 +60,88 @@
 }
 
 .workbench-icon-rail__item:focus-visible,
-.workbench-icon-rail__brand:focus-visible {
+.workbench-icon-rail__settings-option:focus-visible {
   outline: 2px solid var(--73-accent);
   outline-offset: 3px;
 }
 
-.workbench-icon-rail__switch {
+.workbench-icon-rail__settings {
+  position: relative;
+  flex: 0 0 auto;
   margin-top: auto;
+}
+
+.workbench-icon-rail__settings-trigger svg {
+  width: 22px;
+  height: 22px;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.workbench-icon-rail__settings.is-open .workbench-icon-rail__settings-trigger {
+  color: var(--73-surface-strong);
+  background: var(--73-app-grad-accent-02);
+  box-shadow: 0 10px 22px color-mix(in srgb, var(--73-accent) 24%, transparent);
+}
+
+.workbench-icon-rail__settings-menu {
+  position: absolute;
+  right: auto;
+  bottom: 0;
+  left: calc(100% + 12px);
+  z-index: 90;
+  width: 196px;
+  display: grid;
+  gap: 4px;
+  padding: 8px;
+  border: 1px solid color-mix(in srgb, var(--73-accent-soft) 94%, transparent);
+  border-radius: 16px;
+  background: color-mix(in srgb, var(--73-surface-strong) 97%, transparent);
+  box-shadow: 0 18px 42px color-mix(in srgb, var(--73-ink) 16%, transparent);
+  backdrop-filter: blur(18px);
+}
+
+.workbench-icon-rail__settings-option {
+  min-height: 38px;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 0 11px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--73-ink);
+  cursor: pointer;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  text-align: left;
+  transition:
+    color 140ms ease,
+    background 140ms ease;
+}
+
+.workbench-icon-rail__settings-option:hover {
+  color: var(--73-accent);
+  background: color-mix(in srgb, var(--73-accent-soft) 88%, transparent);
+}
+
+.workbench-icon-rail__settings-option svg {
+  width: 17px;
+  height: 17px;
+  flex: 0 0 auto;
+}
+
+.workbench-icon-rail__settings-divider {
+  height: 1px;
+  margin: 3px 5px;
+  background: color-mix(in srgb, var(--73-border) 82%, transparent);
+}
+
+.workbench-icon-rail__settings-switch {
+  color: var(--73-accent);
 }
 
 .workbench-icon-rail__badge {
@@ -134,61 +193,6 @@
 
 @media (max-width: 900px) {
   .workbench-icon-rail {
-    position: fixed;
-    right: max(10px, env(safe-area-inset-right));
-    bottom: max(8px, env(safe-area-inset-bottom));
-    left: max(10px, env(safe-area-inset-left));
-    z-index: 72;
-    width: auto;
-    height: 58px;
-    flex-direction: row;
-    gap: 4px;
-    padding: 5px 7px;
-    border: 1px solid color-mix(in srgb, var(--73-accent-soft) 92%, transparent);
-    border-radius: 18px;
-    background: color-mix(in srgb, var(--73-surface-strong) 94%, transparent);
-    box-shadow: 0 12px 34px color-mix(in srgb, var(--73-accent) 18%, transparent);
-    backdrop-filter: blur(18px);
-  }
-
-  .workbench-icon-rail__brand {
     display: none;
-  }
-
-  .workbench-icon-rail__items {
-    flex-direction: row;
-    justify-content: space-between;
-    gap: 2px;
-    overflow-x: auto;
-  }
-
-  .workbench-icon-rail__item {
-    width: 44px;
-    height: 44px;
-    border-radius: 13px;
-  }
-
-  .workbench-icon-rail__switch {
-    margin-top: 0;
-  }
-
-  .workbench-icon-rail__tooltip {
-    display: none;
-  }
-}
-
-@media (max-width: 640px) {
-  .workbench-icon-rail {
-    right: 6px;
-    bottom: 6px;
-    left: 6px;
-    height: 56px;
-    padding: 4px;
-    border-radius: 16px;
-  }
-
-  .workbench-icon-rail__item {
-    width: 42px;
-    height: 42px;
   }
 }

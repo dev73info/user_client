@@ -78,7 +78,7 @@ const {
     @touchcancel.passive="touchTracking = false"
   >
     <button
-      v-if="mobileMenuOpen && !usesIconShell"
+      v-if="mobileMenuOpen"
       class="user-workbench__menu-backdrop"
       type="button"
       aria-label="关闭工作台菜单"
@@ -86,7 +86,8 @@ const {
     />
 
     <WorkbenchSidebar
-      v-if="!usesIconShell"
+      :class="{ 'user-workbench__aside--mobile-only': usesIconShell }"
+      :open="mobileMenuOpen"
       :is-dev-workbench-mode="isDevWorkbenchMode"
       :workbench-mode-key="workbenchModeKey"
       :workbench-brand-title="workbenchBrandTitle"
@@ -130,7 +131,6 @@ const {
       }"
     >
       <WorkbenchMobileBar
-        v-if="!usesIconShell"
         :workbench-mode-key="workbenchModeKey"
         :workbench-brand-title="workbenchBrandTitle"
         :current-title="currentTitle"
@@ -146,7 +146,9 @@ const {
       >
         <RouterView v-slot="{ Component }">
           <Transition name="workbench-page" mode="out-in">
-            <component :is="Component" :key="workbenchModeKey" />
+            <div class="user-workbench__route" :key="workbenchModeKey">
+              <component :is="Component" />
+            </div>
           </Transition>
         </RouterView>
       </div>

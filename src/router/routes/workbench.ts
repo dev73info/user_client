@@ -40,6 +40,15 @@ export const workbenchRoutes: RouteRecordRaw[] = [
         },
       },
       {
+        path: 'requirement-hall',
+        name: 'workbench-requirement-hall',
+        component: () => import('@/views/RequirementHallView.vue'),
+        meta: {
+          title: '需求大厅',
+          description: '浏览需求并进入工作台查看详情',
+        },
+      },
+      {
         path: 'favorites',
         name: 'workbench-favorites',
         component: () => import('@/views/CommunityListView.vue'),

@@ -12,10 +12,17 @@
   background: var(--73-surface-strong);
 }
 
-.app-shell--immersive,
-.app-content--immersive {
+/* 工作台仍沿用门户外壳，但正文高度固定为视口剩余空间。
+   用双类名提高优先级，避免移动端通用规则把沉浸式高度改回 auto。 */
+.app-shell.app-shell--immersive {
   height: 100dvh;
-  min-height: 100dvh;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.app-content.app-content--immersive {
+  height: 100%;
+  min-height: 0;
   overflow: hidden;
 }
 
@@ -23,8 +30,8 @@
   height: 100vh;
 }
 
-.app-shell-scrollbar--immersive {
-  height: 100dvh;
+.app-shell-scrollbar.app-shell-scrollbar--immersive {
+  height: 100%;
 }
 
 /* 页脚贴底：真正滚动的是 TScrollbar 内部的 `.t73-scrollbar__wrap`（`.app-scrollbar` 自身
@@ -42,9 +49,9 @@
   padding-bottom: 0;
 }
 
-.app-view-container--immersive {
-  height: 100dvh;
-  min-height: 100dvh;
+.app-view-container.app-view-container--immersive {
+  height: 100%;
+  min-height: 0;
   overflow: hidden;
   padding: 0;
 }
@@ -66,8 +73,8 @@
     display: none;
   }
 
-  .app-shell,
-  .app-content {
+  .app-shell:not(.app-shell--immersive),
+  .app-content:not(.app-content--immersive) {
     min-height: 100vh;
     height: auto;
   }
