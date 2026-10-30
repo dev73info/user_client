@@ -45,7 +45,7 @@ function tab(wrapper: VueWrapper, label: string) {
   return node!
 }
 
-async function render(options: { authed?: boolean } = {}) {
+async function render(options: { authed?: boolean; path?: string } = {}) {
   const router = createRouter({
     history: createMemoryHistory(),
     routes: [
@@ -61,9 +61,14 @@ async function render(options: { authed?: boolean } = {}) {
         name: 'workbench-realname',
         component: { template: '<div />' },
       },
+      {
+        path: '/workbench/favorites',
+        name: 'workbench-favorites',
+        component: { template: '<div />' },
+      },
     ],
   })
-  await router.push('/community')
+  await router.push(options.path ?? '/community')
   const auth = useAuthStore()
   auth.token = options.authed ? 'token' : ''
   auth.username = options.authed ? 'alice' : ''
@@ -186,6 +191,18 @@ describe('社区列表', () => {
     expect(router.currentRoute.value.name).toBe('home')
     expect(router.currentRoute.value.query).toMatchObject({ modal: 'auth', mode: 'login' })
     expect(mocks.listFavorites).not.toHaveBeenCalled()
+    wrapper.unmount()
+  })
+
+  it('工作台收藏页只展示我的帖子和我的收藏', async () => {
+    const { wrapper } = await render({ authed: true, path: '/workbench/favorites' })
+
+    expect(wrapper.findAll('[role="tab"]').map((item) => item.text())).toEqual([
+      '我的帖子',
+      '我的收藏',
+    ])
+    expect(wrapper.text()).not.toContain('全部帖子')
+    expect(mocks.listFavorites).toHaveBeenCalledWith('token', { limit: 10, offset: 0 })
     wrapper.unmount()
   })
 

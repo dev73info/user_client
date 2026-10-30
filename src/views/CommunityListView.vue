@@ -11,6 +11,7 @@ const route = useRoute()
 const router = useRouter()
 const detailColumnRef = ref<HTMLElement | null>(null)
 const isCommunityPage = computed(() => route.name === 'community')
+const isWorkbenchFavorites = computed(() => route.name === 'workbench-favorites')
 const selectedPostId = computed(() => {
   const value = Number(route.query.post)
   return Number.isSafeInteger(value) && value > 0 ? value : null
@@ -38,6 +39,7 @@ function handlePostsLoaded(posts: CommunityPost[]) {
     <div class="community-page__list-column">
       <CommunityListPanel
         :selectable="isCommunityPage"
+        :hide-all-mode="isWorkbenchFavorites"
         :selected-post-id="selectedPostId"
         @select-post="selectPost"
         @posts-loaded="handlePostsLoaded"

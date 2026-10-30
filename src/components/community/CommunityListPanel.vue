@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { reactive, watch } from 'vue'
+import { computed, reactive, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { Plus, Refresh, TButton, TEmpty, TIcon, TLoading } from 'ui_73info'
 
@@ -16,8 +16,10 @@ const props = withDefaults(
   defineProps<{
     selectable?: boolean
     selectedPostId?: number | null
+    /** 工作台收藏页只保留「我的帖子 / 我的收藏」，不提供公共社区的全量流。 */
+    hideAllMode?: boolean
   }>(),
-  { selectable: false, selectedPostId: null },
+  { selectable: false, selectedPostId: null, hideAllMode: false },
 )
 
 const emit = defineEmits<{
@@ -30,15 +32,28 @@ const router = useRouter()
 const { openRealname } = useCommunityAccess()
 const list = reactive(useCommunityList())
 const editor = reactive(useCommunityPostEditor())
-const modes: Array<{ value: CommunityListMode; label: string }> = [
+const allModes: Array<{ value: CommunityListMode; label: string }> = [
   { value: 'all', label: '全部帖子' },
   { value: 'mine', label: '我的帖子' },
   { value: 'favorites', label: '我的收藏' },
 ]
+const modes = computed(() =>
+  props.hideAllMode ? allModes.filter((item) => item.value !== 'all') : allModes,
+)
 
 watch(
   () => list.posts,
   (posts) => emit('posts-loaded', posts),
+  { immediate: true },
+)
+
+watch(
+  () => props.hideAllMode,
+  (hidden) => {
+    if (hidden && list.mode === 'all') {
+      list.setMode('favorites')
+    }
+  },
   { immediate: true },
 )
 
@@ -56,7 +71,10 @@ async function submitPost(payload: CreateCommunityPostPayload) {
 <template>
   <section
     class="community-list-panel"
-    :class="{ 'community-list-panel--rail': selectable }"
+    :class="{
+      'community-list-panel--rail': selectable,
+      'community-list-panel--two-modes': hideAllMode,
+    }"
     aria-label="社区帖子列表"
   >
     <header class="community-page__header">
@@ -114,9 +132,7 @@ async function submitPost(payload: CreateCommunityPostPayload) {
           {{ item.label }}
         </option>
       </select>
-      <TButton variant="solid" tone="accent" type="submit">
-        搜索
-      </TButton>
+      <TButton variant="solid" tone="accent" type="submit"> 搜索 </TButton>
       <TButton type="button" @click="list.resetFilters">重置</TButton>
     </form>
     <div v-if="list.tagError" class="community-inline-error" role="alert">
@@ -279,6 +295,9 @@ async function submitPost(payload: CreateCommunityPostPayload) {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
 }
+.community-list-panel--rail.community-list-panel--two-modes .community-page__tabs {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
 .community-list-panel--rail .community-page__tabs button {
   min-height: 36px;
   padding: 0 4px;
@@ -306,6 +325,9 @@ async function submitPost(payload: CreateCommunityPostPayload) {
   .community-page__tabs {
     display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  .community-list-panel--two-modes .community-page__tabs {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
   .community-page__tabs button,
   .community-filters input,
