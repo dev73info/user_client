@@ -9,10 +9,17 @@ import { findPaidEntitlement, mockBuyer, mockPurchases, nowIso } from './helpers
 let nextPurchaseSeq = 1
 
 export const purchaseRoutes: MockRoute[] = [
-  /* ---------------------------------------------------------------- 购买 / 退款 */
+  /* ---------------------------------------------------------------- 购买 / 退款
+   *
+   * 路径一律用契约的**单数** `/resource/...`：`/dev/resources` 会被别名翻成复数 `/resources`，
+   * 而购买这一族在后端是 `/api/resource/...`（actix 逐字匹配，复数路径 404）。
+   * 原来这里全写成 `/dev/resources/purchases/...`，归一化后与前端请求的
+   * `/resource/purchases/...` 差一个字母，整族路由一条都匹配不上——
+   * 「我的已购」永远是「还没有购买记录」，卖家「售出订单」永远是空表。
+   */
   {
     method: 'POST',
-    path: '/dev/resources/resources/:resourceId/purchase',
+    path: '/resource/resources/:resourceId/purchase',
     note: '资源购买下单（mock 直接记为已支付）',
     handler: (request, params) => {
       const resource = mcResources.find((item) => String(item.id) === params.resourceId)
@@ -86,7 +93,7 @@ export const purchaseRoutes: MockRoute[] = [
   },
   {
     method: 'GET',
-    path: '/dev/resources/purchases/sold',
+    path: '/resource/purchases/sold',
     note: '卖家售出订单（仅本人售出）',
     handler: (request) => {
       const seller = currentMockProfile().username
@@ -100,7 +107,7 @@ export const purchaseRoutes: MockRoute[] = [
   },
   {
     method: 'GET',
-    path: '/dev/resources/purchases/sold/:orderNo',
+    path: '/resource/purchases/sold/:orderNo',
     note: '卖家售出订单详情（仅本人售出）',
     handler: (_request, params) => {
       const seller = currentMockProfile().username
@@ -112,7 +119,7 @@ export const purchaseRoutes: MockRoute[] = [
   },
   {
     method: 'POST',
-    path: '/dev/resources/purchases/:orderNo/seller-refund',
+    path: '/resource/purchases/:orderNo/seller-refund',
     note: '卖家主动退款（全额 / 部分）',
     handler: (request, params) => {
       const order = mockPurchases.find((item) => item.order_no === params.orderNo)
@@ -159,7 +166,7 @@ export const purchaseRoutes: MockRoute[] = [
   },
   {
     method: 'GET',
-    path: '/dev/resources/purchases/mine',
+    path: '/resource/purchases/mine',
     note: '我的资源购买订单（支持 status / keyword 筛选与 limit+offset 分页，总数走 X-Total-Count）',
     handler: (request) => {
       const buyer = mockBuyer()
@@ -185,7 +192,7 @@ export const purchaseRoutes: MockRoute[] = [
   },
   {
     method: 'GET',
-    path: '/dev/resources/purchases/:orderNo',
+    path: '/resource/purchases/:orderNo',
     note: '我的资源购买订单详情',
     handler: (_request, params) => {
       const order = mockPurchases.find((item) => item.order_no === params.orderNo)
@@ -194,7 +201,7 @@ export const purchaseRoutes: MockRoute[] = [
   },
   {
     method: 'POST',
-    path: '/dev/resources/purchases/:orderNo/refund',
+    path: '/resource/purchases/:orderNo/refund',
     note: '买家入口已按需求 Q9 关闭：恒 403',
     handler: () =>
       textResponse('退款仅限卖家或平台发起，买家不可自助退款；如需退款请联系卖家或客服', 403),
