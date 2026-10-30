@@ -1,6 +1,7 @@
 import type { MockRoute } from '../../router'
 
 import { mcResources, versionsOf } from '../../db'
+import { mockTagGroups } from '../../db/tags'
 import { jsonResponse, textResponse } from '../../response'
 import {
   downloadResponse,
@@ -63,8 +64,9 @@ export const publicResourceRoutes: MockRoute[] = [
   },
   {
     method: 'GET',
-    path: '/resources/tags',
-    note: '资源标签分组原始数据：mock 返回空数组，标签树会是空的（不做假标签，避免与 wasm 的解析口径打架）',
-    handler: () => jsonResponse([]),
+    path: '/tag/tags',
+    note: '资源标签树：根 = 专区、子 = 二级分区（列表按二级分区的名字过滤资源）',
+    // 原来这条回 []：门户顶部选不到专区、列表拿一个不存在的分区去过滤，永远「共 0 个」。
+    handler: () => jsonResponse(mockTagGroups()),
   },
 ]

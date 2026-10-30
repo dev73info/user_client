@@ -4,6 +4,34 @@ import { DEV_NICKNAME, DEV_USERNAME, datetime, iso } from './shared'
 
 /* ------------------------------------------------------------------ 资源与版本 */
 
+/**
+ * 资源归到哪个标签分组里。
+ *
+ * 门户列表与「类型」筛选读的是 `tag_selections`；只给 `platform` 不够，
+ * 卡片上会显示成「未标注」、左侧筛选分区也勾不上。分组取自 `db/tags.ts` 同一棵树。
+ */
+function tagSelectionOf(
+  groupId: number,
+  groupName: string,
+  groupAlias: string,
+  rootLabel: string,
+  rootAlias: string,
+  tagId: number,
+  tagName: string,
+  tagAlias: string,
+) {
+  return {
+    group_id: groupId,
+    group_name: groupName,
+    group_alias: groupAlias,
+    group_path: [rootLabel, groupName],
+    group_path_aliases: [rootAlias, groupAlias],
+    tag_ids: [tagId],
+    tag_names: [tagName],
+    tag_aliases: [tagAlias],
+  }
+}
+
 function buildResource(
   id: number,
   platform: string,
@@ -23,7 +51,9 @@ function buildResource(
     title,
     author: DEV_NICKNAME,
     description,
-    tag_selections: [],
+    tag_selections: [
+      tagSelectionOf(1201, '类型', 'type', '资源项目', 'resources', 1301, '效率工具', 'efficiency'),
+    ],
     file_name: `${title}.zip`,
     source_url: '',
     cover_url: null,
