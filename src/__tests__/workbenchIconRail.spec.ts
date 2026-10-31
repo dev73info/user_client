@@ -29,7 +29,7 @@ const routes = [
   path: `/${name}`,
   component: { template: '<div />' },
   meta: name.startsWith('dev-')
-    ? { devArea: true }
+    ? { devArea: true, workbenchChat: name === 'dev-messages' }
     : name === 'workbench'
       ? { workbenchChat: true }
       : {},
@@ -95,6 +95,48 @@ describe('工作台图标栏', () => {
     await groupButton('订单与合同').trigger('click')
     await flushPromises()
     expect(router.currentRoute.value.name).toBe('workbench-signatures')
+    wrapper.unmount()
+  })
+
+  it('切到别的分组再点回「消息」，恢复上次打开的会话', async () => {
+    const { router, wrapper } = await render('workbench')
+    const railButton = (label: string) =>
+      wrapper
+        .findAll('.workbench-icon-rail__item')
+        .find((button) => button.attributes('aria-label') === label)!
+
+    await router.push({ name: 'workbench', query: { requirement_id: 'REQ-1' } })
+    await flushPromises()
+
+    await railButton('资产与权益').trigger('click')
+    await flushPromises()
+    expect(router.currentRoute.value.name).toBe('workbench-favorites')
+
+    await railButton('消息').trigger('click')
+    await flushPromises()
+    expect(router.currentRoute.value.name).toBe('workbench')
+    expect(router.currentRoute.value.query.requirement_id).toBe('REQ-1')
+    wrapper.unmount()
+  })
+
+  it('开发者模式的「消息」同样恢复上次会话', async () => {
+    const { router, wrapper } = await render('dev-messages', { isDevWorkbenchMode: true })
+    const railButton = (label: string) =>
+      wrapper
+        .findAll('.workbench-icon-rail__item')
+        .find((button) => button.attributes('aria-label') === label)!
+
+    await router.push({ name: 'dev-messages', query: { requirement_id: 'REQ-2' } })
+    await flushPromises()
+
+    await railButton('资源项目').trigger('click')
+    await flushPromises()
+    expect(router.currentRoute.value.name).toBe('dev-resource-list')
+
+    await railButton('消息').trigger('click')
+    await flushPromises()
+    expect(router.currentRoute.value.name).toBe('dev-messages')
+    expect(router.currentRoute.value.query.requirement_id).toBe('REQ-2')
     wrapper.unmount()
   })
 

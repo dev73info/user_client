@@ -180,9 +180,19 @@ const switchLabel = computed(() => (props.isDevWorkbenchMode ? '切换到用户'
  */
 const lastRouteByGroup = ref<Record<string, string>>({})
 
+/**
+ * 消息中心上一次停留的地址（含 `?requirement_id=…`）：切去别的分组/页面再点回「消息」时，
+ * 恢复上次点开的会话，而不是回到「没有选中会话」的列表。按模式分开存，用户侧与开发者侧
+ * 不互相串地址；地址是否还属于当前模式在 `open()` 里再校验一次。
+ */
+const lastMessagesRoute: Record<'user' | 'dev', string | null> = { user: null, dev: null }
+
 watch(
   () => route.fullPath,
   () => {
+    if (isChatActive.value) {
+      lastMessagesRoute[props.isDevWorkbenchMode ? 'dev' : 'user'] = route.fullPath
+    }
     const group = activeGroup.value
     if (!group) {
       return
@@ -203,6 +213,22 @@ function isActive(item: RailItem) {
 }
 
 function open(item: RailItem) {
+  if (item.key === 'messages') {
+    const remembered = lastMessagesRoute[props.isDevWorkbenchMode ? 'dev' : 'user']
+    if (remembered) {
+      const resolved = router.resolve(remembered)
+      const resolvedIsDev = resolved.matched.some((record) => Boolean(record.meta.devArea))
+      // 只认「仍然是聊天页、且属于当前模式」的旧地址；模式切换后另一侧的消息地址作废
+      if (
+        resolved.matched.length > 0 &&
+        resolved.meta.workbenchChat === true &&
+        resolvedIsDev === props.isDevWorkbenchMode
+      ) {
+        void router.push(remembered)
+        return
+      }
+    }
+  }
   if (item.groupKey) {
     const remembered = lastRouteByGroup.value[item.groupKey]
     if (remembered) {
