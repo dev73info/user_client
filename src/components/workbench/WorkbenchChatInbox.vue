@@ -1,14 +1,13 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import { onBeforeUnmount, onMounted, ref } from 'vue'
 import { Plus, Search, TIcon } from 'ui_73info'
 
 import type { MessageThread } from '@/shared/messagesThreads'
 
-const props = defineProps<{
+defineProps<{
   threads: MessageThread[]
   selectedRequirementId: string
   loading: boolean
-  unreadCount: number
 }>()
 
 const keyword = defineModel<string>('keyword', { required: true })
@@ -35,12 +34,6 @@ let menuOpenedByLongPress = false
 let longPressTimer: number | null = null
 let longPressStart = { x: 0, y: 0 }
 let suppressNextClick = false
-
-const countLabel = computed(() =>
-  props.unreadCount > 0
-    ? `${props.threads.length} 个会话 · ${props.unreadCount} 条未读`
-    : `${props.threads.length} 个会话`,
-)
 
 /** 头像取对方名的首字（「开发者：bob」取 bob）；未开启会话没有对方，退回需求标题首字。 */
 function avatarText(thread: MessageThread) {
@@ -202,7 +195,6 @@ onBeforeUnmount(() => {
     <header class="workbench-inbox__header">
       <div>
         <h1>消息</h1>
-        <p>{{ countLabel }}</p>
       </div>
       <button
         class="workbench-inbox__compose"

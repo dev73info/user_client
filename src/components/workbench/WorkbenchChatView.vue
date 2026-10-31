@@ -67,9 +67,6 @@ const selectedThread = computed<MessageThread | null>(() => {
 })
 
 const selectedRequirementId = computed(() => selectedThread.value?.requirementId ?? '')
-const unreadCount = computed(() =>
-  allThreads.value.reduce((total, thread) => total + thread.unreadCount, 0),
-)
 const isConversationOpen = computed(() => selectedRequirementId.value !== '')
 const workbenchChatStyle = computed<Record<string, string> | undefined>(() =>
   inboxWidth.value === null
@@ -250,7 +247,6 @@ function resizeInboxByKeyboard(event: KeyboardEvent) {
         :threads="visibleThreads"
         :selected-requirement-id="selectedRequirementId"
         :loading="loading"
-        :unread-count="unreadCount"
         @select="selectThread"
         @compose="composeConversation"
         @pin="setThreadPinned"

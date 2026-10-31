@@ -6,8 +6,8 @@ import { railGroupItemTo, type RailGroup, type RailGroupItem } from '@/shared/wo
 /**
  * 图标栏某个分组的中栏列表：只列这一组的页面，选中项在右栏的内容区展开。
  *
- * 版式与消息中心的中栏一致（标题 + 计数，下面一列可选条目），这样「消息 / 订单与合同 /
- * 资产与权益」三个入口点下去是同一个骨架，不用为分组另学一套。
+ * 分组名由图标栏自己的悬浮提示报出，中栏不再重复一行标题；版式与消息中心的中栏一致
+ * （下面一列可选条目），这样「消息 / 订单与合同 / 资产与权益」三个入口点下去是同一个骨架。
  */
 defineProps<{
   group: RailGroup
@@ -21,10 +21,6 @@ const emit = defineEmits<{
 
 <template>
   <section class="workbench-rail-group" :aria-label="group.label">
-    <header class="workbench-rail-group__header">
-      <h1>{{ group.label }}</h1>
-    </header>
-
     <nav class="workbench-rail-group__list">
       <RouterLink
         v-for="item in group.items"
