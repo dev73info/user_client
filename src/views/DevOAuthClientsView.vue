@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { onMounted } from 'vue'
+import { onMounted, ref } from 'vue'
 
-import { OAUTH_SCOPE_OPTIONS } from '@/api/oauthClients'
+import OAuthClientCreateDialog from '@/components/dev/OAuthClientCreateDialog.vue'
 import { useDevOAuthClients } from '@/composables/useDevOAuthClients'
 import { TButton, TInput } from 'ui_73info'
 
@@ -26,7 +26,22 @@ const {
   toggleScope,
 } = useDevOAuthClients()
 
+const createOpen = ref(false)
+
 onMounted(init)
+
+function openCreate() {
+  createForm.name = ''
+  createForm.redirectUris = ''
+  createForm.scopes = ['profile']
+  createOpen.value = true
+}
+
+async function handleCreate() {
+  if (await submitCreate()) {
+    createOpen.value = false
+  }
+}
 </script>
 
 <template>
@@ -38,49 +53,23 @@ onMounted(init)
           在自己的站点使用 73Info 账号登录（OAuth 2.0 授权码模式）。创建客户端需要已完成实名认证。
         </p>
       </div>
-      <TButton variant="outline" :loading="loading" @click="loadClients">刷新</TButton>
+      <div class="dev-oauth-clients__head-actions">
+        <TButton variant="solid" tone="accent" @click="openCreate">新建客户端</TButton>
+        <TButton variant="outline" :loading="loading" @click="loadClients">刷新</TButton>
+      </div>
     </header>
 
-    <section class="dev-surface-card">
-      <h3>新建客户端</h3>
-      <div class="dev-oauth-clients__form">
-        <label>
-          应用名称
-          <TInput v-model="createForm.name" placeholder="例如：我的小工具站" />
-        </label>
-        <label>
-          回调地址（每行一个，生产用 https，本地可用 http://localhost / 127.0.0.1）
-          <textarea
-            v-model="createForm.redirectUris"
-            rows="3"
-            placeholder="https://example.com/oauth/callback"
-          />
-        </label>
-        <fieldset>
-          <legend>权限范围</legend>
-          <label
-            v-for="option in OAUTH_SCOPE_OPTIONS"
-            :key="option.value"
-            class="dev-oauth-clients__scope"
-          >
-            <input
-              type="checkbox"
-              :checked="createForm.scopes.includes(option.value)"
-              @change="toggleScope(option.value)"
-            />
-            {{ option.label }}
-          </label>
-        </fieldset>
-        <TButton
-          type="button"
-          variant="solid"
-          tone="accent"
-          :loading="submitting"
-          @click="submitCreate"
-          >创建客户端</TButton
-        >
-      </div>
-    </section>
+    <OAuthClientCreateDialog
+      v-model:open="createOpen"
+      :name="createForm.name"
+      :redirect-uris="createForm.redirectUris"
+      :scopes="createForm.scopes"
+      :submitting="submitting"
+      @update:name="createForm.name = $event"
+      @update:redirect-uris="createForm.redirectUris = $event"
+      @toggle-scope="toggleScope"
+      @submit="handleCreate"
+    />
 
     <section v-if="oneTimeSecret" class="dev-surface-card dev-oauth-clients__secret" role="alert">
       <h3>请立即保存这枚密钥</h3>
@@ -170,40 +159,11 @@ onMounted(init)
   font-size: 13px;
 }
 
-.dev-oauth-clients__form {
-  display: grid;
-  gap: 12px;
-  max-width: 640px;
-}
-
-.dev-oauth-clients__form label {
-  display: grid;
-  gap: 6px;
-  font-size: 13px;
-  color: var(--73-ink-regular, #374151);
-}
-
-.dev-oauth-clients__form textarea {
-  width: 100%;
-  box-sizing: border-box;
-  border: 1px solid var(--73-border, #d9dee8);
-  border-radius: 8px;
-  padding: 8px 10px;
-  font: inherit;
-  resize: vertical;
-}
-
-.dev-oauth-clients__form fieldset {
-  border: none;
-  padding: 0;
-  margin: 0;
-}
-
-.dev-oauth-clients__scope {
-  display: flex !important;
+.dev-oauth-clients__head-actions {
+  display: flex;
   align-items: center;
   gap: 8px;
-  font-weight: 400;
+  flex: 0 0 auto;
 }
 
 .dev-oauth-clients__secret {
@@ -257,3 +217,5 @@ onMounted(init)
   flex-wrap: wrap;
 }
 </style>
+
+<style scoped src="@/components/dev/dev-oauth-clients-form.css"></style>
