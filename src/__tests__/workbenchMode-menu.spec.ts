@@ -36,8 +36,8 @@ describe('workbench mode switch', () => {
     // 切换按钮在品牌行里靠右，按钮文字固定，切换方向放在 aria-label / title
     const modeSwitch = wrapper.find('.user-workbench__brand > .user-workbench__mode-switch')
     expect(modeSwitch.exists()).toBe(true)
-    expect(modeSwitch.text()).toContain('切换工作台')
-    expect(modeSwitch.attributes('aria-label')).toBe('进入开发者工作台')
+    expect(modeSwitch.text()).toContain('切换到开发者')
+    expect(modeSwitch.attributes('aria-label')).toBe('切换到开发者')
     // 左侧标题是文字标题（不是药丸标签），标题内容随模式变
     expect(wrapper.find('.user-workbench__brand > .user-workbench__brand-mark').exists()).toBe(true)
     expect(wrapper.find('.user-workbench__brand > .user-workbench__brand-title').text()).toBe(
@@ -170,8 +170,8 @@ describe('workbench mode switch', () => {
     // 退出登录挂在系统通知下方，两种工作台共用
     expect(text).toContain('退出登录')
     const modeSwitch = wrapper.find('.user-workbench__mode-switch')
-    expect(modeSwitch.attributes('aria-label')).toBe('回到用户工作台')
-    expect(modeSwitch.text()).toContain('切换工作台')
+    expect(modeSwitch.attributes('aria-label')).toBe('切换到用户')
+    expect(modeSwitch.text()).toContain('切换到用户')
     expect(modeSwitch.classes()).not.toContain('user-workbench__mode-switch--icon')
     expect(wrapper.find('.user-workbench__brand-title').text()).toBe('开发者工作台')
     wrapper.unmount()
