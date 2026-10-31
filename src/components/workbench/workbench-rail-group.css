@@ -34,17 +34,17 @@
   border-radius: 8px;
   color: var(--73-ink);
   text-decoration: none;
-  transition:
-    background 160ms ease,
-    color 160ms ease;
+  transition: color 160ms ease;
 }
 
 .workbench-rail-group__link:hover {
-  background: color-mix(in srgb, var(--73-accent-soft) 52%, transparent);
+  background: transparent;
+  color: var(--73-ink);
 }
 
+/* 选中态不加底色与左侧色条：只有文字颜色变化，与图标栏同一口径 */
 .workbench-rail-group__link.active {
-  background: color-mix(in srgb, var(--73-accent-soft) 78%, transparent);
+  background: transparent;
   color: var(--73-accent);
 }
 
@@ -55,18 +55,6 @@
   font-size: 14px;
   font-weight: 600;
   line-height: 1.25;
-}
-
-/* 当前页：左侧一条强调条，与图标栏的选中态呼应 */
-.workbench-rail-group__link.active::before {
-  content: '';
-  position: absolute;
-  left: 4px;
-  top: 12px;
-  bottom: 12px;
-  width: 3px;
-  border-radius: 999px;
-  background: var(--73-accent);
 }
 
 @media (prefers-reduced-motion: reduce) {
