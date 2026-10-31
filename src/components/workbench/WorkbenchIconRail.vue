@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, type Component } from 'vue'
+import { computed, ref, watch, type Component } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import {
   Bell,
@@ -18,6 +18,7 @@ import {
 
 import { useRailTooltip } from '@/composables/useRailTooltip'
 import { useWorkbenchRailGroups } from '@/composables/useWorkbenchRailGroups'
+import { railGroupItemActive } from '@/shared/workbenchRailGroups'
 import { isWorkbenchChatPage } from '@/shared/workbenchChatRoute'
 
 import WorkbenchIconRailSettings from './WorkbenchIconRailSettings.vue'
@@ -173,6 +174,24 @@ const userItems = computed<RailItem[]>(() => [
 const items = computed(() => (props.isDevWorkbenchMode ? devItems : userItems.value))
 const switchLabel = computed(() => (props.isDevWorkbenchMode ? '切换到用户' : '切换到开发者'))
 
+/**
+ * 每个分组上一次停在的页面：在组与组之间来回切换时，回到该组原来那一页，
+ * 而不是每次都被送回组内第一条。只在当前页属于某个分组时记录（含 query）。
+ */
+const lastRouteByGroup = ref<Record<string, string>>({})
+
+watch(
+  () => route.fullPath,
+  () => {
+    const group = activeGroup.value
+    if (!group) {
+      return
+    }
+    lastRouteByGroup.value[group.key] = route.fullPath
+  },
+  { immediate: true },
+)
+
 function isActive(item: RailItem) {
   if (item.key === 'messages') {
     return isChatActive.value
@@ -184,6 +203,21 @@ function isActive(item: RailItem) {
 }
 
 function open(item: RailItem) {
+  if (item.groupKey) {
+    const remembered = lastRouteByGroup.value[item.groupKey]
+    if (remembered) {
+      const resolved = router.resolve(remembered)
+      const group = groups.value.find((candidate) => candidate.key === item.groupKey)
+      const belongsToGroup =
+        group?.items.some((groupItem) =>
+          railGroupItemActive(groupItem, String(resolved.name ?? '')),
+        ) ?? false
+      if (resolved.matched.length > 0 && belongsToGroup) {
+        void router.push(remembered)
+        return
+      }
+    }
+  }
   void router.push(item.to)
 }
 
