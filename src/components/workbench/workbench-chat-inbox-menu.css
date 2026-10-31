@@ -1,16 +1,5 @@
-/* 会话行的置顶标记，以及右键 / 长按弹出的操作菜单。
+/* 会话行的右键 / 长按操作菜单。
    菜单挂在 body 上（position: fixed），不受列表滚动容器裁剪。 */
-
-.workbench-inbox__pin {
-  flex: 0 0 auto;
-  padding: 1px 6px;
-  border-radius: 999px;
-  background: color-mix(in srgb, var(--73-accent) 10%, transparent);
-  color: var(--73-accent);
-  font-size: 10.5px;
-  font-weight: 600;
-  line-height: 1.4;
-}
 
 .workbench-inbox__menu {
   position: fixed;
