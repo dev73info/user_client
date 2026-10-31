@@ -90,10 +90,7 @@ function openTransfer(order: ResourcePurchaseOrder) {
     />
 
     <section class="wallet-section">
-      <div class="wb-card-head">
-        <div class="wb-card-head__title-block">
-          <h3 class="wb-card-head__title">我的已购资源</h3>
-        </div>
+      <div class="wb-card-head wb-card-head--actions-only">
         <div class="wb-card-head__actions">
           <TButton variant="outline" @click="router.push({ name: 'workbench-purchase-transfers' })">
             过户与转移
