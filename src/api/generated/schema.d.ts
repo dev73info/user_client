@@ -2245,6 +2245,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/auth/agreement-content": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 取公示协议或平台规则正文
+         * @description **免登录**：法务页与规则中心要在登录前就能读。正文来自 `contract_template`，按 `name` 取；只接受对外公示清单里的代号（用户服务协议、隐私政策、支付与退款说明与规则中心的平台规则），其余代号一律 400，避免把签署场景的合同模板暴露成公开文档。清单里的代号尚未配置时回 404 `AGREEMENT_NOT_CONFIGURED`，不会返回空正文。`version` 与 `effective_at` 是模板的当前版本与公示时间，正文修订时由迁移递增。
+         */
+        get: operations["auth_get_agreement_content"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/auth/dev-access-status": {
         parameters: {
             query?: never;
@@ -26097,6 +26117,50 @@ export interface operations {
             };
             /** @description 未认证 */
             401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 内部错误 */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    auth_get_agreement_content: {
+        parameters: {
+            query: {
+                /** @description 协议代号（`contract_template.name`），如 `privacy_policy`。 */
+                code: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 协议正文 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AgreementContentResponse"];
+                };
+            };
+            /** @description 协议代号为空或不在公示清单（`INVALID_ARGUMENT`） */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 协议未配置（`AGREEMENT_NOT_CONFIGURED`） */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };

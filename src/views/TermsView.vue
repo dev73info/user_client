@@ -7,7 +7,7 @@ import {
   type UserServiceAgreement,
 } from '@/api/auth'
 import { useAuthStore } from '@/stores/auth'
-import { parseLegalText } from '@/components/legal/legalText'
+import { formatLegalDate, parseLegalText } from '@/components/legal/legalText'
 
 const router = useRouter()
 const auth = useAuthStore()
@@ -39,12 +39,7 @@ function goBack() {
   router.push('/')
 }
 
-// 将 YYYY-MM-DD 统一为「YYYY年M月D日」，展示格式统一。
-function formatEffectiveDate(value: string): string {
-  const match = /^(\d{4})-(\d{1,2})-(\d{1,2})$/.exec(value.trim())
-  if (!match) return value
-  return `${match[1]}年${Number(match[2])}月${Number(match[3])}日`
-}
+// 生效时间统一展示成「YYYY年M月D日」（后端下发带时分秒的东八区时间）。
 
 async function loadAgreement() {
   loading.value = true
@@ -82,7 +77,7 @@ onMounted(loadAgreement)
 
       <article class="content-block">
         <template v-if="agreement">
-          <p><strong>生效日期：</strong>{{ formatEffectiveDate(agreement.effective_at) }}</p>
+          <p><strong>生效日期：</strong>{{ formatLegalDate(agreement.effective_at) }}</p>
 
           <template v-for="(block, index) in blocks" :key="index">
             <h3 v-if="block.type === 'heading'" :id="block.id">{{ block.text }}</h3>
