@@ -236,7 +236,7 @@ describe('工作台聊天首页', () => {
     wrapper.unmount()
   })
 
-  it('右键会话弹出菜单，置顶后行上出现「置顶」标记', async () => {
+  it('右键会话弹出菜单，置顶后行标记为 is-pinned 且不再显示文字标签', async () => {
     const { wrapper } = await render()
     const row = wrapper.findAll('.workbench-inbox__row')[0]!
     await row.trigger('contextmenu', { clientX: 120, clientY: 200 })
@@ -248,9 +248,10 @@ describe('工作台聊天首页', () => {
     await flushPromises()
 
     expect(mocks.updatePreference).toHaveBeenCalledWith('test-token', 'REQ-1', { pinned: true })
-    expect(
-      wrapper.findAll('.workbench-inbox__row')[0]!.find('.workbench-inbox__pin').exists(),
-    ).toBe(true)
+    const firstRow = wrapper.findAll('.workbench-inbox__row')[0]!
+    expect(firstRow.classes()).toContain('is-pinned')
+    // 置顶不再有可见的文字标签：只靠排序与右键菜单里的「取消置顶」表达
+    expect(wrapper.find('.workbench-inbox__pin').exists()).toBe(false)
     expect(document.body.querySelector('.workbench-inbox__menu')).toBeNull()
     wrapper.unmount()
   })

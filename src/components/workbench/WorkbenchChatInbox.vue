@@ -193,9 +193,17 @@ onBeforeUnmount(() => {
 <template>
   <section class="workbench-inbox" aria-label="会话列表">
     <header class="workbench-inbox__header">
-      <div>
-        <h1>消息</h1>
-      </div>
+      <label class="workbench-inbox__search">
+        <TIcon :size="18">
+          <Search />
+        </TIcon>
+        <input
+          v-model="keyword"
+          type="search"
+          placeholder="搜索聊天记录、联系人..."
+          aria-label="搜索聊天记录、联系人"
+        />
+      </label>
       <button
         class="workbench-inbox__compose"
         type="button"
@@ -208,18 +216,6 @@ onBeforeUnmount(() => {
         </TIcon>
       </button>
     </header>
-
-    <label class="workbench-inbox__search">
-      <TIcon :size="18">
-        <Search />
-      </TIcon>
-      <input
-        v-model="keyword"
-        type="search"
-        placeholder="搜索聊天记录、联系人..."
-        aria-label="搜索聊天记录、联系人"
-      />
-    </label>
 
     <div class="workbench-inbox__list" @scroll.passive="closeThreadMenu">
       <p v-if="loading && threads.length === 0" class="workbench-inbox__state">消息加载中...</p>
@@ -255,7 +251,6 @@ onBeforeUnmount(() => {
           <span class="workbench-inbox__body">
             <span class="workbench-inbox__title-row">
               <strong>{{ thread.title }}</strong>
-              <span v-if="thread.pinned" class="workbench-inbox__pin">置顶</span>
               <time>{{ formatTime(thread) }}</time>
             </span>
             <!-- 只有真会话才报对方是谁；「会话待开启」那一行的状态已经写在状态胶囊里，不再重复一行 -->
