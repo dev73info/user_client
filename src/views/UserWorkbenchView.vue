@@ -125,6 +125,7 @@ const {
       :unread-count="unreadMessageCount"
       :team-invitation-count="teamInvitationCount"
       :realname-approved="realnameApproved"
+      @switch-mode="switchWorkbenchMode"
     />
 
     <section
