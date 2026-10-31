@@ -36,7 +36,7 @@
 
 .workbench-icon-rail__switch:hover {
   color: var(--73-accent);
-  background: color-mix(in srgb, var(--73-accent) 10%, transparent);
+  background: transparent;
 }
 
 .workbench-icon-rail__items::-webkit-scrollbar {
@@ -53,21 +53,18 @@
   border-radius: 8px;
   background: transparent;
   color: var(--73-ink-placeholder);
-  transition:
-    color 150ms ease,
-    background 150ms ease;
+  transition: color 150ms ease;
 }
 
 .workbench-icon-rail__item:hover {
   color: var(--73-ink);
-  background: color-mix(in srgb, var(--73-ink) 6%, transparent);
+  background: transparent;
 }
 
-/* 选中态只做「淡底 + 主色图标」，不用渐变、不用彩色投影：
-   图标栏是导航骨架，它比内容区更亮就会抢走视觉中心。 */
+/* 选中与未选中都不加底色/描边：只有图标颜色变化，避免导航骨架比内容区更亮 */
 .workbench-icon-rail__item.is-active {
   color: var(--73-accent);
-  background: color-mix(in srgb, var(--73-accent) 10%, transparent);
+  background: transparent;
 }
 
 .workbench-icon-rail__item:focus-visible {
