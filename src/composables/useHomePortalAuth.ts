@@ -240,6 +240,7 @@ export function useHomePortalAuth(options: HomePortalAuthOptions) {
 
   const wechatQrBindings = computed(() => ({
     visible: wechatQrLogin.visible,
+    imageUrl: wechatQrLogin.imageUrl,
     url: wechatQrLogin.url,
     state: wechatQrLogin.state,
     pollSecret: wechatQrLogin.pollSecret,

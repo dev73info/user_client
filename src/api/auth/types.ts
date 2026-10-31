@@ -30,6 +30,16 @@ export type AuthorizeUrlResp = Schemas['AuthorizeUrlResponse']
 export type WechatLoginQrUrlResp = Schemas['QrUrlResponse']
 
 /**
+ * 服务号「扫码关注即登录」的二维码（`GET /auth/wechat/mp/login/qr/url`）。
+ *
+ * 三个凭据字段与 `QrUrlResponse` 完全同形；差别只有两点：`url` 是**二维码图片地址**
+ * （微信 `showqrcode`，直接放进 `<img src>`），以及多一个 `expires_in`。
+ * 生成物里还没有这条契约（后端 spec 尚未重新导出），所以在这里按同形收窄，
+ * spec 更新后可以直接换成 `Schemas['MpQrUrlResponse']`。
+ */
+export type WechatMpLoginQrUrlResp = Schemas['QrUrlResponse'] & { expires_in: number }
+
+/**
  * 扫码登录所处阶段。
  *
  * 契约里的 `status` 只写成 `string`、注释列了 `pending` / `confirmed` / `expired`；
