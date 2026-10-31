@@ -67,7 +67,12 @@ export const shareRoutes: MockRoute[] = [
         records: [
           { share_type: 'invite', target_id: null, visits: 74, registrations: 6 },
           { share_type: 'resource', target_id: '9001', visits: 41, registrations: 2 },
-          { share_type: 'requirement', target_id: 'REQ-20260907-0051', visits: 13, registrations: 1 },
+          {
+            share_type: 'requirement',
+            target_id: 'REQ-20260907-0051',
+            visits: 13,
+            registrations: 1,
+          },
         ],
       }
 

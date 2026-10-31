@@ -21,9 +21,7 @@ export const requirementDetailRoutes: MockRoute[] = [
     handler: (_request, params) => {
       const requirement = findRequirement(params.id ?? '')
 
-      return requirement
-        ? jsonResponse(requirement)
-        : errorResponse(404, '需求不存在或无权访问')
+      return requirement ? jsonResponse(requirement) : errorResponse(404, '需求不存在或无权访问')
     },
   },
   {

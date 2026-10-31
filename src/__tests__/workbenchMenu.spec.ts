@@ -23,7 +23,11 @@ const itemOf = (overrides: Partial<WorkbenchMenuItem> = {}): WorkbenchMenuItem =
 
 describe('buildMenuGroups', () => {
   it('用户菜单三个分组，顺序是「订单与合同 / 资产与权益 / 账户」', () => {
-    expect(buildMenuGroups(false).map((group) => group.key)).toEqual(['orders', 'assets', 'account'])
+    expect(buildMenuGroups(false).map((group) => group.key)).toEqual([
+      'orders',
+      'assets',
+      'account',
+    ])
   })
 
   it('分组与桌面图标栏共用一份数据，不再是两套排法', () => {

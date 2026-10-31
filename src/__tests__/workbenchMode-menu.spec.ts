@@ -80,7 +80,9 @@ describe('workbench mode switch', () => {
 
     // 订单与合同：成交全流程；资产与权益：券 / 积分 / 权益
     const ordersLinks = groups
-      .find((group) => group.find('.user-workbench__menu-group-head').text().includes('订单与合同'))!
+      .find((group) =>
+        group.find('.user-workbench__menu-group-head').text().includes('订单与合同'),
+      )!
       .findAll('.user-workbench__submenu-link')
     expect(ordersLinks.map((link) => link.text())).toEqual([
       '我的需求',
@@ -90,7 +92,9 @@ describe('workbench mode switch', () => {
       '过户与转移',
     ])
     const assetsLinks = groups
-      .find((group) => group.find('.user-workbench__menu-group-head').text().includes('资产与权益'))!
+      .find((group) =>
+        group.find('.user-workbench__menu-group-head').text().includes('资产与权益'),
+      )!
       .findAll('.user-workbench__submenu-link')
     expect(assetsLinks.map((link) => link.text())).toEqual([
       '我的收藏',

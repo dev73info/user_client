@@ -34,11 +34,18 @@ function group(
 
 /** 二级分区下面再挂一层标签分组，页面左侧的筛选分区就从这里来。 */
 export function mockTagGroups(): TagGroup[] {
-  const toolTags = group(1201, '类型', 'type', 0, [], [
-    { id: 1301, group_id: 1201, name: '效率工具', alias: 'efficiency', sort_order: 0 },
-    { id: 1302, group_id: 1201, name: '数据同步', alias: 'data-sync', sort_order: 1 },
-    { id: 1303, group_id: 1201, name: '连接器', alias: 'connector', sort_order: 2 },
-  ])
+  const toolTags = group(
+    1201,
+    '类型',
+    'type',
+    0,
+    [],
+    [
+      { id: 1301, group_id: 1201, name: '效率工具', alias: 'efficiency', sort_order: 0 },
+      { id: 1302, group_id: 1201, name: '数据同步', alias: 'data-sync', sort_order: 1 },
+      { id: 1303, group_id: 1201, name: '连接器', alias: 'connector', sort_order: 2 },
+    ],
+  )
 
   const toolEntry = group(1200, '自研工具', 'zizhu-gongju', 0, [toolTags], [])
 

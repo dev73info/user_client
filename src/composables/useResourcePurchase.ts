@@ -2,7 +2,6 @@ import { computed, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { TMessage } from 'ui_73info'
 
-
 import { getAdapayClientPlatform } from '@/api/adapay'
 import { createResourcePurchase, type ResourcePurchaseOrder } from '@/api/resourcePurchase'
 import { useResourcePayment } from '@/composables/useResourcePayment'

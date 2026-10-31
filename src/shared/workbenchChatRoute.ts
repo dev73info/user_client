@@ -10,8 +10,7 @@ export function isWorkbenchProfileQuery(
   query?: Record<string, unknown> | null,
 ): boolean {
   return (
-    String(name ?? '') === 'workbench' &&
-    (query?.view === 'profile' || query?.modal === 'publish')
+    String(name ?? '') === 'workbench' && (query?.view === 'profile' || query?.modal === 'publish')
   )
 }
 

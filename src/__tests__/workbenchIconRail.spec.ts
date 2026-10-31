@@ -35,10 +35,7 @@ const routes = [
       : {},
 }))
 
-async function render(
-  name: string,
-  { isDevWorkbenchMode = false, realnameApproved = true } = {},
-) {
+async function render(name: string, { isDevWorkbenchMode = false, realnameApproved = true } = {}) {
   const router = createRouter({ history: createMemoryHistory(), routes })
   await router.push({ name })
   const wrapper = mount(WorkbenchIconRail, {
@@ -105,13 +102,7 @@ describe('工作台图标栏', () => {
     const labels = wrapper
       .findAll('.workbench-icon-rail__settings-option')
       .map((item) => item.text())
-    expect(labels).toEqual([
-      '个人账户',
-      '账户详情',
-      '已授权应用',
-      '工单中心',
-      '回到用户工作台',
-    ])
+    expect(labels).toEqual(['个人账户', '账户详情', '已授权应用', '工单中心', '回到用户工作台'])
 
     await wrapper.find('.workbench-icon-rail__settings-switch').trigger('click')
     expect(wrapper.emitted('switch-mode')).toHaveLength(1)

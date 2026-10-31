@@ -12,12 +12,7 @@
 import type { components } from '@/api/generated/schema'
 
 import type { MockRoute } from '../../router'
-import {
-  createTeamRecord,
-  findTeam,
-  mockTeamMembers,
-  mockTeams,
-} from '../../db/teams'
+import { createTeamRecord, findTeam, mockTeamMembers, mockTeams } from '../../db/teams'
 import { DEV_USERNAME, datetime } from '../../db/shared'
 import { errorResponse, jsonResponse, noContentResponse } from '../../response'
 
@@ -105,9 +100,7 @@ export const teamRoutes: MockRoute[] = [
     path: '/teams/:teamId/members',
     note: '邀请成员：契约回的是这条邀请，不是直接把成员加进团队',
     handler: (request, params) => {
-      const username = (
-        (request.body as { username?: string } | null)?.username ?? ''
-      ).trim()
+      const username = ((request.body as { username?: string } | null)?.username ?? '').trim()
       if (!username) {
         return errorResponse(400, '请填写用户名')
       }
@@ -183,7 +176,8 @@ export const teamRoutes: MockRoute[] = [
     method: 'GET',
     path: '/teams/invitations',
     note: '发给我的团队邀请',
-    handler: () => jsonResponse(invitations.filter((item) => item.invitee_username === DEV_USERNAME)),
+    handler: () =>
+      jsonResponse(invitations.filter((item) => item.invitee_username === DEV_USERNAME)),
   },
   {
     method: 'GET',

@@ -11,7 +11,11 @@
 
 import type { MockRoute } from '../../router'
 
-import { bindSettlementAccount, closeSettlementAccount, settlementAccount } from '../../db/settlement'
+import {
+  bindSettlementAccount,
+  closeSettlementAccount,
+  settlementAccount,
+} from '../../db/settlement'
 import { jsonResponse } from '../../response'
 
 export const settlementRoutes: MockRoute[] = [

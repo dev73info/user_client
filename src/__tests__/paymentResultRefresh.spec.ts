@@ -159,9 +159,7 @@ describe('支付动作取值', () => {
   })
 
   it('历史遗留的 JSON 字符串形态同样能解析', async () => {
-    mocks.getOrder.mockResolvedValue(
-      paymentOrder({ client_action: JSON.stringify(objectAction) }),
-    )
+    mocks.getOrder.mockResolvedValue(paymentOrder({ client_action: JSON.stringify(objectAction) }))
     mocks.refreshOrder.mockResolvedValue(
       paymentOrder({ client_action: JSON.stringify(objectAction) }),
     )

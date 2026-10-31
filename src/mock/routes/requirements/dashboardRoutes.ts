@@ -12,7 +12,11 @@
 import type { MockRoute } from '../../router'
 
 import { devDailyIncome, devWallet } from '../../db/devWallet'
-import { pendingPrepaidWithdrawalFen, prepaidAccount, withdrawablePrepaidFen } from '../../db/prepaid'
+import {
+  pendingPrepaidWithdrawalFen,
+  prepaidAccount,
+  withdrawablePrepaidFen,
+} from '../../db/prepaid'
 import { requirements } from '../../db/requirements'
 import { versionsOf, mcResources } from '../../db/resources'
 import { DEV_USERNAME, datetime } from '../../db/shared'
@@ -46,7 +50,9 @@ function activeProjects() {
   return requirements
     .filter(
       (item) =>
-        item.developer === DEV_USERNAME && item.status !== 'completed' && item.status !== 'cancelled',
+        item.developer === DEV_USERNAME &&
+        item.status !== 'completed' &&
+        item.status !== 'cancelled',
     )
     .map((item) => ({
       requirement_id: item.requirement_id,
@@ -95,15 +101,13 @@ function deliveries() {
 
 /** 实时动态：近几次到账与交付，按时间倒序取最新几条。 */
 function feed() {
-  const income = devDailyIncome
-    .slice(-3)
-    .map((amount, index) => ({
-      kind: 'income' as const,
-      title: `接单收入到账 ¥${amount.toFixed(2)}`,
-      amount_fen: fen(amount),
-      requirement_id: null,
-      at: datetime(-(2 - index), 16, 40),
-    }))
+  const income = devDailyIncome.slice(-3).map((amount, index) => ({
+    kind: 'income' as const,
+    title: `接单收入到账 ¥${amount.toFixed(2)}`,
+    amount_fen: fen(amount),
+    requirement_id: null,
+    at: datetime(-(2 - index), 16, 40),
+  }))
 
   const delivery = deliveries()
     .slice(0, 3)
