@@ -27,6 +27,18 @@
   scrollbar-width: none;
 }
 
+/* 顶部切换工作台入口：和分组 / 消息图标同一颗，只是动作不是跳转 */
+.workbench-icon-rail__switch {
+  flex: 0 0 auto;
+  margin-bottom: 8px;
+  color: var(--73-accent);
+}
+
+.workbench-icon-rail__switch:hover {
+  color: var(--73-accent);
+  background: color-mix(in srgb, var(--73-accent) 10%, transparent);
+}
+
 .workbench-icon-rail__items::-webkit-scrollbar {
   display: none;
 }

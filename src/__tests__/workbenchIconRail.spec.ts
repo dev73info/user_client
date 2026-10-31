@@ -52,6 +52,22 @@ describe('工作台图标栏', () => {
     return wrapper.findAll('.workbench-icon-rail__item').map((b) => b.attributes('aria-label'))
   }
 
+  it('顶部有切换工作台入口，点击发出 switch-mode', async () => {
+    const { wrapper } = await render('workbench')
+
+    const switchButton = wrapper.find('.workbench-icon-rail__switch')
+    expect(switchButton.exists()).toBe(true)
+    expect(switchButton.attributes('aria-label')).toBe('切换工作台')
+
+    // 排在消息图标上面（是图标栏的第一个按钮）
+    const railButtons = wrapper.findAll('.workbench-icon-rail > .workbench-icon-rail__item')
+    expect(railButtons[0]!.classes()).toContain('workbench-icon-rail__switch')
+
+    await switchButton.trigger('click')
+    expect(wrapper.emitted('switch-mode')).toHaveLength(1)
+    wrapper.unmount()
+  })
+
   it('用户模式只剩消息 / 两个分组 / 系统通知，不再平铺账户类入口', async () => {
     const { wrapper } = await render('workbench')
 
@@ -60,7 +76,14 @@ describe('工作台图标栏', () => {
       4,
     )
     const labels = itemLabels(wrapper)
-    expect(labels).toEqual(['消息', '订单与合同', '资产与权益', '系统通知', '账户菜单'])
+    expect(labels).toEqual([
+      '切换工作台',
+      '消息',
+      '订单与合同',
+      '资产与权益',
+      '系统通知',
+      '账户菜单',
+    ])
     expect(wrapper.find('.workbench-icon-rail__item.is-active').attributes('aria-label')).toBe(
       '消息',
     )

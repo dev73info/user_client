@@ -10,6 +10,7 @@ import {
   Grid,
   OfficeBuilding,
   Promotion,
+  Switch,
   TIcon,
   UserFilled,
   Wallet,
@@ -43,6 +44,10 @@ const props = defineProps<{
   teamInvitationCount: number
   /** 「我的合同」要实名通过才进分组，与侧边栏同一口径。 */
   realnameApproved: boolean
+}>()
+
+const emit = defineEmits<{
+  'switch-mode': []
 }>()
 
 const route = useRoute()
@@ -181,6 +186,10 @@ function open(item: RailItem) {
   void router.push(item.to)
 }
 
+function switchWorkbenchMode() {
+  emit('switch-mode')
+}
+
 function badgeFor(key: string) {
   if (key === 'messages') {
     return props.unreadCount
@@ -202,6 +211,21 @@ const {
 
 <template>
   <aside class="workbench-icon-rail" aria-label="工作台快捷导航">
+    <button
+      class="workbench-icon-rail__item workbench-icon-rail__switch"
+      type="button"
+      aria-label="切换工作台"
+      @click="switchWorkbenchMode"
+      @mouseenter="showTooltip('切换工作台', $event)"
+      @focus="showTooltip('切换工作台', $event)"
+      @mouseleave="hideTooltip"
+      @blur="hideTooltip"
+    >
+      <TIcon :size="23">
+        <Switch />
+      </TIcon>
+    </button>
+
     <nav class="workbench-icon-rail__items">
       <button
         v-for="item in items"
