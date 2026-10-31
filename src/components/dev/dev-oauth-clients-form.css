@@ -1,0 +1,37 @@
+/* 「接入客户端」的新建弹窗与行内编辑表单共用的表单版式。
+   视图与弹窗各自 `<style scoped src>` 引入一次，样式跟着组件节点走。 */
+
+.dev-oauth-clients__form {
+  display: grid;
+  gap: 12px;
+}
+
+.dev-oauth-clients__form label {
+  display: grid;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--73-ink-regular, #374151);
+}
+
+.dev-oauth-clients__form textarea {
+  width: 100%;
+  box-sizing: border-box;
+  border: 1px solid var(--73-border, #d9dee8);
+  border-radius: 8px;
+  padding: 8px 10px;
+  font: inherit;
+  resize: vertical;
+}
+
+.dev-oauth-clients__form fieldset {
+  border: none;
+  padding: 0;
+  margin: 0;
+}
+
+.dev-oauth-clients__scope {
+  display: flex !important;
+  align-items: center;
+  gap: 8px;
+  font-weight: 400;
+}

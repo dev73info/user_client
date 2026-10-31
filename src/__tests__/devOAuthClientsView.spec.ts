@@ -42,11 +42,27 @@ describe('接入客户端页面', () => {
   })
 
   it('创建后刷新列表并展示一次性密钥', async () => {
-    const wrapper = mount(DevOAuthClientsView)
+    const wrapper = mount(DevOAuthClientsView, { attachTo: document.body })
     await flushPromises()
-    await wrapper.find('input').setValue('我的小站')
-    await wrapper.find('textarea').setValue('https://example.com/callback')
-    await buttonByText(wrapper, '创建客户端').trigger('click')
+
+    await buttonByText(wrapper, '新建客户端').trigger('click')
+    await flushPromises()
+
+    // 表单在 TDialog 里（Teleport 到 body），用 DOM 直接写值
+    const dialog = document.body.querySelector('.t73-dialog')!
+    expect(dialog).toBeTruthy()
+    const nameInput = dialog.querySelector<HTMLInputElement>('input[type="text"]')!
+    nameInput.value = '我的小站'
+    nameInput.dispatchEvent(new Event('input'))
+    const uriInput = dialog.querySelector<HTMLTextAreaElement>('textarea')!
+    uriInput.value = 'https://example.com/callback'
+    uriInput.dispatchEvent(new Event('input'))
+    await flushPromises()
+
+    const createButton = [
+      ...dialog.querySelectorAll<HTMLButtonElement>('.t73-dialog__footer button'),
+    ].find((button) => button.textContent?.includes('创建客户端'))!
+    createButton.click()
     await flushPromises()
 
     expect(mocks.create).toHaveBeenCalledExactlyOnceWith('test-token', {

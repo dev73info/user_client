@@ -64,20 +64,20 @@ export function useDevOAuthClients() {
     }
   }
 
-  async function submitCreate() {
+  async function submitCreate(): Promise<boolean> {
     const name = createForm.name.trim()
     const redirect_uris = urisOf(createForm.redirectUris)
     if (!name) {
       TMessage.warning('请填写应用名称')
-      return
+      return false
     }
     if (!redirect_uris.length) {
       TMessage.warning('请至少填写一个回调地址')
-      return
+      return false
     }
     if (!createForm.scopes.length) {
       TMessage.warning('请至少选择一个权限范围')
-      return
+      return false
     }
     submitting.value = true
     try {
@@ -94,8 +94,10 @@ export function useDevOAuthClients() {
       createForm.scopes = ['profile']
       await loadClients()
       TMessage.success('客户端已创建，请立即保存密钥')
+      return true
     } catch (error) {
       TMessage.error(error instanceof Error ? error.message : '创建接入客户端失败')
+      return false
     } finally {
       submitting.value = false
     }
