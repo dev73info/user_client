@@ -71,25 +71,6 @@
   line-height: 1.25;
 }
 
-/* 第二行说明：默认收起，悬浮 / 当前页才展开（与侧边栏子项同一口径） */
-.workbench-rail-group__link small {
-  max-height: 0;
-  overflow: hidden;
-  color: var(--73-ink-muted);
-  font-size: 11px;
-  line-height: 1.35;
-  opacity: 0;
-  transition:
-    max-height 180ms ease,
-    opacity 160ms ease;
-}
-
-.workbench-rail-group__link:hover small,
-.workbench-rail-group__link.active small {
-  max-height: 34px;
-  opacity: 1;
-}
-
 /* 当前页：左侧一条强调条，与图标栏的选中态呼应 */
 .workbench-rail-group__link.active::before {
   content: '';
@@ -103,8 +84,7 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .workbench-rail-group__link,
-  .workbench-rail-group__link small {
+  .workbench-rail-group__link {
     transition: none;
   }
 }

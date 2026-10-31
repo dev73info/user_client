@@ -8,7 +8,6 @@ import { railGroupItemTo, type RailGroup, type RailGroupItem } from '@/shared/wo
  *
  * 版式与消息中心的中栏一致（标题 + 计数，下面一列可选条目），这样「消息 / 订单与合同 /
  * 资产与权益」三个入口点下去是同一个骨架，不用为分组另学一套。
- * 第二行说明与侧边栏子项同一口径：默认收起，悬浮 / 当前页才展开。
  */
 defineProps<{
   group: RailGroup
@@ -37,7 +36,6 @@ const emit = defineEmits<{
         @click="emit('navigate')"
       >
         <span>{{ item.label }}</span>
-        <small>{{ item.description }}</small>
       </RouterLink>
     </nav>
   </section>
