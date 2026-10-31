@@ -64,6 +64,13 @@ export function legalSectionId(title: string): string {
   return title.trim()
 }
 
+/** 生效时间（`YYYY-MM-DD` 或带时分秒）统一展示成「YYYY年M月D日」。 */
+export function formatLegalDate(value: string): string {
+  const match = /^(\d{4})-(\d{1,2})-(\d{1,2})/.exec(value.trim())
+  if (!match) return value
+  return `${match[1]}年${Number(match[2])}月${Number(match[3])}日`
+}
+
 /** 指向某个章节的 hash 片段（中文需编码）。 */
 export function legalSectionAnchor(title: string): string {
   return `#${encodeURIComponent(title.trim())}`

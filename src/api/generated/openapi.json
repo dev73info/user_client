@@ -6498,6 +6498,48 @@
         }
       }
     },
+    "/api/auth/agreement-content": {
+      "get": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "取公示协议或平台规则正文",
+        "description": "**免登录**：法务页与规则中心要在登录前就能读。正文来自 `contract_template`，按 `name` 取；只接受对外公示清单里的代号（用户服务协议、隐私政策、支付与退款说明与规则中心的平台规则），其余代号一律 400，避免把签署场景的合同模板暴露成公开文档。清单里的代号尚未配置时回 404 `AGREEMENT_NOT_CONFIGURED`，不会返回空正文。`version` 与 `effective_at` 是模板的当前版本与公示时间，正文修订时由迁移递增。",
+        "operationId": "auth_get_agreement_content",
+        "parameters": [
+          {
+            "name": "code",
+            "in": "query",
+            "description": "协议代号（`contract_template.name`），如 `privacy_policy`。",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "协议正文",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AgreementContentResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "协议代号为空或不在公示清单（`INVALID_ARGUMENT`）"
+          },
+          "404": {
+            "description": "协议未配置（`AGREEMENT_NOT_CONFIGURED`）"
+          },
+          "500": {
+            "description": "内部错误"
+          }
+        }
+      }
+    },
     "/api/auth/dev-access-status": {
       "get": {
         "tags": [
