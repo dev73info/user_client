@@ -9,6 +9,7 @@ import {
 } from '@/api/conversations'
 import { listRequirements, type RequirementItem } from '@/api/requirements'
 import { useMessagesHistoryVotes } from '@/composables/useMessagesHistoryVotes'
+import { useMessagesThreadPreferences } from '@/composables/useMessagesThreadPreferences'
 import { useMessagesThreads } from '@/composables/useMessagesThreads'
 import { CONVERSATION_READ_EVENT } from '@/shared/conversationEvents'
 import type { MessageThread } from '@/shared/messagesThreads'
@@ -41,12 +42,18 @@ export function useMessagesPage() {
   const loading = ref(false)
   const conversations = ref<RequirementConversation[]>([])
   const requirements = ref<RequirementItem[]>([])
+  const threadPreferences = useMessagesThreadPreferences(() => auth.token)
   const activeRequirementId = ref('')
   const activeTitle = ref('')
   let stopRealtimeEvents: (() => void) | null = null
 
   const username = computed(() => auth.username)
-  const threads = useMessagesThreads({ conversations, requirements, username })
+  const threads = useMessagesThreads({
+    conversations,
+    requirements,
+    username,
+    preferences: threadPreferences.preferences,
+  })
 
   // 消息中心有三个入口，页面内切换会话时保持停留在当前入口，避免把开发者带回用户工作台。
   const MESSAGES_ROUTE_NAMES = ['messages', 'workbench', 'workbench-messages', 'dev-messages']
@@ -119,6 +126,8 @@ export function useMessagesPage() {
   /** 会话有更新（实时推送或弹窗里发完消息）：就地把这一行换掉，没有再补到最前面。 */
   function applyConversationDetail(payload: RequirementConversationDetail) {
     const nextConversation = payload.conversation
+    // 删除过的会话收到新消息后自动回到列表（与后端同一口径）
+    threadPreferences.clearHidden(nextConversation.requirement_id)
     const index = conversations.value.findIndex(
       (item) => item.requirement_id === nextConversation.requirement_id,
     )
@@ -130,6 +139,15 @@ export function useMessagesPage() {
     }
 
     conversations.value = [nextConversation, ...conversations.value]
+  }
+
+  /** 删除当前打开的会话时收起右侧面板，再执行删除。 */
+  function removeThread(thread: MessageThread) {
+    return threadPreferences.remove(thread, () => {
+      if (activeRequirementId.value === thread.requirementId) {
+        closeConversation()
+      }
+    })
   }
 
   function disconnectRealtime() {
@@ -158,6 +176,7 @@ export function useMessagesPage() {
     if (!auth.token.trim()) {
       conversations.value = []
       requirements.value = []
+      threadPreferences.reset()
       votes.clear()
       disconnectRealtime()
       return
@@ -168,6 +187,7 @@ export function useMessagesPage() {
       const [nextRequirements, nextConversations] = await Promise.all([
         listRequirements(auth.token),
         listRequirementConversations(auth.token),
+        threadPreferences.load(),
         // 待办是前任开发者在消息中心唯一的表决入口（他读不到会话本身），
         // 拉取要与会话列表并列，不能被那两个请求的失败带着一起跳过
         votes.load(),
@@ -233,6 +253,8 @@ export function useMessagesPage() {
     refresh,
     openThread,
     closeConversation,
+    setThreadPinned: threadPreferences.setPinned,
+    removeThread,
     applyConversationDetail,
   }
 }

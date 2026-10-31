@@ -10,6 +10,8 @@ const mocks = vi.hoisted(() => ({
   conversations: vi.fn(),
   requirements: vi.fn(),
   disclosures: vi.fn(),
+  preferences: vi.fn(),
+  updatePreference: vi.fn(),
   subscribe: vi.fn(),
 }))
 
@@ -17,6 +19,8 @@ vi.mock('@/api/conversations', async (original) => ({
   ...(await original<typeof import('@/api/conversations')>()),
   listRequirementConversations: mocks.conversations,
   listConversationHistoryDisclosures: mocks.disclosures,
+  listThreadPreferences: mocks.preferences,
+  updateThreadPreference: mocks.updatePreference,
   subscribeRequirementConversationEvents: mocks.subscribe,
 }))
 
@@ -116,6 +120,8 @@ beforeEach(() => {
   mocks.conversations.mockResolvedValue(conversations)
   mocks.requirements.mockResolvedValue(requirements)
   mocks.disclosures.mockResolvedValue([])
+  mocks.preferences.mockResolvedValue([])
+  mocks.updatePreference.mockResolvedValue(undefined)
   mocks.subscribe.mockReturnValue(() => {})
 })
 
@@ -228,5 +234,58 @@ describe('工作台聊天首页', () => {
     expect(wrapper.find('.workbench-chat').exists()).toBe(true)
     expect(wrapper.findAll('.workbench-inbox__row')).toHaveLength(1)
     wrapper.unmount()
+  })
+
+  it('右键会话弹出菜单，置顶后行上出现「置顶」标记', async () => {
+    const { wrapper } = await render()
+    const row = wrapper.findAll('.workbench-inbox__row')[0]!
+    await row.trigger('contextmenu', { clientX: 120, clientY: 200 })
+
+    const menu = document.body.querySelector('.workbench-inbox__menu')
+    expect(menu).toBeTruthy()
+    expect(menu!.textContent).toContain('置顶')
+    ;(menu!.querySelector('button') as HTMLButtonElement).click()
+    await flushPromises()
+
+    expect(mocks.updatePreference).toHaveBeenCalledWith('test-token', 'REQ-1', { pinned: true })
+    expect(
+      wrapper.findAll('.workbench-inbox__row')[0]!.find('.workbench-inbox__pin').exists(),
+    ).toBe(true)
+    expect(document.body.querySelector('.workbench-inbox__menu')).toBeNull()
+    wrapper.unmount()
+  })
+
+  it('右键会话可删除，行立即从列表移除', async () => {
+    const { wrapper } = await render()
+    expect(wrapper.findAll('.workbench-inbox__row')).toHaveLength(2)
+
+    const row = wrapper.findAll('.workbench-inbox__row')[0]!
+    await row.trigger('contextmenu', { clientX: 120, clientY: 200 })
+    const buttons = document.body.querySelectorAll('.workbench-inbox__menu button')
+    ;(buttons[1] as HTMLButtonElement).click()
+    await flushPromises()
+
+    expect(mocks.updatePreference).toHaveBeenCalledWith('test-token', 'REQ-1', { hidden: true })
+    expect(wrapper.findAll('.workbench-inbox__row')).toHaveLength(1)
+    wrapper.unmount()
+  })
+
+  it('长按会话弹出菜单', async () => {
+    const { wrapper } = await render()
+    vi.useFakeTimers()
+    const row = wrapper.findAll('.workbench-inbox__row')[0]!
+    const event = new MouseEvent('pointerdown', {
+      bubbles: true,
+      clientX: 100,
+      clientY: 300,
+    })
+    Object.defineProperty(event, 'pointerType', { value: 'touch' })
+    row.element.dispatchEvent(event)
+    vi.advanceTimersByTime(500)
+    await flushPromises()
+
+    expect(document.body.querySelector('.workbench-inbox__menu')).toBeTruthy()
+    wrapper.unmount()
+    vi.useRealTimers()
   })
 })

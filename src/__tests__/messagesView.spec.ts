@@ -4,7 +4,6 @@ import { createMemoryHistory, createRouter } from 'vue-router'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { useAuthStore } from '@/stores/auth'
 import MessagesView from '@/views/MessagesView.vue'
-
 /**
  * 消息中心最小挂载烟测（这页原先零覆盖）。拆 1121 行的 `MessagesView` 之前先补一层网，
  * 只钉四件事：
@@ -21,6 +20,8 @@ const mocks = vi.hoisted(() => ({
   conversations: vi.fn(),
   requirements: vi.fn(),
   disclosures: vi.fn(),
+  preferences: vi.fn(),
+  updatePreference: vi.fn(),
   respond: vi.fn(),
   subscribe: vi.fn(),
 }))
@@ -28,6 +29,8 @@ vi.mock('@/api/conversations', async (orig) => ({
   ...(await orig<typeof import('@/api/conversations')>()),
   listRequirementConversations: mocks.conversations,
   listConversationHistoryDisclosures: mocks.disclosures,
+  listThreadPreferences: mocks.preferences,
+  updateThreadPreference: mocks.updatePreference,
   respondConversationHistoryDisclosure: mocks.respond,
   subscribeRequirementConversationEvents: mocks.subscribe,
 }))
@@ -154,6 +157,8 @@ beforeEach(() => {
   mocks.conversations.mockResolvedValue(baseConversations)
   mocks.requirements.mockResolvedValue(baseRequirements)
   mocks.disclosures.mockResolvedValue([])
+  mocks.preferences.mockResolvedValue([])
+  mocks.updatePreference.mockResolvedValue(undefined)
   mocks.subscribe.mockReturnValue(() => {})
 })
 
