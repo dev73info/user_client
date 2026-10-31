@@ -234,12 +234,18 @@ export function buildFundRecords(sources: Partial<FundRecordSources> = {}): Fund
 }
 
 /** 关键字过滤：与其它列表页的搜索同口径，跨「类型 / 来源 / 账户 / 状态 / 备注 / 参考号 / 时间」。 */
-export function filterFundRecords(records: FundRecord[], keyword?: string | null): FundRecord[] {
+export function filterFundRecords(
+  records: FundRecord[],
+  keyword?: string | null,
+  kind?: FundRecordKind | 'all' | null,
+): FundRecord[] {
+  const matchedKind =
+    kind && kind !== 'all' ? records.filter((record) => record.kind === kind) : records
   const needle = (keyword ?? '').trim().toLowerCase()
   if (!needle) {
-    return records
+    return matchedKind
   }
-  return records.filter((record) =>
+  return matchedKind.filter((record) =>
     [
       record.id,
       KIND_LABELS[record.kind],

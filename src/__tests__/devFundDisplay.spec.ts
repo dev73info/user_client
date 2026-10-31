@@ -201,4 +201,12 @@ describe('filterFundRecords', () => {
     expect(filterFundRecords(records, 'pay-1')).toHaveLength(1)
     expect(filterFundRecords(records, '不存在的关键字')).toHaveLength(0)
   })
+
+  it('能按类型筛选，并与关键字同时生效', () => {
+    expect(filterFundRecords(records, '', 'all')).toBe(records)
+    expect(filterFundRecords(records, '', 'income')).toHaveLength(1)
+    expect(filterFundRecords(records, '', 'income_withdrawal')).toHaveLength(1)
+    expect(filterFundRecords(records, '', 'income_reversal')).toHaveLength(0)
+    expect(filterFundRecords(records, '收入', 'income_withdrawal')).toHaveLength(1)
+  })
 })

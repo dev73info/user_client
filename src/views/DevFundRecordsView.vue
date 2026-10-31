@@ -18,7 +18,11 @@ import {
 } from '@/shared/devFundDisplay'
 import { TOption, TPagination, TSelect, TTable, TTableColumn, TTag, TTooltip } from 'ui_73info'
 
-const props = defineProps<{ income: DevWalletIncomeItem[]; keyword?: string }>()
+const props = defineProps<{
+  income: DevWalletIncomeItem[]
+  keyword?: string
+  kind?: FundRecordKind | 'all'
+}>()
 
 const { loading, page, pageSize, recordTotal, pagedRecords, loadRecords } = useDevFundRecords(props)
 
@@ -37,7 +41,7 @@ defineExpose({ loadRecords })
       <template #empty>
         <p class="dev-empty-state">{{ loading ? '记录加载中' : '暂无资金记录' }}</p>
       </template>
-      <TTableColumn label="类型" width="110">
+      <TTableColumn label="类型" width="88">
         <template #default="scope">
           <TTag variant="outline" :tone="kindTagTone(scope.row.kind)">
             {{ KIND_LABELS[scope.row.kind as FundRecordKind] }}
@@ -81,9 +85,9 @@ defineExpose({ loadRecords })
           <TTag variant="outline" :tone="scope.row.tag">{{ scope.row.status }}</TTag>
         </template>
       </TTableColumn>
-      <TTableColumn prop="note" label="处理备注" min-width="200" show-overflow-tooltip />
       <TTableColumn prop="reference" label="交易参考号" min-width="180" show-overflow-tooltip />
       <TTableColumn prop="time" label="时间" min-width="180" />
+      <TTableColumn prop="note" label="处理备注" min-width="200" show-overflow-tooltip />
     </TTable>
     <div class="dev-pager">
       <div class="dev-pager__count">
