@@ -90,17 +90,6 @@ function openTransfer(order: ResourcePurchaseOrder) {
     />
 
     <section class="wallet-section">
-      <div class="wb-card-head wb-card-head--actions-only">
-        <div class="wb-card-head__actions">
-          <TButton variant="outline" @click="router.push({ name: 'workbench-purchase-transfers' })">
-            过户与转移
-          </TButton>
-          <TButton variant="outline" @click="router.push({ name: 'resources' })">
-            浏览资源
-          </TButton>
-        </div>
-      </div>
-
       <div class="wb-toolbar">
         <TSelect
           v-model="statusFilter"
@@ -131,6 +120,12 @@ function openTransfer(order: ResourcePurchaseOrder) {
           </span>
           <TButton v-if="hasActiveFilters" variant="outline" @click="resetFilters">
             <TIcon><RefreshLeft /></TIcon><span>重置</span>
+          </TButton>
+          <TButton variant="outline" @click="router.push({ name: 'workbench-purchase-transfers' })">
+            过户与转移
+          </TButton>
+          <TButton variant="outline" @click="router.push({ name: 'resources' })">
+            浏览资源
           </TButton>
         </div>
       </div>
