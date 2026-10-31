@@ -5,12 +5,15 @@ import QRCode from 'qrcode'
 
 const mocks = vi.hoisted(() => ({ getStatus: vi.fn() }))
 
-vi.mock('@/api/auth', () => ({ getWechatLoginQrStatus: mocks.getStatus }))
+vi.mock('@/api/auth', () => ({ getWechatMpLoginQrStatus: mocks.getStatus }))
 vi.mock('qrcode', () => ({
   default: { toDataURL: vi.fn().mockResolvedValue('data:image/png;base64,test') },
 }))
 
-describe('WeChat QR login confirmation', () => {
+/** 服务号带参二维码：后端直接给图片地址，前端不自己画码。 */
+const QR_IMAGE = 'https://mp.example.invalid/cgi-bin/showqrcode?ticket=T-1'
+
+describe('WeChat service-account QR login', () => {
   let wrapper: ReturnType<typeof mount>
 
   beforeEach(() => {
@@ -18,7 +21,7 @@ describe('WeChat QR login confirmation', () => {
     vi.clearAllMocks()
     mocks.getStatus.mockResolvedValue({ token: null })
     wrapper = mount(WechatLoginQrModal, {
-      props: { visible: true, url: 'https://example.invalid/oauth?state=pc-state', state: 'pc-state', pollSecret: 'pc-only-secret' },
+      props: { visible: true, imageUrl: QR_IMAGE, state: 'pc-state', pollSecret: 'pc-only-secret' },
       global: { stubs: { Teleport: true } },
     })
   })
@@ -28,13 +31,15 @@ describe('WeChat QR login confirmation', () => {
     vi.useRealTimers()
   })
 
-  it('keeps waiting while phone authorization has not been confirmed', async () => {
+  it('shows the service-account QR image and keeps waiting for the follow event', async () => {
     await flushPromises()
     await vi.advanceTimersByTimeAsync(6000)
-    expect(wrapper.text()).toContain('核对电脑 IP 和登录时间')
-    expect(wrapper.text()).toContain('手机确认后电脑才会登录')
+    expect(wrapper.text()).toContain('关注服务号后自动登录')
+    expect(wrapper.text()).toContain('扫码关注后电脑会自动登录')
     expect(mocks.getStatus).toHaveBeenCalledWith('pc-state', 'pc-only-secret')
-    expect(QRCode.toDataURL).toHaveBeenCalledWith('https://example.invalid/oauth?state=pc-state', expect.any(Object))
+    // 码是后端向微信申领的图片，不能再拿一段文本本地重画
+    expect(wrapper.get('.wechat-authorization-modal__qr img').attributes('src')).toBe(QR_IMAGE)
+    expect(QRCode.toDataURL).not.toHaveBeenCalled()
     expect(wrapper.html()).not.toContain('pc-only-secret')
     expect(wrapper.emitted('logged-in')).toBeUndefined()
   })
@@ -53,7 +58,12 @@ describe('WeChat QR login confirmation', () => {
   it('does not log in from a stale polling response after the dialog is closed', async () => {
     await flushPromises()
     let resolveStatus!: (result: { token: string }) => void
-    mocks.getStatus.mockImplementationOnce(() => new Promise((resolve) => { resolveStatus = resolve }))
+    mocks.getStatus.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          resolveStatus = resolve
+        }),
+    )
     await vi.advanceTimersByTimeAsync(2000)
     await wrapper.get('button[aria-label="关闭微信扫码登录"]').trigger('click')
     resolveStatus({ token: 'confirmed-token' })
@@ -62,14 +72,14 @@ describe('WeChat QR login confirmation', () => {
     expect(wrapper.emitted('logged-in')).toBeUndefined()
   })
 
-  it('masks the QR and keeps polling once the phone has scanned', async () => {
+  it('keeps the QR visible and keeps polling when the server reports the scan', async () => {
     await flushPromises()
     mocks.getStatus.mockResolvedValue({ token: null, status: 'scanned' })
     await vi.advanceTimersByTimeAsync(2000)
-    expect(wrapper.text()).toContain('已扫码，等待手机确认')
+    // 服务号流程没有「等手机点确认」这一档：不盖遮罩，码继续显示，继续轮询
+    expect(wrapper.find('.wechat-authorization-modal__overlay').exists()).toBe(false)
     const calls = mocks.getStatus.mock.calls.length
     await vi.advanceTimersByTimeAsync(2000)
-    // 待确认阶段还得继续轮询，否则手机点了确认 PC 也领不到令牌
     expect(mocks.getStatus.mock.calls.length).toBeGreaterThan(calls)
     expect(wrapper.emitted('logged-in')).toBeUndefined()
   })
@@ -88,8 +98,9 @@ describe('WeChat QR login confirmation', () => {
 
     await wrapper.get('button.wechat-authorization-modal__overlay-action').trigger('click')
     expect(wrapper.emitted('refresh')).toHaveLength(1)
-    // 旧码与遮罩一起清掉，等父级拿回新码
+    // 旧码与遮罩一起清掉，等父级拿回新码——继续显示已过期的码只会让人再扫一次
     expect(wrapper.find('.wechat-authorization-modal__overlay').exists()).toBe(false)
+    expect(wrapper.find('.wechat-authorization-modal__qr img').exists()).toBe(false)
     expect(wrapper.text()).toContain('二维码生成中')
   })
 
@@ -131,7 +142,12 @@ describe('WeChat QR login confirmation', () => {
   it('discards an in-flight result when the polling credential changes', async () => {
     await flushPromises()
     let resolveStatus!: (result: { token: string }) => void
-    mocks.getStatus.mockImplementationOnce(() => new Promise((resolve) => { resolveStatus = resolve }))
+    mocks.getStatus.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          resolveStatus = resolve
+        }),
+    )
     await vi.advanceTimersByTimeAsync(2000)
     await wrapper.setProps({ pollSecret: 'new-pc-secret' })
     resolveStatus({ token: 'old-token' })
@@ -139,5 +155,12 @@ describe('WeChat QR login confirmation', () => {
     expect(wrapper.emitted('logged-in')).toBeUndefined()
     await vi.advanceTimersByTimeAsync(2000)
     expect(mocks.getStatus).toHaveBeenLastCalledWith('pc-state', 'new-pc-secret')
+  })
+
+  it('falls back to a readable hint when the QR image cannot load', async () => {
+    await flushPromises()
+    await wrapper.get('.wechat-authorization-modal__qr img').trigger('error')
+    expect(wrapper.find('.wechat-authorization-modal__qr img').exists()).toBe(false)
+    expect(wrapper.text()).toContain('二维码加载失败')
   })
 })

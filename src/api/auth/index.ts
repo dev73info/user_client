@@ -27,6 +27,7 @@ export type {
   WechatLoginQrPollStatus,
   WechatLoginQrStatusResp,
   WechatLoginQrUrlResp,
+  WechatMpLoginQrUrlResp,
 } from './types'
 
 export {
@@ -42,6 +43,8 @@ export {
   getWechatBindQrUrl,
   getWechatLoginQrStatus,
   getWechatLoginQrUrl,
+  getWechatMpLoginQrStatus,
+  getWechatMpLoginQrUrl,
 } from './wechat'
 
 export { getQqLoginQrStatus, getQqLoginQrUrl } from './thirdPartyLogin'

@@ -2,11 +2,14 @@
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import QRCode from 'qrcode'
 
-import { getWechatLoginQrStatus, type WechatLoginQrPollStatus } from '@/api/auth'
+import { getWechatMpLoginQrStatus, type WechatLoginQrPollStatus } from '@/api/auth'
 import { qrPollDelayMs } from '@/utils/qrPollBackoff'
 
 const props = defineProps({
   visible: { type: Boolean, default: false },
+  /** 服务号二维码的**图片地址**（后端向微信申领的带参二维码）。 */
+  imageUrl: { type: String, default: '' },
+  /** 需要前端自己画码时的内容（网页授权扫码；服务号流程留空）。 */
   url: { type: String, default: '' },
   state: { type: String, default: '' },
   pollSecret: { type: String, default: '' },
@@ -21,25 +24,42 @@ const emit = defineEmits<{
 
 const qrDataUrl = ref('')
 const qrError = ref('')
+/** 服务号二维码图片加载失败：不再显示裂图，退回提示文案。 */
+const qrImageBroken = ref(false)
+/**
+ * 已点「重新扫码」、父级还没拿回新码。
+ *
+ * 这一段必须把旧码藏起来：旧码已经过期，继续显示只会让人再扫一次同样失效的码。
+ */
+const awaitingRefresh = ref(false)
 const polling = ref(false)
-/** 二维码当前阶段：进来是 pending，手机端扫码 / 确认 / 取消都会推着它往前走。 */
+/** 二维码当前阶段：进来是 pending，扫码 / 关注成功后由服务端推到 confirmed。 */
 const pollStatus = ref<WechatLoginQrPollStatus>('pending')
 let pollTimer: ReturnType<typeof setTimeout> | null = null
 let generation = 0
 
 /**
- * 需要盖在二维码上的遮罩：已扫码待确认、手机端取消了、二维码失效。
- * 没有二维码（生成中 / 生成失败）时不盖，否则会把「二维码生成中」也挡住。
+ * 二维码图片源。
+ *
+ * 服务号登录用它自己的图片地址（微信 `showqrcode`），网页授权扫码才在本地画码——
+ * 两种来源共用同一块展示位与同一套轮询，遮罩逻辑只认「有没有码」。
+ */
+const qrSource = computed(() =>
+  awaitingRefresh.value ? '' : props.imageUrl.trim() || qrDataUrl.value,
+)
+
+/**
+ * 需要盖在二维码上的遮罩：手机端取消、二维码失效。
+ *
+ * 服务号流程没有「已扫码待确认」这一档——关注事件一到服务端就落登录结果，
+ * 令牌由轮询取走，手机侧不需要再点一次。所以 `scanned` 不盖遮罩，继续等就行。
+ * 没有二维码（生成中 / 生成失败）时也不盖，否则会把「二维码生成中」也挡住。
  */
 const overlayStatus = computed<WechatLoginQrPollStatus | null>(() => {
-  if (!qrDataUrl.value) {
+  if (!qrSource.value || qrImageBroken.value) {
     return null
   }
-  if (
-    pollStatus.value === 'scanned' ||
-    pollStatus.value === 'cancelled' ||
-    pollStatus.value === 'expired'
-  ) {
+  if (pollStatus.value === 'cancelled' || pollStatus.value === 'expired') {
     return pollStatus.value
   }
   return null
@@ -77,7 +97,7 @@ async function checkLogin(
   }
   polling.value = true
   try {
-    const result = await getWechatLoginQrStatus(expectedState, expectedSecret)
+    const result = await getWechatMpLoginQrStatus(expectedState, expectedSecret)
     if (
       props.visible &&
       expectedGeneration === generation &&
@@ -139,23 +159,32 @@ async function prepare() {
   stopPolling()
   qrDataUrl.value = ''
   qrError.value = ''
+  qrImageBroken.value = false
+  awaitingRefresh.value = false
   pollStatus.value = 'pending'
 
-  if (!props.visible || !props.url.trim() || !props.state || !expectedSecret) {
+  if (!props.visible || !props.state || !expectedSecret) {
     return
   }
 
-  try {
-    qrDataUrl.value = await QRCode.toDataURL(props.url, {
-      width: 280,
-      margin: 2,
-      errorCorrectionLevel: 'M',
-    })
-  } catch {
-    if (currentGeneration === generation) {
-      qrError.value = '二维码生成失败，请关闭后重新发起授权'
+  // 服务号二维码由后端给图片地址，本地不必（也不能）重画：
+  // 二维码里是微信侧的带参 ticket，拿到的只是图片而不是可编码的文本。
+  if (!props.imageUrl.trim()) {
+    if (!props.url.trim()) {
+      return
     }
-    return
+    try {
+      qrDataUrl.value = await QRCode.toDataURL(props.url, {
+        width: 280,
+        margin: 2,
+        errorCorrectionLevel: 'M',
+      })
+    } catch {
+      if (currentGeneration === generation) {
+        qrError.value = '二维码生成失败，请关闭后重新发起授权'
+      }
+      return
+    }
   }
 
   if (currentGeneration !== generation || !props.visible) {
@@ -170,7 +199,13 @@ async function prepare() {
   schedulePoll(currentGeneration, expectedState, expectedSecret, 1)
 }
 
-/** 手机端取消 / 二维码失效后点「重新扫码」：先清掉旧码与遮罩，再让父级重新申领。 */
+/** 服务号二维码图片加载失败：不再显示裂图，给一句能照做的提示。 */
+function onQrImageError() {
+  qrImageBroken.value = true
+  qrError.value = '二维码加载失败，请关闭后重新打开登录'
+}
+
+/** 二维码失效后点「重新扫码」：先清掉旧码与遮罩，再让父级重新申领。 */
 function refresh() {
   if (pollStatus.value !== 'cancelled' && pollStatus.value !== 'expired') {
     return
@@ -179,6 +214,8 @@ function refresh() {
   stopPolling()
   qrDataUrl.value = ''
   qrError.value = ''
+  qrImageBroken.value = false
+  awaitingRefresh.value = true
   pollStatus.value = 'pending'
   emit('refresh')
 }
@@ -190,7 +227,7 @@ function close() {
 }
 
 watch(
-  () => [props.visible, props.url, props.state, props.pollSecret] as const,
+  () => [props.visible, props.imageUrl, props.url, props.state, props.pollSecret] as const,
   () => {
     void prepare()
   },
@@ -213,7 +250,7 @@ onBeforeUnmount(() => {
           </span>
           <div class="wechat-authorization-modal__titles">
             <h3>登录 73Info</h3>
-            <p class="wechat-authorization-modal__subtitle">微信扫码登录</p>
+            <p class="wechat-authorization-modal__subtitle">微信扫码关注登录</p>
           </div>
           <button
             class="wechat-authorization-modal__close"
@@ -243,30 +280,22 @@ onBeforeUnmount(() => {
             <path d="M4 12h16" />
           </svg>
           <span class="wechat-authorization-modal__intro-text">
-            请用手机微信扫码并授权，核对电脑 IP 和登录时间后，点击“确认登录”。
+            请用手机微信「扫一扫」扫描二维码，关注服务号后自动登录，无需其它操作。
           </span>
         </p>
 
         <div class="wechat-authorization-modal__qr" aria-live="polite">
-          <img v-if="qrDataUrl" :src="qrDataUrl" alt="微信扫码登录二维码" />
+          <img
+            v-if="qrSource && !qrImageBroken"
+            :src="qrSource"
+            alt="微信扫码登录二维码"
+            @error="onQrImageError"
+          />
           <span v-else>{{ qrError || '二维码生成中...' }}</span>
-
-          <!-- 手机端扫过码但还没确认：同步盖一层「待确认」遮罩，别再让人对着二维码干等 -->
-          <div
-            v-if="overlayStatus === 'scanned'"
-            class="wechat-authorization-modal__overlay is-scanned"
-            role="status"
-          >
-            <span class="wechat-authorization-modal__spinner" aria-hidden="true"></span>
-            <p class="wechat-authorization-modal__overlay-title">已扫码，等待手机确认</p>
-            <p class="wechat-authorization-modal__overlay-text">
-              请在手机上核对电脑 IP 和登录时间，再点击“确认登录”
-            </p>
-          </div>
 
           <!-- 手机端取消 / 二维码失效：盖上结果遮罩，并给「重新扫码」这条出路 -->
           <div
-            v-else-if="overlayStatus"
+            v-if="overlayStatus"
             class="wechat-authorization-modal__overlay"
             :class="`is-${overlayStatus}`"
             role="status"
@@ -331,7 +360,7 @@ onBeforeUnmount(() => {
             <path d="M9.5 12.5l1.8 1.8 3.4-3.6" />
           </svg>
           <span class="wechat-authorization-modal__hint-text">
-            请保持本页面打开，手机确认后电脑才会登录。
+            请保持本页面打开，扫码关注后电脑会自动登录，登录通知会发到服务号会话。
             <span class="wechat-authorization-modal__hint-warn">
               <svg
                 viewBox="0 0 24 24"
@@ -346,7 +375,7 @@ onBeforeUnmount(() => {
                 <path d="M12 4.5 3.5 19.5h17z" />
                 <path d="M12 10v4M12 17h.01" />
               </svg>
-              <span>非本人操作请在手机上取消。</span>
+              <span>非本人操作请立即修改密码。</span>
             </span>
           </span>
         </p>

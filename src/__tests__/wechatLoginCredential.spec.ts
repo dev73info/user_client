@@ -38,10 +38,12 @@ vi.mock('ui_73info', async (importOriginal) => {
 describe('WeChat browser-only polling credential', () => {
   let form: ReturnType<typeof useAuthForm>
   let wrapper: ReturnType<typeof mount>
+  // 服务号扫码登录：`url` 是微信的二维码图片地址，不再是可本地编码的授权页地址
   const qr = {
-    url: 'https://example.invalid/oauth?state=pc-state',
+    url: 'https://mp.example.invalid/cgi-bin/showqrcode?ticket=T-1',
     state: 'pc-state',
     poll_secret: 'pc-only-secret',
+    expires_in: 300,
   }
 
   beforeEach(() => {
@@ -92,14 +94,21 @@ describe('WeChat browser-only polling credential', () => {
     await form.loginWithWechat()
     expect(form.wechatQrLogin).toEqual({
       visible: true,
-      url: qr.url,
+      imageUrl: qr.url,
+      url: '',
       state: qr.state,
       pollSecret: qr.poll_secret,
     })
-    expect(form.wechatQrLogin.url).not.toContain(qr.poll_secret)
+    expect(form.wechatQrLogin.imageUrl).not.toContain(qr.poll_secret)
     expect(storage).not.toHaveBeenCalled()
     form.closeWechatQrLogin()
-    expect(form.wechatQrLogin).toEqual({ visible: false, url: '', state: '', pollSecret: '' })
+    expect(form.wechatQrLogin).toEqual({
+      visible: false,
+      imageUrl: '',
+      url: '',
+      state: '',
+      pollSecret: '',
+    })
   })
 
   it('clears the credential when its owning component is unmounted', async () => {

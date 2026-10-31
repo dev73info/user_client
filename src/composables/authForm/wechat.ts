@@ -3,7 +3,7 @@ import { onBeforeUnmount, reactive, ref } from 'vue'
 import type { Router } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { apiUrl } from '@/api/http'
-import { getWechatLoginQrUrl } from '@/api/auth'
+import { getWechatMpLoginQrUrl } from '@/api/auth'
 import { isWechatBrowser } from '@/shared/auth/browser'
 import { TMessage } from 'ui_73info'
 
@@ -21,22 +21,39 @@ export function useWechatLogin({
 }) {
   const wechatLoginLoading = ref(false)
 
-  // PC 端扫码登录：展示二维码并轮询登录 token。
-  const wechatQrLogin = reactive({ visible: false, url: '', state: '', pollSecret: '' })
+  /**
+   * PC 端扫码关注登录：展示服务号二维码并轮询登录 token。
+   *
+   * `imageUrl` 是后端向微信申领的**带参二维码图片**，前端不自己画码——
+   * 码里是微信侧的 ticket，不是可以本地编码的文本。
+   */
+  const wechatQrLogin = reactive({
+    visible: false,
+    imageUrl: '',
+    url: '',
+    state: '',
+    pollSecret: '',
+  })
 
-  /** 扫码登录的回调落点：与 GitHub / Gitee 一致，固定回首页。 */
+  /** 微信内跳转授权后的落点：与 GitHub / Gitee 一致，固定回首页。 */
   function wechatQrRedirectTarget(): string {
     const homeHref = router.resolve({ name: 'home' }).href
     return `${window.location.origin}${homeHref}`
   }
 
-  /** 申领一张新的扫码登录二维码（首次打开与「重新扫码」共用）。 */
+  /**
+   * 申领一张新的登录二维码（首次打开与「重新扫码」共用）。
+   *
+   * 走服务号接口而不是网页授权扫码：用户扫码关注即完成登录，
+   * 手机上不需要点「确认」，令牌由这里轮询取走。
+   */
   async function openWechatQrLogin() {
-    const qr = await getWechatLoginQrUrl(wechatQrRedirectTarget())
+    const qr = await getWechatMpLoginQrUrl()
     if (!qr.url.trim() || !qr.state.trim() || !qr.poll_secret?.trim()) {
       throw new Error('微信扫码登录地址为空')
     }
-    wechatQrLogin.url = qr.url
+    wechatQrLogin.imageUrl = qr.url
+    wechatQrLogin.url = ''
     wechatQrLogin.state = qr.state
     wechatQrLogin.pollSecret = qr.poll_secret
     wechatQrLogin.visible = true
@@ -87,6 +104,7 @@ export function useWechatLogin({
 
   function closeWechatQrLogin() {
     wechatQrLogin.visible = false
+    wechatQrLogin.imageUrl = ''
     wechatQrLogin.url = ''
     wechatQrLogin.state = ''
     wechatQrLogin.pollSecret = ''
