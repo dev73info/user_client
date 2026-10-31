@@ -26,10 +26,7 @@ const selectedState = defineModel<RequirementFilterKey>('selectedState', { requi
 </script>
 
 <template>
-  <div class="wb-card-head">
-    <div class="wb-card-head__title-block">
-      <h3 class="wb-card-head__title">需求列表</h3>
-    </div>
+  <div class="wb-card-head wb-card-head--actions-only">
     <div class="wb-card-head__actions">
       <TButton
         variant="solid"
