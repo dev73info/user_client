@@ -90,7 +90,7 @@ describe('工作台图标栏', () => {
     wrapper.unmount()
   })
 
-  it('齿轮弹层只剩账户四条与模式切换', async () => {
+  it('齿轮弹层只剩账户四条', async () => {
     const { wrapper } = await render('dev-home', { isDevWorkbenchMode: true })
 
     expect(itemLabels(wrapper)).toContain('开发者总览')
@@ -102,10 +102,7 @@ describe('工作台图标栏', () => {
     const labels = wrapper
       .findAll('.workbench-icon-rail__settings-option')
       .map((item) => item.text())
-    expect(labels).toEqual(['个人账户', '账户详情', '已授权应用', '工单中心', '回到用户工作台'])
-
-    await wrapper.find('.workbench-icon-rail__settings-switch').trigger('click')
-    expect(wrapper.emitted('switch-mode')).toHaveLength(1)
+    expect(labels).toEqual(['个人账户', '账户详情', '已授权应用', '工单中心'])
     wrapper.unmount()
   })
 

@@ -103,16 +103,6 @@
   flex: 0 0 auto;
 }
 
-.workbench-icon-rail__settings-divider {
-  height: 1px;
-  margin: 3px 5px;
-  background: color-mix(in srgb, var(--73-border) 82%, transparent);
-}
-
-.workbench-icon-rail__settings-switch {
-  color: var(--73-accent);
-}
-
 .workbench-icon-rail__tooltip {
   position: absolute;
   left: calc(100% + 10px);

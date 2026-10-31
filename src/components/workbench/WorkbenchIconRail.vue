@@ -45,10 +45,6 @@ const props = defineProps<{
   realnameApproved: boolean
 }>()
 
-const emit = defineEmits<{
-  'switch-mode': []
-}>()
-
 const route = useRoute()
 const router = useRouter()
 
@@ -170,9 +166,6 @@ const userItems = computed<RailItem[]>(() => [
 ])
 
 const items = computed(() => (props.isDevWorkbenchMode ? devItems : userItems.value))
-const switchLabel = computed(() =>
-  props.isDevWorkbenchMode ? '回到用户工作台' : '进入开发者工作台',
-)
 
 function isActive(item: RailItem) {
   if (item.key === 'messages') {
@@ -247,7 +240,7 @@ const {
       </span>
     </Teleport>
 
-    <WorkbenchIconRailSettings :switch-label="switchLabel" @switch-mode="emit('switch-mode')" />
+    <WorkbenchIconRailSettings />
   </aside>
 </template>
 
