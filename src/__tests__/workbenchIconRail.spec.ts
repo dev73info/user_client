@@ -68,6 +68,36 @@ describe('工作台图标栏', () => {
     wrapper.unmount()
   })
 
+  it('切换分组时回到该组上一次选中的页面', async () => {
+    const { router, wrapper } = await render('workbench')
+    const groupButton = (label: string) =>
+      wrapper
+        .findAll('.workbench-icon-rail__item')
+        .find((button) => button.attributes('aria-label') === label)!
+
+    await router.push({ name: 'workbench-perks' })
+    await flushPromises()
+
+    // 第一次进「订单与合同」→ 组内第一条
+    await groupButton('订单与合同').trigger('click')
+    await flushPromises()
+    expect(router.currentRoute.value.name).toBe('workbench-requirements')
+
+    await router.push({ name: 'workbench-signatures' })
+    await flushPromises()
+
+    // 回到「资产与权益」→ 上次的「我的权益」，而不是组内第一条
+    await groupButton('资产与权益').trigger('click')
+    await flushPromises()
+    expect(router.currentRoute.value.name).toBe('workbench-perks')
+
+    // 再回「订单与合同」→ 上次的「我的合同」
+    await groupButton('订单与合同').trigger('click')
+    await flushPromises()
+    expect(router.currentRoute.value.name).toBe('workbench-signatures')
+    wrapper.unmount()
+  })
+
   it('用户模式只剩消息 / 两个分组 / 系统通知，不再平铺账户类入口', async () => {
     const { wrapper } = await render('workbench')
 
