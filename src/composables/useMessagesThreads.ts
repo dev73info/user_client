@@ -1,5 +1,6 @@
 import { computed, ref, watch, type ComputedRef, type Ref } from 'vue'
 import type { RequirementConversation } from '@/shared/conversations'
+import type { ThreadPreference } from '@/shared/conversationPreferences'
 import type { RequirementItem } from '@/api/requirements'
 import { useClientPagination } from '@/composables/useClientPagination'
 import {
@@ -25,9 +26,16 @@ export function useMessagesThreads(options: {
   conversations: Ref<RequirementConversation[]>
   requirements: Ref<RequirementItem[]>
   username: ComputedRef<string>
+  /** 查看者的置顶 / 删除偏好（按需求编号），删除的行不再进入列表。 */
+  preferences: Ref<Record<string, ThreadPreference>>
 }) {
   const activeFilter = ref<MessageFilter>('all')
   const searchKeyword = ref('')
+
+  const isHidden = (requirementId: string) =>
+    options.preferences.value[requirementId]?.hidden === true
+  const isPinned = (requirementId: string) =>
+    options.preferences.value[requirementId]?.pinned === true
 
   const validConversations = computed(() =>
     options.conversations.value.filter((item): item is RequirementConversation =>
@@ -46,7 +54,9 @@ export function useMessagesThreads(options: {
     () => new Set(validConversations.value.map((item) => item.requirement_id)),
   )
   const activeConversations = computed(() =>
-    validConversations.value.filter((item) => item.status === 'open'),
+    validConversations.value.filter(
+      (item) => item.status === 'open' && !isHidden(item.requirement_id),
+    ),
   )
   const readyRequirements = computed(() =>
     validRequirements.value.filter((item) => hasBoundResource(item) && item.status !== 'completed'),
@@ -54,23 +64,31 @@ export function useMessagesThreads(options: {
   /** 已接取、但本地还没拿到会话记录——打开后才建会话，列表里单独一组「会话待开启」。 */
   const pendingRequirements = computed(() =>
     readyRequirements.value.filter(
-      (item) => !conversationRequirementIds.value.has(item.requirement_id),
+      (item) =>
+        !conversationRequirementIds.value.has(item.requirement_id) &&
+        !isHidden(item.requirement_id),
     ),
   )
   const conversationThreads = computed<MessageThread[]>(() =>
     activeConversations.value.map((item) =>
-      buildConversationThread(item, {
-        requirementById: requirementById.value,
-        username: options.username.value,
-      }),
+      buildConversationThread(
+        item,
+        {
+          requirementById: requirementById.value,
+          username: options.username.value,
+        },
+        isPinned(item.requirement_id),
+      ),
     ),
   )
   const pendingThreads = computed<MessageThread[]>(() =>
-    pendingRequirements.value.map(buildPendingThread),
+    pendingRequirements.value.map((item) =>
+      buildPendingThread(item, isPinned(item.requirement_id)),
+    ),
   )
   const allThreads = computed<MessageThread[]>(() =>
     [...conversationThreads.value, ...pendingThreads.value].sort(
-      (left, right) => right.sortTime - left.sortTime,
+      (left, right) => Number(right.pinned) - Number(left.pinned) || right.sortTime - left.sortTime,
     ),
   )
   const filteredThreads = computed(() => {

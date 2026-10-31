@@ -32,6 +32,8 @@ const {
   username,
   openThread,
   closeConversation,
+  setThreadPinned,
+  removeThread,
   applyConversationDetail,
 } = useMessagesPage()
 
@@ -251,6 +253,8 @@ function resizeInboxByKeyboard(event: KeyboardEvent) {
         :unread-count="unreadCount"
         @select="selectThread"
         @compose="composeConversation"
+        @pin="setThreadPinned"
+        @remove="removeThread"
       />
     </div>
 

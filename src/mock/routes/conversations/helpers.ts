@@ -74,6 +74,29 @@ export function readKey(request: MockRequest, code: string): string {
   return `${request.identity}:${conversationIdOf(code)}`
 }
 
+/* ------------------------------------------------------------------ 行偏好 */
+
+/** 置顶 / 删除（隐藏）：与真实后端一样按「身份 + 需求」记忆，只影响当前身份。 */
+export type MockThreadPreference = {
+  pinned: boolean
+  hidden: boolean
+}
+
+export const preferenceStore = new Map<string, MockThreadPreference>()
+
+export function preferenceKey(request: MockRequest, requirementId: string): string {
+  return `${request.identity}:${requirementId}`
+}
+
+export function preferenceOf(request: MockRequest, requirementId: string): MockThreadPreference {
+  return (
+    preferenceStore.get(preferenceKey(request, requirementId)) ?? {
+      pinned: false,
+      hidden: false,
+    }
+  )
+}
+
 export function currentUsername(request: MockRequest, code: string): string {
   return request.identity === 'dev' ? DEV_USERNAME : (findRequirement(code)?.creator ?? '')
 }

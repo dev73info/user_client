@@ -2,7 +2,7 @@ import type { MockRoute } from '../../router'
 
 import { type RequirementConversation } from '@/shared/conversations'
 import { DEV_USERNAME, findRequirement } from '../../db'
-import { jsonResponse, textResponse } from '../../response'
+import { jsonResponse, noContentResponse, textResponse } from '../../response'
 import {
   allocateMessageId,
   buildConversation,
@@ -10,6 +10,9 @@ import {
   detailOf,
   messagesOf,
   nowText,
+  preferenceKey,
+  preferenceOf,
+  preferenceStore,
   readKey,
   readStore,
   visibleRequirements,
@@ -37,6 +40,35 @@ export const conversationRoutes: MockRoute[] = [
           .map((item) => buildConversation(request, item.requirement_id))
           .filter((item): item is RequirementConversation => item !== null),
       ),
+  },
+  {
+    method: 'GET',
+    path: '/conversations/preferences',
+    note: '我设置过的会话行偏好（置顶 / 删除）',
+    handler: (request) =>
+      jsonResponse(
+        visibleRequirements(request)
+          .map((item) => ({
+            requirement_id: item.requirement_id,
+            ...preferenceOf(request, item.requirement_id),
+          }))
+          .filter((item) => item.pinned || item.hidden),
+      ),
+  },
+  {
+    method: 'PATCH',
+    path: '/conversations/requirement/:requirementId/preference',
+    note: '置顶 / 删除一条会话行（只影响当前 mock 身份）',
+    handler: (request, params) => {
+      const requirementId = params.requirementId ?? ''
+      const body = (request.body ?? {}) as { pinned?: boolean; hidden?: boolean }
+      const current = preferenceOf(request, requirementId)
+      preferenceStore.set(preferenceKey(request, requirementId), {
+        pinned: body.pinned ?? current.pinned,
+        hidden: body.hidden === true ? true : current.hidden,
+      })
+      return noContentResponse()
+    },
   },
   {
     method: 'GET',
