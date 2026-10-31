@@ -32,14 +32,15 @@
   min-height: 44px;
   padding: 10px 12px;
   border-radius: 8px;
-  color: var(--73-ink);
+  /* 未选中项用弱化墨色（与分组标题同一档灰），选中项才转强调色 */
+  color: var(--73-ink-muted);
   text-decoration: none;
   transition: color 160ms ease;
 }
 
 .workbench-rail-group__link:hover {
   background: transparent;
-  color: var(--73-ink);
+  color: var(--73-ink-soft);
 }
 
 /* 选中态不加底色与左侧色条：只有文字颜色变化，与图标栏同一口径 */
