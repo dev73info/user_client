@@ -40,8 +40,8 @@ const emit = defineEmits<{
       class="user-workbench__mode-switch"
       type="button"
       :class="{ 'user-workbench__mode-switch--spin': modeSwitchSpinning }"
-      :title="isDevWorkbenchMode ? '回到用户工作台' : '进入开发者工作台'"
-      :aria-label="isDevWorkbenchMode ? '回到用户工作台' : '进入开发者工作台'"
+      :title="isDevWorkbenchMode ? '切换到用户' : '切换到开发者'"
+      :aria-label="isDevWorkbenchMode ? '切换到用户' : '切换到开发者'"
       :disabled="modeSwitching"
       :aria-busy="modeSwitching || undefined"
       @click="emit('switch-mode')"
@@ -49,7 +49,7 @@ const emit = defineEmits<{
       <TIcon>
         <SwitchIcon />
       </TIcon>
-      <span>切换工作台</span>
+      <span>{{ isDevWorkbenchMode ? '切换到用户' : '切换到开发者' }}</span>
     </button>
     <button
       class="user-workbench__drawer-close"

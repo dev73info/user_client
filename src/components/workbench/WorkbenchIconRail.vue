@@ -171,6 +171,7 @@ const userItems = computed<RailItem[]>(() => [
 ])
 
 const items = computed(() => (props.isDevWorkbenchMode ? devItems : userItems.value))
+const switchLabel = computed(() => (props.isDevWorkbenchMode ? '切换到用户' : '切换到开发者'))
 
 function isActive(item: RailItem) {
   if (item.key === 'messages') {
@@ -214,10 +215,10 @@ const {
     <button
       class="workbench-icon-rail__item workbench-icon-rail__switch"
       type="button"
-      aria-label="切换工作台"
+      :aria-label="switchLabel"
       @click="switchWorkbenchMode"
-      @mouseenter="showTooltip('切换工作台', $event)"
-      @focus="showTooltip('切换工作台', $event)"
+      @mouseenter="showTooltip(switchLabel, $event)"
+      @focus="showTooltip(switchLabel, $event)"
       @mouseleave="hideTooltip"
       @blur="hideTooltip"
     >

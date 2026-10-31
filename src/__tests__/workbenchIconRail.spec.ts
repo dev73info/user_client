@@ -57,7 +57,7 @@ describe('工作台图标栏', () => {
 
     const switchButton = wrapper.find('.workbench-icon-rail__switch')
     expect(switchButton.exists()).toBe(true)
-    expect(switchButton.attributes('aria-label')).toBe('切换工作台')
+    expect(switchButton.attributes('aria-label')).toBe('切换到开发者')
 
     // 排在消息图标上面（是图标栏的第一个按钮）
     const railButtons = wrapper.findAll('.workbench-icon-rail > .workbench-icon-rail__item')
@@ -77,7 +77,7 @@ describe('工作台图标栏', () => {
     )
     const labels = itemLabels(wrapper)
     expect(labels).toEqual([
-      '切换工作台',
+      '切换到开发者',
       '消息',
       '订单与合同',
       '资产与权益',
