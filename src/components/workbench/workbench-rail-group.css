@@ -43,10 +43,21 @@
   color: var(--73-ink-soft);
 }
 
-/* 选中态不加底色与左侧色条：只有文字颜色变化，与图标栏同一口径 */
+/* 选中态：浅蓝底 + 左侧一条强调条，与图标栏的选中态呼应；未选中项保持灰字、无底色 */
 .workbench-rail-group__link.active {
-  background: transparent;
+  background: color-mix(in srgb, var(--73-accent-soft) 78%, transparent);
   color: var(--73-accent);
+}
+
+.workbench-rail-group__link.active::before {
+  content: '';
+  position: absolute;
+  left: 4px;
+  top: 12px;
+  bottom: 12px;
+  width: 3px;
+  border-radius: 999px;
+  background: var(--73-accent);
 }
 
 .workbench-rail-group__link span {
