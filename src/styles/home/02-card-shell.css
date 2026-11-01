@@ -2,7 +2,7 @@
   position: relative;
   overflow: hidden;
   padding: 16px;
-  border-radius: 16px;
+  border-radius: 14px;
   transition:
     border-color 180ms ease,
     box-shadow 180ms ease,

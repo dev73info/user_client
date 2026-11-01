@@ -56,9 +56,9 @@ function handlePostsLoaded(posts: CommunityPost[]) {
 
 <style scoped>
 .community-page {
-  width: min(1440px, calc(100% - 24px));
+  width: min(1280px, calc(100% - 24px));
   margin: 0 auto;
-  padding: 24px 0 64px;
+  padding: 0 0 64px;
   color: var(--73-ink);
 }
 .community-page--split {

@@ -1,6 +1,6 @@
 .mall-card {
   border: 1px solid var(--73-border-soft);
-  border-radius: 10px;
+  border-radius: 14px;
   overflow: hidden;
   background: var(--73-surface-strong);
   transition: border-color 180ms ease;

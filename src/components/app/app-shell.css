@@ -59,9 +59,6 @@
   min-height: 0;
   overflow: hidden;
   padding: 0;
-  /* 工作台的内容列居中在 1280px，两侧露出的页面底色定成门户的画布色：
-     内容列与画布有色差，右（左）边界才看得出来，不会像一整块铺不到头的面。 */
-  background: var(--73-bg);
 }
 
 .app-shell-scrollbar--immersive :deep(.t73-scrollbar__wrap) {

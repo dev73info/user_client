@@ -37,7 +37,8 @@
   height: 100%;
   min-height: 0;
   display: block;
-  padding: 10px 10px 10px 0;
+  /* 顶部不再额外留 10px：与门户页同一条「顶栏下方 14px」的间距 */
+  padding: 0 10px 10px 0;
 }
 
 .user-workbench__content--chat {
@@ -225,9 +226,7 @@
   }
 
   .user-workbench--icon-shell {
-    --uw-column-inset: 0px;
     grid-template-columns: minmax(0, 1fr);
-    padding-inline: 0;
   }
 
   .user-workbench__menu-backdrop {
