@@ -4,7 +4,7 @@
 
 .portal-page__stat-card {
   padding: 20px;
-  border-radius: 22px;
+  border-radius: 14px;
 }
 
 .portal-page__stat-card strong {
@@ -27,13 +27,13 @@
 .portal-page__panel,
 .portal-page__aside-card {
   padding: 22px;
-  border-radius: 24px;
+  border-radius: 14px;
 }
 
 .portal-page--nav .portal-page__panel,
 .portal-page--nav .portal-page__aside-card {
   padding: 18px;
-  border-radius: 18px;
+  border-radius: 14px;
   background: color-mix(in srgb, var(--73-surface-strong) 94%, transparent);
   box-shadow: 0 10px 28px color-mix(in srgb, var(--73-accent) 8%, transparent);
 }
@@ -92,7 +92,7 @@
 .portal-page__card,
 .portal-page__collection-card {
   padding: 20px;
-  border-radius: 22px;
+  border-radius: 14px;
   display: flex;
   flex-direction: column;
   gap: 14px;
@@ -102,7 +102,7 @@
 .portal-page--nav .portal-page__collection-card,
 .portal-page--nav .portal-page__timeline-item {
   padding: 18px;
-  border-radius: 18px;
+  border-radius: 14px;
   box-shadow: 0 10px 28px color-mix(in srgb, var(--73-accent) 8%, transparent);
 }
 
@@ -161,7 +161,7 @@
 
 .portal-page__timeline-item {
   padding: 14px 16px;
-  border-radius: 18px;
+  border-radius: 14px;
   background: color-mix(in srgb, var(--73-surface-strong) 92%, transparent);
   align-items: flex-start;
 }
@@ -176,7 +176,7 @@
 
 .portal-page__empty {
   padding: 18px;
-  border-radius: 18px;
+  border-radius: 14px;
   background: color-mix(in srgb, var(--73-surface-strong) 86%, transparent);
   color: var(--73-ink-muted);
 }

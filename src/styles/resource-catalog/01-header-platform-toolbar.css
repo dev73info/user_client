@@ -144,9 +144,8 @@
 
 .catalog-layout-page {
   width: min(1280px, calc(100% - 24px));
-  /* 面包屑整条移除后工具条成了内容区第一块：顶距按本页的区块间距档位（14px）收窄，
-     不再沿用 `.portal-page` 的 24px（那一档是给「首块 + 面包屑」两层留的） */
-  margin-top: 14px;
+  /* 顶部间距与其余页面一致：由顶栏自身的 margin-bottom（14px）提供，本页不再另加 */
+  margin-top: 0;
   margin-left: auto;
   margin-right: auto;
   display: grid;
@@ -200,7 +199,7 @@
   gap: 10px;
   padding: 12px 16px;
   border: 1px solid var(--card-border);
-  border-radius: 12px;
+  border-radius: 14px;
   background: var(--bg-soft);
 }
 
