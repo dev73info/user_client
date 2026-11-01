@@ -36,6 +36,9 @@
    结果中栏与右栏各自又是白卡叠在白卡上，页面上没有一块能当「底」的地方。 */
 .user-workbench--icon-shell {
   width: 100%;
+  /* 与顶栏共用同一条内容列：宽屏下整块（图标栏 + 内容）居中在 1280px 内，
+     窄屏左右各留 12px；背景仍由本元素铺满整行，两侧不会出现第二种底色。 */
+  padding-inline: max(12px, calc((100% - 1280px) / 2));
   height: calc(100dvh - var(--portal-header-footprint, 98px));
   min-height: 0;
   grid-template-columns: 76px minmax(0, 1fr);
@@ -241,6 +244,8 @@
 
   .user-workbench--icon-shell {
     grid-template-columns: minmax(0, 1fr);
+    /* 移动端让内容铺满，不再套用桌面端的内容列内边距 */
+    padding-inline: 0;
   }
 
   .user-workbench__menu-backdrop {
