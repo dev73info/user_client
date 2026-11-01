@@ -18,13 +18,14 @@
   background: transparent;
 }
 
-/* 内容列的浅色面：左右与内容列同宽，圆角只取 10px 一小档，描边与相邻卡片同一档 */
+/* 内容列的浅色面：左右与内容列同宽，圆角只取 10px 一小档；
+   描边比普通卡片的 --73-border-soft 重一档，否则整条边界在大面积浅底上看不出来 */
 .user-workbench--icon-shell::before {
   content: '';
   position: absolute;
   z-index: -1;
   inset: 0 var(--uw-column-inset);
-  border: 1px solid var(--73-border-soft);
+  border: 1px solid color-mix(in srgb, var(--73-ink-muted) 40%, transparent);
   border-radius: 10px;
   background: var(--73-bg-soft);
   pointer-events: none;
