@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
+import QRCode from 'qrcode'
 import { useRoute, useRouter } from 'vue-router'
 
 import { getAdapayClientPlatform } from '@/api/adapay'
@@ -9,6 +10,7 @@ import {
   type ResourcePurchaseOrder,
 } from '@/api/resourcePurchase'
 import { useResourcePayment } from '@/composables/useResourcePayment'
+import { isWechatBrowser } from '@/shared/auth/browser'
 import { formatPurchaseAmountLabel, resourcePurchaseStatusLabel } from '@/shared/resourceSale'
 import { useAuthStore } from '@/stores/auth'
 import { TButton } from 'ui_73info'
@@ -55,6 +57,26 @@ const orderTitle = computed(
   () => order.value?.resource_title?.trim() || `资源 #${order.value?.resource_id ?? ''}`,
 )
 
+/** 微信渠道（公众号 / 小程序）：订单本身不产生可扫的二维码，要走平台中间页。 */
+function isWechatPayChannel(value: string | null | undefined): boolean {
+  const channel = (value ?? '').trim().toLowerCase()
+  return channel === 'wx_pub' || channel === 'wx_lite' || channel === 'wechat'
+}
+
+const isWechatOrder = computed(() => isWechatPayChannel(order.value?.pay_channel))
+
+/**
+ * 微信支付的中间页地址：手机微信扫码打开 → 公众号静默授权拿 openid →
+ * 补建 `wx_pub` 渠道单 → JSAPI 拉起支付。令牌随链接带过去（手机没有登录态）。
+ */
+function wechatMiddlePageUrl(orderNo: string): string {
+  const resolved = router.resolve({
+    name: 'payment',
+    query: { resource_wechat: '1', order_no: orderNo, token: auth.token },
+  })
+  return new URL(resolved.href, window.location.origin).toString()
+}
+
 async function loadOrder(orderNo: string) {
   if (!orderNo) {
     phase.value = 'error'
@@ -85,6 +107,19 @@ async function applyOrderState(loaded: ResourcePurchaseOrder) {
   }
 
   startPoll(loaded.order_no)
+
+  if (isWechatPayChannel(loaded.pay_channel)) {
+    // 微信订单还没有渠道单：码里放平台中间页，手机微信扫码完成授权与支付。
+    // 不能在桌面浏览器直接画渠道参数——JSAPI 参数扫出来只是一段 JSON。
+    const middlePage = wechatMiddlePageUrl(loaded.order_no)
+    if (isWechatBrowser()) {
+      window.location.assign(middlePage)
+      return
+    }
+    qrDataUrl.value = await QRCode.toDataURL(middlePage, { width: 220, margin: 1 })
+    return
+  }
+
   const payUrl = loaded.pay_url?.trim()
   if (!payUrl) {
     return
@@ -195,6 +230,9 @@ onMounted(() => {
         <div v-else class="checkout-pay">
           <div v-if="qrDataUrl" class="checkout-pay__qr">
             <img :src="qrDataUrl" alt="支付二维码" width="220" height="220" />
+            <p v-if="isWechatOrder" class="checkout-card__status-line">
+              请用微信扫描下方二维码完成支付
+            </p>
           </div>
           <p v-else class="checkout-card__status-line" role="status">
             {{ order.status === 'pending' ? '等待支付结果…' : '订单当前不可支付' }}
