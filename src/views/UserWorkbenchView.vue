@@ -172,4 +172,5 @@ const {
 </template>
 
 <style scoped src="./../components/workbench/user-workbench-shell.css"></style>
+<style scoped src="./../components/workbench/user-workbench-icon-shell.css"></style>
 <style scoped src="./../components/workbench/user-workbench-rail-group.css"></style>
