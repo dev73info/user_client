@@ -28,7 +28,7 @@
   gap: 10px 14px;
   padding: 14px 16px 14px 18px;
   border: 1px solid color-mix(in srgb, var(--73-border) 88%, transparent);
-  border-radius: 16px;
+  border-radius: 14px;
   background: var(--73-app-grad-soft-40);
   opacity: 0;
   outline: none;

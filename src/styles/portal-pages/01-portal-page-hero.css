@@ -1,6 +1,7 @@
 .portal-page {
-  width: min(1320px, calc(100% - 32px));
-  margin: 24px auto 48px;
+  width: min(1280px, calc(100% - 24px));
+  /* 与顶栏同一条内容列；顶部间距由顶栏自身的 margin-bottom（14px）提供 */
+  margin: 0 auto 48px;
   display: flex;
   flex-direction: column;
   gap: 22px;
@@ -30,7 +31,7 @@
   grid-template-columns: minmax(0, 1.2fr) minmax(300px, 0.8fr);
   gap: 18px;
   padding: 28px;
-  border-radius: 28px;
+  border-radius: 14px;
 }
 
 .portal-page__hero-copy {
