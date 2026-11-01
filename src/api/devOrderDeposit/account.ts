@@ -7,6 +7,9 @@ import type {
   PrepaidOrderList,
   PrepaidOrderQuery,
   PrepaidRechargeRequest,
+  PrepaidWechatAuthUrl,
+  PrepaidWechatJsapi,
+  PrepaidWechatStatus,
   PrepaidWithdrawal,
   PrepaidWithdrawalQuery,
   PrepaidWithdrawalRequest,
@@ -69,6 +72,58 @@ export async function getMyPrepaidOrder(token: string, paymentId: string): Promi
     `/payment/developer-order-deposit/orders/${encodeURIComponent(paymentId)}`,
     { headers: authHeaders(token) },
     '加载保证金充值单失败',
+  )
+}
+
+// ── 微信充值中间页（PC 出码 → 手机微信里打开） ──────────────────
+//
+// 这三个端点认 query / body 里的 `token`，不靠 `Authorization`：手机那端没有平台
+// 登录态，令牌只能随链接带过来。这里刻意不带 Authorization 头——手机上可能登录着
+// 另一个账号，请求头会盖过链接里的令牌。
+
+/** 微信充值第一步：取公众号网页授权地址（`GET …/wechat-auth-url`）。 */
+export async function getPrepaidWechatAuthUrl(
+  orderNo: string,
+  token: string,
+  redirectTo?: string,
+): Promise<PrepaidWechatAuthUrl> {
+  const query = new URLSearchParams({ token })
+  if (redirectTo?.trim()) {
+    query.set('redirect_to', redirectTo.trim())
+  }
+  return requestJson<PrepaidWechatAuthUrl>(
+    `/payment/developer-order-deposit/orders/${encodeURIComponent(orderNo)}/wechat-auth-url?${query.toString()}`,
+    { method: 'GET' },
+    '获取微信授权地址失败',
+  )
+}
+
+/** 微信充值第二步：补建渠道单并取 JSAPI 参数（`POST …/wechat-jsapi`）。 */
+export async function completePrepaidWechatJsapi(
+  orderNo: string,
+  token: string,
+): Promise<PrepaidWechatJsapi> {
+  return requestJson<PrepaidWechatJsapi>(
+    `/payment/developer-order-deposit/orders/${encodeURIComponent(orderNo)}/wechat-jsapi`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token }),
+    },
+    '创建微信支付失败',
+  )
+}
+
+/** 微信充值中间页轮询（`GET …/wechat-status`）。 */
+export async function getPrepaidWechatStatus(
+  orderNo: string,
+  token: string,
+): Promise<PrepaidWechatStatus> {
+  const query = new URLSearchParams({ token })
+  return requestJson<PrepaidWechatStatus>(
+    `/payment/developer-order-deposit/orders/${encodeURIComponent(orderNo)}/wechat-status?${query.toString()}`,
+    { method: 'GET' },
+    '查询充值单失败',
   )
 }
 

@@ -5400,6 +5400,66 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/payment/developer-order-deposit/orders/{payment_id}/wechat-auth-url": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 取微信充值授权地址
+         * @description 认 `Authorization` 或 query 里的 `token`（中间页在另一台设备的微信里打开，没有请求头可用），两者都没有回 401；**没有单独的权限码**，只用订单归属判。订单已挂 openid 时返回空串并用 `authorized: true` 说明「不用再授权」；非微信渠道 / 已支付 / 已关闭的充值单回 409；微信充值未配置回 503。
+         */
+        get: operations["payment_prepaid_wechat_auth_url"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/payment/developer-order-deposit/orders/{payment_id}/wechat-jsapi": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 取微信充值 JSAPI 唤起参数
+         * @description 认 `Authorization` 或请求体里的 `token`（中间页在手机微信里打开，没有请求头可用），两者都没有回 401；**没有单独的权限码**，只用订单归属判。openid 缺省时用充值单上已经落库的那个，都没有回 409；渠道没给参数包（`sdk_payload`）回 503，绝不返回空壳参数假装能拉起支付。
+         */
+        post: operations["payment_prepaid_wechat_jsapi"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/payment/developer-order-deposit/orders/{payment_id}/wechat-status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 微信充值中间页轮询订单状态
+         * @description 认 `Authorization` 或 query 里的 `token`，两者都没有回 401；**没有单独的权限码**，只用订单归属判。挂起中的单会顺手向渠道对一次账，回调丢失时这个轮询也能把 `pending` 推进到 `paid`。
+         */
+        get: operations["payment_prepaid_wechat_status"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/payment/developer-order-deposit/withdrawals": {
         parameters: {
             query?: never;
@@ -15827,6 +15887,43 @@ export interface components {
         };
         PrepaidRefundLookupRequest: {
             refund_no: string;
+        };
+        /**
+         * @description 微信充值授权地址查询。
+         *
+         *     `token` 给手机微信里的中间页用：那台设备没有平台登录态，
+         *     令牌只能随链接带过来。
+         */
+        PrepaidWechatAuthUrlQuery: {
+            redirect_to?: string | null;
+            token?: string | null;
+        };
+        PrepaidWechatAuthUrlResponse: {
+            /** @description 是否已经完成授权（订单上已有 openid）。 */
+            authorized: boolean;
+            /** @description 公众号网页授权地址；已经拿到 openid 时为空串。 */
+            url: string;
+        };
+        /** @description 微信充值 JSAPI 请求。 */
+        PrepaidWechatJsapiRequest: {
+            openid?: string | null;
+            token?: string | null;
+        };
+        PrepaidWechatJsapiResponse: {
+            /** @description 支付单快照。 */
+            order: components["schemas"]["PrepaidOrderResponse"];
+            /** @description 渠道返回的 JSAPI 参数包（JSON 文本），前端原样交给 `WeixinJSBridge`。 */
+            pay_info: string;
+        };
+        /** @description 微信充值中间页轮询查询。 */
+        PrepaidWechatStatusQuery: {
+            token?: string | null;
+        };
+        PrepaidWechatStatusResponse: {
+            /** @description 是否已经拿到 openid。 */
+            authorized: boolean;
+            /** @description 支付单快照。 */
+            order: components["schemas"]["PrepaidOrderResponse"];
         };
         /** @description 渠道合同预览响应。 */
         PreviewResponse: {
@@ -34519,6 +34616,144 @@ export interface operations {
                 };
             };
             403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    payment_prepaid_wechat_auth_url: {
+        parameters: {
+            query?: {
+                token?: string;
+                redirect_to?: string;
+            };
+            header?: never;
+            path: {
+                payment_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PrepaidWechatAuthUrlResponse"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    payment_prepaid_wechat_jsapi: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                payment_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PrepaidWechatJsapiRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PrepaidWechatJsapiResponse"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    payment_prepaid_wechat_status: {
+        parameters: {
+            query?: {
+                token?: string;
+            };
+            header?: never;
+            path: {
+                payment_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PrepaidWechatStatusResponse"];
+                };
+            };
+            401: {
                 headers: {
                     [name: string]: unknown;
                 };

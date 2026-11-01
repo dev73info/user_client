@@ -12,11 +12,16 @@
  *
  * 样式复用全局 `.dev-recharge-dialog*`（在 `styles/dev-wallet.css`），本组件不带 style 块。
  */
-import { computed, ref } from 'vue'
+import { computed, onUnmounted, ref, watch } from 'vue'
 import QRCode from 'qrcode'
+import { useRouter } from 'vue-router'
 
 import { getDevCreditSelf, type DevCreditSelf } from '@/api/devCredit'
-import { createPrepaidRecharge } from '@/api/devOrderDeposit'
+import {
+  createPrepaidRecharge,
+  getMyPrepaidOrder,
+  getPrepaidWechatAuthUrl,
+} from '@/api/devOrderDeposit'
 import { toFen } from '@/composables/useDevWalletDeposit'
 import { useAuthStore } from '@/stores/auth'
 
@@ -37,18 +42,23 @@ const emit = defineEmits<{
 }>()
 
 const auth = useAuthStore()
+const router = useRouter()
 
 const visible = ref(false)
 const submitting = ref(false)
 /** 充值金额（元）：默认 100，与线上一致 */
 const amount = ref(100)
 const channel = ref<'alipay' | 'wechat'>('alipay')
+/** 二维码对应的渠道：微信是「扫码打开平台中间页」，与支付宝的收银台链接不是一个东西 */
+const qrChannel = ref<'alipay' | 'wechat'>('alipay')
 /** 信用额度：只用来解释「还能充多少」，查不到不阻断充值 */
 const creditInfo = ref<DevCreditSelf | null>(null)
 /** 下单后拿到的收银台地址渲染成的二维码（dataURL）；空串 = 还在填表单 */
 const qrDataUrl = ref('')
 /** 当前待支付的充值单号，展示给用户对账 */
 const pendingOrderNo = ref('')
+/** 微信支付的轮询定时器：PC 出码后盯到账，不用用户自己猜 */
+let pollTimer: number | null = null
 
 const amountFen = computed(() => toFen(amount.value))
 /** 超过信用允许的额度：后端会拒绝，这里先说清原因，别等提交才报错 */
@@ -64,11 +74,60 @@ const money = (fen?: number | null) => `¥${((fen ?? 0) / 100).toFixed(2)}`
 async function open(): Promise<void> {
   amount.value = 100
   channel.value = 'alipay'
+  qrChannel.value = 'alipay'
   creditInfo.value = null
+  backToForm()
   if (auth.token) {
     creditInfo.value = await getDevCreditSelf(auth.token).catch(() => null)
   }
   visible.value = true
+}
+
+/** 微信中间页地址：手机扫码打开后完成公众号授权与 JSAPI 支付。 */
+function prepaidMiddlePageUrl(orderNo: string): string {
+  const resolved = router.resolve({
+    name: 'prepaid-wechat-pay',
+    query: { order_no: orderNo, token: auth.token },
+  })
+  return new URL(resolved.href, window.location.origin).toString()
+}
+
+/** 停掉微信充值的到账轮询。 */
+function stopPolling(): void {
+  if (pollTimer !== null) {
+    window.clearTimeout(pollTimer)
+    pollTimer = null
+  }
+}
+
+/**
+ * 微信充值出码后盯订单状态：回调可能晚到，用户不该靠自己猜「付成功了没有」。
+ * 到账即关闭弹窗并通知父级回刷余额；失败 / 关闭则回到表单让用户重下。
+ */
+function startPolling(orderNo: string): void {
+  stopPolling()
+  const tick = async () => {
+    pollTimer = null
+    try {
+      const order = await getMyPrepaidOrder(auth.token, orderNo)
+      if (order.status === 'paid') {
+        TMessage.success('充值成功，保证金余额已到账')
+        visible.value = false
+        backToForm()
+        emit('succeeded')
+        return
+      }
+      if (order.status === 'failed' || order.status === 'canceled') {
+        TMessage.error('充值单已关闭或支付失败，请重新发起')
+        backToForm()
+        return
+      }
+    } catch {
+      /* 轮询失败不打断，下一次继续 */
+    }
+    pollTimer = window.setTimeout(tick, 3000)
+  }
+  pollTimer = window.setTimeout(tick, 3000)
 }
 
 async function submit(): Promise<void> {
@@ -86,6 +145,23 @@ async function submit(): Promise<void> {
       channel: channel.value,
       client_platform: 'pc',
     })
+    if (channel.value === 'wechat') {
+      // 微信下单只落了本地单（还没有 openid，渠道不受理）。二维码里放**平台中间页**：
+      // 手机微信扫码打开 → 公众号静默授权拿 openid → 补建渠道单并拉起支付。
+      // 不能把渠道参数画成二维码——JSAPI 参数包在普通扫码里拉不起微信支付。
+      const middlePage = prepaidMiddlePageUrl(order.order_no)
+      const authUrl = await getPrepaidWechatAuthUrl(order.order_no, auth.token, middlePage)
+      const qrContent = authUrl.authorized || !authUrl.url.trim() ? middlePage : authUrl.url
+      qrDataUrl.value = await QRCode.toDataURL(qrContent, {
+        width: 220,
+        margin: 1,
+        errorCorrectionLevel: 'M',
+      })
+      qrChannel.value = 'wechat'
+      pendingOrderNo.value = order.order_no
+      startPolling(order.order_no)
+      return
+    }
     // 后端 `client_action` 的字段是 `redirect_url` / `qr_code` /
     // `sdk_payload`（见 payment_provider 的 `ClientAction`）。
     // 早先这里读的是 `pay_url`——那个字段不存在，所以支付页永远打不开。
@@ -109,6 +185,7 @@ async function submit(): Promise<void> {
       margin: 1,
       errorCorrectionLevel: 'M',
     })
+    qrChannel.value = 'alipay'
     pendingOrderNo.value = order.order_no
     // 停在当前弹窗展示二维码，用户扫完由父级回刷余额。
   } catch (err) {
@@ -120,6 +197,7 @@ async function submit(): Promise<void> {
 
 /** 关闭二维码视图，回到表单（换金额重下另一单）。 */
 function backToForm() {
+  stopPolling()
   qrDataUrl.value = ''
   pendingOrderNo.value = ''
 }
@@ -131,6 +209,16 @@ function closeAfterPay() {
   emit('succeeded')
 }
 
+onUnmounted(stopPolling)
+
+// 弹窗被右上角关掉时也要停轮询：组件一直挂在页面上，
+// 不停的话会在用户已经离开后继续查单并弹「充值成功」。
+watch(visible, (open) => {
+  if (!open) {
+    stopPolling()
+  }
+})
+
 defineExpose({ open })
 </script>
 
@@ -138,8 +226,18 @@ defineExpose({ open })
   <TDialog v-model:open="visible" title="保证金充值" width="520px" class="dev-recharge-dialog">
     <!-- 下单成功后：就地展示二维码（PC 主扫），不跳转 -->
     <div v-if="qrDataUrl" class="dev-recharge-dialog__qr">
-      <p class="dev-recharge-dialog__qr-hint">请用支付宝扫描下方二维码完成支付</p>
-      <img :src="qrDataUrl" alt="支付宝支付二维码" class="dev-recharge-dialog__qr-img" />
+      <p class="dev-recharge-dialog__qr-hint">
+        {{
+          qrChannel === 'wechat'
+            ? '请用微信扫描下方二维码完成支付'
+            : '请用支付宝扫描下方二维码完成支付'
+        }}
+      </p>
+      <img
+        :src="qrDataUrl"
+        :alt="qrChannel === 'wechat' ? '微信支付二维码' : '支付宝支付二维码'"
+        class="dev-recharge-dialog__qr-img"
+      />
       <p class="dev-recharge-dialog__qr-order">订单号：{{ pendingOrderNo }}</p>
       <p class="dev-recharge-dialog__qr-note">
         支付完成后点下方「我已支付」刷新余额；若余额未变，稍等片刻再刷新。
