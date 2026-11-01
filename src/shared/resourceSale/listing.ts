@@ -25,13 +25,24 @@ export function canSwitchToPointsPrice(
   return !cashPriceLocked && !isPaidResource(savedPriceFen)
 }
 
+/** 版本售价（分 > 0）：资源级买断价可能为 0，但版本有价时整条资源不是免费。 */
+export function isVersionSalePrice(minVersionPriceFen?: number | null): boolean {
+  const fen = Number(minVersionPriceFen ?? 0)
+  return Number.isFinite(fen) && fen > 0
+}
+
 /** 现金或积分任一标价 > 0，即需购买（或作者豁免）。 */
 
 export function isPricedResource(
   priceFen: number | null | undefined,
   pricePoints?: number | null,
+  minVersionPriceFen?: number | null,
 ): boolean {
-  return isPaidResource(priceFen) || isPointsResource(pricePoints)
+  return (
+    isPaidResource(priceFen) ||
+    isPointsResource(pricePoints) ||
+    isVersionSalePrice(minVersionPriceFen)
+  )
 }
 
 /**
@@ -42,19 +53,25 @@ export function isPricedResource(
 export function isFreeListingResource(
   priceFen: number | null | undefined,
   _pricePoints?: number | null,
+  minVersionPriceFen?: number | null,
 ): boolean {
-  return !isPaidResource(priceFen)
+  return !isPaidResource(priceFen) && !isVersionSalePrice(minVersionPriceFen)
 }
 
 /**
  * 门户「付费资源」列表：仅现金标价（买断价 `buyout_price_fen > 0`），不含积分售价。
+ * 按版本售卖（`min_version_price_fen > 0`）属于付费资源。
  */
 
 export function isCashPaidListingResource(
   priceFen: number | null | undefined,
   pricePoints?: number | null,
+  minVersionPriceFen?: number | null,
 ): boolean {
-  return isPaidResource(priceFen) && !isPointsResource(pricePoints)
+  return (
+    (isPaidResource(priceFen) || isVersionSalePrice(minVersionPriceFen)) &&
+    !isPointsResource(pricePoints)
+  )
 }
 
 /**

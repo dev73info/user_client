@@ -15507,6 +15507,7 @@ export interface components {
         OverviewResourceResponse: {
             changed_at: string;
             creator: string;
+            platform: string;
             /** Format: int64 */
             resource_id: number;
             status: string;
@@ -16767,6 +16768,13 @@ export interface components {
             like_count: number;
             /** @description 当前访客是否已点赞。 */
             liked_by_me: boolean;
+            /**
+             * Format: int64
+             * @description 最低可购版本价（分）：0 = 没有可单卖的版本。
+             *
+             *     大厅列表里资源级买断价为 0 但版本有价时，靠它识别「按版本售卖」，不能显示成免费。
+             */
+            min_version_price_fen: number;
             /** @description 原作者。 */
             origin_author?: string | null;
             /** @description 出处备注。 */

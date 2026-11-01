@@ -1,7 +1,7 @@
 import { apiUrl } from '@/api/http'
 import type { PublicMcResourceItem } from '@/api/resources'
 import { normalizeTagName, type McTagFilterSection } from '@/api/resourceTags'
-import { formatResourcePriceLabel } from '@/shared/resourceSale'
+import { formatResourcePriceLabel, formatVersionSalePriceLabel } from '@/shared/resourceSale'
 import { parseBackendDateTime } from '@/shared/datetime'
 
 /**
@@ -40,6 +40,8 @@ export type McCardItem = {
   originUrl: string | null
   priceFen: number
   pricePoints: number
+  /** 最低可购版本价（分）：资源级定价为 0 时据此显示「¥x 起」 */
+  minVersionPriceFen: number
   priceLabel: string
 }
 
@@ -67,6 +69,15 @@ export function mapResourceToCard(item: PublicMcResourceItem): McCardItem {
 
   const priceFen = item.buyout_price_fen ?? 0
   const pricePoints = item.price_points ?? 0
+  const minVersionPriceFen = item.min_version_price_fen ?? 0
+  /**
+   * 资源级买断价 / 积分价都为 0、但版本有价时，按版本售卖展示「¥x 起」，
+   * 不能显示成免费（与详情页 `useResourceVersionSaleDetail` 同口径）。
+   */
+  const priceLabel =
+    priceFen <= 0 && pricePoints <= 0 && minVersionPriceFen > 0
+      ? formatVersionSalePriceLabel(minVersionPriceFen)
+      : formatResourcePriceLabel(priceFen, pricePoints)
   const creator = item.creator.trim()
   return {
     id: item.id,
@@ -95,7 +106,8 @@ export function mapResourceToCard(item: PublicMcResourceItem): McCardItem {
     originUrl: item.origin_url ?? null,
     priceFen,
     pricePoints,
-    priceLabel: formatResourcePriceLabel(priceFen, pricePoints),
+    minVersionPriceFen,
+    priceLabel,
   }
 }
 

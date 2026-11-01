@@ -122,7 +122,7 @@ function openResource(card: McCardItem) {
       resourceId: card.id,
       rootSlug: props.rootSlug,
       entrySlug: props.entrySlug || getTagRouteSlug(props.groupName),
-      sale: resourceListingSaleOf(card.priceFen, card.pricePoints),
+      sale: resourceListingSaleOf(card.priceFen, card.pricePoints, card.minVersionPriceFen),
     }),
   )
 }

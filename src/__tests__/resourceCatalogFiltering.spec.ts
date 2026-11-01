@@ -5,6 +5,7 @@ import type { PublicMcResourceItem } from '@/api/resources'
 import { mapResourceToCard } from '@/components/resource-catalog/resourceCatalogModel'
 import { mapResourceToCard as mapMobileResourceToCard } from '@/components/mobile-resource/mobileResourceModel'
 import { useResourceCatalogFiltering } from '@/composables/useResourceCatalogFiltering'
+import { isCashPaidListingResource, isFreeListingResource } from '@/shared/resourceSale'
 
 vi.mock('vue-router', () => ({
   useRoute: () => ({ query: {} }),
@@ -105,5 +106,33 @@ describe('资源目录四层标签筛选', () => {
       32: ['服务端'],
     })
     scope.stop()
+  })
+})
+
+describe('按版本售卖的资源卡片', () => {
+  it('资源级定价为 0、版本有价时显示「¥x 起」并归入付费厅', () => {
+    const item = resourceWithDuplicateGroupNames()
+    item.min_version_price_fen = 1
+
+    const card = mapResourceToCard(item)
+    expect(card.minVersionPriceFen).toBe(1)
+    expect(card.priceLabel).toBe('¥0.01 起')
+    expect(
+      isCashPaidListingResource(card.priceFen, card.pricePoints, card.minVersionPriceFen),
+    ).toBe(true)
+    expect(isFreeListingResource(card.priceFen, card.pricePoints, card.minVersionPriceFen)).toBe(
+      false,
+    )
+
+    expect(mapMobileResourceToCard(item).priceLabel).toBe('¥0.01 起')
+  })
+
+  it('买断价资源保持原标价，不受版本价影响', () => {
+    const item = { ...resourceWithDuplicateGroupNames(), buyout_price_fen: 990 }
+    item.min_version_price_fen = 1
+    expect(mapResourceToCard(item).priceLabel).toBe('¥9.90')
+    expect(
+      isCashPaidListingResource(item.buyout_price_fen, item.price_points, 1),
+    ).toBe(true)
   })
 })

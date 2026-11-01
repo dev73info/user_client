@@ -74,9 +74,9 @@ export function useResourceCatalogFiltering(options: {
     let free = 0
     let paid = 0
     for (const card of cards.value) {
-      if (isCashPaidListingResource(card.priceFen, card.pricePoints)) {
+      if (isCashPaidListingResource(card.priceFen, card.pricePoints, card.minVersionPriceFen)) {
         paid += 1
-      } else if (isFreeListingResource(card.priceFen, card.pricePoints)) {
+      } else if (isFreeListingResource(card.priceFen, card.pricePoints, card.minVersionPriceFen)) {
         free += 1
       }
     }
@@ -100,10 +100,10 @@ export function useResourceCatalogFiltering(options: {
   const filteredCards = computed(() => {
     const filtered = cards.value.filter((card) => {
       if (activeListingMode.value === 'free') {
-        if (!isFreeListingResource(card.priceFen, card.pricePoints)) {
+        if (!isFreeListingResource(card.priceFen, card.pricePoints, card.minVersionPriceFen)) {
           return false
         }
-      } else if (!isCashPaidListingResource(card.priceFen, card.pricePoints)) {
+      } else if (!isCashPaidListingResource(card.priceFen, card.pricePoints, card.minVersionPriceFen)) {
         return false
       }
 

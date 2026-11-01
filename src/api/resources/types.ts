@@ -70,6 +70,8 @@ export type PublicMcResourceItem = {
   price_fen: number
   /** 积分售价；0=不走积分购；与 price_fen 互斥 */
   price_points: number
+  /** 最低可购版本价（分）；0 或缺失 = 没有可单卖的版本。大厅卡片据此识别按版本售卖。 */
+  min_version_price_fen?: number
   /** 是否已勾选版权声明 */
   copyright_declared: boolean
   copyright_declared_at?: string | null

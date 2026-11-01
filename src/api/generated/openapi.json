@@ -41378,6 +41378,7 @@
           "resource_id",
           "title",
           "creator",
+          "platform",
           "status",
           "changed_at"
         ],
@@ -41386,6 +41387,9 @@
             "type": "string"
           },
           "creator": {
+            "type": "string"
+          },
+          "platform": {
             "type": "string"
           },
           "resource_id": {
@@ -44233,6 +44237,7 @@
           "buyout_price_fen",
           "price_fen",
           "price_points",
+          "min_version_price_fen",
           "copyright_declared",
           "cash_price_locked",
           "resource_kind",
@@ -44432,6 +44437,11 @@
           "liked_by_me": {
             "type": "boolean",
             "description": "当前访客是否已点赞。"
+          },
+          "min_version_price_fen": {
+            "type": "integer",
+            "format": "int64",
+            "description": "最低可购版本价（分）：0 = 没有可单卖的版本。\n\n大厅列表里资源级买断价为 0 但版本有价时，靠它识别「按版本售卖」，不能显示成免费。"
           },
           "origin_author": {
             "type": [
