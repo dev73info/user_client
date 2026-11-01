@@ -27,18 +27,22 @@ export function useResourceFileDownload(options: {
   getLatestVersion: () => PublicMcResourceVersionItem | null
   /** 需要先购买才能下载（平台内有购买入口） */
   needsPurchase: () => boolean
-  openPurchasePanel: () => Promise<void>
+  /**
+   * 打开购买面板。`version` 是本次下载被 403 拦截的版本：
+   * 版本售卖资源（资源级买断价为 0）要按版本下单，面板必须带上这个上下文。
+   */
+  openPurchasePanel: (version?: PublicMcResourceVersionItem | null) => Promise<void>
 }) {
   const route = useRoute()
   const router = useRouter()
   const auth = useAuthStore()
   const { triggerDownload } = useResourceDownload()
 
-  async function handleDownloadError(error: unknown) {
+  async function handleDownloadError(error: unknown, version?: PublicMcResourceVersionItem | null) {
     const message = describeBackendError(error, '下载资源失败')
     if (error instanceof HttpError && error.status === 403 && isPurchaseRequiredError(message)) {
       TMessage.warning('请先购买该资源后再下载')
-      void options.openPurchasePanel()
+      void options.openPurchasePanel(version ?? null)
       return
     }
     TMessage.warning(message)
@@ -97,7 +101,7 @@ export function useResourceFileDownload(options: {
         fileName,
       )
     } catch (error) {
-      await handleDownloadError(error)
+      await handleDownloadError(error, latestVersion)
     }
   }
 
@@ -131,7 +135,7 @@ export function useResourceFileDownload(options: {
         fileName,
       )
     } catch (error) {
-      await handleDownloadError(error)
+      await handleDownloadError(error, version)
     }
   }
 

@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import type { PublicMcResourceItem } from '@/api/resources'
-import { isPricedResource } from '@/shared/resourceSale'
 import ResourceDetailCtaRow from '@/components/resource-detail/ResourceDetailCtaRow.vue'
 
 /**
@@ -16,7 +15,12 @@ const props = defineProps<{
   resource: PublicMcResourceItem
   /** 价格文案（同时在购买弹窗上用，所以由外层算好传进来） */
   priceLabel: string
+  /** 价格徽标是否按「付费」着色（版本售卖的资源级价格为 0，但整体不是免费） */
+  isPaidPrice: boolean
+  /** 买断 / 积分资源需要先购买（版本列表按钮也看它） */
   needsPurchase: boolean
+  /** 按版本售卖且最新版本有价：主按钮显示购买 */
+  needsVersionPurchase: boolean
   isApiResource: boolean
   purchaseSubmitting: boolean
   likeSubmitting: boolean
@@ -105,16 +109,9 @@ const resourceSummaryText = computed(() => {
     <div class="resource-detail-page__headline-row">
       <div class="resource-detail-page__headline-left">
         <span class="resource-detail-page__status-pill">{{ visibilityLabel }}</span>
-        <span
-          class="resource-detail-page__price-pill"
-          :class="{
-            'is-paid': isPricedResource(
-              props.resource.buyout_price_fen,
-              props.resource.price_points,
-            ),
-          }"
-          >{{ props.priceLabel }}</span
-        >
+        <span class="resource-detail-page__price-pill" :class="{ 'is-paid': props.isPaidPrice }">{{
+          props.priceLabel
+        }}</span>
         <span class="resource-detail-page__repost-badge" :class="{ 'is-repost': isRepost }">{{
           originTypeLabel
         }}</span>
@@ -218,6 +215,7 @@ const resourceSummaryText = computed(() => {
       :resource="props.resource"
       :price-label="props.priceLabel"
       :needs-purchase="props.needsPurchase"
+      :needs-version-purchase="props.needsVersionPurchase"
       :is-api-resource="props.isApiResource"
       :purchase-submitting="props.purchaseSubmitting"
       :like-submitting="props.likeSubmitting"

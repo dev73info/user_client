@@ -5,11 +5,13 @@ import { TMessage } from 'ui_73info'
 import { getAdapayClientPlatform } from '@/api/adapay'
 import { createResourcePurchase, type ResourcePurchaseOrder } from '@/api/resourcePurchase'
 import { useResourcePayment } from '@/composables/useResourcePayment'
+import {
+  useResourcePurchaseTarget,
+  type ResourcePurchaseTargetVersion,
+} from '@/composables/useResourcePurchaseTarget'
 import { buildWechatPaySurface, renderWechatQr } from '@/composables/useWechatScanPay'
 import { describeBackendError } from '@/shared/backendErrorText'
 import {
-  canReuseCashQrForChannel,
-  fenToYuanText,
   isWechatPayChannel,
   normalizePromoCode,
   type ResourcePayChannelUi,
@@ -38,11 +40,13 @@ export function useResourcePurchase(options: UseResourcePurchaseOptions) {
   const route = useRoute()
   const router = useRouter()
   const auth = useAuthStore()
-
   const panelOpen = ref(false)
   const submitting = ref(false)
   const channel = ref<ResourcePayChannelUi>('alipay')
   const pointsMode = computed(() => Number(options.getPricePoints()) > 0)
+  /** 购买目标版本与「当前支付面属于哪个版本」的复用判定都在这里。 */
+  const { targetVersion, canReuse, markSurfaceVersion, resetSurfaceVersion } =
+    useResourcePurchaseTarget()
   /** 购买失败原因：原样透传后端文案（toast 只停 2.6 秒，用户在弹窗里还要能再看到一次） */
   const error = ref('')
   /** 切换支付渠道防抖，避免连点支付宝/微信刷出一堆订单 */
@@ -65,11 +69,7 @@ export function useResourcePurchase(options: UseResourcePurchaseOptions) {
     notifyClosed: () => TMessage.warning('支付未完成，请重新发起购买'),
   })
 
-  /**
-   * R029：本次链接带来的推广码（`?promo=`，分享短链落地时写入）。列表页保证它只在
-   * 「当前详情就是分享链接指向的那条资源」时留在地址栏上，所以这里可以直接按资源用；
-   * 格式不合格的码在落地时就拒掉了，这里再校验一次兜底。
-   */
+  /** R029：本次链接带来的推广码（`?promo=`），格式不合格在落地时已拒掉，这里再校验一次兜底。 */
   const promoCode = computed(() => normalizePromoCode(route.query.promo))
 
   /**
@@ -93,17 +93,23 @@ export function useResourcePurchase(options: UseResourcePurchaseOptions) {
     }
   }
 
-  /** 当前资源是否已有可复用的待支付码（同渠道），避免弹窗反复开关再插新单 */
-  function hasReusableCashQr(channelToCheck: ResourcePayChannelUi): boolean {
-    const current = order.value
-    const resourceId = options.getResourceId()
-    if (!current || resourceId == null || current.resource_id !== resourceId) {
-      return false
-    }
-    return canReuseCashQrForChannel(current, channelToCheck, Boolean(qrDataUrl.value.trim()))
+  /** 作废支付面：订单与二维码一起清掉，并清掉当前支付面的版本归属。 */
+  function invalidatePurchaseSurface() {
+    invalidateSurface()
+    resetSurfaceVersion()
   }
 
-  async function open() {
+  /** 当前资源是否已有可复用的待支付码（同渠道、同购买粒度），避免弹窗反复开关再插新单 */
+  function hasReusableCashQr(channelToCheck: ResourcePayChannelUi): boolean {
+    return canReuse(
+      order.value,
+      options.getResourceId(),
+      channelToCheck,
+      Boolean(qrDataUrl.value.trim()),
+    )
+  }
+
+  async function open(target: ResourcePurchaseTargetVersion | null = null) {
     if (!auth.isAuthed) {
       TMessage.info('请先登录后再购买')
       void router.push({
@@ -112,6 +118,7 @@ export function useResourcePurchase(options: UseResourcePurchaseOptions) {
       })
       return
     }
+    targetVersion.value = target
     clearChannelSwitchTimer()
     panelOpen.value = true
     error.value = ''
@@ -127,7 +134,7 @@ export function useResourcePurchase(options: UseResourcePurchaseOptions) {
       return
     }
     // 两个渠道都无码可复用：作废旧引用后再拉新单，不复用 / 不展示旧渠道单
-    invalidateSurface()
+    invalidatePurchaseSurface()
     void submit()
   }
 
@@ -150,7 +157,7 @@ export function useResourcePurchase(options: UseResourcePurchaseOptions) {
     error.value = ''
     // 切渠道：旧渠道的可付款面（旧码 / 旧单号 / 旧链接）立即作废，不等新单结果
     if (channelChanged) {
-      invalidateSurface()
+      invalidatePurchaseSurface()
     } else {
       stopPoll()
     }
@@ -207,12 +214,15 @@ export function useResourcePurchase(options: UseResourcePurchaseOptions) {
         pay_channel: channel.value,
         client_platform: getAdapayClientPlatform() === 'mobile' ? 'mobile' : 'pc',
         ...(pointsMode.value ? { amount_points: Number(options.getPricePoints()) } : {}),
+        // 版本粒度：金额由后端按版本价取，前端不传 amount_fen（传了就必须与服务端价格一致）
+        ...(targetVersion.value ? { version_id: targetVersion.value.id } : {}),
         // R029：推广码随单下发，后端按比例归因
         ...(promoCode.value ? { promo_code: promoCode.value } : {}),
       })
       if (requestedGeneration !== surfaceGeneration.value) {
         return
       }
+      markSurfaceVersion()
       order.value = cashOrder
       if (cashOrder.status === 'paid') {
         await handlePaid(cashOrder)
@@ -275,6 +285,7 @@ export function useResourcePurchase(options: UseResourcePurchaseOptions) {
     error,
     order,
     qrDataUrl,
+    targetVersion,
     promoCode,
     showPromoHint,
     open,

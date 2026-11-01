@@ -9,16 +9,13 @@ import {
   type PublicMcResourceItem,
   type PublicMcResourceVersionItem,
 } from '@/api/resources'
-import {
-  API_RESOURCE_PURCHASE_HINT,
-  canPurchaseOnPlatform,
-  formatResourcePriceLabel,
-} from '@/shared/resourceSale'
+import { API_RESOURCE_PURCHASE_HINT, canPurchaseOnPlatform } from '@/shared/resourceSale'
 import { isApiResourceKind } from '@/shared/resourceApi'
 import { useAuthStore } from '@/stores/auth'
 import { useResourceFileDownload } from '@/composables/useResourceFileDownload'
 import { useResourceLike } from '@/composables/useResourceLike'
 import { useResourcePurchase } from '@/composables/useResourcePurchase'
+import { useResourceVersionSaleDetail } from '@/composables/useResourceVersionSaleDetail'
 // 富文本管线（Markdown / 清洗 / 代码块高亮 / 表格包裹）在 utils 里，组件只落一次调用；
 // 配套的正文排版在全局样式 `styles/resource-rich-text.css`（v-html 产物没有 data-v）。
 import { formatHomepageContent } from '@/utils/resourceRichText'
@@ -80,6 +77,7 @@ const {
   error: purchaseError,
   order: purchaseOrder,
   qrDataUrl: purchaseQrDataUrl,
+  targetVersion: purchaseTargetVersion,
   showPromoHint,
   open: openPurchasePanelUnlocked,
   close: closePurchasePanel,
@@ -105,12 +103,24 @@ const isOwner = computed(() => {
   const username = auth.username?.trim() ?? ''
   return Boolean(creator && username && creator === username)
 })
-const priceLabel = computed(() =>
-  formatResourcePriceLabel(
-    resource.value?.buyout_price_fen ?? 0,
-    resource.value?.price_points ?? 0,
-  ),
-)
+/**
+ * 按版本售卖：资源级买断价 / 积分价都为 0，但版本列表里存在可单卖的版本。
+ * 标价、价格徽标档位、主按钮购买闸与面板金额都收在 composable 里，
+ * 口径是「后端下载判定看版本价，不能按 buyout_price_fen == 0 显示成免费」。
+ */
+const {
+  versionSaleTargetVersion,
+  priceLabel,
+  isPaidPrice,
+  needsVersionPurchase,
+  purchasePriceLabel,
+} = useResourceVersionSaleDetail({
+  resource,
+  versions,
+  isOwner,
+  purchaseTargetVersion,
+})
+
 /**
  * BUG-020：接口资源只在开发者自有站点的服务端下单，平台内没有购买入口。
  *
@@ -118,6 +128,7 @@ const priceLabel = computed(() =>
  * 所以这里不给它开平台内购买入口（后端会以 409 拒掉），只留一条到开发者站点的引导。
  */
 const isApiResource = computed(() => isApiResourceKind(resource.value?.resource_kind))
+/** 买断 / 积分资源的购买闸（版本列表按钮也看它，版本售卖不在这里拦）。 */
 const needsPurchase = computed(() => {
   if (!resource.value) {
     return false
@@ -135,13 +146,17 @@ const needsPurchase = computed(() => {
  * BUG-020：接口资源没有平台内购买入口——下单只能走开发者站点的开放接口。
  * 打开购买面板的入口在这里再挡一道，避免别的入口（下载 403 引导等）把用户送进一个
  * 必然失败的支付弹窗。面板本身的动作（下单队列 / 支付面 / 轮询）仍在 `useResourcePurchase` 里。
+ *
+ * `version` 是本次购买的目标版本：版本售卖资源按版本价下单，买断 / 积分资源传空。
  */
-async function openPurchasePanel(): Promise<void> {
+async function openPurchasePanel(
+  version: PublicMcResourceVersionItem | null = null,
+): Promise<void> {
   if (isApiResource.value) {
     TMessage.info(API_RESOURCE_PURCHASE_HINT)
     return
   }
-  await openPurchasePanelUnlocked()
+  await openPurchasePanelUnlocked(version)
 }
 
 /**
@@ -175,6 +190,10 @@ const { openResourceFile, downloadVersion } = useResourceFileDownload({
 function handlePrimaryCta() {
   if (needsPurchase.value) {
     void openPurchasePanel()
+    return
+  }
+  if (needsVersionPurchase.value) {
+    void openPurchasePanel(versionSaleTargetVersion.value)
     return
   }
   void openResourceFile()
@@ -286,7 +305,9 @@ watch(
             <ResourceDetailSummaryCard
               :resource="resource"
               :price-label="priceLabel"
+              :is-paid-price="isPaidPrice"
               :needs-purchase="needsPurchase"
+              :needs-version-purchase="needsVersionPurchase"
               :is-api-resource="isApiResource"
               :purchase-submitting="purchaseSubmitting"
               :like-submitting="likeSubmitting"
@@ -330,7 +351,7 @@ watch(
   <ResourcePurchaseDialog
     :open="purchasePanelOpen"
     :title="resource?.title ?? ''"
-    :price-label="priceLabel"
+    :price-label="purchasePriceLabel"
     :show-promo-hint="showPromoHint"
     :channel="purchaseChannel"
     :points-mode="Number(resource?.price_points ?? 0) > 0"

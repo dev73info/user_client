@@ -62,6 +62,15 @@ export {
   promoterSplitStatusLabel,
 } from './resourceSale/promo'
 export type { ParsePromoShareResult } from './resourceSale/promo'
+export {
+  isPurchasableVersion,
+  isVersionSaleResource,
+  resolveVersionSaleMinPriceFen,
+  resolveVersionSaleMinPriceVersion,
+  formatVersionSalePriceLabel,
+  needsVersionPurchase,
+} from './resourceSale/versionSale'
+export type { ResourceSaleVersionLike } from './resourceSale/versionSale'
 export { toResourcePayChannel, canReuseCashQrForChannel } from './resourceSale/payChannel'
 export type { ResourcePayChannelUi, ReusableCashQrOrderLike } from './resourceSale/payChannel'
 
