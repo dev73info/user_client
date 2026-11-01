@@ -46,6 +46,8 @@
   margin: 0;
   overflow: hidden;
   background: var(--73-bg-soft);
+  /* 底色只铺在内容列内：两侧的 padding 区露出页面画布色，内容列因此有明确的左右边界 */
+  background-clip: content-box;
 }
 
 .user-workbench__main--chat,
