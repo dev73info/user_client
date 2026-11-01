@@ -16,7 +16,7 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock('@/api/devOrderDeposit', () => ({
   createPrepaidRecharge: mocks.createRecharge,
-  getMyPrepaidOrder: mocks.getOrder,
+  getPrepaidWechatStatus: mocks.getOrder,
   getPrepaidWechatAuthUrl: mocks.getAuthUrl,
 }))
 vi.mock('@/api/devCredit', () => ({ getDevCreditSelf: mocks.credit }))
@@ -60,7 +60,10 @@ describe('保证金充值弹窗 · 微信', () => {
       url: 'https://open.weixin.qq.com/connect/oauth2/authorize?state=PAY-1',
       authorized: false,
     })
-    mocks.getOrder.mockResolvedValue({ order_no: 'PAY-1', status: 'paid' })
+    mocks.getOrder.mockResolvedValue({
+      order: { order_no: 'PAY-1', status: 'paid' },
+      authorized: true,
+    })
 
     const wrapper = mount(DevDepositRechargeDialog, {
       global: { stubs: { Teleport: true } },
@@ -94,7 +97,7 @@ describe('保证金充值弹窗 · 微信', () => {
     // 轮询一次即到账：关闭弹窗并通知父级回刷余额
     await vi.advanceTimersByTimeAsync(3000)
     await flushPromises()
-    expect(mocks.getOrder).toHaveBeenCalledWith('token-1', 'PAY-1')
+    expect(mocks.getOrder).toHaveBeenCalledWith('PAY-1', 'token-1')
     expect(wrapper.emitted('succeeded')).toEqual([[]])
     wrapper.unmount()
   })
@@ -102,7 +105,10 @@ describe('保证金充值弹窗 · 微信', () => {
   it('订单已授权时二维码直接指向中间页', async () => {
     mocks.createRecharge.mockResolvedValue({ order_no: 'PAY-1', status: 'created' })
     mocks.getAuthUrl.mockResolvedValue({ url: '', authorized: true })
-    mocks.getOrder.mockResolvedValue({ order_no: 'PAY-1', status: 'pending' })
+    mocks.getOrder.mockResolvedValue({
+      order: { order_no: 'PAY-1', status: 'pending' },
+      authorized: true,
+    })
 
     const wrapper = mount(DevDepositRechargeDialog, {
       global: { stubs: { Teleport: true } },

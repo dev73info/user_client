@@ -19,8 +19,8 @@ import { useRouter } from 'vue-router'
 import { getDevCreditSelf, type DevCreditSelf } from '@/api/devCredit'
 import {
   createPrepaidRecharge,
-  getMyPrepaidOrder,
   getPrepaidWechatAuthUrl,
+  getPrepaidWechatStatus,
 } from '@/api/devOrderDeposit'
 import { toFen } from '@/composables/useDevWalletDeposit'
 import { useAuthStore } from '@/stores/auth'
@@ -109,7 +109,10 @@ function startPolling(orderNo: string): void {
   const tick = async () => {
     pollTimer = null
     try {
-      const order = await getMyPrepaidOrder(auth.token, orderNo)
+      // 用中间页的 status 端点：它会在挂起时向渠道对一次账，
+      // 回调晚到 / 丢失时也能把「已支付」补上（普通查单只看本地状态）。
+      const status = await getPrepaidWechatStatus(orderNo, auth.token)
+      const order = status.order
       if (order.status === 'paid') {
         TMessage.success('充值成功，保证金余额已到账')
         visible.value = false
