@@ -54,6 +54,7 @@ const currentYear = new Date().getFullYear()
           <h3>服务说明</h3>
           <p><router-link to="/about">关于我们</router-link></p>
           <p><router-link to="/terms">用户协议</router-link></p>
+          <p><router-link to="/rules">平台规则</router-link></p>
           <p><router-link to="/privacy">隐私政策</router-link></p>
           <p><router-link to="/payment-refund">支付与退款说明</router-link></p>
         </div>

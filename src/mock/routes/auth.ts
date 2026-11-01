@@ -13,6 +13,7 @@ import { defineRouteTable, type MockRequest, type MockRoute } from '../router'
 import { MOCK_IDENTITY_PROFILES, currentMockIdentity, type MockIdentity } from '../identity'
 import { jsonResponse, noContentResponse } from '../response'
 import { createMockToken } from '../token'
+import { platformRuleTitle } from '@/shared/platformRules'
 
 type AuthPayload = {
   token: string
@@ -173,6 +174,26 @@ const routes: MockRoute[] = [
         version: 'mock-1.0',
         effective_at: '2026-01-01 00:00:00',
       }),
+  },
+  {
+    method: 'GET',
+    path: '/auth/agreement-content',
+    note: '公示协议与平台规则正文（mock 只回占位文本，校验代号与真实接口一致）',
+    handler: (request) => {
+      const code = (request.query.get('code') ?? '').trim()
+      if (!platformRuleTitle(code)) {
+        return jsonResponse({ code: 'INVALID_ARGUMENT', message: `未知的协议代号：${code}` }, 400)
+      }
+
+      return jsonResponse({
+        code,
+        title: platformRuleTitle(code),
+        content: AGREEMENT_CONTENT,
+        version: 1,
+        effective_at: '2026-11-01 00:00:00',
+        updated_at: '2026-11-01 00:00:00',
+      })
+    },
   },
   {
     method: 'POST',

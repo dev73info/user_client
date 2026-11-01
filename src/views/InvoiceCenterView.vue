@@ -193,4 +193,20 @@ const selectedIds = computed(() =>
 .invoice-center__file {
   display: none;
 }
+
+/* 表尾沉到页面容器底部：记录少或空态时不要悬在内容正下方 */
+.invoice-center-page {
+  display: flex;
+  flex-direction: column;
+}
+
+.invoice-center-page .wallet-section {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+}
+
+.invoice-center-page .wallet-section :deep(.wb-pager) {
+  margin-top: auto;
+}
 </style>

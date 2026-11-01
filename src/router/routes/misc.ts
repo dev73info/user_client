@@ -54,6 +54,16 @@ export const portalMiscRoutes: RouteRecordRaw[] = [
     component: () => import('@/views/PaymentRefundView.vue'),
   },
   {
+    path: '/rules',
+    name: 'platform-rules',
+    component: () => import('@/views/PlatformRulesView.vue'),
+  },
+  {
+    path: '/rules/:code',
+    name: 'platform-rule-detail',
+    component: () => import('@/views/PlatformRuleDetailView.vue'),
+  },
+  {
     path: '/contract-sign',
     name: 'contract-sign',
     component: () => import('@/views/ContractSignView.vue'),

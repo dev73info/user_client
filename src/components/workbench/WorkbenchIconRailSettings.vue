@@ -1,20 +1,12 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { Switch, TIcon } from 'ui_73info'
+import { TIcon } from 'ui_73info'
 
 import {
   workbenchRailAccountMenuItems,
   type WorkbenchRailAccountMenuItem,
 } from '@/shared/workbenchRailAccountMenu'
-
-defineProps<{
-  switchLabel: string
-}>()
-
-const emit = defineEmits<{
-  'switch-mode': []
-}>()
 
 const route = useRoute()
 const router = useRouter()
@@ -51,11 +43,6 @@ function toggle() {
 function go(to: MenuTarget) {
   close()
   void router.push(to)
-}
-
-function switchWorkbenchMode() {
-  close()
-  emit('switch-mode')
 }
 
 function handleDocumentPointerDown(event: PointerEvent) {
@@ -140,16 +127,6 @@ onBeforeUnmount(() => {
         @click="go(item.to)"
       >
         {{ item.label }}
-      </button>
-      <span class="workbench-icon-rail__settings-divider" aria-hidden="true"></span>
-      <button
-        class="workbench-icon-rail__settings-option workbench-icon-rail__settings-switch"
-        type="button"
-        role="menuitem"
-        @click="switchWorkbenchMode"
-      >
-        <Switch />
-        <span>{{ switchLabel }}</span>
       </button>
     </section>
   </div>

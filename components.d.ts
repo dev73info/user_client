@@ -127,6 +127,7 @@ declare module 'vue' {
     NotificationsOverviewStrip: typeof import('./src/components/notification/NotificationsOverviewStrip.vue')['default']
     NotificationsPager: typeof import('./src/components/notification/NotificationsPager.vue')['default']
     NotificationsToolbar: typeof import('./src/components/notification/NotificationsToolbar.vue')['default']
+    OAuthClientCreateDialog: typeof import('./src/components/dev/OAuthClientCreateDialog.vue')['default']
     OtherLoginMethods: typeof import('./src/components/authModal/OtherLoginMethods.vue')['default']
     OverviewStrip: typeof import('./src/components/profile/OverviewStrip.vue')['default']
     PasswordDialog: typeof import('./src/components/account/PasswordDialog.vue')['default']

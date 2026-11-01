@@ -6498,6 +6498,48 @@
         }
       }
     },
+    "/api/auth/agreement-content": {
+      "get": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "取公示协议或平台规则正文",
+        "description": "**免登录**：法务页与规则中心要在登录前就能读。正文来自 `contract_template`，按 `name` 取；只接受对外公示清单里的代号（用户服务协议、隐私政策、支付与退款说明与规则中心的平台规则），其余代号一律 400，避免把签署场景的合同模板暴露成公开文档。清单里的代号尚未配置时回 404 `AGREEMENT_NOT_CONFIGURED`，不会返回空正文。`version` 与 `effective_at` 是模板的当前版本与公示时间，正文修订时由迁移递增。",
+        "operationId": "auth_get_agreement_content",
+        "parameters": [
+          {
+            "name": "code",
+            "in": "query",
+            "description": "协议代号（`contract_template.name`），如 `privacy_policy`。",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "协议正文",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AgreementContentResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "协议代号为空或不在公示清单（`INVALID_ARGUMENT`）"
+          },
+          "404": {
+            "description": "协议未配置（`AGREEMENT_NOT_CONFIGURED`）"
+          },
+          "500": {
+            "description": "内部错误"
+          }
+        }
+      }
+    },
     "/api/auth/dev-access-status": {
       "get": {
         "tags": [
@@ -11514,6 +11556,34 @@
         }
       }
     },
+    "/api/conversation/preferences": {
+      "get": {
+        "tags": [
+          "conversation"
+        ],
+        "summary": "我的会话行偏好",
+        "description": "返回登录人设置过的会话行偏好（置顶与删除）。`hidden` 是现算值：删除后又有新消息的会话会自动恢复为 `false`。归属即权限：只返回本人仍是当事人的需求。",
+        "operationId": "conversation_list_preferences",
+        "responses": {
+          "200": {
+            "description": "偏好列表",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ThreadPreferenceResponse"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "没有登录或令牌无效"
+          }
+        }
+      }
+    },
     "/api/conversation/requirement/{requirement_id}": {
       "get": {
         "tags": [
@@ -11577,6 +11647,53 @@
           },
           "404": {
             "description": "需求不存在，或还没绑定开发者"
+          }
+        }
+      }
+    },
+    "/api/conversation/requirement/{requirement_id}/preference": {
+      "patch": {
+        "tags": [
+          "conversation"
+        ],
+        "summary": "置顶或删除一条会话行",
+        "description": "字段不传表示不改：`pinned` 置顶 / 取消置顶；`hidden: true` 从我的列表删除。删除只影响本人，会话与消息对双方仍然保留；对方再发新消息时这一行会自动回到列表。归属即权限：需求不存在回 404，不是当事人回 403。",
+        "operationId": "conversation_update_thread_preference",
+        "parameters": [
+          {
+            "name": "requirement_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateThreadPreferenceRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "已更新"
+          },
+          "400": {
+            "description": "没有要改的字段，或 `hidden` 传了 false"
+          },
+          "401": {
+            "description": "没有登录或令牌无效"
+          },
+          "403": {
+            "description": "不是这条需求的当事人"
+          },
+          "404": {
+            "description": "需求不存在"
           }
         }
       }
@@ -48251,6 +48368,29 @@
           }
         }
       },
+      "ThreadPreferenceResponse": {
+        "type": "object",
+        "description": "会话行偏好（置顶 / 隐藏）。",
+        "required": [
+          "requirement_id",
+          "pinned",
+          "hidden"
+        ],
+        "properties": {
+          "hidden": {
+            "type": "boolean",
+            "description": "是否从我的列表隐藏（删除）；新消息到达后自动恢复。"
+          },
+          "pinned": {
+            "type": "boolean",
+            "description": "是否置顶。"
+          },
+          "requirement_id": {
+            "type": "string",
+            "description": "需求编号。"
+          }
+        }
+      },
       "TicketDetailResponse": {
         "type": "object",
         "required": [
@@ -50116,6 +50256,26 @@
               "null"
             ],
             "description": "标题。"
+          }
+        }
+      },
+      "UpdateThreadPreferenceRequest": {
+        "type": "object",
+        "description": "更新会话行偏好。字段不传表示不改。",
+        "properties": {
+          "hidden": {
+            "type": [
+              "boolean",
+              "null"
+            ],
+            "description": "从我的列表删除（隐藏）；只接受 `true`。"
+          },
+          "pinned": {
+            "type": [
+              "boolean",
+              "null"
+            ],
+            "description": "置顶 / 取消置顶。"
           }
         }
       },

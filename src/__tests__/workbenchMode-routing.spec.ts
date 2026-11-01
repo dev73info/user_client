@@ -106,6 +106,27 @@ describe('workbench route switching', () => {
     }
   })
 
+  it('切回工作台时回到上一次选中的页面', async () => {
+    const { wrapper, router } = await renderWorkbench('workbench')
+
+    await router.push({ name: 'workbench-requirements' })
+    await flushPromises()
+    await wrapper.find('.user-workbench__mode-switch').trigger('click')
+    await flushPromises()
+    expect(router.currentRoute.value.name).toBe('dev-home')
+
+    await router.push({ name: 'dev-resource-list' })
+    await flushPromises()
+    await wrapper.find('.user-workbench__mode-switch').trigger('click')
+    await flushPromises()
+    expect(router.currentRoute.value.name).toBe('workbench-requirements')
+
+    await wrapper.find('.user-workbench__mode-switch').trigger('click')
+    await flushPromises()
+    expect(router.currentRoute.value.name).toBe('dev-resource-list')
+    wrapper.unmount()
+  })
+
   it('点切换工作台在两种模式之间来回跳转', async () => {
     const { wrapper, router } = await renderWorkbench('workbench')
     await wrapper.find('.user-workbench__mode-switch').trigger('click')

@@ -13,10 +13,14 @@ import {
   type DevWithdrawalRecord,
 } from '@/api/devWallet'
 import { useClientPagination } from '@/composables/useClientPagination'
-import { buildFundRecords, filterFundRecords } from '@/shared/devFundDisplay'
+import { buildFundRecords, filterFundRecords, type FundRecordKind } from '@/shared/devFundDisplay'
 import { useAuthStore } from '@/stores/auth'
 
-export type DevFundRecordsProps = { income: DevWalletIncomeItem[]; keyword?: string }
+export type DevFundRecordsProps = {
+  income: DevWalletIncomeItem[]
+  keyword?: string
+  kind?: FundRecordKind | 'all'
+}
 
 export function useDevFundRecords(props: DevFundRecordsProps) {
   const auth = useAuthStore()
@@ -33,8 +37,10 @@ export function useDevFundRecords(props: DevFundRecordsProps) {
     }),
   )
 
-  /* 关键字由父级的统一工具栏传入（与其它列表页的搜索同口径），只过滤已加载的记录。 */
-  const filteredRecords = computed(() => filterFundRecords(records.value, props.keyword))
+  /* 关键字与类型由父级的统一工具栏传入（与其它列表页的搜索同口径），只过滤已加载的记录。 */
+  const filteredRecords = computed(() =>
+    filterFundRecords(records.value, props.keyword, props.kind),
+  )
 
   /* 分页走共享的 useClientPagination：与「资源列表 / 团队资源 / 我的接单」
      同一套页码与每页条数口径，不再在本页手写 slice 与 Math.min 回退。 */
@@ -44,6 +50,14 @@ export function useDevFundRecords(props: DevFundRecordsProps) {
     total: recordTotal,
     paged: pagedRecords,
   } = useClientPagination(filteredRecords)
+
+  /* 换类型筛选要回到第 1 页，否则会停在一个已经不存在的页码上。 */
+  watch(
+    () => props.kind,
+    () => {
+      page.value = 1
+    },
+  )
 
   /** 提现台账取 `GET /api/payment/withdrawals`：收入那一半由父级传进来，不在这里重取。 */
   async function loadRecords() {

@@ -30,6 +30,8 @@ export type MessageThread = {
   actionLabel: string
   /** 查看者未读的消息数（后端口径，见 shared/conversations 的 unread_count）。 */
   unreadCount: number
+  /** 查看者是否置顶了这一行（偏好按人存，见 shared/conversations 的 ThreadPreference）。 */
+  pinned: boolean
   sortTime: number
 }
 
@@ -143,6 +145,7 @@ export function latestMessagePreview(item: RequirementConversation) {
 export function buildConversationThread(
   item: RequirementConversation,
   context: { requirementById: Record<string, RequirementItem>; username: string },
+  pinned = false,
 ): MessageThread {
   const requirement = context.requirementById[item.requirement_id]
   const statusLabel = requirement
@@ -168,12 +171,13 @@ export function buildConversationThread(
     description: latestMessagePreview(item),
     actionLabel: item.last_message_at ? '查看沟通' : '开始沟通',
     unreadCount: item.unread_count ?? 0,
+    pinned,
     sortTime: parseTime(item.last_message_at ?? item.updated_at ?? item.created_at),
   }
 }
 
 /** 已接取但本地还没拿到会话记录的需求 → 「会话待开启」行，打开后会自动同步。 */
-export function buildPendingThread(item: RequirementItem): MessageThread {
+export function buildPendingThread(item: RequirementItem, pinned = false): MessageThread {
   return {
     key: `pending-${item.requirement_id}`,
     kind: 'pending',
@@ -187,6 +191,7 @@ export function buildPendingThread(item: RequirementItem): MessageThread {
     description: '需求已接取但本地尚未拿到会话记录，打开后会自动同步。',
     actionLabel: '开启会话',
     unreadCount: 0,
+    pinned,
     sortTime: parseTime(item.created_time),
   }
 }

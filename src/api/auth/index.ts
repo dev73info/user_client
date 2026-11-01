@@ -49,7 +49,7 @@ export {
 
 export { getQqLoginQrStatus, getQqLoginQrUrl } from './thirdPartyLogin'
 
-export { fetchUserServiceAgreement } from './agreements'
+export { fetchAgreementContent, fetchUserServiceAgreement } from './agreements'
 export { getDevAccessStatus, getPrivileges, requestDevRole } from './devAccess'
 
 export {

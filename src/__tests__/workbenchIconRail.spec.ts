@@ -29,7 +29,7 @@ const routes = [
   path: `/${name}`,
   component: { template: '<div />' },
   meta: name.startsWith('dev-')
-    ? { devArea: true }
+    ? { devArea: true, workbenchChat: name === 'dev-messages' }
     : name === 'workbench'
       ? { workbenchChat: true }
       : {},
@@ -52,6 +52,94 @@ describe('工作台图标栏', () => {
     return wrapper.findAll('.workbench-icon-rail__item').map((b) => b.attributes('aria-label'))
   }
 
+  it('顶部有切换工作台入口，点击发出 switch-mode', async () => {
+    const { wrapper } = await render('workbench')
+
+    const switchButton = wrapper.find('.workbench-icon-rail__switch')
+    expect(switchButton.exists()).toBe(true)
+    expect(switchButton.attributes('aria-label')).toBe('切换到开发者')
+
+    // 排在消息图标上面（是图标栏的第一个按钮）
+    const railButtons = wrapper.findAll('.workbench-icon-rail > .workbench-icon-rail__item')
+    expect(railButtons[0]!.classes()).toContain('workbench-icon-rail__switch')
+
+    await switchButton.trigger('click')
+    expect(wrapper.emitted('switch-mode')).toHaveLength(1)
+    wrapper.unmount()
+  })
+
+  it('切换分组时回到该组上一次选中的页面', async () => {
+    const { router, wrapper } = await render('workbench')
+    const groupButton = (label: string) =>
+      wrapper
+        .findAll('.workbench-icon-rail__item')
+        .find((button) => button.attributes('aria-label') === label)!
+
+    await router.push({ name: 'workbench-perks' })
+    await flushPromises()
+
+    // 第一次进「订单与合同」→ 组内第一条
+    await groupButton('订单与合同').trigger('click')
+    await flushPromises()
+    expect(router.currentRoute.value.name).toBe('workbench-requirements')
+
+    await router.push({ name: 'workbench-signatures' })
+    await flushPromises()
+
+    // 回到「资产与权益」→ 上次的「我的权益」，而不是组内第一条
+    await groupButton('资产与权益').trigger('click')
+    await flushPromises()
+    expect(router.currentRoute.value.name).toBe('workbench-perks')
+
+    // 再回「订单与合同」→ 上次的「我的合同」
+    await groupButton('订单与合同').trigger('click')
+    await flushPromises()
+    expect(router.currentRoute.value.name).toBe('workbench-signatures')
+    wrapper.unmount()
+  })
+
+  it('切到别的分组再点回「消息」，恢复上次打开的会话', async () => {
+    const { router, wrapper } = await render('workbench')
+    const railButton = (label: string) =>
+      wrapper
+        .findAll('.workbench-icon-rail__item')
+        .find((button) => button.attributes('aria-label') === label)!
+
+    await router.push({ name: 'workbench', query: { requirement_id: 'REQ-1' } })
+    await flushPromises()
+
+    await railButton('资产与权益').trigger('click')
+    await flushPromises()
+    expect(router.currentRoute.value.name).toBe('workbench-favorites')
+
+    await railButton('消息').trigger('click')
+    await flushPromises()
+    expect(router.currentRoute.value.name).toBe('workbench')
+    expect(router.currentRoute.value.query.requirement_id).toBe('REQ-1')
+    wrapper.unmount()
+  })
+
+  it('开发者模式的「消息」同样恢复上次会话', async () => {
+    const { router, wrapper } = await render('dev-messages', { isDevWorkbenchMode: true })
+    const railButton = (label: string) =>
+      wrapper
+        .findAll('.workbench-icon-rail__item')
+        .find((button) => button.attributes('aria-label') === label)!
+
+    await router.push({ name: 'dev-messages', query: { requirement_id: 'REQ-2' } })
+    await flushPromises()
+
+    await railButton('资源项目').trigger('click')
+    await flushPromises()
+    expect(router.currentRoute.value.name).toBe('dev-resource-list')
+
+    await railButton('消息').trigger('click')
+    await flushPromises()
+    expect(router.currentRoute.value.name).toBe('dev-messages')
+    expect(router.currentRoute.value.query.requirement_id).toBe('REQ-2')
+    wrapper.unmount()
+  })
+
   it('用户模式只剩消息 / 两个分组 / 系统通知，不再平铺账户类入口', async () => {
     const { wrapper } = await render('workbench')
 
@@ -60,7 +148,14 @@ describe('工作台图标栏', () => {
       4,
     )
     const labels = itemLabels(wrapper)
-    expect(labels).toEqual(['消息', '订单与合同', '资产与权益', '系统通知', '账户菜单'])
+    expect(labels).toEqual([
+      '切换到开发者',
+      '消息',
+      '订单与合同',
+      '资产与权益',
+      '系统通知',
+      '账户菜单',
+    ])
     expect(wrapper.find('.workbench-icon-rail__item.is-active').attributes('aria-label')).toBe(
       '消息',
     )
@@ -90,7 +185,7 @@ describe('工作台图标栏', () => {
     wrapper.unmount()
   })
 
-  it('齿轮弹层只剩账户四条与模式切换', async () => {
+  it('齿轮弹层只剩账户四条', async () => {
     const { wrapper } = await render('dev-home', { isDevWorkbenchMode: true })
 
     expect(itemLabels(wrapper)).toContain('开发者总览')
@@ -102,10 +197,7 @@ describe('工作台图标栏', () => {
     const labels = wrapper
       .findAll('.workbench-icon-rail__settings-option')
       .map((item) => item.text())
-    expect(labels).toEqual(['个人账户', '账户详情', '已授权应用', '工单中心', '回到用户工作台'])
-
-    await wrapper.find('.workbench-icon-rail__settings-switch').trigger('click')
-    expect(wrapper.emitted('switch-mode')).toHaveLength(1)
+    expect(labels).toEqual(['个人账户', '账户详情', '已授权应用', '工单中心'])
     wrapper.unmount()
   })
 

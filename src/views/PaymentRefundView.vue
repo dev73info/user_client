@@ -1,21 +1,42 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
+
+import { fetchAgreementContent, type UserServiceAgreement } from '@/api/auth'
+import {
+  formatLegalDate,
+  legalDocumentToBlocks,
+  parseLegalText,
+} from '@/components/legal/legalText'
 import { paymentRefundDocument } from '@/shared/legalContent'
-import { legalDocumentToBlocks } from '@/components/legal/legalText'
 
 const router = useRouter()
 
 /**
- * 正文来源：`shared/legalContent.json` 的 `paymentRefund` 段（与静态快照脚本读同一份）。
- *
- * 早先去调 `/api/auth/agreement-content?code=payment_refund_notice`，但**后端 2.0 没有这个端点**
- * （契约里只有 `/api/auth/user-service-agreement`），必然 404 再被 catch 吞掉。现在直接渲染内置正文。
+ * 正文来源：后端 `contract_template`（`name = payment_refund_notice`）优先；
+ * 接口不可用时回落到 `shared/legalContent.json` 的构建期快照。
  */
-const blocks = computed(() => legalDocumentToBlocks(paymentRefundDocument))
-const title = paymentRefundDocument.heading
-/** 生效日期写在正文区块里（`{ type: 'effective' }`），页头不再单独占一行。 */
-const hasEffectiveBlock = paymentRefundDocument.blocks.some((block) => block.type === 'effective')
+const agreement = ref<UserServiceAgreement | null>(null)
+
+const blocks = computed(() =>
+  agreement.value
+    ? parseLegalText(agreement.value.content)
+    : legalDocumentToBlocks(paymentRefundDocument),
+)
+const title = computed(() => agreement.value?.title || paymentRefundDocument.heading)
+/** 快照自带生效日期区块；后端正文没有，页头单独展示模板的公示时间。 */
+const hasEffectiveBlock = computed(
+  () =>
+    !agreement.value && paymentRefundDocument.blocks.some((block) => block.type === 'effective'),
+)
+
+onMounted(async () => {
+  try {
+    agreement.value = await fetchAgreementContent('payment_refund_notice')
+  } catch {
+    // 接口不可用：保持快照兜底。
+  }
+})
 
 function goBack() {
   if (window.history.state?.back) {
@@ -38,8 +59,11 @@ function goBack() {
       </header>
 
       <article class="content-block">
-        <!-- 生效日期由正文第一块（`type: 'effective'`）渲染，页头不重复 -->
-        <p v-if="!hasEffectiveBlock" class="legal-loading">生效日期以说明正文为准。</p>
+        <p v-if="agreement?.effective_at">
+          <strong>生效日期：</strong>{{ formatLegalDate(agreement.effective_at) }}
+        </p>
+        <!-- 快照的生效日期由正文区块渲染；后端正文没有该区块时页头单独一行 -->
+        <p v-else-if="!hasEffectiveBlock" class="legal-loading">生效日期以说明正文为准。</p>
 
         <template v-for="(block, index) in blocks" :key="index">
           <h3 v-if="block.type === 'heading'" :id="block.id">{{ block.text }}</h3>

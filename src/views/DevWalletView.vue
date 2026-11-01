@@ -25,7 +25,8 @@ import { useDevWalletDeposit } from '@/composables/useDevWalletDeposit'
 import { useDevWalletOverview } from '@/composables/useDevWalletOverview'
 import { useAuthStore } from '@/stores/auth'
 import { syncInflightRefunds } from '@/api/devWallet'
-import { TIcon, TInput, Search } from 'ui_73info'
+import { TIcon, TInput, TOption, TSelect, Search } from 'ui_73info'
+import type { FundRecordKind } from '@/shared/devFundDisplay'
 
 import DevFundRecordsView from './DevFundRecordsView.vue'
 
@@ -63,6 +64,8 @@ const withdrawDialog = ref<InstanceType<typeof DevWithdrawalDialog> | null>(null
 
 /** 「资金明细」的关键字筛选：只过滤已经加载回来的记录，不发新请求 */
 const recordKeyword = ref('')
+/** 资金明细的类型筛选：只过滤已经加载回来的记录，不发新请求 */
+const recordKind = ref<FundRecordKind | 'all'>('all')
 
 /** 明细子组件：刷新钱包时把提现台账也一起重取。 */
 const fundRecords = ref<InstanceType<typeof DevFundRecordsView> | null>(null)
@@ -125,12 +128,13 @@ async function refreshWallet() {
     </div>
 
     <section class="dev-surface-card wallet-records" aria-label="资金明细">
-      <div class="dev-card-head">
-        <div class="dev-card-head__title-block">
-          <h3 class="dev-section-title">资金明细</h3>
-        </div>
-      </div>
       <div class="dev-toolbar">
+        <TSelect v-model="recordKind" class="dev-toolbar__field" aria-label="资金明细类型筛选">
+          <TOption label="全部类型" value="all" />
+          <TOption label="收入" value="income" />
+          <TOption label="退款冲减" value="income_reversal" />
+          <TOption label="提现" value="income_withdrawal" />
+        </TSelect>
         <TInput
           v-model="recordKeyword"
           class="dev-toolbar__search"
@@ -146,7 +150,12 @@ async function refreshWallet() {
       </div>
 
       <!-- 资金明细：收入 / 退款冲减 / 收入提现三类合成一段（子组件里按时间倒序拼） -->
-      <DevFundRecordsView ref="fundRecords" :income="recentIncome" :keyword="recordKeyword" />
+      <DevFundRecordsView
+        ref="fundRecords"
+        :income="recentIncome"
+        :keyword="recordKeyword"
+        :kind="recordKind"
+      />
     </section>
 
     <!-- 收入提现弹窗：与工作台总览的「提现」按钮共用同一组件 -->

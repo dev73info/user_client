@@ -2245,6 +2245,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/auth/agreement-content": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 取公示协议或平台规则正文
+         * @description **免登录**：法务页与规则中心要在登录前就能读。正文来自 `contract_template`，按 `name` 取；只接受对外公示清单里的代号（用户服务协议、隐私政策、支付与退款说明与规则中心的平台规则），其余代号一律 400，避免把签署场景的合同模板暴露成公开文档。清单里的代号尚未配置时回 404 `AGREEMENT_NOT_CONFIGURED`，不会返回空正文。`version` 与 `effective_at` 是模板的当前版本与公示时间，正文修订时由迁移递增。
+         */
+        get: operations["auth_get_agreement_content"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/auth/dev-access-status": {
         parameters: {
             query?: never;
@@ -4195,6 +4215,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/conversation/preferences": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 我的会话行偏好
+         * @description 返回登录人设置过的会话行偏好（置顶与删除）。`hidden` 是现算值：删除后又有新消息的会话会自动恢复为 `false`。归属即权限：只返回本人仍是当事人的需求。
+         */
+        get: operations["conversation_list_preferences"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/conversation/requirement/{requirement_id}": {
         parameters: {
             query?: never;
@@ -4213,6 +4253,26 @@ export interface paths {
         options?: never;
         head?: never;
         patch?: never;
+        trace?: never;
+    };
+    "/api/conversation/requirement/{requirement_id}/preference": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * 置顶或删除一条会话行
+         * @description 字段不传表示不改：`pinned` 置顶 / 取消置顶；`hidden: true` 从我的列表删除。删除只影响本人，会话与消息对双方仍然保留；对方再发新消息时这一行会自动回到列表。归属即权限：需求不存在回 404，不是当事人回 403。
+         */
+        patch: operations["conversation_update_thread_preference"];
         trace?: never;
     };
     "/api/conversation/{conversation_id}": {
@@ -18469,6 +18529,15 @@ export interface components {
             /** @description 案件当前状态（机器码由争议线定义，如 `negotiating`）。 */
             status: string;
         };
+        /** @description 会话行偏好（置顶 / 隐藏）。 */
+        ThreadPreferenceResponse: {
+            /** @description 是否从我的列表隐藏（删除）；新消息到达后自动恢复。 */
+            hidden: boolean;
+            /** @description 是否置顶。 */
+            pinned: boolean;
+            /** @description 需求编号。 */
+            requirement_id: string;
+        };
         TicketDetailResponse: {
             messages: components["schemas"]["TicketMessageResponse"][];
             ticket: components["schemas"]["TicketResponse"];
@@ -19145,6 +19214,13 @@ export interface components {
             name?: string | null;
             /** @description 标题。 */
             title?: string | null;
+        };
+        /** @description 更新会话行偏好。字段不传表示不改。 */
+        UpdateThreadPreferenceRequest: {
+            /** @description 从我的列表删除（隐藏）；只接受 `true`。 */
+            hidden?: boolean | null;
+            /** @description 置顶 / 取消置顶。 */
+            pinned?: boolean | null;
         };
         UpdateTicketRequest: {
             assigned_to?: string | null;
@@ -26111,6 +26187,50 @@ export interface operations {
             };
         };
     };
+    auth_get_agreement_content: {
+        parameters: {
+            query: {
+                /** @description 协议代号（`contract_template.name`），如 `privacy_policy`。 */
+                code: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 协议正文 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AgreementContentResponse"];
+                };
+            };
+            /** @description 协议代号为空或不在公示清单（`INVALID_ARGUMENT`） */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 协议未配置（`AGREEMENT_NOT_CONFIGURED`） */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 内部错误 */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     auth_dev_access_status: {
         parameters: {
             query?: never;
@@ -31257,6 +31377,33 @@ export interface operations {
             };
         };
     };
+    conversation_list_preferences: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 偏好列表 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ThreadPreferenceResponse"][];
+                };
+            };
+            /** @description 没有登录或令牌无效 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     conversation_detail_by_requirement: {
         parameters: {
             query?: {
@@ -31297,6 +31444,58 @@ export interface operations {
                 content?: never;
             };
             /** @description 需求不存在，或还没绑定开发者 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    conversation_update_thread_preference: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                requirement_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateThreadPreferenceRequest"];
+            };
+        };
+        responses: {
+            /** @description 已更新 */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 没有要改的字段，或 `hidden` 传了 false */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 没有登录或令牌无效 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 不是这条需求的当事人 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 需求不存在 */
             404: {
                 headers: {
                     [name: string]: unknown;

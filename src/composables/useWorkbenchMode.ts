@@ -1,4 +1,4 @@
-import { computed, nextTick, onBeforeUnmount, ref } from 'vue'
+import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
 import { notificationsItem, overviewItem } from '@/shared/workbenchMenu'
@@ -44,11 +44,38 @@ export function useWorkbenchMode(options: { closeMobileMenu: () => void }) {
   const modeSwitchSpinning = ref(false)
   let modeSwitchSpinTimer: ReturnType<typeof setTimeout> | null = null
 
+  /**
+   * 两种模式各自「最后一次停在哪」：切走再切回时回到原来那一页，而不是每次都被
+   * 送回落地页。只在工作台外壳内的路由之间记录，fullPath（含 query）原样保存。
+   */
+  const lastRouteByMode: Record<'user' | 'dev', string | null> = { user: null, dev: null }
+
+  watch(
+    () => route.fullPath,
+    (path) => {
+      if (!route.matched.length || !route.path.startsWith('/workbench')) {
+        return
+      }
+      lastRouteByMode[isDevWorkbenchMode.value ? 'dev' : 'user'] = path
+    },
+    { immediate: true },
+  )
+
   // 切换工作台：立刻换路由，侧栏菜单与主内容用 out-in 交叉淡入淡出；按钮图标用 CSS 转一圈。
   async function switchWorkbenchMode() {
     if (modeSwitching.value) return
-    const targetName = isDevWorkbenchMode.value ? overviewItem.name : 'dev-home'
-    if (route.name === targetName) return
+
+    const targetMode = isDevWorkbenchMode.value ? 'user' : 'dev'
+    const fallbackName = targetMode === 'dev' ? 'dev-home' : overviewItem.name
+    const remembered = lastRouteByMode[targetMode]
+    let target: string | { name: string } = { name: fallbackName }
+    if (remembered) {
+      const resolved = router.resolve(remembered)
+      const resolvedIsDev = resolved.matched.some((record) => Boolean(record.meta.devArea))
+      if (resolved.matched.length > 0 && resolvedIsDev === (targetMode === 'dev')) {
+        target = remembered
+      }
+    }
 
     options.closeMobileMenu()
     modeSwitching.value = true
@@ -58,7 +85,7 @@ export function useWorkbenchMode(options: { closeMobileMenu: () => void }) {
       modeSwitchSpinTimer = null
     }
     try {
-      await router.push({ name: targetName })
+      await router.push(target)
       await nextTick()
     } finally {
       modeSwitching.value = false

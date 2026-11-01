@@ -35,6 +35,10 @@
 }
 
 .support-fab.is-dragging {
+  /* 拖拽期间容器改用 left 定位；按钮必须改成左边缘锚定，
+     否则 --right 的 right:0 会让按钮按下瞬间向左跳一个自身宽度（48px）。 */
+  left: 0;
+  right: auto;
   cursor: grabbing;
 }
 

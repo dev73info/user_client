@@ -26,22 +26,6 @@ const selectedState = defineModel<RequirementFilterKey>('selectedState', { requi
 </script>
 
 <template>
-  <div class="wb-card-head">
-    <div class="wb-card-head__title-block">
-      <h3 class="wb-card-head__title">需求列表</h3>
-    </div>
-    <div class="wb-card-head__actions">
-      <TButton
-        variant="solid"
-        tone="accent"
-        class="my-requirements-publish--head"
-        @click="emit('publish')"
-      >
-        发布新需求
-      </TButton>
-    </div>
-  </div>
-
   <div class="wb-toolbar">
     <TSelect
       v-model="selectedState"
@@ -66,18 +50,29 @@ const selectedState = defineModel<RequirementFilterKey>('selectedState', { requi
         ><TIcon><Search /></TIcon
       ></template>
     </TInput>
-    <TButton
-      variant="solid"
-      tone="accent"
-      class="my-requirements-publish--toolbar"
-      aria-label="发布新需求"
-      @click="emit('publish')"
-    >
-      发布
-    </TButton>
     <!-- 工具栏不放「重置」：清空筛选的入口保留在下面空态的「清除筛选」；操作槽只在收窄了结果时给条数说明，无筛选时整槽不渲染、不留空容器。 -->
-    <div v-if="hasActiveFilters" class="wb-toolbar__actions">
-      <span class="wb-toolbar__hint"> 筛选出 {{ filteredCount }} / {{ totalCount }} 条 </span>
+    <div class="wb-toolbar__actions">
+      <span v-if="hasActiveFilters" class="wb-toolbar__hint">
+        筛选出 {{ filteredCount }} / {{ totalCount }} 条
+      </span>
+      <TButton
+        variant="solid"
+        tone="accent"
+        class="my-requirements-publish--head"
+        @click="emit('publish')"
+      >
+        发布新需求
+      </TButton>
+      <!-- 手机档收起整字按钮，搜索栏右端用这枚小号胶囊 -->
+      <TButton
+        variant="solid"
+        tone="accent"
+        class="my-requirements-publish--toolbar"
+        aria-label="发布新需求"
+        @click="emit('publish')"
+      >
+        发布
+      </TButton>
     </div>
   </div>
 
@@ -100,16 +95,13 @@ const selectedState = defineModel<RequirementFilterKey>('selectedState', { requi
   flex: 0 1 140px;
 }
 
-/* 「发布新需求」放在「需求列表」卡头右端；手机档卡头整块收起，按钮改放搜索栏右端 */
-.my-requirements-page .wb-card-head:has(.my-requirements-publish--head) {
-  align-items: center;
-}
+/* 「发布新需求」和筛选、搜索同处一行：桌面显示整字按钮，手机档收进搜索栏右端的小号胶囊 */
 .my-requirements-publish--toolbar {
   display: none;
 }
 
 @media (max-width: 640px) {
-  .my-requirements-page .wb-card-head:has(.my-requirements-publish--head) {
+  .my-requirements-publish--head {
     display: none;
   }
   /* 搜索栏右端的小号胶囊：浅蓝底蓝字，融进白色搜索栏，不压过搜索框本身 */

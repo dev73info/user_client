@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, type Component } from 'vue'
+import { computed, ref, watch, type Component } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import {
   Bell,
@@ -10,6 +10,7 @@ import {
   Grid,
   OfficeBuilding,
   Promotion,
+  Switch,
   TIcon,
   UserFilled,
   Wallet,
@@ -17,6 +18,7 @@ import {
 
 import { useRailTooltip } from '@/composables/useRailTooltip'
 import { useWorkbenchRailGroups } from '@/composables/useWorkbenchRailGroups'
+import { railGroupItemActive } from '@/shared/workbenchRailGroups'
 import { isWorkbenchChatPage } from '@/shared/workbenchChatRoute'
 
 import WorkbenchIconRailSettings from './WorkbenchIconRailSettings.vue'
@@ -170,8 +172,34 @@ const userItems = computed<RailItem[]>(() => [
 ])
 
 const items = computed(() => (props.isDevWorkbenchMode ? devItems : userItems.value))
-const switchLabel = computed(() =>
-  props.isDevWorkbenchMode ? '回到用户工作台' : '进入开发者工作台',
+const switchLabel = computed(() => (props.isDevWorkbenchMode ? '切换到用户' : '切换到开发者'))
+
+/**
+ * 每个分组上一次停在的页面：在组与组之间来回切换时，回到该组原来那一页，
+ * 而不是每次都被送回组内第一条。只在当前页属于某个分组时记录（含 query）。
+ */
+const lastRouteByGroup = ref<Record<string, string>>({})
+
+/**
+ * 消息中心上一次停留的地址（含 `?requirement_id=…`）：切去别的分组/页面再点回「消息」时，
+ * 恢复上次点开的会话，而不是回到「没有选中会话」的列表。按模式分开存，用户侧与开发者侧
+ * 不互相串地址；地址是否还属于当前模式在 `open()` 里再校验一次。
+ */
+const lastMessagesRoute: Record<'user' | 'dev', string | null> = { user: null, dev: null }
+
+watch(
+  () => route.fullPath,
+  () => {
+    if (isChatActive.value) {
+      lastMessagesRoute[props.isDevWorkbenchMode ? 'dev' : 'user'] = route.fullPath
+    }
+    const group = activeGroup.value
+    if (!group) {
+      return
+    }
+    lastRouteByGroup.value[group.key] = route.fullPath
+  },
+  { immediate: true },
 )
 
 function isActive(item: RailItem) {
@@ -185,7 +213,42 @@ function isActive(item: RailItem) {
 }
 
 function open(item: RailItem) {
+  if (item.key === 'messages') {
+    const remembered = lastMessagesRoute[props.isDevWorkbenchMode ? 'dev' : 'user']
+    if (remembered) {
+      const resolved = router.resolve(remembered)
+      const resolvedIsDev = resolved.matched.some((record) => Boolean(record.meta.devArea))
+      // 只认「仍然是聊天页、且属于当前模式」的旧地址；模式切换后另一侧的消息地址作废
+      if (
+        resolved.matched.length > 0 &&
+        resolved.meta.workbenchChat === true &&
+        resolvedIsDev === props.isDevWorkbenchMode
+      ) {
+        void router.push(remembered)
+        return
+      }
+    }
+  }
+  if (item.groupKey) {
+    const remembered = lastRouteByGroup.value[item.groupKey]
+    if (remembered) {
+      const resolved = router.resolve(remembered)
+      const group = groups.value.find((candidate) => candidate.key === item.groupKey)
+      const belongsToGroup =
+        group?.items.some((groupItem) =>
+          railGroupItemActive(groupItem, String(resolved.name ?? '')),
+        ) ?? false
+      if (resolved.matched.length > 0 && belongsToGroup) {
+        void router.push(remembered)
+        return
+      }
+    }
+  }
   void router.push(item.to)
+}
+
+function switchWorkbenchMode() {
+  emit('switch-mode')
 }
 
 function badgeFor(key: string) {
@@ -209,6 +272,21 @@ const {
 
 <template>
   <aside class="workbench-icon-rail" aria-label="工作台快捷导航">
+    <button
+      class="workbench-icon-rail__item workbench-icon-rail__switch"
+      type="button"
+      :aria-label="switchLabel"
+      @click="switchWorkbenchMode"
+      @mouseenter="showTooltip(switchLabel, $event)"
+      @focus="showTooltip(switchLabel, $event)"
+      @mouseleave="hideTooltip"
+      @blur="hideTooltip"
+    >
+      <TIcon :size="23">
+        <Switch />
+      </TIcon>
+    </button>
+
     <nav class="workbench-icon-rail__items">
       <button
         v-for="item in items"
@@ -247,7 +325,7 @@ const {
       </span>
     </Teleport>
 
-    <WorkbenchIconRailSettings :switch-label="switchLabel" @switch-mode="emit('switch-mode')" />
+    <WorkbenchIconRailSettings />
   </aside>
 </template>
 

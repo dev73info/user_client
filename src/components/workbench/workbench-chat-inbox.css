@@ -15,28 +15,9 @@
 .workbench-inbox__header {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 16px;
+  gap: 8px;
   flex: 0 0 auto;
-  padding: 20px 18px 10px;
-}
-
-/* 栏标题（「消息中心 / 资产与权益」）：这是导航分区的名字，不是页面大标题，
-   所以走 13px 中性灰小标题，24px 加粗黑体留给右侧内容区。 */
-.workbench-inbox__header h1 {
-  margin: 0;
-  color: var(--73-ink-muted);
-  font-size: 13px;
-  font-weight: 600;
-  line-height: 1.4;
-  letter-spacing: 0.02em;
-}
-
-.workbench-inbox__header p {
-  margin: 4px 0 0;
-  color: var(--73-ink-placeholder);
-  font-size: 12px;
-  line-height: 1.4;
+  padding: 14px 10px 10px;
 }
 
 .workbench-inbox__compose {
@@ -45,18 +26,18 @@
   display: grid;
   place-items: center;
   flex: 0 0 auto;
-  border: 1px solid var(--73-border-soft);
+  border: 0;
   border-radius: 8px;
-  background: var(--73-surface-strong);
+  background: transparent;
   color: var(--73-ink-muted);
   cursor: pointer;
   transition:
     color 140ms ease,
-    border-color 140ms ease;
+    background-color 140ms ease;
 }
 
 .workbench-inbox__compose:hover {
-  border-color: var(--73-accent);
+  background: var(--73-accent-soft);
   color: var(--73-accent);
 }
 
@@ -67,11 +48,11 @@
 
 .workbench-inbox__search {
   height: 38px;
+  min-width: 0;
   display: flex;
   align-items: center;
   gap: 8px;
-  flex: 0 0 auto;
-  margin: 0 10px 10px;
+  flex: 1 1 auto;
   padding: 0 11px;
   border: 1px solid var(--73-border-soft);
   border-radius: 8px;
