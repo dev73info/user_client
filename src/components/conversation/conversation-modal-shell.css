@@ -109,7 +109,8 @@
   z-index: 1;
   flex: 0 0 auto;
   margin-top: -20px;
-  padding: 20px 14px 8px;
+  /* 操作按钮在条带里略偏下：上方多留 6px、下方相应收掉，整条高度不变，聊天区不被挤压 */
+  padding: 26px 14px 2px;
   background: var(--73-app-grad-accent-soft-03);
   pointer-events: none;
   display: flex;
