@@ -165,7 +165,11 @@ async function toggleCardLike(card: McCardItem) {
               <span
                 class="portal-resource-browser__price-badge"
                 :class="{
-                  'is-paid': isPricedResource(props.card.priceFen, props.card.pricePoints),
+                  'is-paid': isPricedResource(
+                    props.card.priceFen,
+                    props.card.pricePoints,
+                    props.card.minVersionPriceFen,
+                  ),
                   'is-points': isPointsResource(props.card.pricePoints),
                 }"
                 >{{ props.card.priceLabel }}</span

@@ -1,7 +1,7 @@
 import { apiUrl } from '@/api/http'
 import type { PublicMcResourceItem } from '@/api/resources'
 import type { McTagFilterSection } from '@/api/resourceTags'
-import { formatResourcePriceLabel } from '@/shared/resourceSale'
+import { formatResourcePriceLabel, formatVersionSalePriceLabel } from '@/shared/resourceSale'
 import { parseBackendDateTime } from '@/shared/datetime'
 
 /**
@@ -28,6 +28,8 @@ export type MobileCard = {
   originType: 'original' | 'repost'
   priceFen: number
   pricePoints: number
+  /** 最低可购版本价（分）：资源级定价为 0 时据此显示「¥x 起」 */
+  minVersionPriceFen: number
   priceLabel: string
 }
 
@@ -59,6 +61,7 @@ export function mapResourceToCard(item: PublicMcResourceItem): MobileCard {
 
   const priceFen = item.buyout_price_fen ?? 0
   const pricePoints = item.price_points ?? 0
+  const minVersionPriceFen = item.min_version_price_fen ?? 0
   return {
     id: item.id,
     title: item.title,
@@ -74,7 +77,11 @@ export function mapResourceToCard(item: PublicMcResourceItem): MobileCard {
     originType: item.origin_type,
     priceFen,
     pricePoints,
-    priceLabel: formatResourcePriceLabel(priceFen, pricePoints),
+    minVersionPriceFen,
+    priceLabel:
+      priceFen <= 0 && pricePoints <= 0 && minVersionPriceFen > 0
+        ? formatVersionSalePriceLabel(minVersionPriceFen)
+        : formatResourcePriceLabel(priceFen, pricePoints),
   }
 }
 

@@ -18,8 +18,9 @@ import { isCashPaidListingResource, type ResourceListingSale } from '@/shared/re
 export function resourceListingSaleOf(
   priceFen: number | null | undefined,
   pricePoints?: number | null,
+  minVersionPriceFen?: number | null,
 ): ResourceListingSale {
-  return isCashPaidListingResource(priceFen, pricePoints) ? 'paid' : 'free'
+  return isCashPaidListingResource(priceFen, pricePoints, minVersionPriceFen) ? 'paid' : 'free'
 }
 
 /** 公开详情只覆盖已上架与需求关联资源；接口资源没有公开预览页。 */

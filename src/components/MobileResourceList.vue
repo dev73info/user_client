@@ -70,9 +70,9 @@ const listingCounts = computed(() => {
   let free = 0
   let paid = 0
   for (const card of cards.value) {
-    if (isCashPaidListingResource(card.priceFen, card.pricePoints)) {
+    if (isCashPaidListingResource(card.priceFen, card.pricePoints, card.minVersionPriceFen)) {
       paid += 1
-    } else if (isFreeListingResource(card.priceFen, card.pricePoints)) {
+    } else if (isFreeListingResource(card.priceFen, card.pricePoints, card.minVersionPriceFen)) {
       free += 1
     }
   }
@@ -88,10 +88,10 @@ const filteredItems = computed(() => {
   const mode = props.listingMode ?? null
 
   const data = cards.value.filter((card) => {
-    if (mode === 'free' && !isFreeListingResource(card.priceFen, card.pricePoints)) {
+    if (mode === 'free' && !isFreeListingResource(card.priceFen, card.pricePoints, card.minVersionPriceFen)) {
       return false
     }
-    if (mode === 'paid' && !isCashPaidListingResource(card.priceFen, card.pricePoints)) {
+    if (mode === 'paid' && !isCashPaidListingResource(card.priceFen, card.pricePoints, card.minVersionPriceFen)) {
       return false
     }
 
@@ -246,7 +246,7 @@ function openResource(card: MobileCard) {
       resourceId: card.id,
       rootSlug: props.rootSlug,
       entrySlug: props.entrySlug || getTagRouteSlug(props.groupName),
-      sale: resourceListingSaleOf(card.priceFen, card.pricePoints),
+      sale: resourceListingSaleOf(card.priceFen, card.pricePoints, card.minVersionPriceFen),
     }),
   )
 }
