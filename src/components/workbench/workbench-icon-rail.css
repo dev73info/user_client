@@ -6,6 +6,9 @@
   align-items: center;
   gap: 14px;
   padding: 18px 10px 16px;
+  /* 右侧两角跟内容卡片同一档圆角，左侧与内容列左边界对齐；不再和会话卡片的
+     圆角直接咬在一起 */
+  border-radius: 0 14px 14px 0;
   /* 与会话消息区同一档浅底（--73-bg-soft）：图标栏从整页白底里分出来，
      又不会比右侧的内容卡片更重 */
   background: var(--73-bg-soft);
