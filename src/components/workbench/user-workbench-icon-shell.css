@@ -1,0 +1,30 @@
+/* 图标工作台外壳：内容列与顶栏同宽（宽屏居中 1280px，窄屏左右各 12px），
+   浅色面由 ::before 绘制，才能带上 10px 的小圆角；移动端在
+   user-workbench-shell.css 的断点里把 --uw-column-inset 归零。 */
+
+/* 图标工作台：整块底是一层中性浅灰，浅色面由 ::before 绘制（好带小圆角）。 */
+.user-workbench--icon-shell {
+  --uw-column-inset: max(12px, calc((100% - 1280px) / 2));
+  position: relative;
+  width: 100%;
+  /* 与顶栏同一条内容列：宽屏居中 1280px，窄屏左右各 12px */
+  padding-inline: var(--uw-column-inset);
+  height: calc(100dvh - var(--portal-header-footprint, 98px));
+  min-height: 0;
+  grid-template-columns: 76px minmax(0, 1fr);
+  gap: 0;
+  margin: 0;
+  overflow: hidden;
+  background: transparent;
+}
+
+/* 内容列的浅色面：左右与内容列同宽，圆角只取 10px 一小档 */
+.user-workbench--icon-shell::before {
+  content: '';
+  position: absolute;
+  z-index: -1;
+  inset: 0 var(--uw-column-inset);
+  border-radius: 10px;
+  background: var(--73-bg-soft);
+  pointer-events: none;
+}

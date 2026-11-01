@@ -32,24 +32,6 @@
   min-height: 0;
 }
 
-/* 图标工作台：整块底只是一层中性浅灰。原来还叠了一道左上角的蓝色径向渐变，
-   结果中栏与右栏各自又是白卡叠在白卡上，页面上没有一块能当「底」的地方。 */
-.user-workbench--icon-shell {
-  width: 100%;
-  /* 与顶栏共用同一条内容列：宽屏下整块（图标栏 + 内容）居中在 1280px 内，
-     窄屏左右各留 12px；背景仍由本元素铺满整行，两侧不会出现第二种底色。 */
-  padding-inline: max(12px, calc((100% - 1280px) / 2));
-  height: calc(100dvh - var(--portal-header-footprint, 98px));
-  min-height: 0;
-  grid-template-columns: 76px minmax(0, 1fr);
-  gap: 0;
-  margin: 0;
-  overflow: hidden;
-  background: var(--73-bg-soft);
-  /* 底色只铺在内容列内：两侧的 padding 区露出页面画布色，内容列因此有明确的左右边界 */
-  background-clip: content-box;
-}
-
 .user-workbench__main--chat,
 .user-workbench__main--icon-shell {
   height: 100%;
@@ -202,14 +184,12 @@
   margin: 0;
 }
 
-/* 系统通知页自己把读数条、面板和空态组织成一张连续的工作区卡；
-   去掉内容区默认内边距后，三段才能共用同一层圆角与边界。 */
+/* 系统通知页自己把读数条、面板和空态组织成一张连续的工作区卡，内边距归零 */
 .user-workbench__content--workspace:has(.notifications-page:not(.dev-page)) {
   padding: 0;
 }
 
-/* 单纸页（页根挂 .wb-sheet，规则见 portal-workbench/08-sheet-page.css）同理：
-   读数条是这张卡自己的纸头，面板是纸身，内边距归零后整页只剩一层圆角与边界。 */
+/* 单纸页（页根挂 .wb-sheet，规则见 portal-workbench/08-sheet-page.css）同理，内边距归零 */
 .user-workbench__content--workspace:has(.wb-sheet) {
   padding: 0;
 }
@@ -245,8 +225,8 @@
   }
 
   .user-workbench--icon-shell {
+    --uw-column-inset: 0px;
     grid-template-columns: minmax(0, 1fr);
-    /* 移动端让内容铺满，不再套用桌面端的内容列内边距 */
     padding-inline: 0;
   }
 
