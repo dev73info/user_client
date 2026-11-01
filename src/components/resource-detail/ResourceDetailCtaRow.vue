@@ -18,6 +18,8 @@ const props = defineProps<{
   priceLabel: string
   /** 需要先购买才能下载（平台内有购买入口） */
   needsPurchase: boolean
+  /** 按版本售卖且最新版本有价：主按钮显示购买（版本列表按钮仍先试下载） */
+  needsVersionPurchase: boolean
   /** 接口资源：平台内没有购买入口，只给到开发者站点下单的引导 */
   isApiResource: boolean
   /** 购买面板正在提交 */
@@ -37,7 +39,7 @@ const primaryCtaLabel = computed(() => {
   if (downloadStore.state.active) {
     return '下载中...'
   }
-  if (props.needsPurchase) {
+  if (props.needsPurchase || props.needsVersionPurchase) {
     return `购买 ${props.priceLabel}`
   }
   return '下载最新版本'

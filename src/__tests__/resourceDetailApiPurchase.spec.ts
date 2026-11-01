@@ -159,9 +159,14 @@ function resourceFixture(part: Record<string, unknown> = {}): PublicMcResourceIt
   } as unknown as PublicMcResourceItem
 }
 
+/** 挂载资源详情面板并等待详情加载完成（版本与评论都按空列表返回）。 */
 async function mountPanel(resource: PublicMcResourceItem) {
   mocks.getResource.mockResolvedValue(resource)
-  const wrapper = mount(ResourceDetailPanel, { props: { resourceId: resource.id } })
+  mocks.listVersions.mockResolvedValue([])
+  const wrapper = mount(ResourceDetailPanel, {
+    props: { resourceId: resource.id },
+    global: { stubs: { teleport: true } },
+  })
   await flushPromises()
   return wrapper
 }
@@ -176,6 +181,15 @@ beforeEach(() => {
   mocks.createPurchase.mockReset()
   mocks.listVersions.mockResolvedValue([])
   mocks.listComments.mockResolvedValue([])
+  mocks.createPurchase.mockResolvedValue({
+    order_no: 'RPO-TEST',
+    status: 'pending',
+    resource_id: 158089,
+    pay_channel: 'alipay',
+    pay_url: '',
+    amount_fen: 9900,
+    amount_points: 0,
+  })
 })
 
 describe('ResourceDetailPanel · 接口资源的平台内购买入口', () => {
@@ -201,6 +215,12 @@ describe('ResourceDetailPanel · 接口资源的平台内购买入口', () => {
     expect(cta.exists()).toBe(true)
     expect(cta.text()).toBe('购买 ¥99.00')
     expect(wrapper.find('.resource-detail-page__api-hint').exists()).toBe(false)
+
+    await cta.trigger('click')
+    await flushPromises()
+    const payload = mocks.createPurchase.mock.calls[0]?.[2] as Record<string, unknown>
+    // 买断单不传 version_id，行为不能回归
+    expect(payload).not.toHaveProperty('version_id')
 
     wrapper.unmount()
   })
