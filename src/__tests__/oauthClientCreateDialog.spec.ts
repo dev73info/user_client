@@ -72,9 +72,9 @@ describe('新建客户端弹窗', () => {
     const scopes = wrapper.emitted('toggle-scope') ?? []
     expect(scopes[scopes.length - 1]).toEqual(['purchase'])
 
-    const submit = [...document.body.querySelectorAll<HTMLButtonElement>(
-      '.t73-dialog__footer button',
-    )].find((button) => button.textContent?.includes('创建客户端'))!
+    const submit = [
+      ...document.body.querySelectorAll<HTMLButtonElement>('.t73-dialog__footer button'),
+    ].find((button) => button.textContent?.includes('创建客户端'))!
     submit.click()
     await nextTick()
     expect(wrapper.emitted('submit')).toHaveLength(1)
@@ -84,9 +84,9 @@ describe('新建客户端弹窗', () => {
     const wrapper = mountDialog()
     await nextTick()
 
-    const cancel = [...document.body.querySelectorAll<HTMLButtonElement>(
-      '.t73-dialog__footer button',
-    )].find((button) => button.textContent?.trim() === '取消')!
+    const cancel = [
+      ...document.body.querySelectorAll<HTMLButtonElement>('.t73-dialog__footer button'),
+    ].find((button) => button.textContent?.trim() === '取消')!
     cancel.click()
     await nextTick()
     const events = wrapper.emitted('update:open') ?? []
