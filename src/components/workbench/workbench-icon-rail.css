@@ -6,6 +6,9 @@
   align-items: center;
   gap: 14px;
   padding: 18px 10px 16px;
+  /* 与会话消息区同一档浅底（--73-bg-soft）：图标栏从整页白底里分出来，
+     又不会比右侧的内容卡片更重 */
+  background: var(--73-bg-soft);
   color: var(--73-ink-soft);
 }
 
