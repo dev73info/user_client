@@ -16,8 +16,7 @@ const currentYear = new Date().getFullYear()
           <h3>网站信息</h3>
           <p>平台名称：柒叁信息（73info）</p>
           <p>平台状态：内测中</p>
-          <p>联系邮箱：fanbo@73info.cn</p>
-          <p>投诉与侵权处理：fanbo@73info.cn</p>
+          <p>联系与投诉邮箱：fanbo@73info.cn</p>
         </div>
         <div class="site-footer-block">
           <h3>备案与合规</h3>
@@ -48,7 +47,6 @@ const currentYear = new Date().getFullYear()
               >滇B2-20260273</a
             >
           </p>
-          <p>交易说明：第三方支付担保与分账</p>
         </div>
         <div class="site-footer-block">
           <h3>服务说明</h3>
