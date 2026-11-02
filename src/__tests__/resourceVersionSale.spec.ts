@@ -6,6 +6,7 @@ import {
   isPurchasableVersion,
   isVersionSaleResource,
   needsVersionPurchase,
+  resolveVersionPurchaseTarget,
   resolveVersionSaleMinPriceFen,
   resolveVersionSaleMinPriceVersion,
 } from '@/shared/resourceSale'
@@ -70,7 +71,7 @@ describe('resourceSale 按版本售卖口径', () => {
     expect(formatVersionSalePriceLabel(null)).toBe('免费')
   })
 
-  it('主按钮购买闸：最新版本有价且访客未持有权益', () => {
+  it('主按钮购买闸：按版本售卖且访客未持有权益', () => {
     const versions = [paidVersion(1), paidVersion(100)]
     expect(
       needsVersionPurchase({
@@ -100,7 +101,7 @@ describe('resourceSale 按版本售卖口径', () => {
         isOwner: true,
       }),
     ).toBe(false)
-    // 最新版本免费：不挡免费下载
+    // 最新版本 0 价也不能当免费：0 价版本不单卖，只能靠买断取得
     expect(
       needsVersionPurchase({
         buyoutPriceFen: 0,
@@ -109,7 +110,7 @@ describe('resourceSale 按版本售卖口径', () => {
         purchasedByMe: false,
         isOwner: false,
       }),
-    ).toBe(false)
+    ).toBe(true)
     // 买断 / 积分资源不走这个闸
     expect(
       needsVersionPurchase({
@@ -120,5 +121,32 @@ describe('resourceSale 按版本售卖口径', () => {
         isOwner: false,
       }),
     ).toBe(false)
+  })
+
+  it('403 转购买目标：失败版本可购就用它，否则整包或最低价可购版本', () => {
+    const freeLatest = { id: 1, ...paidVersion(0) }
+    const paidOlder = { id: 2, ...paidVersion(100) }
+    const purchasable = { id: 3, ...paidVersion(50) }
+    const versions = [freeLatest, paidOlder]
+
+    expect(resolveVersionPurchaseTarget(purchasable, { versions })).toBe(purchasable)
+    expect(
+      resolveVersionPurchaseTarget(freeLatest, { buyoutPriceFen: 0, pricePoints: 0, versions }),
+    ).toBe(paidOlder)
+    // 资源有买断 / 积分价：按整包买，不能下单价为 0 的版本
+    expect(
+      resolveVersionPurchaseTarget(freeLatest, { buyoutPriceFen: 9900, pricePoints: 0, versions }),
+    ).toBeNull()
+    expect(
+      resolveVersionPurchaseTarget(freeLatest, { buyoutPriceFen: 0, pricePoints: 50, versions }),
+    ).toBeNull()
+    // 没有任何可购版本：仍回落到 null（全免费资源不会走到购买面板）
+    expect(
+      resolveVersionPurchaseTarget(freeLatest, {
+        buyoutPriceFen: 0,
+        pricePoints: 0,
+        versions: [freeLatest],
+      }),
+    ).toBeNull()
   })
 })

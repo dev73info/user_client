@@ -57,8 +57,8 @@ export function useResourceVersionSaleDetail(options: {
       ),
   )
   /**
-   * 主按钮购买闸：版本售卖且最新版本有价、访客未持有权益。
-   * 已买过某个版本的买家不在这里挡——版本列表保持「先试下载、403 再按该版本购买」。
+   * 主按钮购买闸：按版本售卖且访客未持有权益就一律先购买（0 价版本不单卖）。
+   * 已持有权益的买家不在这里挡——版本列表保持「先试下载、403 再按该版本购买」。
    */
   const needsVersionPurchase = computed(() =>
     resolveNeedsVersionPurchase({

@@ -18,7 +18,7 @@ const props = defineProps<{
   priceLabel: string
   /** 需要先购买才能下载（平台内有购买入口） */
   needsPurchase: boolean
-  /** 按版本售卖且最新版本有价：主按钮显示购买（版本列表按钮仍先试下载） */
+  /** 按版本售卖且访客未持有权益：主按钮显示购买（版本列表按钮仍先试下载） */
   needsVersionPurchase: boolean
   /** 接口资源：平台内没有购买入口，只给到开发者站点下单的引导 */
   isApiResource: boolean

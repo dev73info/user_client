@@ -1,10 +1,15 @@
-import type { ResourcePurchaseOrder } from '@/api/resourcePurchase'
 import type { MockRoute } from '../../router'
 
-import { mcResources } from '../../db'
+import { mcResources, versionsOf } from '../../db'
 import { currentMockProfile } from '../../identity'
 import { jsonResponse, readInt, readString, textResponse } from '../../response'
-import { findPaidEntitlement, mockBuyer, mockPurchases, nowIso } from './helpers'
+import {
+  findPaidEntitlement,
+  mockBuyer,
+  mockPurchases,
+  nowIso,
+  type MockResourcePurchaseOrder,
+} from './helpers'
 
 let nextPurchaseSeq = 1
 
@@ -26,32 +31,66 @@ export const purchaseRoutes: MockRoute[] = [
       if (!resource) {
         return textResponse('资源不存在', 404)
       }
-      const requestBody = (request.body ?? {}) as { pay_channel?: string; promo_code?: string }
+      const requestBody = (request.body ?? {}) as {
+        pay_channel?: string
+        promo_code?: string
+        version_id?: number | null
+      }
       const payChannel = String(requestBody.pay_channel ?? 'alipay')
       // R029：mock 只把推广码原样留痕，不做归因（归因与分账是后端的事，mock 不假装算得出来）
       const promoCode = typeof requestBody.promo_code === 'string' ? requestBody.promo_code : null
       const pricePoints = resource.price_points ?? 0
       const priceFen = resource.price_fen ?? 0
       if (payChannel === 'points') {
+        // 与后端一致：积分购只支持平台内买断，不能按版本下单
+        if (requestBody.version_id != null) {
+          return textResponse('积分购买仅支持平台内买断', 409)
+        }
         if (pricePoints <= 0) {
           return textResponse('该资源未设置积分售价', 409)
         }
-      } else if (priceFen <= 0) {
+      }
+
+      // 版本购买：按 `version_id` 取版本价；0 价版本不单卖。
+      let versionId: number | null = null
+      let versionPriceFen: number | null = null
+      if (requestBody.version_id != null) {
+        const parsedVersionId = Number(requestBody.version_id)
+        const version = Number.isInteger(parsedVersionId)
+          ? versionsOf(resource.id).find((item) => item.id === parsedVersionId)
+          : undefined
+        if (!version) {
+          return textResponse('版本不存在', 404)
+        }
+        if ((version.price_fen ?? 0) <= 0) {
+          return textResponse('该版本不可单独购买，请购买整包', 409)
+        }
+        versionId = version.id
+        versionPriceFen = version.price_fen
+      } else if (payChannel !== 'points' && priceFen <= 0) {
         return textResponse('该资源为免费资源，无需购买', 409)
       }
+
       const buyer = mockBuyer()
-      const existing = findPaidEntitlement(buyer, resource.id)
-      if (existing) {
-        return textResponse(`已购买该资源（订单 ${existing.order_no}），可直接下载`, 409)
+      // 买断权益覆盖全部版本，所以买版本时也要查一次买断单。
+      const existingBuyout = findPaidEntitlement(buyer, resource.id)
+      if (existingBuyout) {
+        return textResponse(`已购买该资源（订单 ${existingBuyout.order_no}），可直接下载`, 409)
+      }
+      if (versionId != null) {
+        const existingVersion = findPaidEntitlement(buyer, resource.id, versionId)
+        if (existingVersion) {
+          return textResponse(`已购买该版本（订单 ${existingVersion.order_no}），可直接下载`, 409)
+        }
       }
       const orderNo = `MOCK-RPO-${nextPurchaseSeq++}`
       const stamp = nowIso()
       const isPoints = payChannel === 'points'
       const amountPoints = isPoints ? pricePoints : 0
       const feePoints = isPoints ? Math.round(amountPoints * 0.1) : 0
-      const amountFen = isPoints ? 0 : priceFen
+      const amountFen = isPoints ? 0 : (versionPriceFen ?? priceFen)
       const feeFen = isPoints ? 0 : Math.round(amountFen * 0.1)
-      const order: ResourcePurchaseOrder = {
+      const order: MockResourcePurchaseOrder = {
         order_no: orderNo,
         buyer,
         source_kind: 'platform',
@@ -86,6 +125,8 @@ export const purchaseRoutes: MockRoute[] = [
         refund_initiator: null,
         refund_operator: null,
         last_refund_at: null,
+        // 买断单不写 version_id（覆盖全部版本）；单版本单只覆盖同一版本。
+        ...(versionId != null ? { version_id: versionId } : {}),
       }
       mockPurchases.unshift(order)
       return jsonResponse(order)

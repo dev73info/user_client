@@ -2,13 +2,8 @@ import { flushPromises, mount } from '@vue/test-utils'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 /**
- * 按版本售卖的资源详情页：资源级 `buyout_price_fen == 0 && price_points == 0`，
- * 但版本有 `price_fen > 0`。生产缺陷是这类资源被当成免费：标价「免费」、主按钮「下载最新版本」、
- * 下载 403 后也没有带版本的购买入口。
- *
- * 这里钉住修复后的四件事：标价显示版本价「¥x 起」、主按钮显示购买、下单请求带 `version_id`
- * （金额由服务端按版本价取，前端不传 `amount_fen`），以及已购 / 下载 403 时不被挡在下载之外、
- * 403 转购买要带上被拦的那条版本。
+ * 按版本售卖资源（资源级价格全 0、版本有价）：标价「¥x 起」、主按钮购买（0 价版本不单卖）、
+ * 下单带 `version_id`；403 转购买时 0 价版本要换到可购版本。
  */
 
 const mocks = vi.hoisted(() => ({
@@ -264,7 +259,7 @@ describe('ResourceDetailPanel · 按版本售卖', () => {
     wrapper.unmount()
   })
 
-  it('最新版本免费时主按钮仍是下载，不拿版本售卖拦免费下载', async () => {
+  it('最新版本 0 价也不当免费：主按钮购买，403 后落到最低价可购版本', async () => {
     const freeLatest = versionFixture({ id: 503, price_fen: 0, purchasable: false })
     const paidOlder = versionFixture({
       id: 504,
@@ -276,8 +271,29 @@ describe('ResourceDetailPanel · 按版本售卖', () => {
     const wrapper = await mountPanel(resourceFixture(), [freeLatest, paidOlder])
 
     expect(wrapper.get('.resource-detail-page__price-pill').text()).toBe('¥1.00 起')
-    expect(wrapper.get('.resource-detail-page__primary-btn').text()).toBe('下载最新版本')
+    expect(wrapper.get('.resource-detail-page__primary-btn').text()).toBe('购买 ¥1.00 起')
+    // 版本列表按钮仍先试下载；被后端 403 后购买面板必须换到可购版本
+    mocks.triggerDownload.mockRejectedValueOnce(new HttpError(403, '请先购买该资源后再下载'))
+    await wrapper.findAll('.resource-detail-page__version-download')[0]?.trigger('click')
+    await flushPromises()
 
-    wrapper.unmount()
+    expect(mocks.createPurchase).toHaveBeenCalledTimes(1)
+    const payload = mocks.createPurchase.mock.calls[0]?.[2] as Record<string, unknown>
+    expect(payload).toMatchObject({ version_id: 504 })
+    expect(wrapper.get('.resource-purchase-modal__amount').text()).toContain('¥1.00')
+  })
+
+  it('全免费资源（没有任何可购版本）主按钮仍是下载', async () => {
+    const wrapper = await mountPanel(resourceFixture(), [
+      versionFixture({ id: 505, price_fen: 0, purchasable: false }),
+      versionFixture({ id: 506, version: '0.9.0', price_fen: 0, purchasable: false, is_current: false }),
+    ])
+
+    expect(wrapper.get('.resource-detail-page__price-pill').text()).toBe('免费')
+    expect(wrapper.get('.resource-detail-page__primary-btn').text()).toBe('下载最新版本')
+    await wrapper.get('.resource-detail-page__primary-btn').trigger('click')
+    await flushPromises()
+    expect(mocks.triggerDownload).toHaveBeenCalledTimes(1)
+    expect(mocks.createPurchase).not.toHaveBeenCalled()
   })
 })
