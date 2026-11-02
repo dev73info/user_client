@@ -46,6 +46,8 @@ export {
   seedOfRequirement,
 } from './db/requirements'
 export { mcResourceVersions, mcResources, versionsOf } from './db/resources'
+export type { MockResourcePortalInfo } from './db/resourceStats'
+export { mcResourcePortalInfo } from './db/resourceStats'
 export {
   CLIENT_NICKNAME,
   CLIENT_USERNAME,

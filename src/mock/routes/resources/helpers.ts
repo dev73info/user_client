@@ -2,6 +2,8 @@ import type { McResourcePayload, McResourceVersionPayload } from '@/api/mcResour
 import type { ResourcePurchaseOrder } from '@/api/resourcePurchase'
 
 import { DEV_USERNAME, mcResources, versionsOf } from '../../db'
+import { mockTeams } from '../../db/teams'
+import { mcResourcePortalInfo } from '../../db/resourceStats'
 import { currentMockProfile } from '../../identity'
 import { jsonResponse, noContentResponse, readInt, readString, textResponse } from '../../response'
 
@@ -66,9 +68,12 @@ export function publishedResources(): McResourcePayload[] {
 export function toPublicResource(resource: McResourcePayload, buyer?: string | null) {
   const withFeatured = resource as McResourcePayload & {
     is_featured?: boolean
+    is_pinned?: boolean
     like_count?: number
   }
   const purchased = Boolean(buyer) && hasAnyPaidEntitlement(buyer!, resource.id)
+  // 展示统计（浏览 / 下载 / 点赞 / 精选 / 置顶）来自 mock 的固定表，没有就回落缺省值。
+  const info = mcResourcePortalInfo[resource.id]
   return {
     ...resource,
     price_fen: resource.price_fen ?? 0,
@@ -77,9 +82,13 @@ export function toPublicResource(resource: McResourcePayload, buyer?: string | n
     copyright_declared_at: resource.copyright_declared_at ?? null,
     purchased_by_me: purchased,
     versions: versionsOf(resource.id).length,
-    download_count: 12,
-    like_count: withFeatured.like_count ?? 0,
-    is_featured: Boolean(withFeatured.is_featured),
+    view_count: info?.view_count ?? 0,
+    download_count: info?.download_count ?? 12,
+    like_count: info?.like_count ?? withFeatured.like_count ?? 0,
+    is_featured: info?.is_featured ?? Boolean(withFeatured.is_featured),
+    is_pinned: info?.is_pinned ?? Boolean(withFeatured.is_pinned),
+    // 团队名：门户「活跃团队」榜单按它聚合，payload 里只有 team_id。
+    team_name: mockTeams.find((team) => team.team_id === resource.team_id)?.name ?? null,
     updated_at: resource.updated_at,
   }
 }
