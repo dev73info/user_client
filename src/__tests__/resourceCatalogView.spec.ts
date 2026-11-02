@@ -163,7 +163,9 @@ describe('ResourceCatalogView（拆分后接线）', () => {
       .vm.$emit('filters-change', [{ key: 's1-付费', sectionId: 1, label: '价格', tag: '付费' }])
     await flushPromises()
 
-    expect(wrapper.find('.catalog-chip').text()).toContain('价格：付费')
+    // chip 只显示标签名（分组名「价格」这类三级节点文字不再重复出现）
+    expect(wrapper.find('.catalog-chip').text()).toContain('付费')
+    expect(wrapper.find('.catalog-chip').text()).not.toContain('价格：')
 
     await wrapper.find('.catalog-chip').trigger('click')
     expect(mocks.removeFilter).toHaveBeenCalledWith(1, '付费')
