@@ -22,18 +22,20 @@ const emit = defineEmits<{
       <span class="portal-beta-notice__badge">
         {{ status?.today_checked_in ? '今日已签到' : '内测中' }}
       </span>
-      <button
-        v-if="status && !status.today_checked_in"
-        class="portal-beta-notice__btn"
-        type="button"
-        :disabled="saving"
-        @click="emit('checkin')"
-      >
-        {{ saving ? '签到中…' : '每日签到' }}
-      </button>
-      <button class="portal-beta-notice__btn" type="button" @click="emit('open-group')">
-        加入QQ群
-      </button>
+      <div class="portal-beta-notice__actions">
+        <button
+          v-if="status && !status.today_checked_in"
+          class="portal-beta-notice__btn"
+          type="button"
+          :disabled="saving"
+          @click="emit('checkin')"
+        >
+          {{ saving ? '签到中…' : '每日签到' }}
+        </button>
+        <button class="portal-beta-notice__btn" type="button" @click="emit('open-group')">
+          加入QQ群
+        </button>
+      </div>
     </div>
     <p v-if="error" class="portal-beta-notice__error" role="alert">
       {{ error }}
