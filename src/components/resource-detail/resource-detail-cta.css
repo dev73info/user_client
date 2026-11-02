@@ -106,12 +106,9 @@
   font-variant-numeric: tabular-nums;
 }
 
-/* 点赞：心形图标 + 赞数（与资源卡片上的点赞同一读法：数字跟在图标后面）。
-   未点赞是中性描边心，点赞后实心红心。
-   红色取资源卡片点赞的既有值（ResourceCatalog `.portal-resource-browser__like--active`），
-   悬停底色取首页点赞控件的既有值（home.css `.portal-spotlight-card__likes:hover`）。
-   原来只管一个图标，所以是 44px 正方形；现在带数字，改成 44px 高、左右 12px 的胶囊，
-   宽度跟着数字走，单个图标时也不会比原来窄。 */
+/* 点赞：实心红心 + 赞数（与资源卡片上的点赞同一读法：数字跟在图标后面）。
+   红色取资源卡片点赞的既有值（ResourceCatalog `.portal-resource-browser__like--active`）；
+   按钮本身不铺底色，只靠心形的红与赞数说话，悬停也只做一次轻微放大。 */
 .resource-detail-page__like-btn {
   display: inline-flex;
   align-items: center;
@@ -123,11 +120,10 @@
   border: 0;
   border-radius: 12px;
   background: transparent;
-  color: var(--73-ink-muted);
+  color: var(--73-danger);
   cursor: pointer;
   transition:
     color 180ms ease,
-    background-color 180ms ease,
     transform 180ms ease;
 }
 
@@ -146,7 +142,6 @@
 
 .resource-detail-page__like-btn:hover:not(:disabled) {
   color: var(--73-danger);
-  background: color-mix(in srgb, var(--73-danger) 8%, transparent);
 }
 
 .resource-detail-page__like-btn:hover:not(:disabled) .resource-detail-page__like-icon {

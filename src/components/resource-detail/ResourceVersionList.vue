@@ -94,7 +94,6 @@ function downloadLabel(version: PublicMcResourceVersionItem): string {
   <article class="resource-detail-page__content-card resource-detail-page__versions-side-card">
     <header class="resource-detail-page__section-head">
       <h2>历史版本</h2>
-      <span>Versions</span>
     </header>
     <div v-if="versions.length" class="resource-detail-page__version-list">
       <article

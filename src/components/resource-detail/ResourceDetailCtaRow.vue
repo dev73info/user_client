@@ -96,7 +96,7 @@ const likeCountLabel = computed(() => props.resource.like_count ?? 0)
         <svg
           class="resource-detail-page__like-icon"
           viewBox="0 0 24 24"
-          :fill="props.resource.liked_by_me ? 'currentColor' : 'none'"
+          fill="currentColor"
           stroke="currentColor"
           stroke-width="2"
           stroke-linecap="round"
