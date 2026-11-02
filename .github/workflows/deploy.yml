@@ -67,6 +67,10 @@ jobs:
 
       - name: 装 wasm-pack
         uses: jetli/wasm-pack-action@v0.4.0
+        with:
+          # 与 ci.yml 保持同一个钉好的版本：latest 会飘到旧版，
+          # 旧版的 wasm-opt 解析不了新版 Rust 产出的 wasm。
+          version: v0.15.1
 
       - name: 构建 tags-wasm
         working-directory: tags-wasm
