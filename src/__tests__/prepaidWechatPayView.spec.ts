@@ -70,7 +70,11 @@ describe('保证金充值微信中间页', () => {
     const originalLocation = window.location
     Object.defineProperty(window, 'location', {
       configurable: true,
-      value: { ...originalLocation, href: 'https://73info.cn/payment/prepaid?order_no=PAY-1', assign },
+      value: {
+        ...originalLocation,
+        href: 'https://73info.cn/payment/prepaid?order_no=PAY-1',
+        assign,
+      },
     })
     mocks.status.mockResolvedValue({
       order: { order_no: 'PAY-1', status: 'created' },

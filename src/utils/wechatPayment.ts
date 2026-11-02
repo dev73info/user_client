@@ -93,13 +93,17 @@ export function invokeWechatJsapiPayment(
 }
 
 export function isWechatPaymentHandoff(query: Record<string, unknown>): boolean {
-  return query.adapay === '1' &&
+  return (
+    query.adapay === '1' &&
     query.payment_handoff === '1' &&
     query.channel === 'wechat' &&
     query.client_platform === 'mobile' &&
     query.intent !== '1' &&
-    typeof query.payment_id === 'string' && Boolean(query.payment_id.trim()) &&
-    typeof query.qr_content === 'string' && Boolean(parseWechatPayInfo(query.qr_content))
+    typeof query.payment_id === 'string' &&
+    Boolean(query.payment_id.trim()) &&
+    typeof query.qr_content === 'string' &&
+    Boolean(parseWechatPayInfo(query.qr_content))
+  )
 }
 
 /** 资源购买 PC 出码 → 手机打开的本站中间页（凭 order token，无需登录） */

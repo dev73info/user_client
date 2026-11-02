@@ -111,7 +111,10 @@ const teamSeedResources: McResourcePayload[] = [
  * 团队资源页与门户「活跃团队」榜单看的是同一批资源，所以团队资源只在
  * `db/resources.ts` 里定义一次，这里只做汇总。
  */
-export const mockTeamResources: McResourcePayload[] = [...teamSeedResources, ...mcTeamOwnedResources]
+export const mockTeamResources: McResourcePayload[] = [
+  ...teamSeedResources,
+  ...mcTeamOwnedResources,
+]
 
 let nextTeamId = 2
 

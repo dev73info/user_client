@@ -167,6 +167,16 @@ function versionFixture(part: Record<string, unknown> = {}): PublicMcResourceVer
   } as unknown as PublicMcResourceVersionItem
 }
 
+/** 非当前版本（0.9.0）：几个用例共用的版本形态，差异只落在 id 与价格上。 */
+function olderVersionFixture(part: Record<string, unknown>) {
+  return versionFixture({
+    version: '0.9.0',
+    is_current: false,
+    created_at: '2026-09-01T00:00:00Z',
+    ...part,
+  })
+}
+
 async function mountPanel(resource: PublicMcResourceItem, versions: PublicMcResourceVersionItem[]) {
   mocks.getResource.mockResolvedValue(resource)
   mocks.listVersions.mockResolvedValue(versions)
@@ -229,13 +239,7 @@ describe('ResourceDetailPanel · 按版本售卖', () => {
 
   it('已买过某个版本：主按钮回到下载，版本按钮先试下载；403 时按该版本打开购买', async () => {
     const latest = versionFixture({ id: 501, version: '1.0.0', price_fen: 100 })
-    const older = versionFixture({
-      id: 502,
-      version: '0.9.0',
-      price_fen: 200,
-      is_current: false,
-      created_at: '2026-09-01T00:00:00Z',
-    })
+    const older = olderVersionFixture({ id: 502, price_fen: 200 })
     const wrapper = await mountPanel(resourceFixture({ purchased_by_me: true }), [latest, older])
 
     // 已持有权益：主按钮不再要求购买，标价仍按版本最低价展示
@@ -261,13 +265,7 @@ describe('ResourceDetailPanel · 按版本售卖', () => {
 
   it('最新版本 0 价也不当免费：主按钮购买，403 后落到最低价可购版本', async () => {
     const freeLatest = versionFixture({ id: 503, price_fen: 0, purchasable: false })
-    const paidOlder = versionFixture({
-      id: 504,
-      version: '0.9.0',
-      price_fen: 100,
-      is_current: false,
-      created_at: '2026-09-01T00:00:00Z',
-    })
+    const paidOlder = olderVersionFixture({ id: 504, price_fen: 100 })
     const wrapper = await mountPanel(resourceFixture(), [freeLatest, paidOlder])
 
     expect(wrapper.get('.resource-detail-page__price-pill').text()).toBe('¥1.00 起')
@@ -286,7 +284,7 @@ describe('ResourceDetailPanel · 按版本售卖', () => {
   it('全免费资源（没有任何可购版本）主按钮仍是下载', async () => {
     const wrapper = await mountPanel(resourceFixture(), [
       versionFixture({ id: 505, price_fen: 0, purchasable: false }),
-      versionFixture({ id: 506, version: '0.9.0', price_fen: 0, purchasable: false, is_current: false }),
+      olderVersionFixture({ id: 506, price_fen: 0, purchasable: false }),
     ])
 
     expect(wrapper.get('.resource-detail-page__price-pill').text()).toBe('免费')

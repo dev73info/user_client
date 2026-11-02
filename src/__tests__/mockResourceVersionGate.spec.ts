@@ -19,11 +19,7 @@ import {
 } from '@/mock/db'
 import type { MockIdentity } from '@/mock/identity'
 import type { MockRequest, MockRoute } from '@/mock/router'
-import {
-  mockBuyer,
-  mockPurchases,
-  toPublicResource,
-} from '@/mock/routes/resources/helpers'
+import { mockBuyer, mockPurchases, toPublicResource } from '@/mock/routes/resources/helpers'
 import { publicResourceRoutes } from '@/mock/routes/resources/publicRoutes'
 import { purchaseRoutes } from '@/mock/routes/resources/purchaseRoutes'
 
@@ -160,9 +156,7 @@ describe('mock 资源下载 / 购买闸口', () => {
   })
 
   it('单版本单只覆盖同一版本：买过的版本可下载，0 价版本仍 403', async () => {
-    expect((await purchase({ pay_channel: 'alipay', version_id: paidVersion.id })).status).toBe(
-      200,
-    )
+    expect((await purchase({ pay_channel: 'alipay', version_id: paidVersion.id })).status).toBe(200)
 
     expect((await download(paidVersion.id)).status).toBe(200)
     expect((await download(freeVersion.id)).status).toBe(403)
