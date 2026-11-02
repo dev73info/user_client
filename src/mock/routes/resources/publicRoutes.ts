@@ -47,14 +47,25 @@ export const publicResourceRoutes: MockRoute[] = [
       if (!resource) {
         return textResponse('资源不存在', 404)
       }
+      const resourceId = Number(params.resourceId)
+      const versions = versionsOf(resourceId)
+      const version = versions.find((item) => item.id === Number(params.versionId))
+      if (!version) {
+        return textResponse('版本不存在', 404)
+      }
       const buyer = mockBuyer()
-      if ((resource.price_fen ?? 0) > 0) {
-        const isOwner = buyer === resource.creator
-        const entitled = findPaidEntitlement(buyer, resource.id)
-        if (!isOwner && !entitled) {
+      // 与后端一致：买断价 / 积分价 / 任一版本价大于 0 就是付费资源，
+      // 付费资源下载任何版本都要权益（0 价版本不单卖，只能靠买断权益取得）。
+      const isPaidResource =
+        (resource.buyout_price_fen ?? 0) > 0 ||
+        (resource.price_points ?? 0) > 0 ||
+        versions.some((item) => (item.price_fen ?? 0) > 0)
+      if (isPaidResource && buyer !== resource.creator) {
+        const entitled = findPaidEntitlement(buyer, resource.id, version.id)
+        if (!entitled) {
           return textResponse('请先购买该资源后再下载', 403)
         }
-        if (entitled && !entitled.first_downloaded_at) {
+        if (!entitled.first_downloaded_at) {
           entitled.first_downloaded_at = nowIso()
           entitled.updated_at = entitled.first_downloaded_at
         }

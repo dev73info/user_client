@@ -11,25 +11,24 @@
     padding: 12px;
   }
 
-  /* —— 内测中 + 每日签到：徽标与「加入QQ群」同一行，签到块左文右钮 —— */
+  /* —— 内测中 + 每日签到：徽标在左，签到与 QQ 群两个入口在右同一行 —— */
   .portal-beta-notice {
-    display: grid;
-    grid-template-columns: auto minmax(0, 1fr);
-    grid-template-areas:
-      'badge btn'
-      'invite invite';
+    display: flex;
+    flex-direction: row;
     align-items: center;
     gap: 8px;
   }
 
   .portal-beta-notice__badge {
-    grid-area: badge;
+    flex-shrink: 0;
+  }
+
+  .portal-beta-notice__actions {
+    flex: 1;
+    width: auto;
   }
 
   .portal-beta-notice__btn {
-    grid-area: btn;
-    justify-self: end;
-    align-self: center;
     padding: 4px 12px;
     border-radius: 999px;
   }

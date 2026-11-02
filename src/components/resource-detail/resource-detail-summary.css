@@ -173,7 +173,9 @@ a.resource-detail-page__repost-origin:hover {
   font-size: 15px;
 }
 
-/* 与首页精选卡 portal-spotlight-card__meta-row 同款标签 */
+/* 与首页精选卡 portal-spotlight-card__meta-row 同款标签。
+   原来底色是「surface-strong 96%」——白卡片上等于没有底色，标签看着就是一行纯文字，
+   这里换成带描边的淡蓝底，和资源卡片上的标签一致。 */
 .resource-detail-page__tags {
   display: flex;
   flex-wrap: wrap;
@@ -188,8 +190,9 @@ a.resource-detail-page__repost-origin:hover {
   max-width: 100%;
   min-height: 22px;
   padding: 2px 9px;
+  border: 1px solid color-mix(in srgb, var(--73-accent) 16%, transparent);
   border-radius: 999px;
-  background: color-mix(in srgb, var(--73-surface-strong) 96%, transparent);
+  background: color-mix(in srgb, var(--73-accent-soft) 42%, var(--73-surface-strong));
   color: var(--73-ink-soft);
   font-size: 12px;
   font-weight: 700;

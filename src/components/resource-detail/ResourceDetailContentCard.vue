@@ -35,7 +35,6 @@ useCodeBlockCopy({
   <article class="resource-detail-page__content-card">
     <header class="resource-detail-page__section-head">
       <h2>页面内容</h2>
-      <span>Content</span>
     </header>
     <div
       v-if="props.html"

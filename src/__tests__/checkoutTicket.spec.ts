@@ -10,6 +10,7 @@ const mocks = vi.hoisted(() => ({
   getOrder: vi.fn(),
   replace: vi.fn(),
   push: vi.fn(),
+  qr: vi.fn(async (_content: string, _options?: unknown) => 'data:image/png;base64,qr'),
 }))
 
 const route = reactive({ query: {} as Record<string, string> })
@@ -24,7 +25,13 @@ vi.mock('@/stores/auth', () => ({ useAuthStore: () => auth }))
 
 vi.mock('vue-router', () => ({
   useRoute: () => route,
-  useRouter: () => ({ replace: mocks.replace, push: mocks.push }),
+  useRouter: () => ({
+    replace: mocks.replace,
+    push: mocks.push,
+    resolve: ({ query }: { query: Record<string, string> }) => ({
+      href: `/payment?${new URLSearchParams(query).toString()}`,
+    }),
+  }),
 }))
 
 vi.mock('@/api/resourcePurchase', () => ({
@@ -35,6 +42,10 @@ vi.mock('@/api/resourcePurchase', () => ({
 vi.mock('@/api/adapay', () => ({
   getAdapayClientPlatform: () => 'pc',
 }))
+
+vi.mock('@/shared/auth/browser', () => ({ isWechatBrowser: () => false }))
+
+vi.mock('qrcode', () => ({ default: { toDataURL: mocks.qr } }))
 
 // 支付面（二维码 / 轮询）有自己的单测口径，这里只验证换票与订单展示。
 vi.mock('@/composables/useResourcePayment', async () => {
@@ -194,5 +205,26 @@ describe('接口资源收银台票据登录', () => {
     // 2.0 没有「微信绑定」相关端点（契约里没有二维码 / 授权地址那一组），收银台只留「我的已购」
     expect(view.text()).not.toContain('绑定微信')
     expect(view.text()).toContain('查看我的已购')
+  })
+
+  it('微信订单展示平台中间页二维码，内容带订单号与令牌', async () => {
+    route.query = { ticket, order_no: 'RPO20261019153000001' }
+    mocks.exchange.mockResolvedValue({
+      token: 'checkout-jwt',
+      username: 'u_9f2c',
+      order_no: 'RPO20261019153000001',
+    })
+    // 微信订单还没有渠道单，pay_url 为空；码里必须是平台中间页，不能是空码或渠道参数
+    mocks.getOrder.mockResolvedValue(makeOrder({ pay_channel: 'wx_pub', pay_url: null }))
+    auth.token = 'checkout-jwt'
+
+    const view = await mountCheckout()
+
+    expect(mocks.qr).toHaveBeenCalled()
+    const content = String(mocks.qr.mock.calls[0]?.[0] ?? '')
+    expect(content).toContain('/payment?resource_wechat=1')
+    expect(content).toContain('order_no=RPO20261019153000001')
+    expect(content).toContain('token=checkout-jwt')
+    expect(view.text()).toContain('请用微信扫描下方二维码完成支付')
   })
 })

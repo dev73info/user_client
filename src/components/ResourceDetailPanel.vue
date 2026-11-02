@@ -9,7 +9,11 @@ import {
   type PublicMcResourceItem,
   type PublicMcResourceVersionItem,
 } from '@/api/resources'
-import { API_RESOURCE_PURCHASE_HINT, canPurchaseOnPlatform } from '@/shared/resourceSale'
+import {
+  API_RESOURCE_PURCHASE_HINT,
+  canPurchaseOnPlatform,
+  resolveVersionPurchaseTarget,
+} from '@/shared/resourceSale'
 import { isApiResourceKind } from '@/shared/resourceApi'
 import { useAuthStore } from '@/stores/auth'
 import { useResourceFileDownload } from '@/composables/useResourceFileDownload'
@@ -185,6 +189,13 @@ const { openResourceFile, downloadVersion } = useResourceFileDownload({
   getLatestVersion: () => latestVersion.value,
   needsPurchase: () => needsPurchase.value,
   openPurchasePanel,
+  // 0 价版本不单卖，403 后不能原样下单（后端会 409）：改按整包或最低价可购版本买
+  resolvePurchaseVersion: (version) =>
+    resolveVersionPurchaseTarget(version, {
+      buyoutPriceFen: resource.value?.buyout_price_fen ?? 0,
+      pricePoints: resource.value?.price_points ?? 0,
+      versions: versions.value,
+    }),
 })
 
 function handlePrimaryCta() {

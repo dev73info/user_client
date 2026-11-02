@@ -32,6 +32,15 @@ export function useResourceFileDownload(options: {
    * 版本售卖资源（资源级买断价为 0）要按版本下单，面板必须带上这个上下文。
    */
   openPurchasePanel: (version?: PublicMcResourceVersionItem | null) => Promise<void>
+  /**
+   * 把「被 403 拦截的版本」换算成购买面板真正要下单的版本。
+   *
+   * 0 价版本不可单卖：失败版本本身不可购时不能原样交给面板（后端会 409），
+   * 要改成整包购买（返回 null）或最低价可购版本。缺省直接沿用失败版本。
+   */
+  resolvePurchaseVersion?: (
+    version: PublicMcResourceVersionItem | null,
+  ) => PublicMcResourceVersionItem | null
 }) {
   const route = useRoute()
   const router = useRouter()
@@ -42,7 +51,10 @@ export function useResourceFileDownload(options: {
     const message = describeBackendError(error, '下载资源失败')
     if (error instanceof HttpError && error.status === 403 && isPurchaseRequiredError(message)) {
       TMessage.warning('请先购买该资源后再下载')
-      void options.openPurchasePanel(version ?? null)
+      const target = options.resolvePurchaseVersion
+        ? options.resolvePurchaseVersion(version ?? null)
+        : (version ?? null)
+      void options.openPurchasePanel(target)
       return
     }
     TMessage.warning(message)

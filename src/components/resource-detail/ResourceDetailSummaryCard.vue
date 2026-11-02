@@ -19,7 +19,7 @@ const props = defineProps<{
   isPaidPrice: boolean
   /** 买断 / 积分资源需要先购买（版本列表按钮也看它） */
   needsPurchase: boolean
-  /** 按版本售卖且最新版本有价：主按钮显示购买 */
+  /** 按版本售卖且访客未持有权益：主按钮显示购买 */
   needsVersionPurchase: boolean
   isApiResource: boolean
   purchaseSubmitting: boolean

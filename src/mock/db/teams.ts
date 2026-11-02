@@ -13,6 +13,7 @@
 import type { components } from '@/api/generated/schema'
 import type { McResourcePayload } from '@/api/mcResources'
 
+import { mcTeamOwnedResources } from './resources'
 import { CLIENT_NICKNAME, CLIENT_USERNAME, DEV_NICKNAME, DEV_USERNAME, iso } from './shared'
 
 type TeamResponse = components['schemas']['TeamResponse']
@@ -36,8 +37,8 @@ export const mockTeamMembers: MemberResponse[] = [
   { username: CLIENT_USERNAME, role: 'member', joined_at: iso(-40, 14, 30) },
 ]
 
-/** 团队名下的资源：与个人资源分开，`team_id` 为 1。 */
-export const mockTeamResources: McResourcePayload[] = [
+/** 团队名下的固定演示资源：与资源表里的团队资源合起来才是团队资源的全量。 */
+const teamSeedResources: McResourcePayload[] = [
   {
     id: 9101,
     creator: DEV_USERNAME,
@@ -102,6 +103,17 @@ export const mockTeamResources: McResourcePayload[] = [
     updated_at: iso(-2, 10, 0),
     promo_share_bps: 0,
   },
+]
+
+/**
+ * 团队名下的资源全量：固定演示数据 + 资源表里的团队资源。
+ *
+ * 团队资源页与门户「活跃团队」榜单看的是同一批资源，所以团队资源只在
+ * `db/resources.ts` 里定义一次，这里只做汇总。
+ */
+export const mockTeamResources: McResourcePayload[] = [
+  ...teamSeedResources,
+  ...mcTeamOwnedResources,
 ]
 
 let nextTeamId = 2

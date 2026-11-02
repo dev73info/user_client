@@ -25,16 +25,22 @@ export type {
   PrepaidRechargeRequest,
   PrepaidRefundRequest,
   PrepaidRefundResponse,
+  PrepaidWechatAuthUrl,
+  PrepaidWechatJsapi,
+  PrepaidWechatStatus,
   PrepaidWithdrawal,
   PrepaidWithdrawalQuery,
   PrepaidWithdrawalRequest,
 } from './devOrderDeposit/types'
 
 export {
+  completePrepaidWechatJsapi,
   createPrepaidRecharge,
   createPrepaidWithdrawal,
   getMyPrepaidOrder,
   getPrepaidAccountStatement,
+  getPrepaidWechatAuthUrl,
+  getPrepaidWechatStatus,
   listMyPrepaidOrders,
   listMyPrepaidWithdrawals,
 } from './devOrderDeposit/account'

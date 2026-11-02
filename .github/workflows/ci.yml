@@ -68,6 +68,11 @@ jobs:
 
       - name: 装 wasm-pack
         uses: jetli/wasm-pack-action@v0.4.0
+        with:
+          # 必须钉版本：action 默认取 latest，取到的版本会飘。
+          # 飘到 v0.9.1 时它自带的 wasm-opt（binaryen）解析不了新版 Rust 产出的 wasm，
+          # 报「Only 1 table definition allowed in MVP」，整条门禁在构建 tags-wasm 就挂掉。
+          version: v0.15.1
 
       - name: 构建 tags-wasm
         working-directory: tags-wasm

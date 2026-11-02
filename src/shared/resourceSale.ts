@@ -67,6 +67,7 @@ export {
   isVersionSaleResource,
   resolveVersionSaleMinPriceFen,
   resolveVersionSaleMinPriceVersion,
+  resolveVersionPurchaseTarget,
   formatVersionSalePriceLabel,
   needsVersionPurchase,
 } from './resourceSale/versionSale'

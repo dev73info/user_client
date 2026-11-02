@@ -3,8 +3,9 @@ import { fenToYuanText } from './price'
 /**
  * 按版本售卖的资源。
  *
- * 后端下载判定（`resource/src/application/service.rs`）：资源买断价与积分价都为 0 时，
- * 版本 `price_fen > 0` 的那一版需要购买；单版本下单接口按 `version_id` 取版本价。
+ * 后端下载判定（`resource/src/application/service.rs`）：资源买断价、积分价、任一未删除
+ * 版本的 `price_fen` 只要有一项大于 0，下载**任何**版本都需要权益；版本价为零表示该版本
+ * 不单卖，只能靠买断权益取得。单版本下单接口按 `version_id` 取版本价。
  * 所以「资源级标价 0 + 至少一个可购版本」就是按版本售卖，价格不能当成免费。
  */
 
@@ -79,6 +80,31 @@ export function resolveVersionSaleMinPriceVersion<T extends ResourceSaleVersionL
   return picked
 }
 
+/**
+ * 403 转购买时选下单目标版本。
+ *
+ * 0 价版本不可单卖：失败版本本身可购就用它；否则资源有买断价 / 积分价时按整包买（null）；
+ * 剩下的是版本售卖资源，回落到最低价可购版本。
+ */
+export function resolveVersionPurchaseTarget<T extends ResourceSaleVersionLike>(
+  failedVersion: T | null | undefined,
+  input: {
+    buyoutPriceFen?: number | null
+    pricePoints?: number | null
+    versions?: readonly T[] | null
+  },
+): T | null {
+  if (failedVersion && isPurchasableVersion(failedVersion)) {
+    return failedVersion
+  }
+  const buyout = Number(input.buyoutPriceFen ?? 0)
+  const points = Number(input.pricePoints ?? 0)
+  if ((Number.isFinite(buyout) && buyout > 0) || (Number.isFinite(points) && points > 0)) {
+    return null
+  }
+  return resolveVersionSaleMinPriceVersion(input.versions)
+}
+
 /** 版本售卖标价：「¥x 起」；没有有效版本价时回落到「免费」。 */
 export function formatVersionSalePriceLabel(minPriceFen: number | null | undefined): string {
   const fen = Number(minPriceFen ?? 0)
@@ -89,8 +115,10 @@ export function formatVersionSalePriceLabel(minPriceFen: number | null | undefin
 }
 
 /**
- * 主下载按钮（最新版本）是否需要先购买：按版本售卖，且最新版本本身有价。
- * 最新版本免费时不挡下载——版本列表里付费版本各自走 403 转购买。
+ * 主下载按钮（最新版本）是否需要先购买：按版本售卖且访客未持有权益就一律先购买。
+ *
+ * 0 价版本不单卖（只能靠买断取得），所以不能因为它「最新且免费」就放行下载；
+ * 版本列表的按钮仍先试下载，403 后按失败版本转购买。
  */
 export function needsVersionPurchase(input: {
   buyoutPriceFen?: number | null
@@ -102,10 +130,5 @@ export function needsVersionPurchase(input: {
   if (input.purchasedByMe || input.isOwner) {
     return false
   }
-  if (!isVersionSaleResource(input)) {
-    return false
-  }
-  const latest = input.versions?.[0]
-  const latestFen = Number(latest?.price_fen ?? 0)
-  return Number.isFinite(latestFen) && latestFen > 0
+  return isVersionSaleResource(input)
 }

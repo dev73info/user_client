@@ -9,8 +9,8 @@
 }
 
 .portal-notice-list {
-  gap: 12px;
-  margin-top: 12px;
+  gap: 10px;
+  margin-top: 10px;
 }
 
 .portal-notice-item strong,
@@ -25,10 +25,10 @@
   grid-template-columns: minmax(0, 1fr) max-content;
   overflow: hidden;
   align-items: center;
-  gap: 10px 14px;
-  padding: 14px 16px 14px 18px;
+  gap: 8px 10px;
+  padding: 9px 12px 9px 14px;
   border: 1px solid color-mix(in srgb, var(--73-border) 88%, transparent);
-  border-radius: 14px;
+  border-radius: 12px;
   background: var(--73-app-grad-soft-40);
   opacity: 0;
   outline: none;
@@ -79,10 +79,10 @@
   display: grid;
   grid-template-columns: minmax(0, 1fr) max-content;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
   min-width: 0;
   width: 100%;
-  padding-left: 16px;
+  padding-left: 12px;
 }
 
 .portal-notice-item__main::before {
@@ -107,15 +107,15 @@
 }
 
 .portal-notice-item__main strong {
-  display: -webkit-box;
+  display: block;
   min-width: 0;
   overflow: hidden;
-  font-size: 15px;
+  font-size: 14px;
   font-weight: 700;
   color: var(--73-ink);
-  line-height: 1.45;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
+  line-height: 1.4;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .portal-rank-item__meta {
@@ -139,7 +139,7 @@
 .portal-notice-item time {
   flex-shrink: 0;
   justify-self: end;
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 700;
   color: var(--73-ink-placeholder);
   white-space: nowrap;
@@ -159,7 +159,7 @@
 .portal-notice-item .portal-tag {
   justify-self: end;
   min-width: max-content;
-  padding: 5px 10px;
+  padding: 3px 8px;
   background: color-mix(in srgb, var(--73-danger) 8%, transparent);
   font-size: 10px;
   letter-spacing: 0;

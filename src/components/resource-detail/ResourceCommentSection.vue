@@ -161,15 +161,16 @@ function getCommenterInitial(value: string): string {
   font-size: 12px;
 }
 
-.resource-detail-page__comment-composer,
-.resource-detail-page__comment-item {
-  border-radius: 18px;
-  border: 1px solid var(--rdp-card-border);
-  background: var(--rdp-comment-surface);
+/* 边框只留外层卡片那一圈：输入区与每条评论不再各自套一层，
+   否则「资源评论卡 → 输入区 → 文本框」三层边框叠在一起，显得又碎又厚。 */
+.resource-detail-page__comment-composer {
+  padding: 0 0 4px;
 }
 
-.resource-detail-page__comment-composer {
-  padding: 16px;
+.resource-detail-page__comment-item {
+  border-radius: 14px;
+  border: 1px solid var(--rdp-card-border);
+  background: var(--rdp-comment-surface);
 }
 
 .resource-detail-page__comment-gate {

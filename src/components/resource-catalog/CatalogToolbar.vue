@@ -3,7 +3,7 @@
  * 资源目录工具条（仅桌面端渲染）。
  *
  * 第一行「专区下拉 + 子类下划线 Tab …… 分区 segmented（唯一一处）」，
- * 第二行「已选筛选 chip + 排序下拉 + 统计 / 翻页 / 返回」。
+ * 第二行「排序下拉 + 统计 + 已选筛选 chip …… 翻页 / 返回」。
  *
  * 数据全部由列表页经 props 传进来、操作一律 emit 出去：本组件不取数、不改路由，
  * 列表实例在父级手里（`remove-filter` / `clear-filters` / `go-*` 都由父级转给列表）。
@@ -101,28 +101,8 @@ const emit = defineEmits<{
     </div>
 
     <div class="catalog-toolbar__row">
-      <div class="catalog-chipbar">
-        <template v-if="filterChips.length > 0">
-          <button
-            v-for="chip in filterChips"
-            :key="chip.key"
-            class="catalog-chip"
-            type="button"
-            :aria-label="`移除筛选：${chip.label} ${chip.tag}`"
-            @click="emit('remove-filter', chip)"
-          >
-            <span>{{ chip.label }}：{{ chip.tag }}</span>
-            <span class="catalog-chip__close" aria-hidden="true">×</span>
-          </button>
-          <button class="catalog-chip-clear" type="button" @click="emit('clear-filters')">
-            清除全部
-          </button>
-        </template>
-        <span v-else class="catalog-chipbar__hint">未选择筛选条件</span>
-      </div>
-
-      <div class="catalog-toolbar__trailing">
-        <TDropdown trigger="click" placement="bottom-end" @command="emit('sort-command', $event)">
+      <div class="catalog-toolbar__lead">
+        <TDropdown trigger="click" placement="bottom-start" @command="emit('sort-command', $event)">
           <button class="catalog-sort-trigger" type="button" aria-label="排序方式">
             <span>排序：{{ selectedSort }}</span>
             <TIcon class="catalog-sort-trigger__chevron">
@@ -152,6 +132,28 @@ const emit = defineEmits<{
           >
         </span>
 
+        <div class="catalog-chipbar">
+          <template v-if="filterChips.length > 0">
+            <button
+              v-for="chip in filterChips"
+              :key="chip.key"
+              class="catalog-chip"
+              type="button"
+              :aria-label="`移除筛选：${chip.tag}`"
+              @click="emit('remove-filter', chip)"
+            >
+              <span>{{ chip.tag }}</span>
+              <span class="catalog-chip__close" aria-hidden="true">×</span>
+            </button>
+            <button class="catalog-chip-clear" type="button" @click="emit('clear-filters')">
+              清除
+            </button>
+          </template>
+          <span v-else class="catalog-chipbar__hint">未选择筛选条件</span>
+        </div>
+      </div>
+
+      <div class="catalog-toolbar__trailing">
         <!-- 分页只在多页时出现（单页整条隐藏） -->
         <CatalogPager
           v-if="listingReported && pageState.total > 1"

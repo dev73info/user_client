@@ -105,6 +105,16 @@ export const portalRoutes: RouteRecordRaw[] = [
     component: () => import('@/views/PaymentView.vue'),
   },
   {
+    // 保证金充值的微信支付中间页：PC 出码、手机微信扫码打开（令牌在 query，不要求登录）
+    path: '/payment/prepaid',
+    name: 'prepaid-wechat-pay',
+    component: () => import('@/views/PrepaidWechatPayView.vue'),
+    meta: {
+      title: '保证金充值',
+      hideSiteFooter: true,
+    },
+  },
+  {
     // R034 接口资源收银台：开发者站点带一次性票据跳进来，换票后即为登录态。
     path: '/checkout',
     name: 'api-resource-checkout',

@@ -67,6 +67,13 @@
   padding: 0;
 }
 
+/* 两个入口左右并排：签到与 QQ 群各占一半宽度。 */
+.portal-beta-notice__actions {
+  display: flex;
+  width: 100%;
+  gap: 8px;
+}
+
 .portal-beta-notice__badge {
   display: inline-flex;
   padding: 2px 10px;
@@ -79,7 +86,8 @@
 }
 
 .portal-beta-notice__btn {
-  align-self: stretch;
+  flex: 1;
+  min-width: 0;
   padding: 7px 0;
   border: 1px solid color-mix(in srgb, var(--73-accent) 28%, transparent);
   border-radius: 6px;
