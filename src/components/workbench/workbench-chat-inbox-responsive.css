@@ -24,7 +24,7 @@
     font-size: 15px;
   }
 
-  .workbench-inbox__search {
+  .workbench-inbox__header :deep(.workbench-inbox__search) {
     margin: 0 8px 8px;
   }
 

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
 import { workbenchRoutes } from '@/router/routes/workbench'
+import { devWorkbenchSharedRoutes } from '@/router/dev/workbenchShared'
 import {
   buildMenuGroups,
   devWorkbenchItems,
@@ -93,10 +94,16 @@ describe('开发者菜单', () => {
       '工作台总览',
       '资源项目',
       '接入客户端',
-      'AI 需求助手',
       '需求大厅',
       '我的接单',
     ])
+  })
+
+  it('已下线的「AI 需求助手」只保留一条回总览的重定向', () => {
+    const assistant = devWorkbenchSharedRoutes.find((route) => route.name === 'dev-assistant')
+
+    expect(assistant?.component).toBeUndefined()
+    expect(assistant?.redirect).toEqual({ name: 'dev-home' })
   })
 
   it('资源项目的子页面（版本 / 编辑主页 / 售出订单）都高亮这一条', () => {

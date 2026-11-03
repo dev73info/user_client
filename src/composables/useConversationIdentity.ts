@@ -78,9 +78,13 @@ export function useConversationIdentity(readSources: () => IdentitySources) {
   const peerInitial = computed(() => avatarText(peerName.value))
 
   /** 会话头副信息里的「对方」：会话还没载入时退回需求编号。 */
-  const headerPeerLabel = computed(() =>
-    readSources().conversation ? participantLabel.value : readSources().requirementId,
-  )
+  const headerPeerLabel = computed(() => {
+    const sources = readSources()
+    if (sources.displayMode === 'inline') {
+      return ''
+    }
+    return sources.conversation ? participantLabel.value : sources.requirementId
+  })
 
   /**
    * 会话头副信息里的实时状态。

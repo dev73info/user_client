@@ -5,6 +5,7 @@ import {
   createPrepaidWithdrawal,
   getPrepaidAccountStatement,
   type PrepaidAccountStatement,
+  type PrepaidLedgerEntry,
   type PrepaidWithdrawal,
 } from '@/api/devOrderDeposit'
 import { useAuthStore } from '@/stores/auth'
@@ -62,6 +63,9 @@ export function useDevWalletDeposit() {
     }
   })
 
+  /** 预付账户最近流水；没开通账户时为空表。资金明细用它补「保证金充值」行。 */
+  const ledger = computed<PrepaidLedgerEntry[]>(() => statement.value?.ledger ?? [])
+
   async function load() {
     if (!auth.isAuthed) {
       return
@@ -100,7 +104,7 @@ export function useDevWalletDeposit() {
     return result
   }
 
-  return { statement, credit, deposit, loading, error, load, withdraw }
+  return { statement, credit, deposit, ledger, loading, error, load, withdraw }
 }
 
 /** 分 → 元（仅用于展示）。 */

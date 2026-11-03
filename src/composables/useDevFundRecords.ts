@@ -12,12 +12,19 @@ import {
   type DevWalletIncomeItem,
   type DevWithdrawalRecord,
 } from '@/api/devWallet'
+import {
+  listMyPrepaidWithdrawals,
+  type PrepaidLedgerEntry,
+  type PrepaidWithdrawal,
+} from '@/api/devOrderDeposit'
 import { useClientPagination } from '@/composables/useClientPagination'
 import { buildFundRecords, filterFundRecords, type FundRecordKind } from '@/shared/devFundDisplay'
 import { useAuthStore } from '@/stores/auth'
 
 export type DevFundRecordsProps = {
   income: DevWalletIncomeItem[]
+  /** 预付账户流水（保证金充值 / 提现）；父级从保证金读数里带下来。 */
+  depositLedger?: PrepaidLedgerEntry[]
   keyword?: string
   kind?: FundRecordKind | 'all'
 }
@@ -27,13 +34,16 @@ export function useDevFundRecords(props: DevFundRecordsProps) {
 
   const loading = ref(false)
   const withdrawals = ref<DevWithdrawalRecord[]>([])
+  const depositWithdrawals = ref<PrepaidWithdrawal[]>([])
   const loadedToken = ref<string | null>(null)
 
-  /** 两类台账合成一段（收入 / 退款冲减 / 收入提现），按时间倒序。 */
+  /** 三类台账合成一段（收入 / 退款冲减 / 接单收入提现 / 保证金充值 / 保证金提现），按时间倒序。 */
   const records = computed(() =>
     buildFundRecords({
       income: props.income,
       incomeWithdrawals: withdrawals.value,
+      depositLedger: props.depositLedger ?? [],
+      depositWithdrawals: depositWithdrawals.value,
     }),
   )
 
@@ -59,7 +69,8 @@ export function useDevFundRecords(props: DevFundRecordsProps) {
     },
   )
 
-  /** 提现台账取 `GET /api/payment/withdrawals`：收入那一半由父级传进来，不在这里重取。 */
+  /** 两路出款台账：接单收入提现（`/payment/withdrawals`）与保证金提现（预付账户）。
+   *  收入那一半由父级传进来，不在这里重取；保证金充值流水同样来自父级的读数。 */
   async function loadRecords() {
     const token = auth.token
     if (!token) {
@@ -69,7 +80,16 @@ export function useDevFundRecords(props: DevFundRecordsProps) {
 
     loading.value = true
     try {
-      withdrawals.value = await listDevWithdrawals(token)
+      const [incomeResult, depositResult] = await Promise.allSettled([
+        listDevWithdrawals(token),
+        listMyPrepaidWithdrawals(token),
+      ])
+      if (incomeResult.status === 'rejected') {
+        throw incomeResult.reason
+      }
+      withdrawals.value = incomeResult.value
+      // 保证金提现读不到不该让整张表进错误态：少一类行，其余照常显示。
+      depositWithdrawals.value = depositResult.status === 'fulfilled' ? depositResult.value : []
       loadedToken.value = token
     } catch (error) {
       TMessage.error(error instanceof Error ? error.message : '加载提现记录失败')

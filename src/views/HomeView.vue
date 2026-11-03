@@ -194,6 +194,7 @@ const portalNotices = computed<PortalNotice[]>(() => {
             @publish="portalActions.openPrimaryPublishAction"
             @dev-workbench="portalActions.openDevWorkbench"
             @free-resources="portalActions.openFreeResources"
+            @community="portalActions.openCommunity"
           />
 
           <PortalQuickPanels :panels="quickPanels" @open="portalActions.openQuickPanel" />

@@ -28,24 +28,30 @@ describe('首页快捷入口', () => {
 })
 
 describe('首页定制流程', () => {
-  it('五个步骤都渲染图标与说明，不留下空白步骤', () => {
+  it('五个步骤都渲染编号、标题、说明与操作入口，不留下空白步骤', () => {
     const wrapper = mount(PortalWorkflowSection, { props: { steps: HOME_WORKFLOW_STEPS } })
     const cards = wrapper.findAll('.portal-step-card')
 
     expect(cards).toHaveLength(5)
-    expect(wrapper.findAll('.portal-step-card__icon').map((icon) => icon.text())).toEqual([
-      '▣',
-      '☑',
-      '⊞',
-      '☑',
-      '♥',
+    expect(cards.map((card) => card.find('.portal-step-card__no').text())).toEqual([
+      '1',
+      '2',
+      '3',
+      '4',
+      '5',
     ])
-    expect(cards.map((card) => card.find('strong').text())).toEqual([
-      '1. 提交需求',
-      '2. 需求审核',
-      '3. 开发者接单',
-      '4. 完成验收',
-      '5. 评价完成',
+    expect(cards.map((card) => card.find('.portal-step-card__title').text())).toEqual([
+      '提交需求',
+      '需求审核',
+      '开发者接单',
+      '完成验收',
+      '评价完成',
     ])
+    expect(cards.every((card) => card.find('.portal-step-card__summary').text().length > 0)).toBe(
+      true,
+    )
+    expect(cards.every((card) => card.find('.portal-step-card__action').text().endsWith('→'))).toBe(
+      true,
+    )
   })
 })

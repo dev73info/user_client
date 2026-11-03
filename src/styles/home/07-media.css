@@ -1,0 +1,86 @@
+/* 由 home.css 按顶层规则边界切分（第 7/7 段），
+   顺序与原文一致；跨文件级联依赖顺序。 */
+
+@media (max-width: 640px) {
+  .portal-shell {
+    width: calc(100% - 24px);
+  }
+
+  .portal-hero {
+    padding: 20px;
+  }
+
+  .portal-hero h1 {
+    font-size: 24px;
+  }
+
+  .portal-hero__actions,
+  .portal-quick-grid {
+    display: none;
+  }
+
+  .portal-entry-grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  .portal-entry {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    padding: 12px 4px;
+    border: 1px solid var(--73-border);
+    border-radius: var(--73-radius-inner);
+    background: var(--73-surface);
+    color: var(--73-ink);
+    font-family: inherit;
+    cursor: pointer;
+  }
+
+  .portal-entry__icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    background: var(--73-accent-soft);
+    color: var(--73-accent);
+  }
+
+  .portal-entry__icon svg {
+    width: 18px;
+    height: 18px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.6;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+
+  .portal-entry__label {
+    color: var(--73-ink-soft);
+    font-size: 11px;
+  }
+
+  .portal-workflow-grid,
+  .portal-spotlight-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .portal-section,
+  .portal-card {
+    padding: 16px;
+  }
+
+  .portal-spotlight-card__footer {
+    padding: 10px 12px;
+  }
+
+  .portal-pagination {
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+}

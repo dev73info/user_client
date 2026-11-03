@@ -1,5 +1,5 @@
 /**
- * 资金明细的纯展示层：类型/文案/金额格式，以及把两类台账**合成一张表**。
+ * 资金明细的纯展示层：类型/文案/金额格式，以及把三类台账**合成一张表**。
  *
  * 合成规则是这页最容易读错的地方，所以放在这里单独写清（见 `buildFundRecords`）：
  *
@@ -8,17 +8,30 @@
  * | 收入 | 父级传进来的 `DevIncomeResponse[]` | 每个里程碑分账到账一笔 |
  * | 退款冲减 | 同上，`refund_developer_cny > 0` 的行 | 售后按原分账份额从开发者收回的那部分 |
  * | 收入提现 | `GET /api/payment/withdrawals` | 接单收入的提现出款单 |
+ * | 保证金充值 | `GET /api/payment/developer-order-deposit` 的 `ledger`（`kind = recharge`） | 预付账户充值入账 |
+ * | 保证金提现 | `GET /api/payment/developer-order-deposit/withdrawals` | 预付账户退回保证金的出款单 |
  *
- * 只有这两类台账在契约里存在：1.x 的「保证金充值 / 保证金提现」是预付钱包，2.0 没有对应端点，
- * 接单保证金改由后端从可提现收益里冻结（`POST` 接单时判，不够回 409）。
+ * 保证金池的 `freeze` / `unfreeze` / `refund_*` 流水是账户内部动作（接单冻结、解冻、退款占用），
+ * 不进这张表：这里是「钱进出了哪些口」，不是预付账户的完整账本。
  *
  * 金额一律按**正数**展示、方向靠「类型」区分（与原来的收入记录同一口径），不做正负号——
  * 混排时符号容易被读成「同一笔钱的加减」。
  */
+import type { PrepaidLedgerEntry, PrepaidWithdrawal } from '@/api/devOrderDeposit'
 import type { DevWalletIncomeItem, DevWithdrawalRecord } from '@/api/devWallet'
 
-/** 三类资金动作：类型标签 + 金额着色 + 那一行的说明怎么拼。 */
-export type FundRecordKind = 'income' | 'income_reversal' | 'income_withdrawal'
+import { buildDepositFundRecords } from './devDepositFundRecords'
+import { incomeWithdrawalStatusText, statusTagType } from './devWithdrawalStatus'
+
+export { incomeWithdrawalStatusText, statusTagType } from './devWithdrawalStatus'
+
+/** 五类资金动作：类型标签 + 金额着色 + 那一行的说明怎么拼。 */
+export type FundRecordKind =
+  | 'income'
+  | 'income_reversal'
+  | 'income_withdrawal'
+  | 'deposit_recharge'
+  | 'deposit_withdrawal'
 
 export type FundAmountPart = {
   amount: number
@@ -46,6 +59,8 @@ export const KIND_LABELS: Record<FundRecordKind, string> = {
   income: '收入',
   income_reversal: '退款冲减',
   income_withdrawal: '提现',
+  deposit_recharge: '保证金充值',
+  deposit_withdrawal: '保证金提现',
 }
 
 /** 金额展示：一律带 ¥ 与两位小数；缺值按 0 处理（列表里不出现空白格）。 */
@@ -76,68 +91,39 @@ export function fundAmount(record: Pick<FundRecord, 'amount' | 'amountParts'>) {
   return `${money(record.amount)}（${parts.map((part) => money(part.amount)).join(' + ')}）`
 }
 
-/**
- * 接单收入提现的状态文案。
- *
- * 已知状态用列表页的紧凑文案（例如 `processing` →「处理中」），未知状态才回落到
- * 后端下发的 `status_label`，最后才是状态码。这里不写任何到账承诺：
- * 1.x 页面那句「出款中（T+1）」里的 T+1 并不是后端契约。
- */
-export function incomeWithdrawalStatusText(
-  status: DevWithdrawalRecord['status'],
-  statusLabel?: string | null,
-) {
-  const map: Record<string, string> = {
-    pending_review: '待审核',
-    approved: '待出款',
-    processing: '处理中',
-    payout_processing: '处理中',
-    failed: '出款失败',
-    payout_failed: '出款失败',
-    rejected: '已驳回',
-    paid: '已到账',
-    closed: '已关闭',
-  }
-  return map[status] ?? statusLabel ?? status
-}
-
-export function statusTagType(
-  status: DevWithdrawalRecord['status'],
-): 'warning' | 'success' | 'danger' | 'info' {
-  if (status === 'pending_review') {
-    return 'warning'
-  }
-  if (status === 'approved' || status === 'processing' || status === 'payout_processing') {
-    return 'info'
-  }
-  if (status === 'paid') {
-    return 'success'
-  }
-  return 'danger'
-}
-
-/** 钱进来的那一类（收入）用黄色强调，提现用绿色，冲减用警示色。 */
+/** 钱进来的那一类（收入 / 保证金充值）用青色强调，出账用其它色调。 */
 export function isInflowKind(kind: FundRecordKind): boolean {
-  return kind === 'income'
+  return kind === 'income' || kind === 'deposit_recharge'
 }
 
-/** 「类型」列的标签色调：收入黄色、提现绿色、退款冲减红色。 */
-export function kindTagTone(kind: FundRecordKind): 'warning' | 'success' | 'danger' {
+/** 「类型」列的标签色调：收入黄色、提现绿色、退款冲减红色、保证金提现蓝色。 */
+export function kindTagTone(kind: FundRecordKind): 'warning' | 'success' | 'danger' | 'info' {
   if (kind === 'income') {
     return 'warning'
   }
-  return kind === 'income_withdrawal' ? 'success' : 'danger'
+  if (kind === 'income_reversal') {
+    return 'danger'
+  }
+  if (kind === 'deposit_withdrawal') {
+    return 'info'
+  }
+  return 'success'
 }
 
 export type FundRecordSources = {
   income: DevWalletIncomeItem[]
   incomeWithdrawals: DevWithdrawalRecord[]
+  /** 预付账户流水：只取 `kind = recharge` 那几行，其余是账户内部动作。 */
+  depositLedger: PrepaidLedgerEntry[]
+  depositWithdrawals: PrepaidWithdrawal[]
 }
 
-/** 两类台账合成一段，按时间倒序。纯函数：不给入参就返回空表，方便单测。 */
+/** 三类台账合成一段，按时间倒序。纯函数：不给入参就返回空表，方便单测。 */
 export function buildFundRecords(sources: Partial<FundRecordSources> = {}): FundRecord[] {
   const income = sources.income ?? []
   const incomeWithdrawals = sources.incomeWithdrawals ?? []
+  const depositLedger = sources.depositLedger ?? []
+  const depositWithdrawals = sources.depositWithdrawals ?? []
   const merged: FundRecord[] = []
 
   // 同一需求通常有定金与尾款两笔分账。收入按需求合并成一行，
@@ -225,6 +211,8 @@ export function buildFundRecords(sources: Partial<FundRecordSources> = {}): Fund
       time: record.created_time,
     })
   }
+
+  merged.push(...buildDepositFundRecords(depositLedger, depositWithdrawals))
 
   // 时间缺失（契约里 nullable 的字段）不能让它抛 `Cannot read properties of undefined`：
   // 缺时间的行按空串参与比较，落到表尾，其余行照常倒序。

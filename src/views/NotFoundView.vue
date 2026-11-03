@@ -190,7 +190,7 @@ onBeforeUnmount(() => {
 
 .not-found-btn--primary {
   color: var(--73-surface-strong);
-  background: var(--73-app-grad-accent-04);
+  background: var(--73-accent);
   border-color: transparent;
 }
 

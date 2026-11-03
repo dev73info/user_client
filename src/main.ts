@@ -19,6 +19,11 @@ import './styles/unified-top-card.css'
 import './styles/dev.css'
 // 工作台外壳的色板（`--uw-*`）：只被 `.user-workbench` 那一支外壳用，取值见文件头注释。
 import './styles/workbench-shell.css'
+// 「我的需求」页的版式（对齐 Stitch 设计稿）：放在工作台统一层之后，靠选择器层级压过默认纸页样式。
+// 工作台收敛版（去噪）：最后引入，统一压掉标签底色、卡片投影与次级按钮描边。
+import './styles/workbench-quiet.css'
+// 提示条统一改成玻璃底：覆盖 ui_73info 里那套不透明语气底，需排在组件样式之后。
+import './styles/toast-glass.css'
 
 // 维护模式：设置 VITE_MAINTENANCE_MODE=true 后，用户端重定向到维护页。
 if (

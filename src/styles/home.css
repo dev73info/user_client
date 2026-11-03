@@ -1,22 +1,9 @@
-/* 首页样式入口：整份按区块切成 15 个分片，@import 顺序 = 原 home.css 的书写顺序，
-   级联顺序与原文件逐条一致（同名选择器的先后、@media 与它包着的规则都没动过）。
-   分片只搬运不修改：声明、选择器、媒体查询一字未改，色值也没动；改顺序会让级联悄悄变样。
-   01 基础与主视觉 / 02 卡片外壳 / 03 侧栏通知 / 04 统计与排行 / 05 贡献榜 /
-   06 关键帧与快捷入口 / 07 区块标题与内测卡 / 08 步骤卡 / 09 分页 /
-   10 空态与精选卡 / 11 精选标记与点赞 / 12 精选卡页脚 /
-   13 响应式 1180-900-640 / 14 移动端入口宫格 / 15 移动端侧栏与横幅 */
-@import './home/01-base-layout-hero.css';
-@import './home/02-card-shell.css';
-@import './home/03-sidebar-notice.css';
-@import './home/04-stats-rank.css';
-@import './home/05-contrib-board.css';
-@import './home/06-keyframes-quick-entry.css';
-@import './home/07-section-beta-checkin.css';
-@import './home/08-step-cards.css';
-@import './home/09-pagination.css';
-@import './home/10-empty-spotlight-card.css';
-@import './home/11-spotlight-mark-like.css';
-@import './home/12-spotlight-footer.css';
-@import './home/13-responsive-1180-900-640.css';
-@import './home/14-mobile-entry-grid.css';
-@import './home/15-mobile-sidebar-flow-banner.css';
+/* home 入口：整份按顶层规则边界切成 7 个分片，@import 顺序 = 原文书写顺序。
+   分片只搬运、不改声明；改顺序会让级联悄悄变样。 */
+@import './home/01-part.css';
+@import './home/02-portal-primary-action.css';
+@import './home/03-portal-step-card-no.css';
+@import './home/04-portal-spotlight-card-orig.css';
+@import './home/05-portal-card-title-icon-tea.css';
+@import './home/06-portal-contrib-item-avatar.css';
+@import './home/07-media.css';

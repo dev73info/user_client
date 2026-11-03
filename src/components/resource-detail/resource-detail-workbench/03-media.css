@@ -1,0 +1,210 @@
+/* 由 resource-detail-workbench.css 按顶层规则边界切分（第 3/3 段），
+   顺序与原文一致；跨文件级联依赖顺序。 */
+
+@media (min-width: 901px) {
+  .resource-detail-page--panel .resource-detail-page__comment-composer {
+    margin-bottom: 16px;
+    padding: 12px;
+    border: 1px solid var(--73-border);
+    border-radius: var(--73-radius-inner);
+    background: var(--73-bg-soft);
+  }
+
+  .resource-detail-page--panel .resource-detail-page__comment-input {
+    width: 100%;
+    min-height: 72px;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: var(--73-ink);
+    font-family: inherit;
+    font-size: 13px;
+    line-height: 1.6;
+    outline: none;
+    resize: vertical;
+  }
+
+  .resource-detail-page--panel .resource-detail-page__comment-input::placeholder {
+    color: var(--73-ink-placeholder);
+  }
+
+  .resource-detail-page--panel .resource-detail-page__comment-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin-top: 8px;
+  }
+
+  .resource-detail-page--panel .resource-detail-page__comment-count {
+    color: var(--73-ink-muted);
+    font-family: var(--73-font-family-mono);
+    font-size: 11px;
+  }
+
+  .resource-detail-page--panel .resource-detail-page__comment-count.danger {
+    color: var(--73-danger);
+  }
+
+  .resource-detail-page--panel .resource-detail-page__comment-submit {
+    height: 30px;
+    padding: 0 12px;
+    border: 1px solid var(--73-accent);
+    border-radius: var(--73-radius-control);
+    background: var(--73-accent);
+    color: var(--73-accent-contrast);
+    font-family: inherit;
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+  }
+
+  .resource-detail-page--panel .resource-detail-page__comment-submit:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  .resource-detail-page--panel .resource-detail-page__comment-item {
+    display: flex;
+    gap: 10px;
+    padding: 12px 0;
+    border-top: 1px solid var(--73-border-soft);
+  }
+
+  .resource-detail-page--panel .resource-detail-page__comment-avatar {
+    display: inline-flex;
+    flex: 0 0 32px;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border-radius: var(--73-radius-pill);
+    background: var(--73-inset);
+    color: var(--73-accent);
+    font-size: 12px;
+    font-weight: 600;
+  }
+
+  .resource-detail-page--panel .resource-detail-page__comment-body {
+    min-width: 0;
+  }
+
+  .resource-detail-page--panel .resource-detail-page__comment-meta {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+  }
+
+  .resource-detail-page--panel .resource-detail-page__comment-meta strong {
+    color: var(--73-ink);
+    font-size: 12px;
+    font-weight: 600;
+  }
+
+  .resource-detail-page--panel .resource-detail-page__comment-meta span {
+    color: var(--73-ink-muted);
+    font-size: 10px;
+  }
+
+  .resource-detail-page--panel .resource-detail-page__comment-body p {
+    margin: 4px 0 0;
+    color: var(--73-ink-soft);
+    font-size: 12px;
+    line-height: 1.6;
+  }
+
+  .resource-detail-page--panel .resource-detail-page__comment-gate {
+    padding: 8px 0;
+  }
+
+  .resource-detail-page--panel .resource-detail-page__comment-gate strong {
+    color: var(--73-ink);
+    font-size: 13px;
+  }
+
+  .resource-detail-page--panel .resource-detail-page__comment-gate p {
+    margin: 4px 0 8px;
+    color: var(--73-ink-muted);
+    font-size: 12px;
+  }
+
+  .resource-detail-page--panel .resource-detail-page__comment-action {
+    height: 30px;
+    padding: 0 12px;
+    border: 1px solid var(--73-border);
+    border-radius: var(--73-radius-control);
+    background: var(--73-surface);
+    color: var(--73-accent);
+    font-family: inherit;
+    font-size: 12px;
+    cursor: pointer;
+  }
+
+  /* 加载失败的兜底 */
+  .resource-detail-page--panel .resource-detail-page__load-error {
+    padding: 24px;
+    border: 1px solid var(--73-border);
+    border-radius: var(--73-radius-card);
+    background: var(--73-surface);
+    color: var(--73-ink-soft);
+    text-align: center;
+  }
+}
+
+/* --- 详情独立页形态的返回行（草稿：← 返回资源列表 + 面包屑） --- */
+@media (min-width: 901px) {
+  .resource-detail-page--panel .resource-detail-page__backbar {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 16px;
+    margin-bottom: 16px;
+  }
+
+  .resource-detail-page--panel .resource-detail-page__back-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    height: 32px;
+    padding: 0 10px;
+    border: 1px solid var(--73-border);
+    border-radius: var(--73-radius-control);
+    background: var(--73-surface);
+    color: var(--73-ink-soft);
+    font-family: inherit;
+    font-size: 12px;
+    cursor: pointer;
+    transition:
+      background-color var(--73-transition),
+      border-color var(--73-transition);
+  }
+
+  .resource-detail-page--panel .resource-detail-page__back-btn:hover {
+    border-color: var(--73-border-hover);
+    background: var(--73-bg-soft);
+  }
+
+  .resource-detail-page--panel .resource-detail-page__breadcrumb {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    min-width: 0;
+    color: var(--73-ink-muted);
+    font-size: 12px;
+  }
+
+  .resource-detail-page--panel .resource-detail-page__breadcrumb strong {
+    overflow: hidden;
+    max-width: 460px;
+    color: var(--73-ink);
+    font-weight: 500;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
+
+@media (max-width: 900px) {
+  .resource-detail-page--panel .resource-detail-page__backbar {
+    display: none;
+  }
+}

@@ -64,8 +64,8 @@ const emit = defineEmits<{
       <!-- 副信息一行只报「对方是谁」。实时状态、最近一条消息都不放在这里：
            前者每几秒自己变色，后者「尚无消息」在空会话里等于什么都没说，
            两者叠在标题下面会一直抖动，也不让人更清楚这条会话是跟谁在谈。 -->
-      <p class="conversation-modal__identity-meta">
-        <span class="conversation-modal__peer">{{ peerLabel }}</span>
+      <p v-if="peerLabel || realtimeStatusLabel" class="conversation-modal__identity-meta">
+        <span v-if="peerLabel" class="conversation-modal__peer">{{ peerLabel }}</span>
         <span
           v-if="realtimeStatusLabel"
           class="conversation-modal__live"

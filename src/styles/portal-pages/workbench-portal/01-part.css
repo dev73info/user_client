@@ -1,0 +1,263 @@
+/* 由 04-workbench-portal.css 按顶层规则边界切分（第 1/4 段），
+   顺序与原文一致；跨文件级联依赖顺序。 */
+
+/* ============================================================================
+   门户二级页 · Workbench 亮色覆盖层（桌面端）
+   ============================================================================
+
+   覆盖共享的 `.portal-page` 体系（需求大厅、积分商城以及后续沿用同一骨架的门户页），
+   以及需求大厅 / 积分商城的页面级块。只作用于 ≥901px；窄屏继续走原响应式分片。
+   选择器带 `.portal-page.portal-page--nav` / `.portal-page.mall-page` 提高特异性，
+   压过各组件自己的 scoped 样式。颜色一律走 `--73-*` 令牌。
+   ============================================================================ */
+
+@media (min-width: 901px) {
+  /* --- 页面外壳：通栏浅灰画布 + 1280 内容列 --- */
+  .portal-page.portal-page--nav {
+    width: 100%;
+    max-width: none;
+    margin: 0;
+    padding: 24px max(24px, calc((100% - 1280px) / 2)) 24px;
+    background: var(--73-bg);
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+  }
+
+  /* --- 页头条（需求大厅 / 积分商城共用） --- */
+  .portal-hero-strip,
+  .mall-hero {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 24px;
+    flex-wrap: wrap;
+  }
+
+  .portal-hero-strip__eyebrow,
+  .mall-hero__eyebrow {
+    margin-bottom: 8px;
+    color: var(--73-accent);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+
+  .portal-hero-strip h1,
+  .mall-hero h1 {
+    margin: 0;
+    color: var(--73-ink);
+    font-size: 24px;
+    font-weight: 600;
+    line-height: 1.25;
+    letter-spacing: -0.02em;
+  }
+
+  .portal-hero-strip p,
+  .mall-hero p {
+    margin: 4px 0 0;
+    color: var(--73-ink-soft);
+    font-size: 13px;
+  }
+
+  .portal-hero-strip__stats {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 12px;
+    border: 1px solid var(--73-border);
+    border-radius: var(--73-radius-control);
+    background: var(--73-surface);
+    color: var(--73-ink-soft);
+    font-family: var(--73-font-family-mono);
+    font-size: 12px;
+    box-shadow: var(--73-shadow-card);
+  }
+
+  .portal-hero-strip__dot {
+    width: 6px;
+    height: 6px;
+    border-radius: var(--73-radius-pill);
+    background: var(--73-success);
+  }
+
+  .mall-hero__balance {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 10px;
+    padding: 8px 16px;
+    border: 1px solid var(--73-border);
+    border-radius: var(--73-radius-control);
+    background: var(--73-surface);
+    box-shadow: var(--73-shadow-card);
+  }
+
+  .mall-hero__balance span {
+    color: var(--73-ink-muted);
+    font-size: 12px;
+  }
+
+  .mall-hero__balance strong {
+    color: var(--73-accent);
+    font-family: var(--73-font-family-mono);
+    font-size: 22px;
+    font-weight: 600;
+  }
+
+  /* --- 两栏骨架 --- */
+  .portal-page--nav .portal-page__content {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(300px, 380px);
+    align-items: start;
+    gap: 20px;
+  }
+
+  .portal-page--nav .portal-page__panel {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+  }
+
+  .portal-page--nav .portal-page__aside {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  /* --- 需求大厅工具条 --- */
+  .portal-page.portal-page--nav .requirement-hall__toolbar {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-bottom: 0;
+    padding: 14px;
+    border: 1px solid var(--73-border);
+    border-radius: var(--73-radius-inner);
+    background: var(--73-surface);
+    box-shadow: var(--73-shadow-card);
+  }
+
+  .portal-page.portal-page--nav .requirement-hall__toolbar .requirement-hall__guarantee-select {
+    flex: 0 0 auto;
+  }
+
+  .portal-page.portal-page--nav .requirement-hall__toolbar .requirement-hall__search {
+    flex: 0 1 280px;
+    min-width: 240px;
+  }
+
+  .portal-page.portal-page--nav .requirement-hall__header-actions {
+    margin-left: auto;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .portal-page.portal-page--nav .requirement-hall__publish-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    height: var(--73-control-height);
+    padding: 0 14px;
+    border: 1px solid var(--73-accent);
+    border-radius: var(--73-radius-control);
+    background: var(--73-accent);
+    color: var(--73-accent-contrast);
+    font-family: inherit;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background-color var(--73-transition);
+  }
+
+  .portal-page.portal-page--nav .requirement-hall__publish-btn:hover {
+    background: color-mix(in srgb, var(--73-accent) 85%, var(--73-ink));
+  }
+
+  /* --- 需求卡 --- */
+  .portal-page--nav .portal-page__card-grid,
+  .portal-page--nav .portal-page__resource-grid,
+  .portal-page--nav .portal-page__collection-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 16px;
+  }
+
+  .portal-page.portal-page--nav .portal-page__card,
+  .portal-page.portal-page--nav .portal-page__collection-card {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 16px;
+    border: 1px solid var(--73-border);
+    border-radius: var(--73-radius-inner);
+    background: var(--73-surface);
+    box-shadow: var(--73-shadow-card);
+  }
+
+  .portal-page.portal-page--nav .portal-page__card:hover {
+    border-color: var(--73-border-hover);
+    box-shadow: var(--73-shadow-card-hover);
+  }
+
+  .portal-page.portal-page--nav .portal-page__card h2,
+  .portal-page.portal-page--nav .portal-page__card h3 {
+    margin: 0;
+    color: var(--73-ink);
+    font-size: 16px;
+    font-weight: 600;
+    line-height: 1.4;
+  }
+
+  .portal-page.portal-page--nav .portal-page__card p {
+    margin: 0;
+    color: var(--73-ink-soft);
+    font-size: 12px;
+    line-height: 1.6;
+  }
+
+  .portal-page.portal-page--nav .portal-page__card-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-top: auto;
+    padding-top: 12px;
+    border-top: 1px solid var(--73-border-soft);
+  }
+
+  .portal-page.portal-page--nav .portal-page__card-footer strong {
+    color: var(--73-ink);
+    font-size: 20px;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .portal-page.portal-page--nav .requirement-hall__card {
+    min-height: 180px;
+  }
+
+  .portal-page.portal-page--nav .requirement-hall__card h2 {
+    font-size: 14px;
+    line-height: 1.45;
+    transition: color var(--73-transition);
+  }
+
+  .portal-page.portal-page--nav .requirement-hall__card:hover h2 {
+    color: var(--73-accent);
+  }
+
+  .portal-page.portal-page--nav .requirement-hall__card p {
+    color: var(--73-ink-soft);
+    font-size: 13px;
+    line-height: 1.55;
+  }
+}

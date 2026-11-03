@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { nextTick, onBeforeUnmount, onMounted, ref, watch, type ComponentPublicInstance } from 'vue'
 
 import {
   extractResourceFileNameFromUrl,
@@ -55,6 +55,68 @@ function toggleVersionNote(versionId: number) {
   }
 }
 
+/**
+ * 「展开 / 收起」只在说明真的超过两行时出现。
+ * 说明默认带 `is-collapsed`（两行截断）；测量时临时摘掉这个类量一次自然高度，
+ * 再在同一帧恢复，不会出现可见闪烁。容器宽度变化（窗口缩放 / 栏宽变化）时重测。
+ */
+const noteElements = new Map<number, HTMLElement>()
+const overflowingNoteIds = ref<Set<number>>(new Set())
+const listRef = ref<HTMLElement | null>(null)
+let resizeObserver: ResizeObserver | null = null
+
+function setNoteRef(el: Element | ComponentPublicInstance | null, versionId: number) {
+  if (el instanceof HTMLElement) {
+    noteElements.set(versionId, el)
+  } else {
+    noteElements.delete(versionId)
+  }
+}
+
+function measureOverflow() {
+  const next = new Set<number>()
+  for (const [versionId, el] of noteElements) {
+    const wasCollapsed = el.classList.contains('is-collapsed')
+    if (wasCollapsed) {
+      el.classList.remove('is-collapsed')
+    }
+    const lineHeight = Number.parseFloat(getComputedStyle(el).lineHeight)
+    const overflows =
+      Number.isFinite(lineHeight) && lineHeight > 0 ? el.scrollHeight > lineHeight * 2 + 0.5 : false
+    if (wasCollapsed) {
+      el.classList.add('is-collapsed')
+    }
+    if (overflows) {
+      next.add(versionId)
+    }
+  }
+  const prev = overflowingNoteIds.value
+  if (next.size !== prev.size || [...next].some((id) => !prev.has(id))) {
+    overflowingNoteIds.value = next
+  }
+}
+
+onMounted(() => {
+  void nextTick(measureOverflow)
+  if (typeof ResizeObserver !== 'undefined' && listRef.value) {
+    resizeObserver = new ResizeObserver(() => measureOverflow())
+    resizeObserver.observe(listRef.value)
+  }
+})
+
+onBeforeUnmount(() => {
+  resizeObserver?.disconnect()
+  resizeObserver = null
+  noteElements.clear()
+})
+
+watch(
+  () => props.versions,
+  () => {
+    void nextTick(measureOverflow)
+  },
+)
+
 /** 这条版本下载下来会叫什么名字——与父级触发下载时用的算法必须一致，否则「下载中」永远对不上 */
 function versionFileName(version: PublicMcResourceVersionItem): string {
   return with73Extension(
@@ -94,8 +156,11 @@ function downloadLabel(version: PublicMcResourceVersionItem): string {
   <article class="resource-detail-page__content-card resource-detail-page__versions-side-card">
     <header class="resource-detail-page__section-head">
       <h2>历史版本</h2>
+      <span v-if="versions.length" class="resource-detail-page__section-count">
+        {{ versions.length }} 个构建
+      </span>
     </header>
-    <div v-if="versions.length" class="resource-detail-page__version-list">
+    <div v-if="versions.length" ref="listRef" class="resource-detail-page__version-list">
       <article
         v-for="version in versions"
         :key="version.id"
@@ -116,7 +181,7 @@ function downloadLabel(version: PublicMcResourceVersionItem): string {
           </div>
         </div>
         <button
-          v-if="version.note"
+          v-if="version.note && overflowingNoteIds.has(version.id)"
           class="resource-detail-page__version-note-toggle"
           type="button"
           @click="toggleVersionNote(version.id)"
@@ -124,12 +189,13 @@ function downloadLabel(version: PublicMcResourceVersionItem): string {
           {{ isVersionNoteExpanded(version.id) ? '收起' : '展开' }}
         </button>
         <div class="resource-detail-page__version-note-wrap">
-          <p
+          <div
             v-if="version.note"
+            :ref="(el) => setNoteRef(el, version.id)"
             class="resource-detail-page__version-note"
             :class="{ 'is-collapsed': !isVersionNoteExpanded(version.id) }"
             v-html="formatHomepageContent(version.note)"
-          ></p>
+          ></div>
           <p v-else class="resource-detail-page__paragraph">当前版本暂无补充说明。</p>
         </div>
         <div class="resource-detail-page__version-actions">
@@ -148,198 +214,4 @@ function downloadLabel(version: PublicMcResourceVersionItem): string {
   </article>
 </template>
 
-<style scoped>
-/* 色值全部取父级声明的 `--rdp-*`（`raw-color` 门禁按文件聚合，新文件里不许出现裸色值）。
-   断点沿用 640 / 900 / 1180 三档。 */
-
-/* 段落头：与父级「页面内容 / 资源评论」两块同一套观感——scoped 规则不跨组件作用域，这里留一份。
-   原父级是「headline-row / cta-row / version-headline / version-meta / section-head」五合一的那条
-   flex 规则，拆开后把落在本组件里的三只（version-headline / version-meta / section-head）合成一条。 */
-.resource-detail-page__version-headline,
-.resource-detail-page__version-meta,
-.resource-detail-page__section-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  flex-wrap: wrap;
-}
-
-.resource-detail-page__section-head {
-  align-items: baseline;
-  margin-bottom: 16px;
-}
-
-.resource-detail-page__section-head h2 {
-  margin: 0;
-  color: var(--rdp-ink);
-}
-
-.resource-detail-page__section-head span {
-  font-size: 12px;
-}
-
-.resource-detail-page__version-list {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  max-height: min(680px, calc(100vh - 220px));
-  overflow-y: auto;
-  padding-right: 8px;
-  scrollbar-gutter: stable;
-}
-
-.resource-detail-page__version-card {
-  border-radius: 18px;
-  padding: 18px 18px 5px;
-  border: 1px solid var(--rdp-card-border);
-  background: var(--rdp-card-surface);
-}
-
-.resource-detail-page__version-note-wrap {
-  margin-top: 4px;
-}
-
-.resource-detail-page__version-note {
-  margin: 0;
-  color: var(--rdp-body);
-  line-height: 1.8;
-}
-
-.resource-detail-page__version-note :deep(p),
-.resource-detail-page__version-note :deep(ul),
-.resource-detail-page__version-note :deep(ol),
-.resource-detail-page__version-note :deep(blockquote) {
-  color: var(--rdp-body);
-  line-height: 1.8;
-  margin: 8px 0;
-}
-
-.resource-detail-page__version-note :deep(p:first-child),
-.resource-detail-page__version-note :deep(ul:first-child),
-.resource-detail-page__version-note :deep(ol:first-child),
-.resource-detail-page__version-note :deep(blockquote:first-child) {
-  margin-top: 0;
-}
-
-.resource-detail-page__version-note :deep(p:last-child),
-.resource-detail-page__version-note :deep(ul:last-child),
-.resource-detail-page__version-note :deep(ol:last-child),
-.resource-detail-page__version-note :deep(blockquote:last-child) {
-  margin-bottom: 0;
-}
-
-.resource-detail-page__version-note :deep(code) {
-  color: var(--rdp-ink);
-}
-
-.resource-detail-page__version-note.is-collapsed {
-  display: -webkit-box;
-  -webkit-line-clamp: 3;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
-
-.resource-detail-page__version-actions {
-  display: flex;
-  justify-content: flex-end;
-  align-items: center;
-  gap: 8px;
-  margin-top: 5px;
-  padding-top: 5px;
-  border-top: 1px solid var(--rdp-hairline);
-}
-
-.resource-detail-page__version-note-toggle {
-  position: sticky;
-  top: 8px;
-  float: right;
-  margin: -25px 0 8px 12px;
-  padding: 4px 14px;
-  border: none;
-  border-radius: 999px;
-  background: var(--rdp-toggle-bg);
-  color: var(--rdp-muted);
-  font-size: 12px;
-  font-weight: 700;
-  line-height: 1.4;
-  cursor: pointer;
-  transition: background-color 0.2s;
-  white-space: nowrap;
-  z-index: 2;
-}
-
-.resource-detail-page__version-note-toggle:hover {
-  background: var(--rdp-toggle-bg-hover);
-}
-
-.resource-detail-page__version-meta strong {
-  color: var(--rdp-ink);
-}
-
-.resource-detail-page__version-flags {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.resource-detail-page__version-current {
-  padding: 2px 10px;
-  border-radius: 999px;
-  background: var(--rdp-soft-surface);
-  color: var(--rdp-link);
-  font-size: 12px;
-  font-weight: 700;
-}
-
-.resource-detail-page__version-price {
-  color: var(--rdp-muted);
-  font-size: 12px;
-}
-
-/* 次要文本：原父级与 `__meta` / `__summary` 共用一条，落在本组件的是版本时间与空态提示 */
-.resource-detail-page__version-meta span,
-.resource-detail-page__paragraph {
-  margin: 0;
-  color: var(--rdp-muted);
-  line-height: 1.8;
-}
-
-/* 下载按钮：描边 / 光标 / 过渡原与主按钮共用一条，主按钮留在父级，这里留自己这份 */
-.resource-detail-page__version-download {
-  border: 0;
-  cursor: pointer;
-  transition:
-    transform 180ms ease,
-    box-shadow 180ms ease,
-    background-color 180ms ease;
-  color: var(--rdp-link);
-  background: var(--rdp-soft-surface);
-  font-weight: 700;
-  min-height: 32px;
-  padding: 0 12px;
-  border-radius: 10px;
-  font-size: 13px;
-}
-
-.resource-detail-page__version-download:hover {
-  transform: translateY(-1px);
-}
-
-@media (max-width: 640px) {
-  .resource-detail-page__version-list {
-    max-height: min(520px, calc(100vh - 260px));
-  }
-
-  .resource-detail-page__version-headline {
-    align-items: flex-start;
-  }
-}
-
-/* 内嵌形态（资源列表页内容区）里版本列表不跟着页面无限拉长：超过 420px 由它自己滚。
-   祖先类 `.resource-detail-page--panel` 在父级根节点上，scoped 只给最后一段加属性，所以这条照样命中；
-   顺序必须留在 640 档之后（原父级也是这样，panel 档权重更高、要压掉 640 的 max-height）。 */
-.resource-detail-page--panel .resource-detail-page__version-list {
-  max-height: 420px;
-}
-</style>
+<style scoped src="./resource-version-list.css"></style>

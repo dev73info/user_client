@@ -96,18 +96,37 @@ describe('DeveloperRankCard', () => {
     expect(names[1]?.attributes('style')).toContain('color: blue')
   })
 
-  it('页脚用传入的合计，不自己再算一遍', () => {
+  it('信用分展示并按档位着色，页脚仍用传入的合计', () => {
     const wrapper = mount(DeveloperRankCard, {
       props: {
-        ranks: [developerRank({ resourceCount: 3 })],
+        ranks: [developerRank({ resourceCount: 3, creditScore: 100 })],
         totalResources: 3,
       },
     })
 
-    expect(wrapper.find('.portal-contrib-item__count').text()).toBe('3 个资源')
+    const count = wrapper.find('.portal-contrib-item__count')
+    expect(count.text()).toBe('信用：100')
+    expect(count.classes()).toContain('is-good')
     expect(wrapper.find('.portal-contrib-footer').text().replace(/\s+/g, '')).toBe(
       '本周3个资源·1位开发者',
     )
+  })
+
+  it('信用分低于 100 走警示色，缺值显示占位', () => {
+    const wrapper = mount(DeveloperRankCard, {
+      props: {
+        ranks: [
+          developerRank({ creditScore: 96 }),
+          developerRank({ username: 'b', name: '乙', creditScore: null }),
+        ],
+        totalResources: 2,
+      },
+    })
+
+    const counts = wrapper.findAll('.portal-contrib-item__count')
+    expect(counts[0]?.text()).toBe('信用：96')
+    expect(counts[0]?.classes()).toContain('is-warning')
+    expect(counts[1]?.text()).toBe('信用：—')
   })
 
   it('空榜显示空状态且不渲染页脚', () => {

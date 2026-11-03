@@ -2,9 +2,9 @@ import type { CommunityBoostKind, CommunityPost } from '@/api/community'
 import { describeBackendError } from '@/shared/backendErrorText'
 
 export const COMMUNITY_STATUS_OPTIONS = [
+  { value: 'published', label: '公开' },
   { value: 'pending_review', label: '审核中' },
-  { value: 'published', label: '已发布' },
-  { value: 'rejected', label: '未通过' },
+  { value: 'rejected', label: '私有' },
 ] as const
 
 export const COMMUNITY_BOOST_OPTIONS: ReadonlyArray<{
@@ -39,6 +39,13 @@ export function communityStatusNotice(post: CommunityPost): string {
     return post.review_note ? `审核未通过：${post.review_note}` : '审核未通过'
   }
   return ''
+}
+
+export function prioritizePendingCommunityPosts(posts: CommunityPost[]): CommunityPost[] {
+  return [...posts].sort(
+    (left, right) =>
+      Number(right.status === 'pending_review') - Number(left.status === 'pending_review'),
+  )
 }
 
 export function isCommunityPostAuthor(post: CommunityPost, username: string): boolean {

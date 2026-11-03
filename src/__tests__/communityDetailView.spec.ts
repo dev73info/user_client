@@ -120,13 +120,14 @@ describe('社区详情与评论', () => {
     await wrapper.get('.community-comment__like').trigger('click')
     await flushPromises()
     expect(mocks.likeComment).toHaveBeenCalledWith('token', 11, true)
-    expect(wrapper.get('.community-comment__like').text()).toContain('取消点赞')
+    expect(wrapper.get('.community-comment__like').attributes('aria-label')).toBe('取消点赞')
 
-    const reply = wrapper
-      .findAll('.community-comment__actions button')
-      .find((item) => item.text() === '回复')
-    await reply?.trigger('click')
-    await wrapper.get('textarea[aria-label="评论内容"]').setValue('新的回复')
+    await wrapper.get('.community-comment').trigger('click')
+    expect(
+      wrapper.get('[data-comment-id="11"]').find('form.community-comments__composer').exists(),
+    ).toBe(true)
+    expect(wrapper.find('.community-comments__replying').exists()).toBe(false)
+    await wrapper.get('textarea[aria-label="回复内容"]').setValue('新的回复')
     await wrapper.get('form.community-comments__composer').trigger('submit')
     await flushPromises()
     expect(mocks.createComment).toHaveBeenCalledWith('token', 7, {
@@ -134,7 +135,18 @@ describe('社区详情与评论', () => {
       parent_comment_id: 11,
     })
     expect(wrapper.text()).toContain('新的回复')
-    expect(wrapper.text()).toContain('2 条评论')
+    expect(wrapper.get('.community-comments__header').text()).toContain('2 条')
+    expect(wrapper.findAll('.community-comment--reply')).toHaveLength(1)
+    wrapper.unmount()
+  })
+
+  it('点击详情操作栏空白区域聚焦评论输入框', async () => {
+    const { wrapper } = await render()
+    await wrapper.get('.community-detail-card__actions').trigger('click')
+    await flushPromises()
+
+    const composer = wrapper.get('textarea[aria-label="评论内容"]')
+    expect(document.activeElement).toBe(composer.element)
     wrapper.unmount()
   })
 
@@ -169,7 +181,7 @@ describe('社区详情与评论', () => {
 
   it('本人编辑后展示重新审核状态', async () => {
     const { wrapper } = await render()
-    const edit = wrapper.findAll('button').find((item) => item.text() === '编辑帖子')
+    const edit = wrapper.findAll('button').find((item) => item.text() === '重新编辑')
     await edit?.trigger('click')
     wrapper.findComponent(CommunityPostFormDialog).vm.$emit('submit', communityPostPayload)
     await flushPromises()

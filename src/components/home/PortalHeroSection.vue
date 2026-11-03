@@ -22,6 +22,7 @@ const emit = defineEmits<{
   (e: 'publish'): void
   (e: 'dev-workbench'): void
   (e: 'free-resources'): void
+  (e: 'community'): void
 }>()
 </script>
 
@@ -29,8 +30,13 @@ const emit = defineEmits<{
   <section class="portal-hero">
     <div class="portal-hero__main">
       <div class="portal-hero__copy">
+        <div class="portal-hero__eyebrow">
+          <span class="portal-hero__eyebrow-dot" aria-hidden="true"></span>
+          [ 工程协作枢纽 · ENGINEERING COLLABORATION HUB ]
+        </div>
+
         <h1>
-          <span>资源与需求</span><span class="portal-title-accent">协作</span><span>平台</span>
+          <span>需求</span><span class="portal-title-accent">定制</span><span>与交易平台</span>
         </h1>
 
         <div v-if="signals.length" class="portal-signal-list">
@@ -86,6 +92,17 @@ const emit = defineEmits<{
         </svg>
       </span>
       <span class="portal-entry__label">免费资源</span>
+    </button>
+    <button type="button" class="portal-entry portal-entry--community" @click="emit('community')">
+      <span class="portal-entry__icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none">
+          <circle cx="9" cy="8" r="3.2" />
+          <path d="M3 20a6 6 0 0 1 12 0" />
+          <circle cx="17.5" cy="9" r="2.4" />
+          <path d="M15.5 20a5 5 0 0 1 5.5-4.9" />
+        </svg>
+      </span>
+      <span class="portal-entry__label">社区中心</span>
     </button>
   </nav>
 </template>

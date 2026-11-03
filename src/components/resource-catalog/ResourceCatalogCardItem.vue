@@ -39,7 +39,6 @@ const route = useRoute()
 const router = useRouter()
 const auth = useAuthStore()
 
-const fallbackIconClass = computed(() => 'bg-blue')
 const fallbackIcon = computed(() => '📁')
 
 const { observe: observeAuthorMarquee } = useAuthorMarquee()
@@ -94,119 +93,115 @@ async function toggleCardLike(card: McCardItem) {
 
 <template>
   <article class="portal-resource-browser__card">
-    <div class="portal-resource-browser__card-main">
-      <div
+    <div class="portal-resource-browser__cover">
+      <img
         v-if="props.card.coverUrl && !props.card.coverFailed"
-        class="portal-resource-browser__cover portal-resource-browser__cover--image"
+        :src="props.card.coverUrl"
+        :alt="props.card.title"
+        class="portal-resource-browser__cover-image"
+        @error="onCoverError(props.card)"
+      />
+      <span v-else class="portal-resource-browser__cover-fallback" aria-hidden="true">{{
+        fallbackIcon
+      }}</span>
+      <span
+        class="portal-resource-browser__price-badge"
+        :class="{
+          'is-paid': isPricedResource(
+            props.card.priceFen,
+            props.card.pricePoints,
+            props.card.minVersionPriceFen,
+          ),
+          'is-points': isPointsResource(props.card.pricePoints),
+        }"
+        >{{ props.card.priceLabel }}</span
       >
-        <img
-          :src="props.card.coverUrl"
-          :alt="props.card.title"
-          class="portal-resource-browser__cover-image"
-          @error="onCoverError(props.card)"
-        />
-      </div>
-      <div v-else class="portal-resource-browser__cover" :class="fallbackIconClass">
-        {{ fallbackIcon }}
+      <span
+        class="portal-resource-browser__meta"
+        :class="{ 'is-repost': props.card.originType === 'repost' }"
+        >{{ props.card.originType === 'repost' ? '转载' : '原创' }}</span
+      >
+    </div>
+
+    <div class="portal-resource-browser__body">
+      <h3 :class="titleSizeClass(props.card.title)">{{ props.card.title }}</h3>
+      <p class="portal-resource-browser__desc">{{ props.card.description }}</p>
+
+      <div class="portal-resource-browser__meta-row">
+        <p class="portal-resource-browser__author-pill">
+          <span class="portal-resource-browser__author-pill-label">作者</span>
+          <span :ref="observeAuthorMarquee" class="portal-resource-browser__author-pill-viewport">
+            <span class="portal-resource-browser__author-pill-track">
+              <span
+                :class="{
+                  'username-gradient':
+                    props.card.authorUsernameGradient && !props.card.authorUsernameColor,
+                }"
+                :style="
+                  props.card.authorUsernameColor ? { color: props.card.authorUsernameColor } : {}
+                "
+                >{{ props.card.author || '未知' }}</span
+              >
+            </span>
+          </span>
+          <template v-if="props.card.developer">
+            <span class="portal-resource-browser__author-pill-label">开发者</span>
+            <span :ref="observeAuthorMarquee" class="portal-resource-browser__author-pill-viewport">
+              <span class="portal-resource-browser__author-pill-track">
+                <span
+                  :class="{
+                    'username-gradient':
+                      props.card.developerUsernameGradient && !props.card.developerUsernameColor,
+                    'portal-resource-browser__author-pill-name--developer':
+                      !props.card.developerUsernameGradient && !props.card.developerUsernameColor,
+                  }"
+                  :style="
+                    props.card.developerUsernameColor
+                      ? { color: props.card.developerUsernameColor }
+                      : {}
+                  "
+                  >{{ props.card.developer }}</span
+                >
+              </span>
+            </span>
+          </template>
+        </p>
+        <span class="portal-resource-browser__updated">
+          <span v-for="part in formatUpdatedAt(props.card.updatedAt)" :key="part">{{ part }}</span>
+        </span>
       </div>
 
-      <div class="portal-resource-browser__body">
-        <div class="portal-resource-browser__headline">
-          <div class="portal-resource-browser__headline-main">
-            <div class="portal-resource-browser__title-row">
-              <div class="portal-resource-browser__title-main">
-                <h3 :class="titleSizeClass(props.card.title)">{{ props.card.title }}</h3>
-                <p class="portal-resource-browser__author-pill">
-                  <span class="portal-resource-browser__author-pill-label">作者</span>
-                  <span
-                    :ref="observeAuthorMarquee"
-                    class="portal-resource-browser__author-pill-viewport"
-                  >
-                    <span class="portal-resource-browser__author-pill-track">
-                      <span
-                        :class="{
-                          'username-gradient':
-                            props.card.authorUsernameGradient && !props.card.authorUsernameColor,
-                        }"
-                        :style="
-                          props.card.authorUsernameColor
-                            ? { color: props.card.authorUsernameColor }
-                            : {}
-                        "
-                        >{{ props.card.author || '未知' }}</span
-                      >
-                      <template v-if="props.card.developer">
-                        <span class="portal-resource-browser__author-pill-label">开发者</span>
-                        <span
-                          :class="{
-                            'username-gradient':
-                              props.card.developerUsernameGradient &&
-                              !props.card.developerUsernameColor,
-                          }"
-                          :style="
-                            props.card.developerUsernameColor
-                              ? { color: props.card.developerUsernameColor }
-                              : {}
-                          "
-                          >{{ props.card.developer }}</span
-                        >
-                      </template>
-                    </span>
-                  </span>
-                </p>
-              </div>
-              <span class="portal-resource-browser__updated">
-                <span v-for="part in formatUpdatedAt(props.card.updatedAt)" :key="part">{{
-                  part
-                }}</span>
-              </span>
-            </div>
-            <div class="portal-resource-browser__author-line">
-              <span
-                class="portal-resource-browser__price-badge"
-                :class="{
-                  'is-paid': isPricedResource(
-                    props.card.priceFen,
-                    props.card.pricePoints,
-                    props.card.minVersionPriceFen,
-                  ),
-                  'is-points': isPointsResource(props.card.pricePoints),
-                }"
-                >{{ props.card.priceLabel }}</span
-              >
-              <span
-                class="portal-resource-browser__meta"
-                :class="{ 'is-repost': props.card.originType === 'repost' }"
-                >{{ props.card.originType === 'repost' ? '转载' : '原创' }}</span
-              >
-            </div>
-          </div>
-        </div>
+      <div v-if="props.card.tags.length" class="portal-resource-browser__tags">
+        <span v-for="tag in props.card.tags" :key="`${props.card.id}-${tag}`">{{ tag }}</span>
       </div>
     </div>
 
-    <p class="portal-resource-browser__desc">{{ props.card.description }}</p>
-
     <div class="portal-resource-browser__footer">
-      <div class="portal-resource-browser__tags">
-        <span v-for="tag in props.card.tags" :key="`${props.card.id}-${tag}`">{{ tag }}</span>
-      </div>
-      <div class="portal-resource-browser__actions">
-        <button
-          class="portal-resource-browser__like"
-          type="button"
-          :class="{ 'portal-resource-browser__like--active': props.card.likedByMe }"
-          :disabled="props.card.likeSubmitting"
-          :aria-pressed="props.card.likedByMe"
-          @click="toggleCardLike(props.card)"
-        >
-          <span aria-hidden="true">{{ props.card.likedByMe ? '♥' : '♡' }}</span>
-          <span>{{ props.card.likeCount }}</span>
-        </button>
-        <button class="portal-resource-browser__action" type="button" @click="emit('open')">
-          查看详情
-        </button>
-      </div>
+      <button
+        class="portal-resource-browser__like"
+        type="button"
+        :class="{ 'portal-resource-browser__like--active': props.card.likedByMe }"
+        :disabled="props.card.likeSubmitting"
+        :aria-pressed="props.card.likedByMe"
+        @click="toggleCardLike(props.card)"
+      >
+        <span aria-hidden="true">{{ props.card.likedByMe ? '♥' : '♡' }}</span>
+        <span>{{ props.card.likeCount }}</span>
+      </button>
+      <button
+        class="portal-resource-browser__action"
+        :class="{
+          'is-paid': isPricedResource(
+            props.card.priceFen,
+            props.card.pricePoints,
+            props.card.minVersionPriceFen,
+          ),
+        }"
+        type="button"
+        @click="emit('open')"
+      >
+        查看详情
+      </button>
     </div>
   </article>
 </template>

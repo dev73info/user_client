@@ -1,6 +1,7 @@
 import { flushPromises, shallowMount } from '@vue/test-utils'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
+import { HALL_FETCH_SIZE, HALL_PAGE_SIZE } from '@/composables/useRequirementHall'
 import RequirementHallView from '@/views/RequirementHallView.vue'
 
 const mocks = vi.hoisted(() => ({
@@ -50,26 +51,22 @@ vi.mock('@/api/requirements', async (importOriginal) => ({
 }))
 
 // 公开接口返回分页对象：{ total, page, page_size, items }。
-const PAGE_SIZE = 20
-
-function spotlightPage(page: number, total: number) {
+function spotlightPage(total: number) {
   return {
     total,
-    page,
-    page_size: PAGE_SIZE,
-    items: [
-      {
-        requirement_id: `req-page-${page}`,
-        title: `第 ${page} 页需求`,
-        description: '描述',
-        acceptance_criteria: '验收标准',
-        budget: 1000,
-        payment_mode: 'platform_guarantee' as const,
-        status: 'pending_deposit' as const,
-        created_at: '2026-09-12T00:00:00Z',
-        updated_at: '2026-09-12T00:00:00Z',
-      },
-    ],
+    page: 1,
+    page_size: HALL_FETCH_SIZE,
+    items: Array.from({ length: total }, (_, index) => ({
+      requirement_id: `req-${index + 1}`,
+      title: `需求 ${index + 1}`,
+      description: '描述',
+      acceptance_criteria: '验收标准',
+      budget: 1000 - index,
+      payment_mode: 'platform_guarantee' as const,
+      status: 'pending_deposit' as const,
+      created_at: '2026-09-12T00:00:00Z',
+      updated_at: '2026-09-12T00:00:00Z',
+    })),
   }
 }
 
@@ -99,8 +96,7 @@ function mountHall() {
           props: ['modelValue', 'options'],
           emits: ['update:model-value'],
           template: `<button
-            class="requirement-hall__guarantee-select"
-            @click="$emit('update:model-value', 'platform_guarantee')"
+            @click="$emit('update:model-value', $attrs['aria-label'] === '需求排序方式' ? 'latest' : 'platform_guarantee')"
           />`,
         },
       },
@@ -115,39 +111,39 @@ function setupState(wrapper: ReturnType<typeof mountHall>): Record<string, unkno
 describe('requirement hall pagination', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mocks.spotlights.mockResolvedValue(spotlightPage(1, 25))
+    mocks.spotlights.mockResolvedValue(spotlightPage(25))
     mocks.overview.mockResolvedValue({ total_orders: 1, positive_rate: 100, recent_deals: [] })
   })
 
-  it('按默认每页 20 条拉第一页，并用后端 total 展示总数', async () => {
+  it('一次取回公开需求，本地按每页 8 条分页并用后端 total 展示总数', async () => {
     const wrapper = mountHall()
     await flushPromises()
 
     // 第三参是 payment_mode：未筛担保方式时为 undefined，公开接口据此不带该参数。
-    expect(mocks.spotlights).toHaveBeenCalledWith(1, PAGE_SIZE, undefined)
+    expect(mocks.spotlights).toHaveBeenCalledWith(1, HALL_FETCH_SIZE, undefined)
 
     const state = setupState(wrapper)
     expect(state.hallTotal).toBe(25)
     expect(state.hallPage).toBe(1)
-    expect(state.requirements as unknown[]).toHaveLength(1)
+    expect(state.requirements as unknown[]).toHaveLength(25)
+    expect(state.filteredRequirements as unknown[]).toHaveLength(HALL_PAGE_SIZE)
 
     wrapper.unmount()
   })
 
-  it('翻页时按新页码重新请求并替换列表', async () => {
+  it('翻页只切换本地页码，不再重复请求公开接口', async () => {
     const wrapper = mountHall()
     await flushPromises()
 
-    mocks.spotlights.mockResolvedValue(spotlightPage(2, 25))
     await wrapper.find('.pager-next').trigger('click')
     await flushPromises()
 
-    expect(mocks.spotlights).toHaveBeenLastCalledWith(2, PAGE_SIZE, undefined)
+    expect(mocks.spotlights).toHaveBeenCalledTimes(1)
 
     const state = setupState(wrapper)
     expect(state.hallPage).toBe(2)
-    expect((state.requirements as { requirement_id: string }[])[0]?.requirement_id).toBe(
-      'req-page-2',
+    expect((state.filteredRequirements as { requirement_id: string }[])[0]?.requirement_id).toBe(
+      'req-9',
     )
 
     wrapper.unmount()
@@ -158,16 +154,15 @@ describe('requirement hall pagination', () => {
     await flushPromises()
 
     // 先翻到第二页，确认切筛选会把页码收回第一页。
-    mocks.spotlights.mockResolvedValue(spotlightPage(2, 25))
     await wrapper.find('.pager-next').trigger('click')
     await flushPromises()
-    expect(mocks.spotlights).toHaveBeenLastCalledWith(2, PAGE_SIZE, undefined)
+    expect(setupState(wrapper).hallPage).toBe(2)
 
-    mocks.spotlights.mockResolvedValue(spotlightPage(1, 8))
+    mocks.spotlights.mockResolvedValue(spotlightPage(8))
     await wrapper.find('.requirement-hall__guarantee-select').trigger('click')
     await flushPromises()
 
-    expect(mocks.spotlights).toHaveBeenLastCalledWith(1, PAGE_SIZE, 'platform_guarantee')
+    expect(mocks.spotlights).toHaveBeenLastCalledWith(1, HALL_FETCH_SIZE, 'platform_guarantee')
 
     const state = setupState(wrapper)
     expect(state.hallPage).toBe(1)
@@ -185,7 +180,7 @@ describe('公开精选列表的请求参数（真实实现）', () => {
   beforeEach(() => {
     fetchMock.mockReset()
     fetchMock.mockResolvedValue(
-      new Response(JSON.stringify({ total: 0, page: 1, page_size: PAGE_SIZE, items: [] }), {
+      new Response(JSON.stringify({ total: 0, page: 1, page_size: HALL_FETCH_SIZE, items: [] }), {
         status: 200,
         headers: { 'Content-Type': 'application/json' },
       }),
@@ -200,7 +195,7 @@ describe('公开精选列表的请求参数（真实实现）', () => {
   async function spotlightRequestUrl(paymentMode?: 'platform_guarantee' | 'self_managed') {
     const { listPublicRequirementSpotlights } =
       await vi.importActual<typeof import('@/api/requirements')>('@/api/requirements')
-    await listPublicRequirementSpotlights(1, PAGE_SIZE, paymentMode)
+    await listPublicRequirementSpotlights(1, HALL_FETCH_SIZE, paymentMode)
     const calls = fetchMock.mock.calls
     return String(calls[calls.length - 1]?.[0])
   }
@@ -208,7 +203,7 @@ describe('公开精选列表的请求参数（真实实现）', () => {
   it('不筛担保方式时请求里不带 payment_mode', async () => {
     const url = await spotlightRequestUrl()
     expect(url).toContain('page=1')
-    expect(url).toContain(`page_size=${PAGE_SIZE}`)
+    expect(url).toContain(`page_size=${HALL_FETCH_SIZE}`)
     expect(url).not.toContain('payment_mode')
   })
 

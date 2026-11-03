@@ -1,6 +1,7 @@
 import type { CommunityPost } from '@/api/community'
 
 import { jsonResponse, readInt, readString } from '../../response'
+import { prioritizePendingCommunityPosts } from '@/shared/community'
 import type { MockRequest, MockRoute } from '../../router'
 import { parseMockToken } from '../../token'
 import {
@@ -32,16 +33,18 @@ function filteredPosts(request: MockRequest, username: string): CommunityPost[] 
   const author = readString(request.query, 'author')
   const status = readString(request.query, 'status')
   const keyword = readString(request.query, 'keyword').toLowerCase()
-  return communityPosts.filter(
-    (post) =>
-      visible(post, username) &&
-      (!tag || post.tags.some((item) => item.name === tag)) &&
-      (!author || post.author === author) &&
-      (!status || post.status === status) &&
-      (!keyword ||
-        post.title.toLowerCase().startsWith(keyword) ||
-        post.author.toLowerCase().startsWith(keyword) ||
-        post.tags.some((item) => item.name.toLowerCase().startsWith(keyword))),
+  return prioritizePendingCommunityPosts(
+    communityPosts.filter(
+      (post) =>
+        visible(post, username) &&
+        (!tag || post.tags.some((item) => item.name === tag)) &&
+        (!author || post.author === author) &&
+        (!status || post.status === status) &&
+        (!keyword ||
+          post.title.toLowerCase().startsWith(keyword) ||
+          post.author.toLowerCase().startsWith(keyword) ||
+          post.tags.some((item) => item.name.toLowerCase().startsWith(keyword))),
+    ),
   )
 }
 

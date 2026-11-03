@@ -1,0 +1,251 @@
+/* 由 04-workbench-portal.css 按顶层规则边界切分（第 2/4 段），
+   顺序与原文一致；跨文件级联依赖顺序。 */
+
+@media (min-width: 901px) {
+  .portal-page.portal-page--nav .requirement-hall__budget strong {
+    font-size: 18px;
+    font-weight: 700;
+  }
+
+  .portal-page.portal-page--nav .requirement-hall__view span {
+    transition: transform var(--73-transition);
+  }
+
+  .portal-page.portal-page--nav .requirement-hall__view:hover span {
+    transform: translateX(2px);
+  }
+
+  .portal-page.portal-page--nav .requirement-hall__meta-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px 12px;
+    padding: 10px 0 12px;
+    color: var(--73-ink-muted);
+    font-family: inherit;
+    font-size: 12px;
+    font-weight: 400;
+  }
+
+  .portal-page.portal-page--nav .requirement-hall__card-actions span {
+    color: var(--73-accent);
+    font-size: 12px;
+    font-weight: 500;
+  }
+
+  .portal-page--nav .portal-page__card-topline .portal-page__chip {
+    border: 1px solid var(--73-border);
+    border-radius: 4px;
+    background: var(--73-inset);
+    color: var(--73-ink-muted);
+    font-size: 10px;
+    font-weight: 500;
+    padding: 2px 6px;
+  }
+
+  .portal-page--nav .portal-page__empty {
+    padding: 32px;
+    border: 1px dashed var(--73-border);
+    border-radius: var(--73-radius-inner);
+    color: var(--73-ink-muted);
+    text-align: center;
+  }
+
+  /* --- 需求大厅右侧栏 --- */
+  .portal-page.portal-page--nav .portal-page__aside-card {
+    padding: 16px;
+    border: 1px solid var(--73-border);
+    border-radius: var(--73-radius-inner);
+    background: var(--73-surface);
+    box-shadow: var(--73-shadow-card);
+  }
+
+  .portal-page--nav .portal-page__aside-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin-bottom: 12px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--73-border-soft);
+  }
+
+  .portal-page--nav .portal-page__aside-head h3 {
+    margin: 0;
+    color: var(--73-ink);
+    font-size: 14px;
+    font-weight: 600;
+  }
+
+  .portal-page--nav .portal-page__timeline {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .portal-page--nav .portal-page__timeline-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 6px 0;
+    border-top: 1px solid var(--73-border-soft);
+  }
+
+  .portal-page--nav .portal-page__timeline-item:first-child {
+    border-top: 0;
+  }
+
+  .portal-page--nav .requirement-hall__stat-main {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+  }
+
+  .portal-page--nav .requirement-hall__stat-main strong {
+    color: var(--73-ink);
+    font-family: var(--73-font-family-mono);
+    font-size: 14px;
+    font-weight: 600;
+  }
+
+  .portal-page--nav .requirement-hall__stat-main span {
+    color: var(--73-ink-muted);
+    font-size: 12px;
+  }
+
+  .portal-page--nav .requirement-hall__deal-item {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding: 12px 0;
+    border-top: 1px solid var(--73-border-soft);
+  }
+
+  .portal-page--nav .requirement-hall__deal-item:first-child {
+    border-top: 0;
+  }
+
+  .portal-page--nav .requirement-hall__deal-title {
+    color: var(--73-ink);
+    font-size: 13px;
+    font-weight: 500;
+  }
+
+  .portal-page--nav .requirement-hall__deal-foot {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    color: var(--73-ink-muted);
+    font-size: 11px;
+  }
+
+  .portal-page--nav .requirement-hall__deal-rating {
+    color: var(--73-warning-text);
+    font-size: 11px;
+  }
+
+  /* 概览指标值按设计稿着色：可浏览蓝 / 已完成绿 / 好评率琥珀 / 累计成交墨色 */
+  .portal-page.portal-page--nav .requirement-hall__stat-tile strong {
+    font-size: 20px;
+    font-weight: 700;
+    line-height: 1.05;
+  }
+
+  .portal-page.portal-page--nav .requirement-hall__stat-tile--accent strong {
+    color: var(--73-accent);
+  }
+
+  .portal-page.portal-page--nav .requirement-hall__stat-tile--success strong {
+    color: var(--73-success-text);
+  }
+
+  .portal-page.portal-page--nav .requirement-hall__stat-tile--warning strong {
+    color: var(--73-warning-text);
+  }
+
+  .portal-page.portal-page--nav .requirement-hall__stat-tile--ink strong {
+    color: var(--73-ink);
+    font-size: 15px;
+  }
+
+  .portal-page--nav .requirement-hall__deal-stars {
+    color: var(--73-warning);
+  }
+
+  /* --- 积分商城 --- */
+  .portal-page.mall-page {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    background: var(--73-bg);
+  }
+
+  .portal-page.mall-page .mall-products,
+  .portal-page.mall-page .mall-orders {
+    padding: 16px;
+    border: 1px solid var(--73-border);
+    border-radius: var(--73-radius-inner);
+    background: var(--73-surface);
+    box-shadow: var(--73-shadow-card);
+  }
+
+  .portal-page.mall-page .mall-products h3,
+  .portal-page.mall-page .mall-orders h3 {
+    margin: 0 0 12px;
+    color: var(--73-ink);
+    font-size: 16px;
+    font-weight: 600;
+  }
+
+  .portal-page.mall-page .mall-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 16px;
+  }
+
+  .portal-page.mall-page .mall-card {
+    height: 100%;
+    border: 1px solid var(--73-border);
+    border-radius: var(--73-radius-inner);
+    background: var(--73-surface);
+  }
+
+  .portal-page.mall-page .mall-card:hover {
+    border-color: var(--73-border-hover);
+  }
+
+  .portal-page.mall-page .mall-card__kind {
+    border: 1px solid var(--73-border);
+    border-radius: 4px;
+    background: var(--73-inset);
+    color: var(--73-ink-muted);
+    font-size: 10px;
+  }
+
+  .portal-page.mall-page .mall-card__cost {
+    font-family: var(--73-font-family-mono);
+    font-size: 13px;
+    color: var(--73-accent);
+  }
+
+  .portal-page.mall-page .mall-card h4 {
+    color: var(--73-ink);
+    font-size: 15px;
+    font-weight: 600;
+  }
+
+  .portal-page.mall-page .mall-card__duration {
+    color: var(--73-ink-muted);
+    font-size: 11px;
+  }
+}
+
+@media (min-width: 901px) {
+  .portal-page.mall-page .mall-orders + .mall-orders {
+    margin-top: 0;
+  }
+}

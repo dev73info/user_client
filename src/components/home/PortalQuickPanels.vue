@@ -6,7 +6,7 @@ import type { PortalQuickPanel } from '@/shared/home/portalSections'
 /**
  * 门户首页两张快捷卡（免费资源 / 需求大厅）（R047 从 `views/HomeView.vue` 拆出）。
  *
- * 纯展示组件：两个大图标是内联 SVG（`tone` 决定用哪一套），点击与回车 / 空格都只回抛
+ * 纯展示组件：两个图标是内联 SVG（`tone` 决定用哪一套），点击与回车 / 空格都只回抛
  * `open(panel)`，跳到哪个路由由视图决定。样式仍在全局 `styles/home.css`
  * （`.portal-quick-*` / `.portal-inline-action`），本组件不带 `<style>`。
  */
@@ -32,93 +32,50 @@ const emit = defineEmits<{ (e: 'open', panel: PortalQuickPanel): void }>()
         <svg
           v-if="panel.tone === 'gift'"
           class="portal-quick-card__svg"
-          viewBox="0 0 96 96"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.6"
+          stroke-linecap="round"
+          stroke-linejoin="round"
           focusable="false"
         >
-          <defs>
-            <linearGradient id="quickGiftRed" x1="0" x2="1" y1="0" y2="1">
-              <stop offset="0%" stop-color="#ff8c5a" />
-              <stop offset="100%" stop-color="#ef3f5f" />
-            </linearGradient>
-            <linearGradient id="quickGiftYellow" x1="0" x2="1" y1="0" y2="1">
-              <stop offset="0%" stop-color="#ffd75f" />
-              <stop offset="100%" stop-color="#ff9f1c" />
-            </linearGradient>
-            <filter id="quickIconShadow" x="-30%" y="-20%" width="160%" height="160%">
-              <feDropShadow
-                dx="0"
-                dy="9"
-                stdDeviation="7"
-                flood-color="var(--73-danger)"
-                flood-opacity="0.22"
-              />
-            </filter>
-          </defs>
-          <g filter="url(#quickIconShadow)">
-            <path fill="url(#quickGiftRed)" d="M17 38h62v39a7 7 0 0 1-7 7H24a7 7 0 0 1-7-7V38Z" />
-            <path fill="#d9274a" d="M17 38h62v16H17z" opacity="0.45" />
-            <path fill="url(#quickGiftYellow)" d="M43 38h10v46H43zM12 28h72v16H12z" />
-            <path
-              fill="url(#quickGiftRed)"
-              d="M24 14c10-5 20 8 24 17-12 2-27 1-30-6-2-4 1-8 6-11Zm48 0c-10-5-20 8-24 17 12 2 27 1 30-6 2-4-1-8-6-11Z"
-            />
-            <path fill="url(#quickGiftYellow)" d="M42 20h12l-6 18-6-18Z" />
-          </g>
+          <path d="m7.5 4.27 9 5.15" />
+          <path
+            d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"
+          />
+          <path d="m3.3 7 8.7 5 8.7-5" />
+          <path d="M12 22V12" />
         </svg>
-        <svg v-else class="portal-quick-card__svg" viewBox="0 0 96 96" focusable="false">
-          <defs>
-            <linearGradient id="quickRequirementOrange" x1="0" x2="1" y1="0" y2="1">
-              <stop offset="0%" stop-color="#ffb15c" />
-              <stop offset="100%" stop-color="#f97316" />
-            </linearGradient>
-            <filter id="quickRequirementShadow" x="-30%" y="-20%" width="160%" height="160%">
-              <feDropShadow
-                dx="0"
-                dy="9"
-                stdDeviation="7"
-                flood-color="var(--73-warning)"
-                flood-opacity="0.2"
-              />
-            </filter>
-          </defs>
-          <g filter="url(#quickRequirementShadow)">
-            <rect
-              x="18"
-              y="16"
-              width="60"
-              height="68"
-              rx="14"
-              fill="url(#quickRequirementOrange)"
-            />
-            <rect x="32" y="12" width="32" height="14" rx="7" fill="#fff7ed" />
-            <path
-              d="M31 40h12m7 0h15M31 54h12m7 0h15M31 68h12m7 0h10"
-              fill="none"
-              stroke="#fff7ed"
-              stroke-linecap="round"
-              stroke-width="5"
-            />
-            <path
-              d="m25 40 3 3 5-6m-8 17 3 3 5-6m-8 17 3 3 5-6"
-              fill="none"
-              stroke="#fff7ed"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              stroke-width="3"
-            />
-          </g>
+        <svg
+          v-else
+          class="portal-quick-card__svg"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.6"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          focusable="false"
+        >
+          <path d="M8 6h13" />
+          <path d="M8 12h13" />
+          <path d="M8 18h13" />
+          <path d="M3 6h.01" />
+          <path d="M3 12h.01" />
+          <path d="M3 18h.01" />
         </svg>
       </div>
       <div class="portal-quick-card__copy">
         <h3>{{ panel.title }}</h3>
         <p>{{ panel.summary }}</p>
-        <span class="portal-inline-action">
-          {{ panel.action }}
-          <TIcon>
-            <ArrowRight />
-          </TIcon>
-        </span>
       </div>
+      <span class="portal-inline-action">
+        {{ panel.action }}
+        <TIcon>
+          <ArrowRight />
+        </TIcon>
+      </span>
     </article>
   </section>
 </template>

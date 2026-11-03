@@ -42,18 +42,19 @@
   font-variant-numeric: tabular-nums;
 }
 
-/* 单组「全清」：只在有选中时出现，避免占掉组标题的位置 */
+/* 单组「全清」：只在有选中时出现，避免占掉组标题的位置；图标按钮，名称走 aria-label + title */
 .portal-resource-browser__menu-clear {
   flex: 0 0 auto;
+  display: inline-grid;
+  place-items: center;
+  width: 24px;
   height: 24px;
-  padding: 0 8px;
+  padding: 0;
   border: 0;
   border-radius: 999px;
   background: transparent;
   color: var(--73-ink-muted);
-  font: inherit;
-  font-size: 12px;
-  font-weight: 700;
+  font-size: 13px;
   cursor: pointer;
   transition:
     background 160ms ease,

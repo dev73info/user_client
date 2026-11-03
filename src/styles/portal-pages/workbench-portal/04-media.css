@@ -1,0 +1,221 @@
+/* 由 04-workbench-portal.css 按顶层规则边界切分（第 4/4 段），
+   顺序与原文一致；跨文件级联依赖顺序。 */
+
+/* --- 积分商城：页头卡 / 可兑换区 / 商品卡 / 双栏表格（对齐 Stitch 源码） --- */
+@media (min-width: 901px) {
+  .portal-page.mall-page .mall-hero {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 16px;
+    padding: 20px;
+    border: 1px solid var(--73-border);
+    border-radius: var(--73-radius-inner);
+    background: var(--73-surface);
+    box-shadow: var(--73-shadow-card);
+  }
+
+  .portal-page.mall-page .mall-hero__eyebrow {
+    display: inline-flex;
+    align-items: center;
+    margin-bottom: 8px;
+    padding: 2px 8px;
+    border: 1px solid var(--73-accent-line);
+    border-radius: 4px;
+    background: var(--73-accent-soft);
+    color: var(--73-accent);
+    font-family: var(--73-font-family-mono);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+  }
+
+  .portal-page.mall-page .mall-hero h1 {
+    font-size: 24px;
+  }
+
+  .portal-page.mall-page .mall-hero__balance {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 12px 16px;
+    border: 1px solid var(--73-border);
+    border-radius: var(--73-radius-control);
+    background: var(--73-bg);
+    box-shadow: none;
+  }
+
+  .portal-page.mall-page .mall-hero__balance-main {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .portal-page.mall-page .mall-hero__balance-main span {
+    color: var(--73-ink-muted);
+    font-size: 11px;
+  }
+
+  .portal-page.mall-page .mall-hero__balance-main strong {
+    color: var(--73-accent);
+    font-family: var(--73-font-family-mono);
+    font-size: 24px;
+    font-weight: 600;
+    line-height: 1.1;
+  }
+
+  .portal-page.mall-page .mall-hero__balance-main small {
+    color: color-mix(in srgb, var(--73-accent) 75%, var(--73-ink-muted));
+    font-size: 11px;
+    font-weight: 400;
+  }
+
+  .portal-page.mall-page .mall-hero__ledger {
+    padding-left: 16px;
+    border-left: 1px solid var(--73-border);
+    color: var(--73-accent);
+    font-size: 12px;
+    font-weight: 500;
+    text-decoration: none;
+  }
+
+  .portal-page.mall-page .mall-hero__ledger:hover {
+    text-decoration: underline;
+  }
+
+  .portal-page.mall-page .mall-section-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-bottom: 12px;
+  }
+
+  .portal-page.mall-page .mall-section-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .portal-page.mall-page .mall-section-bar {
+    width: 6px;
+    height: 16px;
+    border-radius: var(--73-radius-pill);
+    background: var(--73-accent);
+  }
+
+  .portal-page.mall-page .mall-section-title h3 {
+    margin: 0;
+    color: var(--73-ink);
+    font-size: 16px;
+    font-weight: 600;
+  }
+
+  .portal-page.mall-page .mall-section-count {
+    padding: 2px 8px;
+    border: 1px solid var(--73-accent-line);
+    border-radius: var(--73-radius-pill);
+    background: var(--73-accent-soft);
+    color: var(--73-accent);
+    font-family: var(--73-font-family-mono);
+    font-size: 11px;
+  }
+
+  .portal-page.mall-page .mall-section-hint {
+    color: var(--73-ink-muted);
+    font-size: 12px;
+  }
+
+  .portal-page.mall-page .mall-grid {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 14px;
+  }
+
+  .portal-page.mall-page .mall-card__body {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    height: 100%;
+    padding: 16px;
+  }
+
+  .portal-page.mall-page .mall-card__kind--perk {
+    border: 1px solid var(--73-accent-line);
+    background: var(--73-accent-soft);
+    color: var(--73-accent);
+  }
+
+  .portal-page.mall-page .mall-card__kind--consumable {
+    border: 1px solid var(--73-warning-line);
+    background: var(--73-warning-soft);
+    color: var(--73-warning-text);
+  }
+
+  .portal-page.mall-page .mall-card__icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    border-radius: 8px;
+    font-size: 20px;
+  }
+
+  .portal-page.mall-page .mall-card__icon--perk {
+    border: 1px solid var(--73-accent-line);
+    background: var(--73-accent-soft);
+    color: var(--73-accent);
+  }
+
+  .portal-page.mall-page .mall-card__icon--consumable {
+    border: 1px solid var(--73-warning-line);
+    background: var(--73-warning-soft);
+    color: var(--73-warning-text);
+  }
+
+  .portal-page.mall-page .mall-card__cost {
+    color: var(--73-accent);
+    font-family: var(--73-font-family-mono);
+    font-size: 13px;
+    font-weight: 600;
+  }
+
+  .portal-page.mall-page .mall-card__cost small {
+    color: var(--73-ink-muted);
+    font-size: 10px;
+    font-weight: 400;
+  }
+
+  .portal-page.mall-page .mall-card h4 {
+    margin: 0;
+  }
+
+  .portal-page.mall-page .mall-card__duration {
+    display: flex;
+    justify-content: space-between;
+    margin: 0;
+    padding-top: 8px;
+    border-top: 1px solid var(--73-border-soft);
+    color: var(--73-ink-muted);
+    font-family: var(--73-font-family-mono);
+    font-size: 10px;
+  }
+
+  .portal-page.mall-page .mall-card__body > .t73-button {
+    margin-top: auto;
+  }
+
+  .portal-page.mall-page .mall-orders-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: start;
+    gap: 16px;
+  }
+
+  .portal-page.mall-page .mall-orders-grid .mall-orders {
+    margin-top: 0;
+  }
+}

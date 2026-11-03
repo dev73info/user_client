@@ -194,10 +194,13 @@ const selectedIds = computed(() =>
   display: none;
 }
 
-/* 表尾沉到页面容器底部：记录少或空态时不要悬在内容正下方 */
-.invoice-center-page {
+/* 表尾沉到页面容器底部：记录少或空态时不要悬在内容正下方。
+   工作台内容区是定高的滚动容器，百分比高度在链路里会被外层的 min-height: 0 吃掉，
+   所以这里直接按「视口 − 顶栏 − 外壳上下内边距」给一个确定高度；内容超高时由内容区滚动。 */
+.invoice-center-page.page-shell {
   display: flex;
   flex-direction: column;
+  height: calc(100dvh - var(--portal-header-footprint, 98px) - 24px);
 }
 
 .invoice-center-page .wallet-section {

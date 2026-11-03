@@ -73,6 +73,16 @@ const paidMode = defineModel<ResourcePaidMode>('paidMode', { required: true })
   min-width: 0;
 }
 
+.dev-resource-type__paid > .dev-segmented {
+  display: flex;
+  width: 100%;
+}
+
+.dev-resource-type__paid > .dev-segmented .dev-segmented__item {
+  flex: 1 1 0;
+  min-width: 0;
+}
+
 .dev-resource-type__paid {
   grid-template-columns: auto minmax(0, 360px);
   align-items: center;

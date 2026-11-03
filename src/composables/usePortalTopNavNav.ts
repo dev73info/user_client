@@ -51,7 +51,7 @@ export function usePortalTopNavNav() {
         active: allowActive && (currentName === 'requirement-hall' || currentName === 'payment'),
       },
       {
-        label: '社区',
+        label: '社区中心',
         to: { name: 'community' },
         active: allowActive && ['community', 'community-post'].includes(currentName),
       },

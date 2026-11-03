@@ -1,0 +1,232 @@
+/* 由 home.css 按顶层规则边界切分（第 2/7 段），
+   顺序与原文一致；跨文件级联依赖顺序。 */
+
+.portal-primary-action {
+  border: 1px solid var(--73-accent);
+  background: var(--73-accent);
+  color: var(--73-accent-contrast);
+}
+
+.portal-primary-action:hover {
+  background: color-mix(in srgb, var(--73-accent) 88%, var(--73-app-shade));
+  border-color: color-mix(in srgb, var(--73-accent) 88%, var(--73-app-shade));
+}
+
+.portal-secondary-action {
+  border: 1px solid var(--73-border);
+  background: var(--73-surface);
+  color: var(--73-ink);
+}
+
+.portal-secondary-action:hover {
+  border-color: var(--73-border-hover);
+  background: var(--73-bg-soft);
+}
+
+.portal-primary-action:focus-visible,
+.portal-secondary-action:focus-visible,
+.portal-inline-action:focus-visible,
+.portal-link-btn:focus-visible,
+.portal-step-card:focus-visible,
+.portal-spotlight-card:focus-visible,
+.portal-quick-card:focus-visible,
+.portal-pagination button:focus-visible {
+  outline: none;
+  box-shadow: var(--73-focus-ring);
+}
+
+/* 移动端入口宫格：桌面端不显示 */
+.portal-entry-grid {
+  display: none;
+}
+
+/* ----------------------------------------------------------------------------
+   2. 快捷入口（免费资源 / 需求大厅）
+   ---------------------------------------------------------------------------- */
+
+.portal-quick-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.portal-quick-card {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 20px;
+  border: 1px solid var(--73-border);
+  border-radius: var(--73-radius-inner);
+  background: var(--73-surface);
+  box-shadow: var(--73-shadow-card);
+  cursor: pointer;
+  transition:
+    border-color var(--73-transition),
+    box-shadow var(--73-transition);
+}
+
+.portal-quick-card:hover {
+  border-color: var(--73-border-hover);
+  box-shadow: var(--73-shadow-card-hover);
+}
+
+.portal-quick-card__icon {
+  display: flex;
+  flex: 0 0 40px;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border: 1px solid var(--73-accent-line);
+  border-radius: 8px;
+  background: var(--73-accent-soft);
+  color: var(--73-accent);
+}
+
+.portal-quick-card--requirement .portal-quick-card__icon {
+  border-color: var(--73-success-line);
+  background: var(--73-success-soft);
+  color: var(--73-success-text);
+}
+
+.portal-quick-card__svg {
+  width: 22px;
+  height: 22px;
+}
+
+.portal-quick-card__copy {
+  flex: 1;
+  min-width: 0;
+}
+
+.portal-quick-card__copy h3 {
+  margin: 0 0 2px;
+  color: var(--73-ink);
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.portal-quick-card__copy p {
+  margin: 0;
+  color: var(--73-ink-soft);
+  font-size: 13px;
+  white-space: pre-line;
+}
+
+.portal-inline-action {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 4px;
+  height: 32px;
+  padding: 0 12px;
+  border: 1px solid var(--73-border);
+  border-radius: var(--73-radius-control);
+  background: var(--73-surface);
+  color: var(--73-accent);
+  font-size: 13px;
+  font-weight: 500;
+  white-space: nowrap;
+  transition:
+    background-color var(--73-transition),
+    border-color var(--73-transition);
+}
+
+.portal-quick-card:hover .portal-inline-action {
+  border-color: var(--73-border-hover);
+  background: var(--73-bg-soft);
+}
+
+.portal-inline-action svg {
+  width: 14px;
+  height: 14px;
+}
+
+/* ----------------------------------------------------------------------------
+   3. 区块外壳与定制流程
+   ---------------------------------------------------------------------------- */
+
+.portal-section {
+  padding: 20px;
+  border: 1px solid var(--73-border);
+  border-radius: var(--73-radius-inner);
+  background: var(--73-surface);
+  box-shadow: var(--73-shadow-card);
+}
+
+.portal-section__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 16px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--73-border-soft);
+}
+
+.portal-section-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.portal-section-title h2 {
+  margin: 0;
+  color: var(--73-ink);
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.portal-section-title__icon {
+  color: var(--73-accent);
+  font-size: 14px;
+  line-height: 1;
+}
+
+.portal-link-btn {
+  border: 0;
+  background: transparent;
+  color: var(--73-accent);
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.portal-link-btn:hover {
+  text-decoration: underline;
+}
+
+.portal-workflow-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.portal-workflow-item {
+  position: relative;
+  min-width: 0;
+}
+
+.portal-step-card {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 100%;
+  height: 100%;
+  padding: 12px;
+  border: 1px solid var(--73-border);
+  border-radius: var(--73-radius-inner);
+  background: var(--73-bg-soft);
+  color: inherit;
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color var(--73-transition);
+}
+
+.portal-step-card:hover {
+  border-color: var(--73-accent);
+}

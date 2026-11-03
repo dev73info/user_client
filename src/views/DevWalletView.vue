@@ -6,7 +6,7 @@
  * | 关注点 | 落点 |
  * | --- | --- |
  * | 接单收入池（余额、提现偏好、自动提现开关、通道状态） | `useDevWalletOverview` |
- * | 资金明细（收入 / 退款冲减 / 收入提现） | `useDevFundRecords` + `shared/devFundDisplay` |
+ * | 资金明细（收入 / 退款冲减 / 收入提现 / 保证金充值 / 保证金提现） | `useDevFundRecords` + `shared/devFundDisplay` |
  * | 金额与文案口径 | `shared/devFundDisplay`（`money`）与 `shared/devWalletDisplay` |
  *
  * 接单保证金是**另一个资金池**（预付账户，1.x 的 `developer-order-deposit*`）：
@@ -36,6 +36,7 @@ const auth = useAuthStore()
 const {
   credit,
   deposit,
+  ledger: depositLedger,
   loading: depositLoading,
   error: depositError,
   load: loadDeposit,
@@ -52,7 +53,6 @@ const {
   payoutChannelMessage,
   autoWithdrawEnabled,
   autoWithdrawReady,
-  payoutScheduleNote,
   canSubmitWithdrawal,
   loadWallet,
   toggleAutoWithdraw,
@@ -103,7 +103,6 @@ async function refreshWallet() {
       <DevWalletIncomeCard
         :overview="overview"
         :can-withdraw="canWithdraw"
-        :payout-schedule-note="payoutScheduleNote"
         :auto-withdraw-enabled="autoWithdrawEnabled"
         :auto-withdraw-saving="autoWithdrawSaving"
         :auto-withdraw-ready="autoWithdrawReady"
@@ -129,11 +128,17 @@ async function refreshWallet() {
 
     <section class="dev-surface-card wallet-records" aria-label="资金明细">
       <div class="dev-toolbar">
-        <TSelect v-model="recordKind" class="dev-toolbar__field" aria-label="资金明细类型筛选">
+        <TSelect
+          v-model="recordKind"
+          class="dev-toolbar__field dev-wallet-page__kind"
+          aria-label="资金明细类型筛选"
+        >
           <TOption label="全部类型" value="all" />
           <TOption label="收入" value="income" />
           <TOption label="退款冲减" value="income_reversal" />
           <TOption label="提现" value="income_withdrawal" />
+          <TOption label="保证金充值" value="deposit_recharge" />
+          <TOption label="保证金提现" value="deposit_withdrawal" />
         </TSelect>
         <TInput
           v-model="recordKeyword"
@@ -153,6 +158,7 @@ async function refreshWallet() {
       <DevFundRecordsView
         ref="fundRecords"
         :income="recentIncome"
+        :deposit-ledger="depositLedger"
         :keyword="recordKeyword"
         :kind="recordKind"
       />

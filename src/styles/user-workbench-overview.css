@@ -1,0 +1,215 @@
+/* 工作台总览：页根、欢迎区、面板骨架与响应式。列表与状态样式见下一份样式文件。 */
+.user-workbench-overview {
+  display: grid;
+  align-content: start;
+  gap: 18px;
+}
+
+.overview-welcome {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 16px;
+  padding: 22px 24px;
+  border: 1px solid var(--73-border);
+  border-radius: 12px;
+  background:
+    radial-gradient(
+      circle at 88% 0%,
+      color-mix(in srgb, var(--73-accent) 11%, transparent),
+      transparent 46%
+    ),
+    var(--73-surface);
+  box-shadow: 0 1px 2px color-mix(in srgb, var(--73-ink) 5%, transparent);
+  cursor: pointer;
+  transition:
+    border-color var(--73-transition),
+    box-shadow var(--73-transition);
+}
+
+.overview-welcome:hover {
+  border-color: var(--73-border-hover);
+  box-shadow: 0 8px 24px color-mix(in srgb, var(--73-accent) 8%, transparent);
+}
+
+.overview-welcome:focus-visible {
+  outline: none;
+  box-shadow: var(--73-focus-ring);
+}
+
+.overview-welcome__avatar {
+  display: grid;
+  place-items: center;
+  width: 58px;
+  height: 58px;
+  border-radius: 18px;
+  background: var(--73-app-grad-soft-10);
+  color: var(--73-accent);
+  font-size: 23px;
+  font-weight: 700;
+}
+
+.overview-welcome__copy {
+  min-width: 0;
+}
+
+.overview-welcome__eyebrow {
+  color: var(--73-accent);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+}
+
+.overview-welcome h1 {
+  margin: 4px 0 5px;
+  color: var(--73-ink);
+  font-size: 23px;
+  font-weight: 650;
+  line-height: 1.2;
+}
+
+.overview-welcome p {
+  margin: 0;
+  color: var(--73-ink-muted);
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.overview-welcome__publish {
+  white-space: nowrap;
+}
+
+.overview-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.45fr) minmax(280px, 0.78fr);
+  gap: 16px;
+  align-items: start;
+  margin-top: 16px;
+}
+
+.overview-panel {
+  min-width: 0;
+  padding: 20px;
+  border: 1px solid var(--73-border);
+  border-radius: 12px;
+  background: var(--73-surface);
+  box-shadow: 0 1px 2px color-mix(in srgb, var(--73-ink) 5%, transparent);
+}
+
+.overview-recent {
+  grid-column: 1 / -1;
+}
+
+.overview-panel__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 14px;
+}
+
+.overview-panel__head h2 {
+  margin: 0;
+  color: var(--73-ink);
+  font-size: 17px;
+  font-weight: 650;
+}
+
+.overview-panel__head p {
+  margin: 4px 0 0;
+  color: var(--73-ink-muted);
+  font-size: 12px;
+}
+
+.overview-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex: 0 0 auto;
+  padding: 4px 0;
+  border: 0;
+  background: transparent;
+  color: var(--73-accent);
+  cursor: pointer;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 650;
+}
+
+.overview-link span {
+  font-size: 16px;
+  line-height: 1;
+}
+
+@media (max-width: 900px) {
+  .user-workbench-overview {
+    gap: 14px;
+  }
+
+  .overview-welcome {
+    grid-template-columns: auto minmax(0, 1fr);
+    padding: 18px;
+  }
+
+  .overview-welcome__publish {
+    grid-column: 1 / -1;
+    width: 100%;
+  }
+
+  .overview-grid {
+    grid-template-columns: minmax(0, 1fr);
+    margin-top: 14px;
+  }
+
+  .overview-panel {
+    padding: 16px;
+  }
+
+  .overview-recent {
+    grid-column: auto;
+  }
+}
+
+@media (max-width: 640px) {
+  .overview-welcome {
+    grid-template-columns: 46px minmax(0, 1fr);
+    gap: 12px;
+    padding: 16px;
+  }
+
+  .overview-welcome__avatar {
+    width: 46px;
+    height: 46px;
+    border-radius: 14px;
+    font-size: 19px;
+  }
+
+  .overview-welcome h1 {
+    font-size: 19px;
+  }
+
+  .overview-welcome p {
+    font-size: 12px;
+  }
+
+  .overview-shortcuts__grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .overview-requirement {
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .overview-requirement__main {
+    flex-basis: calc(100% - 48px);
+  }
+
+  .overview-requirement .overview-status {
+    margin-left: 48px;
+  }
+
+  .overview-requirement__arrow {
+    display: none;
+  }
+}

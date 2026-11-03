@@ -126,14 +126,15 @@ describe('首页签到组件接线', () => {
 
     expect(mocks.status).toHaveBeenCalledWith('user-token')
     const button = wrapper.find('.portal-beta-notice__btn')
-    expect(button.text()).toBe('每日签到')
+    expect(button.text()).toBe('立即签到领取奖励')
     expect(button.attributes('disabled')).toBeUndefined()
     expect(wrapper.find('[role="alert"]').exists()).toBe(false)
 
     await button.trigger('click')
     await flushPromises()
     expect(mocks.checkin).toHaveBeenCalledWith('user-token')
-    expect(wrapper.find('.portal-beta-notice__badge').text()).toBe('今日已签到')
+    expect(wrapper.find('.portal-beta-notice__btn').text()).toBe('今日已签到')
+    expect(wrapper.find('.portal-checkin-chip').text()).toContain('连续')
     expect(wrapper.find('[role="alert"]').exists()).toBe(false)
     wrapper.unmount()
   })

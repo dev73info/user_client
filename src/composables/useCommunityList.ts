@@ -1,4 +1,4 @@
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, onMounted, ref, watch, type UnwrapNestedRefs } from 'vue'
 import { useRoute } from 'vue-router'
 
 import {
@@ -10,7 +10,7 @@ import {
   type CommunityTag,
 } from '@/api/community'
 import { useCommunityAccess } from '@/composables/useCommunityAccess'
-import { describeCommunityError } from '@/shared/community'
+import { describeCommunityError, prioritizePendingCommunityPosts } from '@/shared/community'
 
 export type CommunityListMode = 'all' | 'mine' | 'favorites'
 
@@ -24,14 +24,14 @@ export function useCommunityList() {
   const tag = ref('')
   const status = ref('')
   const page = ref(1)
-  const pageSize = 10
+  const pageSize = ref(10)
   const loading = ref(false)
   const error = ref('')
   const tagError = ref('')
   let listRequest = 0
 
   const hasPrevious = computed(() => page.value > 1)
-  const hasNext = computed(() => posts.value.length === pageSize)
+  const hasNext = computed(() => posts.value.length === pageSize.value)
   const emptyText = computed(() => {
     if (mode.value === 'favorites') return '还没有收藏帖子'
     if (mode.value === 'mine') return '还没有发布帖子'
@@ -57,8 +57,8 @@ export function useCommunityList() {
     loading.value = true
     error.value = ''
     const query: CommunityPostListQuery = {
-      limit: pageSize,
-      offset: (page.value - 1) * pageSize,
+      limit: pageSize.value,
+      offset: (page.value - 1) * pageSize.value,
     }
     if (mode.value !== 'favorites') {
       query.keyword = keyword.value.trim() || undefined
@@ -74,7 +74,7 @@ export function useCommunityList() {
           ? await listFavoriteCommunityPosts(auth.token, query)
           : await listCommunityPosts(auth.token, query)
       if (requestId !== listRequest) return
-      posts.value = result
+      posts.value = prioritizePendingCommunityPosts(result)
     } catch (cause) {
       if (requestId !== listRequest) return
       posts.value = []
@@ -97,13 +97,6 @@ export function useCommunityList() {
     void load()
   }
 
-  function resetFilters() {
-    keyword.value = ''
-    tag.value = ''
-    status.value = ''
-    applyFilters()
-  }
-
   function previousPage() {
     if (!hasPrevious.value || loading.value) return
     page.value -= 1
@@ -113,6 +106,14 @@ export function useCommunityList() {
   function nextPage() {
     if (!hasNext.value || loading.value) return
     page.value += 1
+    void load()
+  }
+
+  /** 只翻到已知存在的相邻页（裸数组接口不返回总数，不能凭空造出页码）。 */
+  function goToPage(next: number) {
+    if (loading.value || next === page.value || next < 1) return
+    if (next > page.value && !hasNext.value) return
+    page.value = next
     void load()
   }
 
@@ -149,8 +150,12 @@ export function useCommunityList() {
     loadTags,
     setMode,
     applyFilters,
-    resetFilters,
     previousPage,
     nextPage,
+    goToPage,
   }
 }
+
+/** 列表状态：分栏页把工具栏提到页面顶部后，列表状态由视图持有、面板与工具栏共用这一份。
+ *  形状是 `reactive(useCommunityList())` 解包后的那份（ref 已展开）。 */
+export type CommunityListState = UnwrapNestedRefs<ReturnType<typeof useCommunityList>>

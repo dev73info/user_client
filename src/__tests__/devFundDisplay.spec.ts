@@ -76,14 +76,19 @@ describe('状态文案', () => {
 })
 
 describe('类型着色', () => {
-  it('类型标签：收入黄色、提现绿色、退款冲减红色', () => {
+  it('类型标签：收入黄色、提现绿色、退款冲减红色、保证金入/出分两档', () => {
     expect(KIND_LABELS.income_withdrawal).toBe('提现')
+    expect(KIND_LABELS.deposit_recharge).toBe('保证金充值')
+    expect(KIND_LABELS.deposit_withdrawal).toBe('保证金提现')
     expect(isInflowKind('income')).toBe(true)
+    expect(isInflowKind('deposit_recharge')).toBe(true)
     expect(isInflowKind('income_withdrawal')).toBe(false)
     expect(isInflowKind('income_reversal')).toBe(false)
     expect(kindTagTone('income')).toBe('warning')
     expect(kindTagTone('income_withdrawal')).toBe('success')
     expect(kindTagTone('income_reversal')).toBe('danger')
+    expect(kindTagTone('deposit_recharge')).toBe('success')
+    expect(kindTagTone('deposit_withdrawal')).toBe('info')
   })
 })
 
@@ -181,6 +186,51 @@ describe('buildFundRecords', () => {
       income: [{ ...income, refund_developer_cny: 160, requirement_refund_cny: 160 }],
     })
     expect(reversal?.note).toBe('售后退款按原分账份额从开发者收回')
+  })
+
+  it('保证金充值只取 recharge 流水，保证金提现来自预付提现单', () => {
+    const records = buildFundRecords({
+      depositLedger: [
+        {
+          id: 7,
+          username: 'dev',
+          direction: 'in',
+          kind: 'recharge',
+          amount_fen: 120000,
+          balance_after_fen: 120000,
+          ref_no: 'RC-1',
+          note: '保证金充值',
+          operator: 'dev',
+          created_time: '2026-09-08 10:00:00',
+        },
+        {
+          id: 8,
+          username: 'dev',
+          direction: 'out',
+          kind: 'freeze',
+          amount_fen: 50000,
+          balance_after_fen: 70000,
+          ref_no: 'FZ-1',
+          note: '接单冻结',
+          operator: 'dev',
+          created_time: '2026-09-09 10:00:00',
+        },
+      ],
+      depositWithdrawals: [{ ...withdrawal, withdrawal_id: 'pwd-1', source: 'prepaid' }],
+    })
+
+    expect(records.map((record) => record.kind)).toEqual(['deposit_withdrawal', 'deposit_recharge'])
+    expect(records[0]).toMatchObject({ amount: 2, status: '待审核', kind: 'deposit_withdrawal' })
+    expect(records[1]).toMatchObject({
+      amount: 1200,
+      status: '已入账',
+      reference: 'RC-1',
+      time: '2026-09-08 10:00:00',
+    })
+    // freeze / unfreeze 是预付账户内部动作，不进「资金明细」
+    expect(records.some((record) => record.reference === 'FZ-1')).toBe(false)
+    expect(filterFundRecords(records, '', 'deposit_recharge')).toHaveLength(1)
+    expect(filterFundRecords(records, '', 'deposit_withdrawal')).toHaveLength(1)
   })
 })
 

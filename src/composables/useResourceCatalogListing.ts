@@ -44,7 +44,7 @@ export function useResourceCatalogListing() {
    */
   const listingReported = ref(false)
 
-  /** 多页时才出现的页码胶囊（收口规则见 `@/shared/resourceCatalogDisplay`）。 */
+  /** 页码胶囊的页码表（单页为空，收口规则见 `@/shared/resourceCatalogDisplay`）。 */
   const pageNumbers = computed(() =>
     buildCatalogPageNumbers(pageState.value.current, pageState.value.total),
   )

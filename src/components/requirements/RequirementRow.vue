@@ -78,6 +78,10 @@ const primaryAction = computed(() =>
   primaryRowAction(props.item, props.facts, { contractCreating: props.contractCreating }),
 )
 const moreActions = computed(() => moreRowActions(props.item, props.facts))
+/** 只剩一个次要动作时直接摆在行内：为一项开一次「更多」没有必要。 */
+const singleMoreAction = computed(() =>
+  moreActions.value.length === 1 ? moreActions.value[0] : null,
+)
 
 /** 「更多」的 command 回传字符串，在脚本里收口成联合类型再 emit，模板里不写断言。 */
 function runMoreAction(key: unknown) {
@@ -214,7 +218,7 @@ function runMoreAction(key: unknown) {
     <div class="requirement-actions">
       <div class="requirement-toggles">
         <button
-          class="requirement-toggle"
+          class="requirement-toggle requirement-toggle--subscribe"
           type="button"
           :aria-pressed="item.subscribe_status_change"
           :disabled="subscriptionLoading"
@@ -224,7 +228,7 @@ function runMoreAction(key: unknown) {
           @click.stop="emit('toggleSubscription')"
         >
           <span class="requirement-toggle__track" aria-hidden="true"></span>
-          {{ subscriptionLoading ? '提交中...' : requirementSubscriptionLabel(item) }}
+          {{ subscriptionLoading ? '提交中...' : requirementSubscriptionLabel() }}
         </button>
         <button
           v-if="canToggleRequirementResourceVisibility(item) && !isRequirementArchived(item)"
@@ -279,7 +283,7 @@ function runMoreAction(key: unknown) {
            与下方展开的审核卡片成对出现。 -->
         <button
           v-if="hasPendingResourceVersionDeleteReview(item) && !isRequirementArchived(item)"
-          class="ghost small action-emphasis"
+          class="ghost small action-emphasis action-review"
           type="button"
           :aria-expanded="versionReviewExpanded"
           @click.stop="emit('toggleVersionReview')"
@@ -302,8 +306,31 @@ function runMoreAction(key: unknown) {
           >
         </button>
 
+        <button
+          v-if="primaryAction && !isRequirementArchived(item)"
+          class="ghost small action-primary"
+          type="button"
+          :disabled="primaryAction.disabled"
+          @click.stop="emit('action', primaryAction.key)"
+        >
+          {{ primaryAction.label }}
+        </button>
+
+        <!-- 只剩一个动作时直接给按钮：让用户为「获取发票」单独点开一次「更多」没有必要 -->
+        <button
+          v-if="singleMoreAction && !isRequirementArchived(item)"
+          class="ghost small action-emphasis"
+          :class="{ 'is-danger': singleMoreAction.danger }"
+          type="button"
+          @click.stop="emit('action', singleMoreAction.key)"
+        >
+          {{ singleMoreAction.label }}
+        </button>
+
+        <!-- 「更多」排在主要动作之后：同一行里它是最后一个入口，
+             与「支付尾款 / 去评价」这类收口动作的位置固定，不随状态变化换位 -->
         <TDropdown
-          v-if="moreActions.length && !isRequirementArchived(item)"
+          v-else-if="moreActions.length && !isRequirementArchived(item)"
           trigger="click"
           @command="runMoreAction"
         >
@@ -319,7 +346,7 @@ function runMoreAction(key: unknown) {
             </TIcon>
           </button>
           <template #dropdown>
-            <TDropdownMenu>
+            <TDropdownMenu class="requirement-actions__menu">
               <TDropdownItem
                 v-for="entry in moreActions"
                 :key="entry.key"
@@ -333,16 +360,6 @@ function runMoreAction(key: unknown) {
             </TDropdownMenu>
           </template>
         </TDropdown>
-
-        <button
-          v-if="primaryAction && !isRequirementArchived(item)"
-          class="ghost small action-primary"
-          type="button"
-          :disabled="primaryAction.disabled"
-          @click.stop="emit('action', primaryAction.key)"
-        >
-          {{ primaryAction.label }}
-        </button>
       </div>
     </div>
   </li>

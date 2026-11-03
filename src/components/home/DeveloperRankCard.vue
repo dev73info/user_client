@@ -36,6 +36,12 @@ function handleAvatarError(rank: DeveloperRank) {
 function avatarSrc(rank: DeveloperRank): string {
   return failedAvatarUrls.value.has(rank.avatarUrl) ? '' : rank.avatarUrl
 }
+
+/** 信用分配色：≥100 绿色，<100 黄色（警示）；缺值保持中性色。 */
+function creditClass(rank: DeveloperRank) {
+  if (rank.creditScore == null) return ''
+  return rank.creditScore >= 100 ? 'is-good' : 'is-warning'
+}
 </script>
 
 <template>
@@ -50,6 +56,7 @@ function avatarSrc(rank: DeveloperRank): string {
         </span>
         <h2>开发者贡献榜</h2>
       </div>
+      <span v-if="ranks.length" class="portal-card__chip">本月 TOP {{ ranks.length }}</span>
     </div>
     <ol v-if="ranks.length > 0" class="portal-contrib-list">
       <li
@@ -78,7 +85,9 @@ function avatarSrc(rank: DeveloperRank): string {
           >
         </div>
         <div class="portal-contrib-item__side">
-          <strong class="portal-contrib-item__count">{{ developer.resourceCount }} 个资源</strong>
+          <strong class="portal-contrib-item__count" :class="creditClass(developer)">
+            信用：{{ developer.creditScore ?? '—' }}
+          </strong>
         </div>
       </li>
     </ol>

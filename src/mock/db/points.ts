@@ -83,7 +83,7 @@ function seedState(identity: 'client' | 'dev', username: string): MockPointsStat
   const isDev = identity === 'dev'
 
   return {
-    balance: isDev ? 260 : 420,
+    balance: isDev ? 240 : 420,
     checkedIn: false,
     streak: isDev ? 5 : 2,
     perks: [
@@ -111,16 +111,31 @@ function seedState(identity: 'client' | 'dev', username: string): MockPointsStat
     ],
     logs: [
       {
-        id: 3,
+        id: 4,
         username,
         delta: 50,
-        balance_after: isDev ? 260 : 420,
+        balance_after: isDev ? 240 : 420,
         reason: '发布需求奖励',
         source_type: 'requirement',
         source_id: null,
         operator: null,
         created_at: datetime(-1, 9, 20),
       },
+      ...(isDev
+        ? [
+            {
+              id: 3,
+              username,
+              delta: -20,
+              balance_after: 190,
+              reason: '打赏给 client_flow_03562487',
+              source_type: 'transfer',
+              source_id: null,
+              operator: null,
+              created_at: datetime(-3, 16, 40),
+            },
+          ]
+        : []),
       {
         id: 2,
         username,
@@ -187,7 +202,7 @@ function seedState(identity: 'client' | 'dev', username: string): MockPointsStat
             amount: 20,
             fee: 1,
             received: 19,
-            balance_after: 260,
+            balance_after: 190,
             note: '示例打赏',
             status: 'completed',
             pending_review: false,

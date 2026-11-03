@@ -1,0 +1,244 @@
+/* 由 home.css 按顶层规则边界切分（第 4/7 段），
+   顺序与原文一致；跨文件级联依赖顺序。 */
+
+.portal-spotlight-card__origin.is-repost {
+  border-color: var(--73-warning-line);
+  background: var(--73-warning-soft);
+  color: var(--73-warning-text);
+}
+
+.portal-spotlight-card__time {
+  flex-shrink: 0;
+  margin-left: auto;
+  color: var(--73-ink-muted);
+  font-size: 11px;
+}
+
+.portal-spotlight-card__actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+}
+
+.portal-spotlight-card__stats {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.portal-spotlight-card__stat {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  color: var(--73-ink-muted);
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+.portal-spotlight-card__stat svg {
+  width: 12px;
+  height: 12px;
+}
+
+.portal-spotlight-card__likes {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--73-ink-muted);
+  font-family: var(--73-font-family-mono);
+  font-size: 11px;
+  cursor: pointer;
+  transition: color var(--73-transition);
+}
+
+.portal-spotlight-card__likes:hover:not(:disabled),
+.portal-spotlight-card__likes.is-liked {
+  color: var(--73-danger);
+}
+
+.portal-spotlight-card__likes:disabled,
+.portal-spotlight-card__likes.is-busy {
+  opacity: 0.55;
+  cursor: progress;
+}
+
+.portal-spotlight-card__likes:focus-visible {
+  outline: none;
+  box-shadow: var(--73-focus-ring);
+}
+
+/* 旧的装饰层在新稿里不需要 */
+.portal-spotlight-card__screen {
+  display: none;
+}
+
+/* 分页 */
+.portal-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px solid var(--73-border-soft);
+}
+
+.portal-pagination button {
+  height: 32px;
+  min-width: 32px;
+  padding: 0 10px;
+  border: 1px solid var(--73-border);
+  border-radius: var(--73-radius-control);
+  background: var(--73-surface);
+  color: var(--73-ink);
+  font-family: var(--73-font-family-mono);
+  font-size: 12px;
+  cursor: pointer;
+  transition:
+    background-color var(--73-transition),
+    border-color var(--73-transition);
+}
+
+.portal-pagination button:hover:not(:disabled) {
+  background: var(--73-bg-soft);
+  border-color: var(--73-border-hover);
+}
+
+.portal-pagination button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.portal-pagination__page.is-active {
+  border-color: var(--73-accent);
+  background: var(--73-accent);
+  color: var(--73-accent-contrast);
+}
+
+.portal-pagination__nav {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.portal-pagination__ellipsis {
+  border-color: transparent !important;
+  background: transparent !important;
+  color: var(--73-ink-muted) !important;
+}
+
+.portal-pagination__jump-wrap {
+  position: relative;
+}
+
+.portal-pagination__jump {
+  position: absolute;
+  right: 0;
+  bottom: calc(100% + 6px);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px;
+  border: 1px solid var(--73-border);
+  border-radius: var(--73-radius-control);
+  background: var(--73-surface);
+  box-shadow: var(--73-shadow-panel);
+  white-space: nowrap;
+  z-index: 20;
+}
+
+.portal-pagination__jump-label {
+  color: var(--73-ink-muted);
+  font-size: 12px;
+}
+
+.portal-pagination__jump-input {
+  width: 64px;
+  height: 30px;
+  padding: 0 8px;
+  border: 1px solid var(--73-border);
+  border-radius: var(--73-radius-control);
+  background: var(--73-surface);
+  color: var(--73-ink);
+  font-family: var(--73-font-family-mono);
+  font-size: 12px;
+}
+
+.portal-pagination__jump-submit {
+  height: 30px;
+  border-color: var(--73-accent) !important;
+  background: var(--73-accent) !important;
+  color: var(--73-accent-contrast) !important;
+}
+
+.portal-empty-state {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 160px;
+  color: var(--73-ink-muted);
+  font-size: 13px;
+}
+
+.portal-empty-state--compact {
+  min-height: 96px;
+}
+
+/* ----------------------------------------------------------------------------
+   5. 右侧栏卡片
+   ---------------------------------------------------------------------------- */
+
+.portal-card {
+  padding: 20px;
+  border: 1px solid var(--73-border);
+  border-radius: var(--73-radius-card);
+  background: var(--73-surface);
+  box-shadow: var(--73-shadow-card);
+}
+
+.portal-card__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 14px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--73-border-soft);
+}
+
+.portal-card__title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.portal-card__title h2 {
+  margin: 0;
+  color: var(--73-ink);
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.portal-card-title-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--73-accent);
+}
+
+.portal-card-title-icon svg {
+  width: 16px;
+  height: 16px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}

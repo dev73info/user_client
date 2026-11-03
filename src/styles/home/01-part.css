@@ -1,0 +1,241 @@
+/* 由 home.css 按顶层规则边界切分（第 1/7 段），
+   顺序与原文一致；跨文件级联依赖顺序。 */
+
+/* ============================================================================
+   首页 · Workbench 亮色（来源：Stitch「73info.cn 门户首页」亮色稿）
+   ============================================================================
+
+   入口文件：`views/HomeView.vue` 用 `import '@/styles/home.css'` 引入这里。
+   所有颜色走 `--73-*` 令牌（theme = workbench），组件层不出现裸色值；
+   尺寸与排版沿用工作台设计：13px 正文、36px 控件、8px 控件圆角、12–16px 卡片圆角。
+   ============================================================================ */
+
+.portal-home {
+  min-height: 100vh;
+  padding: 24px 0 40px;
+  background: var(--73-bg);
+  color: var(--73-ink);
+  font-family: var(--73-font-family);
+  font-size: var(--73-font-size-body);
+  line-height: var(--73-line-height);
+}
+
+.portal-home *,
+.portal-home *::before,
+.portal-home *::after {
+  box-sizing: border-box;
+}
+
+.portal-shell {
+  width: min(1280px, calc(100% - 48px));
+  margin: 0 auto;
+  min-width: 0;
+}
+
+.portal-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(300px, 1fr);
+  gap: 24px;
+  align-items: start;
+}
+
+.portal-main,
+.portal-sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 0;
+}
+
+.portal-sidebar {
+  position: sticky;
+  top: 84px;
+  align-self: start;
+}
+
+/* ----------------------------------------------------------------------------
+   1. 主视觉
+   ---------------------------------------------------------------------------- */
+
+.portal-hero {
+  position: relative;
+  overflow: hidden;
+  padding: 32px;
+  border: 1px solid var(--73-border);
+  border-radius: var(--73-radius-card);
+  background-color: var(--73-surface);
+  background-image:
+    linear-gradient(to right, var(--73-grid-line) 1px, transparent 1px),
+    linear-gradient(to bottom, var(--73-grid-line) 1px, transparent 1px);
+  background-size: 24px 24px;
+  box-shadow: var(--73-shadow-card);
+}
+
+.portal-hero::after {
+  content: '';
+  position: absolute;
+  top: -80px;
+  right: -80px;
+  width: 384px;
+  height: 384px;
+  border-radius: var(--73-radius-pill);
+  background: var(--73-hero-glow);
+  filter: blur(64px);
+  pointer-events: none;
+}
+
+/* 右侧插画：复用首页原来的 `/icons/hero_r.png`（左侧为空、右侧是主视觉），
+   放在 Hero 右侧并做左缘渐隐，避免与左侧文案和网格纹理生硬拼接。
+   纯装饰，不参与布局；窄屏下隐藏。 */
+
+.portal-hero::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: min(64%, 800px);
+  background: url('/icons/hero_r.png') right center / cover no-repeat;
+  pointer-events: none;
+  opacity: 0.95;
+  -webkit-mask-image: linear-gradient(to left, var(--73-app-shade) 68%, transparent 100%);
+  mask-image: linear-gradient(to left, var(--73-app-shade) 68%, transparent 100%);
+}
+
+.portal-hero__main {
+  position: relative;
+  z-index: 1;
+  min-height: 0;
+}
+
+.portal-hero__copy {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  max-width: 720px;
+}
+
+.portal-hero__eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 16px;
+  padding: 4px 10px;
+  border: 1px solid var(--73-accent-line);
+  border-radius: 6px;
+  background: var(--73-accent-soft);
+  color: var(--73-accent);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.portal-hero__eyebrow-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: var(--73-radius-pill);
+  background: var(--73-accent);
+}
+
+.portal-hero h1 {
+  margin: 0 0 12px;
+  font-size: 30px;
+  font-weight: 600;
+  line-height: 1.25;
+  letter-spacing: -0.02em;
+  color: var(--73-ink);
+}
+
+.portal-title-accent {
+  color: var(--73-accent);
+}
+
+.portal-signal-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 20px;
+}
+
+.portal-signal {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 26px;
+  padding: 0 10px;
+  border: 1px solid var(--73-border);
+  border-radius: 6px;
+  background: var(--73-bg-soft);
+  color: var(--73-ink-soft);
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.portal-signal::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-radius: var(--73-radius-pill);
+  background: currentColor;
+  opacity: 0.7;
+}
+
+.portal-signal:nth-child(1) {
+  border-color: var(--73-success-line);
+  background: var(--73-success-soft);
+  color: var(--73-success-text);
+}
+
+.portal-signal:nth-child(2) {
+  border-color: var(--73-accent-line);
+  background: var(--73-accent-soft);
+  color: var(--73-accent);
+}
+
+.portal-signal:nth-child(3) {
+  border-color: var(--73-success-line);
+  background: var(--73-success-soft);
+  color: var(--73-success-text);
+  font-weight: 600;
+}
+
+.portal-signal:nth-child(3)::before {
+  content: '✓';
+  width: auto;
+  height: auto;
+  background: transparent;
+  font-size: 11px;
+  font-weight: 800;
+  line-height: 1;
+  opacity: 1;
+}
+
+.portal-hero__actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.portal-primary-action,
+.portal-secondary-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: var(--73-control-height);
+  min-height: var(--73-control-height);
+  padding: 0 16px;
+  border-radius: var(--73-radius-control);
+  font-family: inherit;
+  font-size: var(--73-font-size-body);
+  font-weight: 500;
+  line-height: 1;
+  white-space: nowrap;
+  cursor: pointer;
+  transition:
+    background-color var(--73-transition),
+    border-color var(--73-transition),
+    box-shadow var(--73-transition),
+    color var(--73-transition);
+}

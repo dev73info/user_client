@@ -43,7 +43,11 @@ export const clientRequirementRoutes: MockRoute[] = [
     handler: (request) => {
       const page = readInt(request.query, 'page', 1)
       const pageSize = readInt(request.query, 'page_size', 20)
-      const visible = requirements.filter((item) => item.status !== 'cancelled')
+      const paymentMode = request.query.get('payment_mode')
+      const visible = requirements.filter(
+        (item) =>
+          item.status !== 'cancelled' && (!paymentMode || item.payment_mode === paymentMode),
+      )
       const start = Math.max(page - 1, 0) * pageSize
 
       return jsonResponse({

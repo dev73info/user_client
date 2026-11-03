@@ -117,14 +117,33 @@ describe('社区列表', () => {
     wrapper.unmount()
   })
 
+  it('窄屏点击帖子进入独立详情页，不自动选中第一篇', async () => {
+    vi.spyOn(window, 'innerWidth', 'get').mockReturnValue(640)
+    mocks.listPosts.mockResolvedValue([
+      makeCommunityPost({ id: 7, title: '第一篇' }),
+      makeCommunityPost({ id: 8, title: '第二篇' }),
+    ])
+    const { wrapper, router } = await render()
+
+    expect(router.currentRoute.value.query.post).toBeUndefined()
+    await wrapper.findAll('.community-post-card')[1]!.trigger('click')
+    await flushPromises()
+
+    expect(router.currentRoute.value.name).toBe('community-post')
+    expect(router.currentRoute.value.params.id).toBe('8')
+    wrapper.unmount()
+  })
+
   it('展示作者与状态，按标签和关键词查询', async () => {
     const { wrapper } = await render()
     expect(wrapper.text()).toContain('社区测试帖')
     expect(wrapper.text()).toContain('作者：alice')
-    expect(wrapper.text()).toContain('已发布')
+    expect(wrapper.text()).toContain('公开')
 
-    await wrapper.get('.community-filters__keyword').setValue('路由')
-    await wrapper.get('select[aria-label="按标签筛选"]').setValue('前端')
+    // 搜索框是 TInput（非原生 input）：工具栏里第一个 TInput 就是关键词
+    await wrapper.findAllComponents({ name: 'TInput' })[0]!.setValue('路由')
+    // 标签筛选是 TSelect（非原生 select）：工具栏里第一个下拉就是标签
+    await wrapper.findAllComponents({ name: 'TSelect' })[0]!.setValue('前端')
     await wrapper.get('form.community-filters').trigger('submit')
     await flushPromises()
     expect(mocks.listPosts).toHaveBeenLastCalledWith('', {
@@ -136,10 +155,28 @@ describe('社区列表', () => {
     wrapper.unmount()
   })
 
+  it('审核中的帖子优先展示在当前页第一行', async () => {
+    mocks.listPosts.mockResolvedValue([
+      makeCommunityPost({ id: 7, title: '公开帖子' }),
+      makeCommunityPost({ id: 8, title: '审核帖子', status: 'pending_review' }),
+      makeCommunityPost({ id: 9, title: '另一篇公开帖子' }),
+    ])
+    const { wrapper } = await render()
+
+    const cards = wrapper.findAll('.community-post-card')
+    expect(cards.map((item) => item.attributes('data-post-id'))).toEqual(['8', '7', '9'])
+    wrapper.unmount()
+  })
+
   it('我的帖子带作者和审核状态，收藏只走收藏接口', async () => {
     const { wrapper } = await render({ authed: true })
     await tab(wrapper, '我的帖子')?.trigger('click')
-    await wrapper.get('select[aria-label="按审核状态筛选"]').setValue('pending_review')
+    const statusOptions = wrapper
+      .findAllComponents({ name: 'TSelect' })[1]!
+      .props('options') as Array<{ label: string }>
+    expect(statusOptions.map((item) => item.label)).toEqual(['全部状态', '公开', '审核中', '私有'])
+    // 我的帖子：第一个下拉是标签，第二个是审核状态
+    await wrapper.findAllComponents({ name: 'TSelect' })[1]!.setValue('pending_review')
     await wrapper.get('form.community-filters').trigger('submit')
     await flushPromises()
     expect(mocks.listPosts).toHaveBeenLastCalledWith('token', {
@@ -176,7 +213,9 @@ describe('社区列表', () => {
       Array.from({ length: 10 }, (_, index) => makeCommunityPost({ id: index + 1 })),
     )
     const { wrapper } = await render()
-    const next = wrapper.findAll('button').find((item) => item.text() === '下一页')
+    const next = wrapper
+      .findAll('button')
+      .find((item) => item.attributes('aria-label') === '下一页')
     await next?.trigger('click')
     await flushPromises()
     expect(mocks.listPosts).toHaveBeenLastCalledWith('', expect.objectContaining({ offset: 10 }))
@@ -203,6 +242,12 @@ describe('社区列表', () => {
     ])
     expect(wrapper.text()).not.toContain('全部帖子')
     expect(mocks.listFavorites).toHaveBeenCalledWith('token', { limit: 10, offset: 0 })
+    // 与「资产与权益」同组菜单页同一版式：读数条 + 同一张纸里的列表
+    expect(wrapper.classes()).toContain('wb-sheet')
+    expect(wrapper.get('.wb-strip').text()).toContain('当前列表')
+    expect(wrapper.find('.wallet-section .community-list-panel').exists()).toBe(true)
+    expect(wrapper.get('.wb-strip__action button').attributes('aria-label')).toBe('刷新社区帖子')
+    expect(wrapper.get('.community-page__tabs-actions').text()).toContain('发布帖子')
     wrapper.unmount()
   })
 

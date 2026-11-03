@@ -1,20 +1,7 @@
 <script setup lang="ts">
 import { computed, ref, watch, type Component } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import {
-  Bell,
-  ChatDotRound,
-  Connection,
-  Document,
-  Files,
-  Grid,
-  OfficeBuilding,
-  Promotion,
-  Switch,
-  TIcon,
-  UserFilled,
-  Wallet,
-} from 'ui_73info'
+import { Bell, ChatDotRound, Suitcase, TIcon, User } from 'ui_73info'
 
 import { useRailTooltip } from '@/composables/useRailTooltip'
 import { useWorkbenchRailGroups } from '@/composables/useWorkbenchRailGroups'
@@ -22,6 +9,7 @@ import { railGroupItemActive } from '@/shared/workbenchRailGroups'
 import { isWorkbenchChatPage } from '@/shared/workbenchChatRoute'
 
 import WorkbenchIconRailSettings from './WorkbenchIconRailSettings.vue'
+import WorkbenchOverviewIcon from './WorkbenchOverviewIcon.vue'
 
 /**
  * 图标栏一条：`to` 有值就是普通跳转；`groupKey` 有值表示它是「一个分组的入口」，
@@ -45,6 +33,8 @@ const props = defineProps<{
   teamInvitationCount: number
   /** 「我的合同」要实名通过才进分组，与侧边栏同一口径。 */
   realnameApproved: boolean
+  /** 底部头像的首字母；不传就显示占位符，避免为了一个字去读 store。 */
+  username?: string
 }>()
 
 const emit = defineEmits<{
@@ -56,123 +46,56 @@ const router = useRouter()
 
 const { groups, activeGroup } = useWorkbenchRailGroups({
   realnameApproved: computed(() => props.realnameApproved),
+  isDevWorkbenchMode: computed(() => props.isDevWorkbenchMode),
 })
-
-const devItems: RailItem[] = [
-  {
-    key: 'messages',
-    label: '消息',
-    icon: ChatDotRound,
-    to: { name: 'dev-messages' },
-    activeNames: ['dev-messages'],
-  },
-  {
-    key: 'home',
-    label: '开发者总览',
-    icon: UserFilled,
-    to: { name: 'dev-home' },
-    activeNames: ['dev-home', 'dev-dashboard'],
-  },
-  {
-    key: 'resources',
-    label: '资源项目',
-    icon: Files,
-    to: { name: 'dev-resource-list' },
-    activeNames: [
-      'dev-resource-list',
-      'dev-resource-versions',
-      'dev-resource-homepage-edit',
-      'dev-resource-sold-purchases',
-    ],
-  },
-  {
-    key: 'requirements',
-    label: '我的接单',
-    icon: Grid,
-    to: { name: 'dev-my-requirements' },
-    activeNames: ['dev-my-requirements'],
-  },
-  {
-    key: 'hall',
-    label: '需求大厅',
-    icon: Promotion,
-    to: { name: 'dev-requirement-hall' },
-    activeNames: ['dev-requirement-hall'],
-  },
-  {
-    key: 'clients',
-    label: '接入客户端',
-    icon: Connection,
-    to: { name: 'dev-oauth-clients' },
-    activeNames: ['dev-oauth-clients'],
-  },
-  {
-    key: 'teams',
-    label: '团队服务',
-    icon: OfficeBuilding,
-    to: { name: 'workbench-teams' },
-    activeNames: ['workbench-teams', 'workbench-team-detail', 'workbench-team-resources'],
-  },
-  {
-    key: 'wallet',
-    label: '收益钱包',
-    icon: Wallet,
-    to: { name: 'dev-wallet' },
-    activeNames: ['dev-wallet'],
-  },
-  {
-    key: 'invoices',
-    label: '我的发票',
-    icon: Document,
-    to: { name: 'dev-invoices' },
-    activeNames: ['dev-invoices'],
-  },
-  {
-    key: 'notifications',
-    label: '系统通知',
-    icon: Bell,
-    to: { name: 'dev-notifications' },
-    activeNames: ['dev-notifications'],
-  },
-]
 
 const query = computed(() => route.query as Record<string, unknown>)
 const currentName = computed(() => String(route.name ?? ''))
 const isChatActive = computed(() => isWorkbenchChatPage(currentName.value, route.meta, query.value))
 
 /**
- * 用户模式的图标栏：消息 / 两个分组 / 系统通知。
+ * 图标栏：消息 / 分组 / 系统通知。用户与开发者走同一套骨架，只是分组与落地路由不同。
  *
  * 分组只占一个图标，组内页面在图标右侧的列表里换（版式与消息中心同一套「中栏列表 +
- * 右栏内容」）。这样 11 个账户类入口不再堆在一列滚动条里，也不和齿轮弹层重复。
+ * 右栏内容」）。这样账户类入口不再堆在一列滚动条里，也不和齿轮弹层重复。
  */
-const userItems = computed<RailItem[]>(() => [
-  {
-    key: 'messages',
-    label: '消息',
-    icon: ChatDotRound,
-    to: { name: 'workbench' },
-    activeNames: ['workbench', 'workbench-messages'],
-  },
-  ...groups.value.map<RailItem>((group) => ({
-    key: group.key,
-    label: group.label,
-    icon: group.icon,
-    to: { name: group.items[0]!.name },
-    groupKey: group.key,
-    active: activeGroup.value?.key === group.key,
-  })),
-  {
-    key: 'notifications',
-    label: '系统通知',
-    icon: Bell,
-    to: { name: 'workbench-notifications' },
-    activeNames: ['workbench-notifications'],
-  },
-])
-
-const items = computed(() => (props.isDevWorkbenchMode ? devItems : userItems.value))
+const items = computed<RailItem[]>(() => {
+  const isDev = props.isDevWorkbenchMode
+  return [
+    {
+      key: 'overview',
+      label: '工作台总览',
+      icon: WorkbenchOverviewIcon,
+      to: { name: isDev ? 'dev-home' : 'workbench' },
+      activeNames: [isDev ? 'dev-home' : 'workbench'],
+    },
+    {
+      key: 'messages',
+      label: '消息',
+      icon: ChatDotRound,
+      to: { name: isDev ? 'dev-messages' : 'workbench-messages' },
+      activeNames: [isDev ? 'dev-messages' : 'workbench-messages'],
+    },
+    ...groups.value.map<RailItem>((group) => ({
+      key: group.key,
+      label: group.label,
+      icon: group.icon,
+      to: { name: group.items[0]!.name },
+      groupKey: group.key,
+      active: activeGroup.value?.key === group.key && !(isDev && currentName.value === 'dev-home'),
+    })),
+    {
+      key: 'notifications',
+      label: '系统通知',
+      icon: Bell,
+      to: { name: isDev ? 'dev-notifications' : 'workbench-notifications' },
+      activeNames: [isDev ? 'dev-notifications' : 'workbench-notifications'],
+    },
+  ]
+})
 const switchLabel = computed(() => (props.isDevWorkbenchMode ? '切换到用户' : '切换到开发者'))
+/** 切换按钮画「要去的那一侧」：用户态给开发者的工作包，开发态回用户的个人身份。 */
+const switchIcon = computed(() => (props.isDevWorkbenchMode ? User : Suitcase))
 
 /**
  * 每个分组上一次停在的页面：在组与组之间来回切换时，回到该组原来那一页，
@@ -203,6 +126,9 @@ watch(
 )
 
 function isActive(item: RailItem) {
+  if (item.key === 'overview') {
+    return item.activeNames?.includes(currentName.value) ?? false
+  }
   if (item.key === 'messages') {
     return isChatActive.value
   }
@@ -272,21 +198,6 @@ const {
 
 <template>
   <aside class="workbench-icon-rail" aria-label="工作台快捷导航">
-    <button
-      class="workbench-icon-rail__item workbench-icon-rail__switch"
-      type="button"
-      :aria-label="switchLabel"
-      @click="switchWorkbenchMode"
-      @mouseenter="showTooltip(switchLabel, $event)"
-      @focus="showTooltip(switchLabel, $event)"
-      @mouseleave="hideTooltip"
-      @blur="hideTooltip"
-    >
-      <TIcon :size="23">
-        <Switch />
-      </TIcon>
-    </button>
-
     <nav class="workbench-icon-rail__items">
       <button
         v-for="item in items"
@@ -305,7 +216,7 @@ const {
         @mouseleave="hideTooltip"
         @blur="hideTooltip"
       >
-        <TIcon :size="23">
+        <TIcon :size="20">
           <component :is="item.icon" />
         </TIcon>
         <span v-if="badgeFor(item.key) > 0" class="workbench-icon-rail__badge">
@@ -325,7 +236,24 @@ const {
       </span>
     </Teleport>
 
-    <WorkbenchIconRailSettings />
+    <div class="workbench-icon-rail__foot">
+      <button
+        class="workbench-icon-rail__item workbench-icon-rail__switch"
+        type="button"
+        :aria-label="switchLabel"
+        @click="switchWorkbenchMode"
+        @mouseenter="showTooltip(switchLabel, $event)"
+        @focus="showTooltip(switchLabel, $event)"
+        @mouseleave="hideTooltip"
+        @blur="hideTooltip"
+      >
+        <TIcon :size="20">
+          <component :is="switchIcon" />
+        </TIcon>
+      </button>
+
+      <WorkbenchIconRailSettings :username="props.username" />
+    </div>
   </aside>
 </template>
 

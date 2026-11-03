@@ -8,14 +8,10 @@ import type { RouteRecordRaw } from 'vue-router'
 
 export const devWorkbenchSharedRoutes: RouteRecordRaw[] = [
   {
+    // 「AI 需求助手」已下线：旧的深链统一回到开发者总览，不再保留页面。
     path: 'developer/assistant',
     name: 'dev-assistant',
-    component: () => import('@/views/RequirementAssistantView.vue'),
-    meta: {
-      title: 'AI 需求助手',
-      description: '对话梳理需求并生成可采纳草稿',
-      devArea: true,
-    },
+    redirect: { name: 'dev-home' },
   },
   {
     // 实时看板不是独立页面：旧深链统一落到总览的全屏版（`?dashboard=1`）。

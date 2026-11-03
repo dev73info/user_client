@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import {
   ArrowDown,
   Menu as MenuIcon,
@@ -38,6 +38,27 @@ const keywordModel = computed({
   get: () => props.keyword,
   set: (value: string) => emit('update:keyword', value),
 })
+
+/** 菜单面板默认最小宽 112px，会让「最新 / 点赞」的浮层明显宽过触发胶囊；跟随触发宽度。 */
+const sortTriggerRef = ref<HTMLButtonElement | null>(null)
+const sortMenuWidth = ref<number | undefined>(undefined)
+let sortResizeObserver: ResizeObserver | null = null
+
+function measureSortTrigger() {
+  const width = sortTriggerRef.value?.offsetWidth
+  sortMenuWidth.value = width && width > 0 ? Math.round(width) : undefined
+}
+
+onMounted(() => {
+  measureSortTrigger()
+  if (typeof ResizeObserver === 'undefined' || !sortTriggerRef.value) return
+  sortResizeObserver = new ResizeObserver(measureSortTrigger)
+  sortResizeObserver.observe(sortTriggerRef.value)
+})
+
+onBeforeUnmount(() => {
+  sortResizeObserver?.disconnect()
+})
 </script>
 
 <template>
@@ -68,9 +89,10 @@ const keywordModel = computed({
       <TDropdown
         trigger="click"
         placement="bottom-end"
+        :min-width="sortMenuWidth"
         @command="(cmd) => emit('update:sortMode', cmd as 'latest' | 'like')"
       >
-        <button class="mobile-sort-btn" type="button">
+        <button ref="sortTriggerRef" class="mobile-sort-btn" type="button">
           <TIcon>
             <ArrowDown />
           </TIcon>

@@ -42,7 +42,7 @@
      这三档原来各是 24 / 12 / 10px。24px 的卡片圆角配上「每层卡片都再套一层卡片」的结构，
      一屏里会同时出现四五个弧度相同的圆角盒子，眼睛得先数盒子才找到内容；
      收到 14px 后卡片退成「纸」，只剩胶囊与按钮还是圆的。 */
-  --wb-radius-card: 14px;
+  --wb-radius-card: 12px;
   --wb-radius-item: 10px;
   --wb-radius-control: 8px;
   --wb-control-height: 36px;
@@ -58,6 +58,7 @@
   /* 卡片只留一层贴地的投影：原来是 0 20px 44px（大而虚的那一支），
      读数条、面板、列表行、内嵌块各来一层，页面下半截永远蒙着一片灰。 */
   --wb-shadow: 0 1px 2px color-mix(in srgb, var(--73-ink) 5%, transparent);
+  --wb-shadow-card: 0 1px 2px color-mix(in srgb, var(--73-ink) 5%, transparent);
 }
 
 /* 用户工作台的作用域根：`.profile-page` 是工作台各页的根元素，弹窗会被 teleport 到
@@ -116,7 +117,18 @@
 
 /* 读数后面跟的同义小标签（环比、口径说明）：与读数同一行、贴着右侧 */
 .wb-strip__tag {
+  display: inline-flex;
+  align-items: center;
+  min-height: 20px;
   margin-left: 2px;
+  padding: 0 7px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--73-ink) 5%, transparent);
+  color: var(--profile-text-sub, var(--73-ink-muted));
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1;
+  white-space: nowrap;
 }
 
 /* 操作槽：页面级主按钮 + 刷新共用这一槽，靠 auto 外边距整体靠右；

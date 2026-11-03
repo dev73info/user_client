@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, nextTick, watch } from 'vue'
 import { useRoute } from 'vue-router'
 
 import AppDownloadCard from '@/components/app/AppDownloadCard.vue'
@@ -8,6 +8,7 @@ import PortalTopNav from '@/components/PortalTopNav.vue'
 import PortalMobileDock from '@/components/PortalMobileDock.vue'
 import SupportChatWidget from '@/components/SupportChatWidget.vue'
 import MockIdentitySwitcher from '@/mock/MockIdentitySwitcher.vue'
+import { PORTAL_CONTENT_ANCHORS, scrollToPortalAnchor } from '@/utils/portalScroll'
 import { TScrollbar } from 'ui_73info'
 import { useAppShellAuth } from '@/components/app/useAppShellAuth'
 
@@ -21,11 +22,33 @@ import { useAppShellAuth } from '@/components/app/useAppShellAuth'
 const route = useRoute()
 // 登录态接线靠这次调用挂载（启动初始化会话 + 全局 401 兜底），外壳本身不再读取它的返回值。
 useAppShellAuth()
+// 页脚出现在门户首页与四个一级栏目（资源项目 / 需求大厅 / 社区中心 / 积分商城）；
+// 其余内页是工具型页面，底部的备案与服务说明会把内容区挤薄，也不该在每一页重复一遍。
+const FOOTER_ROUTES = new Set([
+  'home',
+  'resources',
+  'resource-catalog',
+  'requirement-hall',
+  'community',
+  'community-post',
+  'mall',
+])
 const showSiteFooter = computed(
-  () => !route.matched.some((record) => record.meta.hideSiteFooter === true),
+  () => typeof route.name === 'string' && FOOTER_ROUTES.has(route.name),
 )
 const immersiveWorkbench = computed(() =>
   route.matched.some((record) => record.meta.workbenchShell === true),
+)
+
+watch(
+  () => route.path,
+  async () => {
+    const anchor = PORTAL_CONTENT_ANCHORS[String(route.name ?? '')]
+    if (!anchor) return
+    await nextTick()
+    scrollToPortalAnchor(anchor)
+  },
+  { immediate: true },
 )
 </script>
 
@@ -61,7 +84,7 @@ const immersiveWorkbench = computed(() =>
           <AppSiteFooter v-if="showSiteFooter" />
         </div>
       </TScrollbar>
-      <PortalMobileDock v-if="!immersiveWorkbench" />
+      <PortalMobileDock />
     </div>
 
     <!-- mock 身份切换器：只在 pnpm dev 且开了 mock 时渲染，详见 src/mock/ -->

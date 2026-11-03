@@ -12,7 +12,7 @@
   --profile-accent-soft: color-mix(in srgb, var(--73-accent) 12%, transparent);
   --profile-success-soft: color-mix(in srgb, var(--73-success) 12%, transparent);
   --profile-success-border: color-mix(in srgb, var(--73-success) 90%, transparent);
-  --profile-success-text: var(--73-success);
+  --profile-success-text: var(--73-app-success-vivid);
   --profile-warning-soft: color-mix(in srgb, var(--73-warning) 14%, transparent);
   --profile-warning-text: var(--73-warning-text);
   --profile-danger-soft: color-mix(in srgb, var(--73-danger) 12%, transparent);

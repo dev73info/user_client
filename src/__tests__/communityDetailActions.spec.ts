@@ -94,12 +94,14 @@ describe('社区帖子动作', () => {
     await wrapper.get('.community-detail-card__like').trigger('click')
     await flushPromises()
     expect(mocks.likePost).toHaveBeenCalledWith('token', 7, true)
-    expect(wrapper.get('.community-detail-card__like').text()).toContain('取消点赞')
+    expect(wrapper.get('.community-detail-card__like').attributes('aria-label')).toBe('取消点赞')
 
     await wrapper.get('.community-detail-card__favorite').trigger('click')
     await flushPromises()
     expect(mocks.favoritePost).toHaveBeenCalledWith('token', 7, true)
-    expect(wrapper.get('.community-detail-card__favorite').text()).toContain('取消收藏')
+    expect(wrapper.get('.community-detail-card__favorite').attributes('aria-label')).toBe(
+      '取消收藏',
+    )
     wrapper.unmount()
   })
 
@@ -129,7 +131,7 @@ describe('社区帖子动作', () => {
       new HttpError(400, '积分不足', 'COMMUNITY_INSUFFICIENT_POINTS'),
     )
     const wrapper = await render()
-    const boost = wrapper.findAll('button').find((item) => item.text() === '积分推广')
+    const boost = wrapper.findAll('button').find((item) => item.text() === '推广')
     await boost?.trigger('click')
     const confirm = () =>
       Array.from(document.body.querySelectorAll('button')).find(
@@ -151,8 +153,8 @@ describe('社区帖子动作', () => {
   it('非作者不显示编辑、推广和悬赏管理入口', async () => {
     const wrapper = await render('other')
     const labels = wrapper.findAll('button').map((item) => item.text())
-    expect(labels).not.toContain('编辑帖子')
-    expect(labels).not.toContain('积分推广')
+    expect(labels).not.toContain('重新编辑')
+    expect(labels).not.toContain('推广')
     expect(labels).not.toContain('采纳为答案')
     expect(labels).not.toContain('取消悬赏')
     wrapper.unmount()

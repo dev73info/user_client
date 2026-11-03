@@ -1,0 +1,4 @@
+/* community-workbench 入口：整份按顶层规则边界切成 2 个分片，@import 顺序 = 原文书写顺序。
+   分片只搬运、不改声明；改顺序会让级联悄悄变样。 */
+@import './community-workbench/01-part.css';
+@import './community-workbench/02-keyframes.css';

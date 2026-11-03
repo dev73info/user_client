@@ -32,21 +32,26 @@ const label = computed(() => requirementPaymentModeLabel(props.mode))
   display: inline-flex;
   align-items: center;
   width: fit-content;
-  padding: 5px 10px;
+  padding: 3px 9px;
+  border: 1px solid transparent;
   border-radius: 999px;
   font-size: 12px;
-  font-weight: 800;
-  line-height: 1;
+  font-weight: 600;
+  line-height: 1.35;
   white-space: nowrap;
 }
 
+/* 浅底 + 深字：底色只做一丝色调，重量交给文字，避免一整块饱和色压在卡头上。
+   担保档要多一点绿、且要亮：用「鲜绿」那一档，墨绿在小字号上发灰 */
 .pay-mode-chip--platform_guarantee {
-  background: color-mix(in srgb, var(--73-success) 60%, transparent);
-  color: var(--73-success);
+  border-color: var(--73-accent-line);
+  background: var(--73-accent-soft);
+  color: var(--73-accent);
 }
 
 .pay-mode-chip--self_managed {
-  background: color-mix(in srgb, var(--73-warning) 55%, transparent);
+  border-color: var(--73-warning-line);
+  background: var(--73-warning-soft);
   color: var(--73-warning-text);
 }
 </style>

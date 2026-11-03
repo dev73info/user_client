@@ -1,47 +1,92 @@
-/* 资源卡的次要信息：作者 / 开发者胶囊（含溢出往返滚动）、简介、标签、原创转载 chip、点赞与查看详情。
-   随模板节点从 `ResourceCatalog.vue` 搬来；原来与空态同写一条 `line-height` 的规则拆成两份（声明相同）。 */
+/* 资源卡的次要信息：封面角标（价格 / 原创转载）、作者与开发者、简介、标签、
+   底部点赞与「查看详情」。对应 Stitch「资源项目」亮色稿。 */
 
-/* 售价与「原创 / 转载」一律降为小号中性 chip（重设计口径：卡片内标签不与标题抢重量） */
 .portal-resource-browser__price-badge {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  z-index: 1;
   display: inline-flex;
   align-items: center;
-  min-height: 20px;
-  padding: 1px 8px;
-  border-radius: 999px;
-  font-size: 12px;
-  font-weight: 700;
+  height: 20px;
+  padding: 0 6px;
+  border-radius: 4px;
+  background: var(--73-success);
+  color: var(--73-ink-inverse);
+  font-size: 10px;
+  font-weight: 600;
   font-variant-numeric: tabular-nums;
-  color: var(--73-ink-soft);
-  background: color-mix(in srgb, var(--73-surface-strong) 96%, transparent);
+  line-height: 1;
 }
 
 .portal-resource-browser__price-badge.is-paid {
+  background: var(--73-accent);
+  color: var(--73-accent-contrast);
+}
+
+.portal-resource-browser__price-badge.is-points {
+  background: var(--73-warning);
+  color: var(--73-ink-inverse);
+}
+
+.portal-resource-browser__meta {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  height: 20px;
+  padding: 0 6px;
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--73-app-ink-strong) 62%, transparent);
+  color: var(--73-ink-inverse);
+  font-size: 10px;
+  font-weight: 500;
+  line-height: 1;
+}
+
+.portal-resource-browser__meta.is-repost {
+  background: color-mix(in srgb, var(--73-app-ink-strong) 62%, transparent);
+}
+
+.portal-resource-browser__desc {
+  display: -webkit-box;
+  margin: 0;
+  overflow: hidden;
   color: var(--73-ink-soft);
-  background: color-mix(in srgb, var(--73-border) 96%, transparent);
+  font-size: 12px;
+  line-height: 1.5;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
 }
 
 .portal-resource-browser__author-pill {
-  display: inline-flex;
+  display: flex;
   align-items: center;
-  gap: 6px;
-  border-radius: 999px;
-  padding: 6px 12px;
-  background: color-mix(in srgb, var(--73-accent-soft) 92%, transparent);
-  color: var(--73-accent);
-  font-size: 12px;
-  font-weight: 700;
-  line-height: normal;
+  gap: 5px;
+  min-width: 0;
   max-width: 100%;
+  margin: 0;
+  color: var(--73-ink-muted);
+  font-size: 11px;
+  line-height: 1.4;
 }
 
 .portal-resource-browser__author-pill-label {
   flex-shrink: 0;
+  color: var(--73-ink-muted);
+  font-size: 11px;
   white-space: nowrap;
 }
 
 .portal-resource-browser__author-pill-viewport {
   min-width: 0;
   overflow: hidden;
+  color: var(--73-ink-soft);
+  font-family: var(--73-font-family-mono);
+  font-size: 11px;
   white-space: nowrap;
 }
 
@@ -51,7 +96,10 @@
   gap: 6px;
 }
 
-/* 名字放不下时左右往返滚动，--marquee-shift 由脚本按溢出宽度写入 */
+.portal-resource-browser__author-pill-name--developer {
+  color: var(--73-success-text);
+}
+
 .portal-resource-browser__author-pill-viewport.is-overflowing
   .portal-resource-browser__author-pill-track {
   animation: portal-author-marquee var(--marquee-duration, 6s) ease-in-out infinite alternate;
@@ -80,112 +128,96 @@
   }
 }
 
-.portal-resource-browser__author-line {
-  display: inline-flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin-top: 4px;
-}
-
-.portal-resource-browser__desc,
-.portal-resource-browser__updated,
-.portal-resource-browser__meta {
-  line-height: 1.7;
-}
-
-.portal-resource-browser__author-pill,
-.portal-resource-browser__updated {
-  margin: 4px 0 0;
-  font-size: 12px;
-}
-
-.portal-resource-browser__desc {
-  margin: 0;
-  color: var(--73-ink-soft);
-}
-
 .portal-resource-browser__tags {
   display: flex;
-  align-items: flex-end;
   flex-wrap: wrap;
-  gap: 10px;
+  gap: 6px;
   min-width: 0;
-  align-self: stretch;
-  width: 100%;
-  max-width: 100%;
 }
 
-.portal-resource-browser__tags::after {
-  content: '';
-  flex: 0 0 170px;
-  height: 43px;
-  visibility: hidden;
-}
-
-/* 与首页精选卡 portal-spotlight-card__meta-row、资源详情页标签同款胶囊 */
 .portal-resource-browser__tags > span {
   display: inline-flex;
   align-items: center;
-  min-width: 0;
   max-width: 100%;
-  min-height: 22px;
-  padding: 2px 9px;
-  border-radius: 999px;
-  background: color-mix(in srgb, var(--73-surface-strong) 96%, transparent);
-  color: var(--73-ink-soft);
-  font-size: 12px;
-  font-weight: 700;
-  line-height: 1.2;
+  padding: 2px 6px;
+  border: 1px solid var(--73-border);
+  border-radius: 4px;
+  background: var(--73-inset);
+  color: var(--73-ink-muted);
+  font-family: var(--73-font-family-mono);
+  font-size: 10px;
+  font-weight: 400;
+  line-height: 1.4;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.portal-resource-browser__meta {
-  display: inline-flex;
+.portal-resource-browser__footer {
+  display: flex;
   align-items: center;
-  min-height: 20px;
-  padding: 1px 8px;
-  border-radius: 999px;
-  background: color-mix(in srgb, var(--73-surface-strong) 96%, transparent);
-  color: var(--73-ink-soft);
-  font-size: 12px;
-  font-weight: 700;
-}
-
-.portal-resource-browser__meta.is-repost {
-  background: color-mix(in srgb, var(--73-surface-strong) 96%, transparent);
-  color: var(--73-ink-soft);
-}
-
-.portal-resource-browser__action {
+  justify-content: space-between;
+  gap: 8px;
   padding: 10px 16px;
-  border-radius: 12px;
-  background: color-mix(in srgb, var(--73-accent-soft) 90%, transparent);
-  color: var(--73-accent);
-  font-weight: 700;
+  border-top: 1px solid var(--73-border-soft);
 }
 
 .portal-resource-browser__like {
   display: inline-flex;
   align-items: center;
-  justify-content: center;
-  gap: 6px;
-  min-width: 66px;
-  padding: 10px 12px;
-  border-radius: 12px;
-  background: color-mix(in srgb, var(--73-surface-strong) 96%, transparent);
+  gap: 4px;
+  padding: 0;
+  border: 0;
+  background: transparent;
   color: var(--73-ink-muted);
-  font-weight: 800;
+  font-family: var(--73-font-family-mono);
+  font-size: 12px;
+  cursor: pointer;
+  transition: color var(--73-transition);
 }
 
+.portal-resource-browser__like:hover,
 .portal-resource-browser__like--active {
-  background: color-mix(in srgb, var(--73-danger-soft) 94%, transparent);
   color: var(--73-danger);
 }
 
 .portal-resource-browser__like:disabled {
   cursor: wait;
-  opacity: 0.7;
+  opacity: 0.55;
+}
+
+.portal-resource-browser__action {
+  height: 30px;
+  padding: 0 12px;
+  border: 1px solid var(--73-border);
+  border-radius: var(--73-radius-control);
+  background: var(--73-surface);
+  color: var(--73-ink);
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition:
+    background-color var(--73-transition),
+    border-color var(--73-transition);
+}
+
+.portal-resource-browser__action:hover {
+  border-color: var(--73-border-hover);
+  background: var(--73-bg-soft);
+}
+
+.portal-resource-browser__action.is-paid {
+  border-color: var(--73-accent);
+  background: var(--73-accent);
+  color: var(--73-accent-contrast);
+}
+
+.portal-resource-browser__action.is-paid:hover {
+  background: color-mix(in srgb, var(--73-accent) 88%, var(--73-app-shade));
+  border-color: color-mix(in srgb, var(--73-accent) 88%, var(--73-app-shade));
+}
+
+.username-gradient {
+  color: var(--73-accent);
 }

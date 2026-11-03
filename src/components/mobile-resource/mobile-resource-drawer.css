@@ -135,8 +135,8 @@
 
 .mobile-menu-group--open .mobile-menu-group-trigger {
   border-radius: 12px 12px 0 0;
-  background: var(--73-accent-soft);
-  color: var(--73-accent);
+  background: var(--73-inset);
+  color: var(--73-ink);
 }
 
 .mobile-menu-group-title {

@@ -105,3 +105,11 @@ button[aria-label^='刷新']:focus-visible {
   background: transparent !important;
   box-shadow: none !important;
 }
+
+/* 当前页码只靠主色文字 + 加粗表达：不带底色和描边。
+   TPagination 的 background 变体给所有页码铺了浅底，当前页那一块在列表页里显重。 */
+.t73-pagination--background .t73-pagination__page--active {
+  background: transparent;
+  border-color: transparent;
+  box-shadow: none;
+}

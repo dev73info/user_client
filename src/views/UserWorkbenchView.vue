@@ -12,6 +12,10 @@
 import { computed } from 'vue'
 import { useRoute } from 'vue-router'
 
+import {
+  WORKBENCH_PANE_WIDTH_CSS_VAR,
+  useWorkbenchPaneWidth,
+} from '@/composables/useWorkbenchPaneWidth'
 import { useWorkbenchShell } from '@/composables/useWorkbenchShell'
 import { isWorkbenchChatPage } from '@/shared/workbenchChatRoute'
 
@@ -27,6 +31,8 @@ const usesIconShell = computed(() =>
 const isChatWorkspace = computed(() =>
   isWorkbenchChatPage(route.name, route.meta, route.query as Record<string, unknown>),
 )
+/* 「我的需求」按设计稿铺成整块浅灰画布：去掉内容区白纸的描边、圆角与内边距。 */
+const isMyRequirementsPage = computed(() => route.name === 'workbench-requirements')
 
 const {
   mobileMenuOpen,
@@ -64,6 +70,30 @@ const {
   currentTitle,
   logout,
 } = useWorkbenchShell()
+
+/* 中栏只在分组页出现：列出当前分组的页面；个人主页等非分组页不占一列。 */
+const showRailGroupList = computed(() => Boolean(activeRailGroup.value) && !isChatWorkspace.value)
+
+/* 分组菜单与消息中心共用中栏宽度：同一份本机偏好，切页不跳宽。 */
+const RAIL_GROUP_WIDTH_MIN = 220
+const RAIL_GROUP_WIDTH_MAX = 520
+const RAIL_GROUP_WIDTH_DEFAULT = 360
+const { paneWidth } = useWorkbenchPaneWidth()
+const railGroupWidth = computed(() =>
+  Math.round(
+    Math.min(
+      RAIL_GROUP_WIDTH_MAX,
+      Math.max(RAIL_GROUP_WIDTH_MIN, paneWidth.value ?? RAIL_GROUP_WIDTH_DEFAULT),
+    ),
+  ),
+)
+const railGroupStyle = computed<Record<string, string>>(() => {
+  const style: Record<string, string> = {}
+  if (showRailGroupList.value) {
+    style[WORKBENCH_PANE_WIDTH_CSS_VAR] = `${railGroupWidth.value}px`
+  }
+  return style
+})
 </script>
 
 <template>
@@ -125,15 +155,18 @@ const {
       :unread-count="unreadMessageCount"
       :team-invitation-count="teamInvitationCount"
       :realname-approved="realnameApproved"
+      :username="auth.username"
       @switch-mode="switchWorkbenchMode"
     />
 
     <section
       class="user-workbench__main"
+      :style="railGroupStyle"
       :class="{
         'user-workbench__main--chat': isChatWorkspace,
         'user-workbench__main--icon-shell': usesIconShell,
-        'user-workbench__main--rail-group': Boolean(activeRailGroup) && !isChatWorkspace,
+        'user-workbench__main--rail-group': showRailGroupList,
+        'user-workbench__main--gray-canvas': isMyRequirementsPage,
       }"
     >
       <WorkbenchMobileBar
@@ -145,9 +178,9 @@ const {
 
       <!-- 分组入口：中栏列组内页面，右栏仍是 RouterView 的内容区（与消息中心同一骨架） -->
       <WorkbenchRailGroupNav
-        v-if="activeRailGroup && !isChatWorkspace"
+        v-if="showRailGroupList"
         class="user-workbench__rail-group"
-        :group="activeRailGroup"
+        :group="activeRailGroup!"
         :is-item-active="isRailGroupItemActive"
         @navigate="closeMobileMenu"
       />
@@ -157,6 +190,7 @@ const {
         :class="{
           'user-workbench__content--chat': isChatWorkspace,
           'user-workbench__content--workspace': usesIconShell && !isChatWorkspace,
+          'user-workbench__content--gray-canvas': isMyRequirementsPage,
         }"
       >
         <RouterView v-slot="{ Component }">
@@ -172,5 +206,6 @@ const {
 </template>
 
 <style scoped src="./../components/workbench/user-workbench-shell.css"></style>
+<style scoped src="./../components/workbench/user-workbench-community.css"></style>
 <style scoped src="./../components/workbench/user-workbench-icon-shell.css"></style>
 <style scoped src="./../components/workbench/user-workbench-rail-group.css"></style>

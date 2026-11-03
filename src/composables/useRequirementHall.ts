@@ -18,12 +18,19 @@ import {
   requirementHallStats,
   requirementMatchesKeyword,
   requirementRecentDeals,
+  normalizeRequirementHallSort,
+  REQUIREMENT_HALL_SORT_OPTIONS,
+  sortRequirementHallItems,
   type RequirementGuaranteeFilter,
+  type RequirementHallSort,
 } from '@/shared/requirementDisplay'
 import { resetSeoMeta, setSeoMeta } from '@/utils/seo'
 
-/** 需求大厅一页的条数：后端公开接口单页上限 100 条，默认 20 条一页。 */
-export const HALL_PAGE_SIZE = 20
+/** 需求大厅一页的条数：桌面两列布局固定 4 行。 */
+export const HALL_PAGE_SIZE = 8
+
+/** 公开接口单页上限 100；超过一页时续拉，再在本地排序 / 分页。 */
+export const HALL_FETCH_SIZE = 100
 
 /**
  * 需求大厅（`/requirement-hall`）的列表与筛选。
@@ -45,6 +52,7 @@ export function useRequirementHall() {
   const overview = ref<RequirementOverviewResp | null>(null)
   const keyword = ref('')
   const guaranteeFilter = ref<RequirementGuaranteeFilter>('all')
+  const hallSort = ref<RequirementHallSort>('price_desc')
 
   /**
    * 大厅是否已经成功拉过一次数据。
@@ -62,9 +70,23 @@ export function useRequirementHall() {
   /** 担保方式下拉的选项：`全部` + 两档担保方式（文案见 `@/shared/requirementDisplay`）。 */
   const guaranteeOptions = computed(() => REQUIREMENT_GUARANTEE_FILTERS)
 
-  /** 关键词是本地过滤：一次取回的一页里再按 编号 / 标题 / 说明 / 担保方式 / 状态 搜。 */
-  const filteredRequirements = computed(() =>
-    requirements.value.filter((item) => requirementMatchesKeyword(item, keyword.value)),
+  /** 关键词是本地过滤：在整份公开需求里按 编号 / 标题 / 说明 / 担保方式 / 状态 搜。 */
+  const matchedRequirements = computed(() =>
+    sortRequirementHallItems(
+      requirements.value.filter((item) => requirementMatchesKeyword(item, keyword.value)),
+      hallSort.value,
+    ),
+  )
+
+  /** 当前页要显示的卡片：排序与关键词过滤之后再做本地分页。 */
+  const filteredRequirements = computed(() => {
+    const start = (hallPage.value - 1) * HALL_PAGE_SIZE
+    return matchedRequirements.value.slice(start, start + HALL_PAGE_SIZE)
+  })
+
+  /** 分页器与区间文案的总数：有关键词时按命中条数算，否则沿用后端公开面总数。 */
+  const hallListTotal = computed(() =>
+    keyword.value.trim() ? matchedRequirements.value.length : hallTotal.value,
   )
 
   const hallStats = computed(() => requirementHallStats(hallTotal.value, overview.value))
@@ -83,6 +105,10 @@ export function useRequirementHall() {
     },
     { immediate: true },
   )
+
+  watch(keyword, () => {
+    hallPage.value = 1
+  })
 
   onMounted(() => {
     setSeoMeta({
@@ -125,6 +151,22 @@ export function useRequirementHall() {
     void loadHallData(1)
   }
 
+  function onHallSortChange(value: SelectModelValue) {
+    const next = normalizeRequirementHallSort(value)
+    if (hallSort.value === next) {
+      return
+    }
+    hallSort.value = next
+    hallPage.value = 1
+  }
+
+  function goToHallPage(page: number) {
+    hallPage.value = Math.min(
+      Math.max(1, page),
+      Math.max(1, Math.ceil(hallListTotal.value / HALL_PAGE_SIZE)),
+    )
+  }
+
   /** 空态里的「清空筛选」：关键词是本地过滤、担保方式是服务端筛选，分别复位。 */
   function resetHallFilters() {
     const hadKeyword = Boolean(keyword.value.trim())
@@ -137,18 +179,37 @@ export function useRequirementHall() {
     }
   }
 
+  /** 取回当前筛选下的全部公开需求：价格排序必须建立在完整结果集上，不能只排当前页。 */
+  async function fetchHallRequirements(paymentMode: RequirementPaymentMode | undefined) {
+    const first = await listPublicRequirementSpotlights(1, HALL_FETCH_SIZE, paymentMode)
+    const pageCount = Math.ceil(first.total / HALL_FETCH_SIZE)
+    if (pageCount <= 1) {
+      return first
+    }
+
+    const rest = await Promise.all(
+      Array.from({ length: pageCount - 1 }, (_, index) =>
+        listPublicRequirementSpotlights(index + 2, HALL_FETCH_SIZE, paymentMode),
+      ),
+    )
+    return {
+      ...first,
+      items: [first.items, ...rest.map((page) => page.items)].flat(),
+    }
+  }
+
   async function loadHallData(page = hallPage.value) {
     loading.value = true
     overviewLoading.value = true
     const [requirementsResult, overviewResult] = await Promise.allSettled([
-      listPublicRequirementSpotlights(page, HALL_PAGE_SIZE, activeGuaranteeMode()),
+      fetchHallRequirements(activeGuaranteeMode()),
       getPublicRequirementOverview(),
     ])
 
     if (requirementsResult.status === 'fulfilled') {
       requirements.value = requirementsResult.value.items
       hallTotal.value = requirementsResult.value.total
-      hallPage.value = requirementsResult.value.page
+      hallPage.value = page
     } else {
       requirements.value = []
       hallTotal.value = 0
@@ -185,9 +246,14 @@ export function useRequirementHall() {
     keyword,
     guaranteeFilter,
     guaranteeOptions,
+    hallSort,
+    sortOptions: REQUIREMENT_HALL_SORT_OPTIONS,
     filteredRequirements,
+    hallListTotal,
     resetKeyword,
     onGuaranteeFilterChange,
+    onHallSortChange,
+    goToHallPage,
     resetHallFilters,
     // 读数与空态
     hallStats,

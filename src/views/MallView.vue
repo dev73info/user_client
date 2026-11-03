@@ -135,13 +135,23 @@ onMounted(async () => {
 
 <template>
   <main class="portal-page portal-page--nav mall-page">
-    <div class="mall-balance">
-      <h2>积分商城</h2>
-      <div v-if="auth.isAuthed" class="mall-balance__num">
-        <span>当前积分</span>
-        <strong>{{ balance }}</strong>
+    <header class="mall-hero">
+      <div class="mall-hero__copy">
+        <div class="mall-hero__eyebrow">[ POINTS MALL · 积分商城 ]</div>
+        <h1>积分商城</h1>
+        <p>用积分兑换权益与道具卡，兑换记录沉淀在个人工作台。</p>
       </div>
-    </div>
+      <div v-if="auth.isAuthed" class="mall-hero__balance">
+        <div class="mall-hero__balance-main">
+          <span>当前可用积分</span>
+          <strong>{{ balance }} <small>PTS</small></strong>
+        </div>
+        <RouterLink class="mall-hero__ledger" :to="{ name: 'workbench-points' }">
+          积分收支明细
+          <span aria-hidden="true">→</span>
+        </RouterLink>
+      </div>
+    </header>
     <div v-if="!auth.isAuthed" class="wb-empty" role="status">
       <span class="wb-empty__title">登录后查看积分商城</span>
       积分商城用账号里的积分兑换权益与道具卡，登录后即可查看余额与可兑换内容。
@@ -156,7 +166,16 @@ onMounted(async () => {
     </div>
     <template v-else>
       <div class="mall-products">
-        <h3>可兑换</h3>
+        <div class="mall-section-head">
+          <div class="mall-section-title">
+            <span class="mall-section-bar" aria-hidden="true"></span>
+            <h3>可兑换</h3>
+            <span v-if="products.length" class="mall-section-count">
+              共 {{ products.length }} 项
+            </span>
+          </div>
+          <span class="mall-section-hint">即兑即时生效至当前开发者账号</span>
+        </div>
         <div v-if="products.length" class="mall-grid">
           <MallProductCard
             v-for="product in products"
@@ -170,42 +189,44 @@ onMounted(async () => {
         </div>
         <TEmpty v-else description="商城暂无可兑换内容" />
       </div>
-      <div class="mall-orders">
-        <h3>我的道具卡</h3>
-        <TTable v-if="promoCards.length" :data="promoCards" stripe>
-          <TTableColumn label="道具" min-width="160">
-            <template #default="{ row }">{{ promoCardLabel(row.card_code) }}</template>
-          </TTableColumn>
-          <TTableColumn label="有效天数" width="100" align="center">
-            <template #default="{ row }">{{ row.duration_days }} 天</template>
-          </TTableColumn>
-          <TTableColumn prop="created_at" label="获得时间" width="180" />
-          <TTableColumn label="操作" width="120" align="center">
-            <template #default>
-              <TButton variant="outline" tone="accent" size="sm" @click="goUsePromoCards">
-                去使用
-              </TButton>
-            </template>
-          </TTableColumn>
-        </TTable>
-        <TEmpty v-else description="背包暂无未使用的道具卡" />
-      </div>
-      <div class="mall-orders">
-        <h3>我的兑换</h3>
-        <TTable v-if="orders.length" :data="orders" stripe>
-          <TTableColumn prop="product_name" label="商品" min-width="180" show-overflow-tooltip />
-          <TTableColumn prop="points_cost" label="积分" width="90" align="center" />
-          <TTableColumn label="状态" width="100" align="center">
-            <template #default="{ row }">
-              <TTag :tone="orderStatusTagType(row.status)" size="sm">
-                {{ orderStatusLabel(row.status) }}
-              </TTag>
-            </template>
-          </TTableColumn>
-          <TTableColumn prop="handle_note" label="备注" min-width="140" show-overflow-tooltip />
-          <TTableColumn prop="created_at" label="时间" width="180" />
-        </TTable>
-        <TEmpty v-else description="暂无兑换记录" />
+      <div class="mall-orders-grid">
+        <div class="mall-orders">
+          <h3>我的道具卡</h3>
+          <TTable v-if="promoCards.length" :data="promoCards" stripe>
+            <TTableColumn label="道具" min-width="160">
+              <template #default="{ row }">{{ promoCardLabel(row.card_code) }}</template>
+            </TTableColumn>
+            <TTableColumn label="有效天数" width="100" align="center">
+              <template #default="{ row }">{{ row.duration_days }} 天</template>
+            </TTableColumn>
+            <TTableColumn prop="created_at" label="获得时间" width="180" />
+            <TTableColumn label="操作" width="120" align="center">
+              <template #default>
+                <TButton variant="outline" tone="accent" size="sm" @click="goUsePromoCards">
+                  去使用
+                </TButton>
+              </template>
+            </TTableColumn>
+          </TTable>
+          <TEmpty v-else description="背包暂无未使用的道具卡" />
+        </div>
+        <div class="mall-orders">
+          <h3>我的兑换</h3>
+          <TTable v-if="orders.length" :data="orders" stripe>
+            <TTableColumn prop="product_name" label="商品" min-width="180" show-overflow-tooltip />
+            <TTableColumn prop="points_cost" label="积分" width="90" align="center" />
+            <TTableColumn label="状态" width="100" align="center">
+              <template #default="{ row }">
+                <TTag :tone="orderStatusTagType(row.status)" size="sm">
+                  {{ orderStatusLabel(row.status) }}
+                </TTag>
+              </template>
+            </TTableColumn>
+            <TTableColumn prop="handle_note" label="备注" min-width="140" show-overflow-tooltip />
+            <TTableColumn prop="created_at" label="时间" width="180" />
+          </TTable>
+          <TEmpty v-else description="暂无兑换记录" />
+        </div>
       </div>
     </template>
   </main>
@@ -255,8 +276,20 @@ onMounted(async () => {
 }
 .mall-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-  gap: 16px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+}
+
+@media (max-width: 900px) {
+  .mall-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 640px) {
+  .mall-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }
 .mall-products,
 .mall-orders {

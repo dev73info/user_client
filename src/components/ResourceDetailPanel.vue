@@ -9,16 +9,12 @@ import {
   type PublicMcResourceItem,
   type PublicMcResourceVersionItem,
 } from '@/api/resources'
-import {
-  API_RESOURCE_PURCHASE_HINT,
-  canPurchaseOnPlatform,
-  resolveVersionPurchaseTarget,
-} from '@/shared/resourceSale'
-import { isApiResourceKind } from '@/shared/resourceApi'
+import { resolveVersionPurchaseTarget } from '@/shared/resourceSale'
 import { useAuthStore } from '@/stores/auth'
 import { useResourceFileDownload } from '@/composables/useResourceFileDownload'
 import { useResourceLike } from '@/composables/useResourceLike'
 import { useResourcePurchase } from '@/composables/useResourcePurchase'
+import { useResourcePurchaseGate } from '@/composables/useResourcePurchaseGate'
 import { useResourceVersionSaleDetail } from '@/composables/useResourceVersionSaleDetail'
 // 富文本管线（Markdown / 清洗 / 代码块高亮 / 表格包裹）在 utils 里，组件只落一次调用；
 // 配套的正文排版在全局样式 `styles/resource-rich-text.css`（v-html 产物没有 data-v）。
@@ -29,7 +25,7 @@ import ResourceDetailCover from '@/components/resource-detail/ResourceDetailCove
 import ResourceDetailSummaryCard from '@/components/resource-detail/ResourceDetailSummaryCard.vue'
 import ResourcePurchaseDialog from '@/components/resource-detail/ResourcePurchaseDialog.vue'
 import ResourceVersionList from '@/components/resource-detail/ResourceVersionList.vue'
-import { TButton, TLoading, TMessage } from 'ui_73info'
+import { TButton, TLoading } from 'ui_73info'
 
 /**
  * 资源详情面板：资源列表页（ResourceCatalogView）里就地渲染的详情内容。
@@ -48,6 +44,8 @@ import { TButton, TLoading, TMessage } from 'ui_73info'
 const props = defineProps<{
   /** 要展示的资源编号（列表页传选中项） */
   resourceId: number
+  /** 面包屑里的当前分区名（如「自由工具」）；缺省显示「资源列表」 */
+  contextLabel?: string
 }>()
 
 /**
@@ -126,42 +124,14 @@ const {
 })
 
 /**
- * BUG-020：接口资源只在开发者自有站点的服务端下单，平台内没有购买入口。
- *
- * 接口资源的价格是「开放接口下单的售价」，不是平台内商品标价——
- * 所以这里不给它开平台内购买入口（后端会以 409 拒掉），只留一条到开发者站点的引导。
+ * 购买闸与 BUG-020 的入口拦截收在 composable 里（判定口径与提示文案原样保留）；
+ * 面板只接 `isApiResource` / `needsPurchase` 与「打开购买面板」这一个动作。
  */
-const isApiResource = computed(() => isApiResourceKind(resource.value?.resource_kind))
-/** 买断 / 积分资源的购买闸（版本列表按钮也看它，版本售卖不在这里拦）。 */
-const needsPurchase = computed(() => {
-  if (!resource.value) {
-    return false
-  }
-  return canPurchaseOnPlatform({
-    priceFen: resource.value.buyout_price_fen,
-    pricePoints: resource.value.price_points,
-    purchasedByMe: Boolean(resource.value.purchased_by_me),
-    isOwner: isOwner.value,
-    resourceKind: resource.value.resource_kind,
-  })
+const { isApiResource, needsPurchase, openPurchasePanel } = useResourcePurchaseGate({
+  resource,
+  isOwner,
+  openPurchasePanelUnlocked,
 })
-
-/**
- * BUG-020：接口资源没有平台内购买入口——下单只能走开发者站点的开放接口。
- * 打开购买面板的入口在这里再挡一道，避免别的入口（下载 403 引导等）把用户送进一个
- * 必然失败的支付弹窗。面板本身的动作（下单队列 / 支付面 / 轮询）仍在 `useResourcePurchase` 里。
- *
- * `version` 是本次购买的目标版本：版本售卖资源按版本价下单，买断 / 积分资源传空。
- */
-async function openPurchasePanel(
-  version: PublicMcResourceVersionItem | null = null,
-): Promise<void> {
-  if (isApiResource.value) {
-    TMessage.info(API_RESOURCE_PURCHASE_HINT)
-    return
-  }
-  await openPurchasePanelUnlocked(version)
-}
 
 /**
  * 点赞：动作在 `useResourceLike` 里（组件只留按钮），赞态写回本组件的 `resource`。
@@ -254,7 +224,8 @@ async function loadResource() {
       listPublicMcResourceVersions(resourceId, token),
     ])
     resource.value = resourceDetail
-    versions.value = resourceVersions
+    // 列表按时间倒序：`latestVersion` 取 `versions[0]`，页面展示也与设计稿一致（新版本在上）
+    versions.value = [...resourceVersions].sort((a, b) => b.created_at.localeCompare(a.created_at))
   } catch (error) {
     // 就地报错，不把整个列表页带回首页
     resource.value = null
@@ -300,6 +271,26 @@ watch(
       <!-- 窄屏（≤900px）详情面板里的唯一退出口：桌面工具条的「返回」只在 ≥900px 渲染，
            面板内原来的「收起详情」已删除，移动端因此需要一个可见的返回控件。
            桌面端（>900px）由下面的媒体查询隐藏，保证不出现第二个返回入口。 -->
+      <!-- 桌面（>900px）详情页的返回行：返回按钮 + 面包屑（草稿形态）；窄屏仍用下面的面板内返回 -->
+      <div class="resource-detail-page__backbar">
+        <button
+          class="resource-detail-page__back-btn"
+          type="button"
+          aria-label="返回资源列表"
+          @click="emit('close')"
+        >
+          <span aria-hidden="true">←</span>
+          <span>返回资源列表</span>
+        </button>
+        <nav class="resource-detail-page__breadcrumb" aria-label="面包屑">
+          <span>资源项目</span>
+          <span aria-hidden="true">/</span>
+          <span>{{ props.contextLabel || '资源列表' }}</span>
+          <span aria-hidden="true">/</span>
+          <strong>{{ resource?.title || '资源详情' }}</strong>
+        </nav>
+      </div>
+
       <button
         class="resource-detail-page__panel-back"
         type="button"
@@ -383,3 +374,6 @@ watch(
 <style src="./resource-detail/resource-detail-shared.css"></style>
 
 <style src="./resource-detail/resource-purchase-palette.css"></style>
+
+<!-- Workbench 亮色详情稿（桌面端覆盖层，放在最后压过子组件的 scoped 样式） -->
+<style src="./resource-detail/resource-detail-workbench.css"></style>

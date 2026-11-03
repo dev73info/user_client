@@ -1,4 +1,4 @@
-import { computed, ref, watch } from 'vue'
+import { computed, ref } from 'vue'
 import { TMessage } from 'ui_73info'
 
 import {
@@ -8,14 +8,7 @@ import {
   type PointsTransfer,
   type PointsTransferMeta,
 } from '@/api/points'
-import { useClientPagination } from '@/composables/useClientPagination'
 import { describeBackendError } from '@/shared/backendErrorText'
-import {
-  pointsTransferMatchesKeyword,
-  pointsTransferMatchesScope,
-  pointsTransferScopes,
-  type TransferScope,
-} from '@/shared/pointsDisplay'
 import { useAuthStore } from '@/stores/auth'
 
 export function usePointsTransfer(hooks: {
@@ -34,33 +27,7 @@ export function usePointsTransfer(hooks: {
   const transfers = ref<PointsTransfer[]>([])
   const transferDialogVisible = ref(false)
   const feeRate = computed(() => transferMeta.value?.fee_rate ?? null)
-  const transferKeyword = ref('')
-  const transferScope = ref<TransferScope>('all')
-  const transferScopes = computed(() => pointsTransferScopes(transfers.value, auth.username))
-  const filteredTransfers = computed(() =>
-    transfers.value.filter(
-      (item) =>
-        pointsTransferMatchesScope(item, transferScope.value, auth.username) &&
-        pointsTransferMatchesKeyword(item, transferKeyword.value),
-    ),
-  )
-  const transferFiltersActive = computed(
-    () => transferKeyword.value.trim() !== '' || transferScope.value !== 'all',
-  )
-  const {
-    page: transferPage,
-    pageSize: transferPageSize,
-    total: transferTotal,
-    paged: pagedTransfers,
-    resetPage: resetTransferPage,
-  } = useClientPagination(filteredTransfers)
-
-  watch([transferKeyword, transferScope], resetTransferPage)
-
-  function resetTransferFilters() {
-    transferKeyword.value = ''
-    transferScope.value = 'all'
-  }
+  const transferTotal = computed(() => transfers.value.length)
 
   async function loadTransferMeta() {
     if (!auth.token) return
@@ -135,16 +102,7 @@ export function usePointsTransfer(hooks: {
     transfers,
     transferDialogVisible,
     feeRate,
-    transferKeyword,
-    transferScope,
-    transferScopes,
-    filteredTransfers,
-    transferFiltersActive,
-    transferPage,
-    transferPageSize,
     transferTotal,
-    pagedTransfers,
-    resetTransferFilters,
     resetTransferForm,
     loadTransferMeta,
     loadTransfers,

@@ -68,6 +68,8 @@ export async function mountAfterSales(
   mocks.detail.mockResolvedValue({ ...detailBase, ...detail })
   const wrapper = mount(AfterSalesModal, {
     props: { ...baseProps, ...propOverrides, visible: false },
+    // 弹窗内容 teleport 到 body：测试里就地渲染，断言不必去查 document。
+    global: { stubs: { teleport: true } },
   })
   await wrapper.setProps({ visible: true })
   await flushPromises()

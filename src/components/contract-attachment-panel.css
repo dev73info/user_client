@@ -1,9 +1,10 @@
+/* 合同附件面板：门户侧的一张普通卡。不再用左侧 3px 绿条——那条在「未准备」时也在发成功信号；
+   状态只由右上角的徽标表达。 */
 .attachment-panel {
   margin: 24px 0;
-  padding: 18px 20px;
-  border: 1px solid var(--73-ink-disabled);
-  border-left: 3px solid var(--73-success);
-  border-radius: 8px;
+  padding: 18px 20px 20px;
+  border: 1px solid var(--73-border);
+  border-radius: 12px;
   background: var(--73-surface-strong);
 }
 
@@ -26,23 +27,24 @@
   min-height: 22px;
   padding: 0 10px;
   border-radius: 999px;
-  border: 1px solid var(--73-ink-disabled);
-  background: var(--73-surface-strong);
+  border: 1px solid var(--73-border);
+  background: var(--73-inset);
   color: var(--73-ink-soft);
   font-size: 12px;
   font-weight: 700;
 }
 
+/* 浅底 + 深字：三档状态各自一色，不再出现「待审核用危险色」这种错位 */
 .attachment-panel__badge--pending {
-  border-color: var(--73-warning);
+  border-color: var(--73-warning-line);
   background: var(--73-warning-soft);
-  color: var(--73-danger);
+  color: var(--73-warning-text);
 }
 
 .attachment-panel__badge--approved {
-  border-color: var(--73-success);
+  border-color: var(--73-success-line);
   background: var(--73-success-soft);
-  color: var(--73-success);
+  color: var(--73-success-text);
 }
 
 .attachment-panel__badge--rejected {
@@ -54,18 +56,22 @@
 .attachment-panel__rule {
   margin: 12px 0 16px;
   padding: 10px 12px;
-  border-radius: 6px;
-  background: var(--73-surface-strong);
-  color: var(--73-ink-soft);
-  font-size: 12.5px;
+  border-radius: 8px;
+  background: var(--73-inset);
+  color: var(--73-ink-muted);
+  font-size: 12px;
   line-height: 1.7;
 }
 
 .attachment-panel__empty {
-  margin: 0 0 12px;
+  margin: 0 0 14px;
+  padding: 14px;
+  border: 1px dashed var(--73-border);
+  border-radius: 8px;
   color: var(--73-ink-muted);
   font-size: 13px;
   line-height: 1.7;
+  text-align: center;
 }
 
 .attachment-card {

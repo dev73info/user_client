@@ -1,4 +1,7 @@
 <script setup lang="ts">
+import { computed } from 'vue'
+import { TTooltip } from 'ui_73info'
+
 import { isPointsResource, isPricedResource } from '@/shared/resourceSale'
 import { formatUpdatedAt, type MobileCard } from '@/components/mobile-resource/mobileResourceModel'
 
@@ -15,6 +18,13 @@ const props = defineProps<{
 const emit = defineEmits<{
   open: []
 }>()
+
+const cardTags = computed(() =>
+  props.card.tagsText
+    .split(' ')
+    .map((tag) => tag.trim())
+    .filter(Boolean),
+)
 </script>
 
 <template>
@@ -44,18 +54,24 @@ const emit = defineEmits<{
           >{{ props.card.originType === 'repost' ? '转载' : '原创' }}</span
         >
       </h3>
-      <p class="card-desc">{{ props.card.desc }}</p>
+      <TTooltip
+        class="card-desc-tooltip"
+        :content="props.card.desc"
+        placement="top"
+        trigger="click"
+        :max-width="280"
+        @click.stop
+      >
+        <span class="card-desc">{{ props.card.desc }}</span>
+      </TTooltip>
       <div class="card-stats">
         <span class="card-stat">
           <span class="card-stat__heart" aria-hidden="true">♥</span>
           <span class="card-stat__num">{{ props.card.likeCount }}</span>
         </span>
-        <span class="card-stat"
-          >标签
-          <span class="card-stat__num">{{
-            props.card.tagsText ? props.card.tagsText.split(' ').length : 0
-          }}</span></span
-        >
+      </div>
+      <div v-if="cardTags.length" class="card-tags">
+        <span v-for="tag in cardTags" :key="tag" class="card-tag">{{ tag }}</span>
       </div>
       <div class="card-meta">
         <span class="card-meta__author">by {{ props.card.author }}</span>

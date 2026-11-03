@@ -1,0 +1,52 @@
+/* ============================================================================
+   提示条 · 玻璃底（全局）
+   ----------------------------------------------------------------------------
+
+   五档语气在 ui_73info 里用的是近乎不透明的浅色软底（`--73-*-soft`），
+   `backdrop-filter` 虽然一直在，但底色不透光，模糊根本看不出来。
+   这里只换**底**：半透明面色 + 一层很淡的语气色；
+   文字色、描边语义、圆角、进出场动画仍沿用组件自己的定义。
+
+   选择器比组件内的 `.t73-message--tone-*[data-v-*]` 多一级，
+   不依赖样式注入顺序（SFC 的 scoped 样式是运行时后插到 head 的）。
+   ============================================================================ */
+
+.t73-message-host .t73-message-stack > .t73-message {
+  --toast-tone: var(--73-neutral-text);
+
+  background:
+    linear-gradient(
+      color-mix(in srgb, var(--toast-tone) 8%, transparent),
+      color-mix(in srgb, var(--toast-tone) 8%, transparent)
+    ),
+    color-mix(in srgb, var(--73-surface-strong) 62%, transparent);
+  border-color: color-mix(in srgb, var(--toast-tone) 30%, transparent);
+  box-shadow:
+    0 16px 40px color-mix(in srgb, var(--73-ink) 16%, transparent),
+    0 2px 6px color-mix(in srgb, var(--73-ink) 8%, transparent);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+}
+
+.t73-message-host .t73-message-stack > .t73-message.t73-message--tone-success {
+  --toast-tone: var(--73-success-text);
+}
+
+.t73-message-host .t73-message-stack > .t73-message.t73-message--tone-warning {
+  --toast-tone: var(--73-warning-text);
+}
+
+.t73-message-host .t73-message-stack > .t73-message.t73-message--tone-danger {
+  --toast-tone: var(--73-danger-text);
+}
+
+.t73-message-host .t73-message-stack > .t73-message.t73-message--tone-info {
+  --toast-tone: var(--73-info-text);
+}
+
+/* 不支持背景模糊时退回实底：宁可丢掉玻璃感，也不能让文字压在页面上读不清。 */
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .t73-message-host .t73-message-stack > .t73-message {
+    background: color-mix(in srgb, var(--73-surface-strong) 96%, var(--toast-tone) 4%);
+  }
+}

@@ -4,21 +4,16 @@ import { useRouter } from 'vue-router'
 import { useHomeCheckin } from '@/composables/useHomeCheckin'
 import { usePointsLedger } from '@/composables/usePointsLedger'
 import { usePointsTransfer } from '@/composables/usePointsTransfer'
-import type { PointsRecordTab } from '@/shared/pointsDisplay'
 import { useAuthStore } from '@/stores/auth'
 
 export function usePointsCenter() {
   const router = useRouter()
   const auth = useAuthStore()
   const refreshing = ref(false)
-  const activeRecordTab = ref<PointsRecordTab>('transfers')
   const ledger = usePointsLedger()
   const checkin = useHomeCheckin(false)
   const transfer = usePointsTransfer({
     reloadLedger: () => ledger.loadPoints(),
-    onTransferred: () => {
-      activeRecordTab.value = 'transfers'
-    },
   })
 
   async function refreshOverview() {
@@ -57,7 +52,6 @@ export function usePointsCenter() {
   return {
     auth,
     refreshing,
-    activeRecordTab,
     refreshOverview,
     checkinStatus: checkin.status,
     checkinSaving: checkin.saving,

@@ -33,7 +33,6 @@ export const USER_ROUTE_NAMES = [
 export const DEV_ROUTE_NAMES = [
   'dev-home',
   'dev-oauth-clients',
-  'dev-assistant',
   'dev-resource-list',
   'dev-resource-sold-purchases',
   'dev-tip-settings',

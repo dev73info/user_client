@@ -41,7 +41,7 @@ const transferTarget = ref<ResourcePurchaseOrder | null>(null)
 
 /** 状态筛选项：取值与文案一律沿用既有状态口径（`resourcePurchaseStatusLabel`），不自创状态名。 */
 const STATUS_FILTERS: { value: string; label: string }[] = [
-  { value: 'all', label: '全部状态' },
+  { value: 'all', label: '全部' },
   { value: 'pending', label: resourcePurchaseStatusLabel('pending') },
   { value: 'paid', label: resourcePurchaseStatusLabel('paid') },
   { value: 'refunding', label: resourcePurchaseStatusLabel('refunding') },
@@ -81,7 +81,10 @@ function openTransfer(order: ResourcePurchaseOrder) {
 </script>
 
 <template>
-  <main class="page-shell custom-page-shell profile-page wb-sheet" :aria-busy="loading">
+  <main
+    class="page-shell custom-page-shell profile-page my-purchases-page wb-sheet"
+    :aria-busy="loading"
+  >
     <PurchaseStatsStrip
       :stats="stats"
       :loading="loading"
@@ -141,67 +144,63 @@ function openTransfer(order: ResourcePurchaseOrder) {
           </TButton>
         </div>
       </div>
-      <template v-else>
-        <ul class="wb-list" aria-label="已购资源订单">
-          <li v-for="order in orders" :key="order.order_no" class="wb-item">
-            <div class="wb-item__main">
-              <div class="wb-item__title-row">
-                <button
-                  type="button"
-                  class="wb-item__title purchases__title"
-                  @click="openResource(order)"
-                >
-                  {{ order.resource_title || `资源 #${order.resource_id}` }}
-                </button>
-                <span v-if="isApiResourcePurchaseOrder(order)" class="purchases__tag"
-                  >接口资源</span
-                >
-              </div>
-              <span class="wb-item__meta">
-                订单 {{ order.order_no }} · {{ resourcePurchaseStatusLabel(order.status) }} ·
-                {{ formatPurchaseAmountLabel(order) }}
-              </span>
-              <span class="wb-item__meta">
-                卖家 {{ order.seller }}
-                <template v-if="order.first_downloaded_at"> · 已下载</template>
-                <template v-else-if="order.status === 'paid'"> · 未下载</template>
-                <template v-if="order.entitlement_revoked"> · 下载权已被退款收回</template>
-              </span>
-            </div>
-            <div class="wb-item__actions">
-              <TButton
-                v-if="canTransferPurchase(order)"
-                variant="outline"
-                @click="openTransfer(order)"
+      <ul v-else class="wb-list" aria-label="已购资源订单">
+        <li v-for="order in orders" :key="order.order_no" class="wb-item">
+          <div class="wb-item__main">
+            <div class="wb-item__title-row">
+              <button
+                type="button"
+                class="wb-item__title purchases__title"
+                @click="openResource(order)"
               >
-                转移使用权
-              </TButton>
-              <TButton variant="outline" @click="openResource(order)">查看资源</TButton>
+                {{ order.resource_title || `资源 #${order.resource_id}` }}
+              </button>
+              <span v-if="isApiResourcePurchaseOrder(order)" class="purchases__tag">接口资源</span>
             </div>
-          </li>
-        </ul>
-
-        <div class="wb-pager">
-          <div class="wb-pager__count">
-            <TSelect v-model="pageSize" class="wb-pager__size" aria-label="每页订单数">
-              <TOption
-                v-for="size in LIST_PAGE_SIZES"
-                :key="size"
-                :label="`${size} 条/页`"
-                :value="size"
-              />
-            </TSelect>
+            <span class="wb-item__meta">
+              订单 {{ order.order_no }} · {{ resourcePurchaseStatusLabel(order.status) }} ·
+              {{ formatPurchaseAmountLabel(order) }}
+            </span>
+            <span class="wb-item__meta">
+              卖家 {{ order.seller }}
+              <template v-if="order.first_downloaded_at"> · 已下载</template>
+              <template v-else-if="order.status === 'paid'"> · 未下载</template>
+              <template v-if="order.entitlement_revoked"> · 下载权已被退款收回</template>
+            </span>
           </div>
-          <TPagination
-            v-model:current-page="page"
-            :page-size="pageSize"
-            :total="total"
-            :pager-count="5"
-            background
-            aria-label="已购订单分页"
-          />
+          <div class="wb-item__actions">
+            <TButton
+              v-if="canTransferPurchase(order)"
+              variant="outline"
+              @click="openTransfer(order)"
+            >
+              转移使用权
+            </TButton>
+            <TButton variant="outline" @click="openResource(order)">查看资源</TButton>
+          </div>
+        </li>
+      </ul>
+
+      <div v-if="!(loading && !orders.length)" class="wb-pager">
+        <div class="wb-pager__count">
+          <TSelect v-model="pageSize" class="wb-pager__size" aria-label="每页订单数">
+            <TOption
+              v-for="size in LIST_PAGE_SIZES"
+              :key="size"
+              :label="`${size} 条/页`"
+              :value="size"
+            />
+          </TSelect>
         </div>
-      </template>
+        <TPagination
+          v-model:current-page="page"
+          :page-size="pageSize"
+          :total="total"
+          :pager-count="5"
+          background
+          aria-label="已购订单分页"
+        />
+      </div>
     </section>
     <PurchaseTransferDialog
       v-model:open="transferOpen"
@@ -224,13 +223,6 @@ function openTransfer(order: ResourcePurchaseOrder) {
   cursor: pointer;
 }
 
-.wb-item__title-row {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
 /* R034 接口资源订单标签：与普通已购订单共用同一列表，只补一个来源标记。 */
 .purchases__tag {
   flex: 0 0 auto;
@@ -249,6 +241,24 @@ function openTransfer(order: ResourcePurchaseOrder) {
   flex-wrap: wrap;
   gap: 8px;
   align-items: center;
+}
+
+/* 与「我的发票」同一套单纸页版式：面板撑满内容区，分页器沉到纸底；
+   内容超高时由工作台内容区滚动。 */
+.my-purchases-page.page-shell {
+  display: flex;
+  flex-direction: column;
+  height: calc(100dvh - var(--portal-header-footprint, 98px) - 24px);
+}
+
+.my-purchases-page .wallet-section {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+}
+
+.my-purchases-page .wallet-section :deep(.wb-pager) {
+  margin-top: auto;
 }
 
 /* 状态名都不长，下拉收窄一点；宽度写成 flex 基宽而不是 width——TSelect 自带 width: 100%，

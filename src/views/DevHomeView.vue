@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { onBeforeUnmount, onMounted, ref } from 'vue'
+import { onBeforeUnmount, onMounted, ref, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { TButton, TMessage } from 'ui_73info'
 
+import { listPublicRequirementSpotlights } from '@/api/requirements'
 import DevWithdrawalDialog from '@/components/DevWithdrawalDialog.vue'
 import DevFundPanel from '@/components/dev/DevFundPanel.vue'
 import DevHomeMetaStrip from '@/components/dev/DevHomeMetaStrip.vue'
@@ -92,13 +93,45 @@ const { PROJECT_TABS, activeProjectTab, projectRows, resourceRows } = useDevHome
   resources,
 })
 
-/** 工作台入口：四条都用路由名跳，路径与权限由路由表统一管。 */
-const ENTRIES = [
-  { name: 'dev-requirement-hall', label: '需求大厅' },
-  { name: 'dev-my-requirements', label: '我的需求' },
-  { name: 'dev-wallet', label: '钱包' },
-  { name: 'dev-resource-list', label: '资源' },
-] as const
+/** 工作台入口：四条都用路由名跳，路径与权限由路由表统一管；卡片上带各自的关键读数。 */
+const hallOpenCount = ref<number | null>(null)
+
+async function loadHallOpenCount() {
+  try {
+    // 只要条数：取一页 1 条，total 就是大厅可浏览需求数
+    const page = await listPublicRequirementSpotlights(1, 1)
+    hallOpenCount.value = page.total
+  } catch {
+    hallOpenCount.value = null
+  }
+}
+
+const entryCards = computed(() => [
+  {
+    name: 'dev-requirement-hall',
+    label: '需求大厅',
+    value: hallOpenCount.value === null ? '—' : `${hallOpenCount.value} 条`,
+    meta: '可浏览需求',
+  },
+  {
+    name: 'dev-my-requirements',
+    label: '我的需求',
+    value: loaded.value ? `${activeProjectCount.value} 单` : '—',
+    meta: `待交付 ${loaded.value ? pendingDeliveryCount.value : '—'} 单`,
+  },
+  {
+    name: 'dev-wallet',
+    label: '钱包',
+    value: withdrawable.value === null ? '—' : `¥${withdrawable.value.toFixed(2)}`,
+    meta: '可提现余额',
+  },
+  {
+    name: 'dev-resource-list',
+    label: '资源',
+    value: loaded.value ? `${resources.value.length} 个` : '—',
+    meta: '资源项目',
+  },
+])
 
 /** 提现就地开窗：余额、通道状态与提交都在弹窗内完成，成功后只回刷钱包读数。 */
 const withdrawDialog = ref<InstanceType<typeof DevWithdrawalDialog> | null>(null)
@@ -106,6 +139,7 @@ const withdrawDialog = ref<InstanceType<typeof DevWithdrawalDialog> | null>(null
 /** 进页一次取数（本页没有后台轮询：读数不常变，需要时点刷新）。 */
 onMounted(() => {
   void loadPage()
+  void loadHallOpenCount()
 })
 
 /** 卸载标记在这里落下：数据层只读它，慢响应回来时不再往回写。 */
@@ -136,15 +170,17 @@ function openMyOrder(requirementId: string) {
       @open-dashboard="openDashboard"
     />
 
-    <!-- 四个跳转入口：读数只报数，明细在各自菜单页 -->
+    <!-- 四个入口卡片：各自带一条关键读数（可浏览需求 / 进行中 / 可提现 / 资源数），不做纯跳转按钮 -->
     <nav class="dev-home__entries" aria-label="开发者工作台入口">
       <RouterLink
-        v-for="entry in ENTRIES"
+        v-for="entry in entryCards"
         :key="entry.name"
         class="dev-home__entry"
         :to="{ name: entry.name }"
       >
-        {{ entry.label }}
+        <span class="dev-home__entry-label">{{ entry.label }}</span>
+        <strong class="dev-home__entry-value">{{ entry.value }}</strong>
+        <span class="dev-home__entry-meta">{{ entry.meta }}</span>
       </RouterLink>
     </nav>
 

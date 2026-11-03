@@ -55,12 +55,35 @@ function handleAvatarFileChange(event: Event) {
 <template>
   <section class="dev-surface-card">
     <div class="dev-card-head">
-      <div class="dev-card-head__title-block">
-        <h3 class="dev-section-title">{{ team.name }}</h3>
-        <p class="dev-section-desc">{{ team.description || '暂无团队简介' }}</p>
-        <p class="dev-team-detail__meta">
-          {{ teamMemberMetaLabel(team.members.length, team.owner_username) }}
-        </p>
+      <div class="dev-card-head__title-block dev-team-profile">
+        <div class="dev-team-detail__avatar">
+          <img v-if="team.avatar_url" :src="apiUrl(team.avatar_url)" :alt="team.name" />
+          <span v-else>{{ teamAvatarInitial(team.name) }}</span>
+          <input
+            ref="avatarInput"
+            type="file"
+            accept="image/png,image/jpeg,image/webp,image/gif"
+            class="dev-team-detail__avatar-input"
+            @change="handleAvatarFileChange"
+          />
+          <button
+            v-if="canManageTeam"
+            type="button"
+            class="dev-team-detail__avatar-edit"
+            :disabled="avatarUploading"
+            @click="triggerAvatarSelect"
+          >
+            {{ teamAvatarEditLabel(avatarUploading) }}
+          </button>
+        </div>
+
+        <div class="dev-team-profile__info">
+          <h3 class="dev-section-title">{{ team.name }}</h3>
+          <p class="dev-section-desc">{{ team.description || '暂无团队简介' }}</p>
+          <p class="dev-team-detail__meta">
+            {{ teamMemberMetaLabel(team.members.length, team.owner_username) }}
+          </p>
+        </div>
       </div>
       <div class="dev-card-head__actions">
         <button
@@ -93,30 +116,8 @@ function handleAvatarFileChange(event: Event) {
       </div>
     </div>
 
-    <div class="dev-team-detail__profile">
-      <div class="dev-team-detail__avatar">
-        <img v-if="team.avatar_url" :src="apiUrl(team.avatar_url)" :alt="team.name" />
-        <span v-else>{{ teamAvatarInitial(team.name) }}</span>
-        <input
-          ref="avatarInput"
-          type="file"
-          accept="image/png,image/jpeg,image/webp,image/gif"
-          class="dev-team-detail__avatar-input"
-          @change="handleAvatarFileChange"
-        />
-        <button
-          v-if="canManageTeam"
-          type="button"
-          class="dev-team-detail__avatar-edit"
-          :disabled="avatarUploading"
-          @click="triggerAvatarSelect"
-        >
-          {{ teamAvatarEditLabel(avatarUploading) }}
-        </button>
-      </div>
-
+    <div v-if="editing" class="dev-team-profile__form">
       <TeamProfileForm
-        v-if="editing"
         :initial-name="team.name"
         :initial-description="team.description"
         :saving="saving"
@@ -137,11 +138,29 @@ function handleAvatarFileChange(event: Event) {
   color: var(--dev-muted);
 }
 
-.dev-team-detail__profile {
+/* 卡头就是完整资料：头像与团队信息并排一行，不再单独占一块只剩头像的「体内」 */
+.dev-card-head {
+  margin-bottom: 0;
+}
+
+.dev-team-profile {
   display: flex;
   align-items: flex-start;
-  gap: 20px;
+  gap: 16px;
   flex-wrap: wrap;
+  min-width: 0;
+}
+
+.dev-team-profile__info {
+  min-width: 0;
+}
+
+.dev-team-profile__info .dev-section-title {
+  margin: 0;
+}
+
+.dev-team-profile__form {
+  margin-top: 18px;
 }
 
 .dev-team-detail__avatar {

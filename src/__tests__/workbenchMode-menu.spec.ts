@@ -97,9 +97,9 @@ describe('workbench mode switch', () => {
       )!
       .findAll('.user-workbench__submenu-link')
     expect(assetsLinks.map((link) => link.text())).toEqual([
-      '我的收藏',
+      '我的帖子',
       '优惠券中心',
-      '积分中心',
+      '我的积分',
       '我的权益',
       '勋章与邀请',
     ])
@@ -125,7 +125,6 @@ describe('workbench mode switch', () => {
       '工作台总览',
       '资源项目',
       '接入客户端',
-      'AI 需求助手',
       '需求大厅',
       '我的接单',
     ])
@@ -194,6 +193,21 @@ describe('workbench mode switch', () => {
     const user = await renderWorkbench('workbench')
     expect(user.wrapper.find('.user-workbench__menu-badge').exists()).toBe(false)
     user.wrapper.unmount()
+  })
+
+  it('菜单分组同一时间只展开一个', async () => {
+    const { wrapper } = await renderWorkbench('workbench-requirements')
+    const orders = menuGroupHead(wrapper, '订单与合同')
+    const assets = menuGroupHead(wrapper, '资产与权益')
+
+    // 进「我的需求」时只自动展开它所属的「订单与合同」
+    expect(orders.attributes('aria-expanded')).toBe('true')
+    expect(assets.attributes('aria-expanded')).toBe('false')
+
+    await assets.trigger('click')
+    expect(assets.attributes('aria-expanded')).toBe('true')
+    expect(orders.attributes('aria-expanded')).toBe('false')
+    wrapper.unmount()
   })
 
   it('团队页面属于开发者工作台：进页不切回用户菜单，团队服务组自动展开', async () => {

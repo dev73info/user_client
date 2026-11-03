@@ -1,61 +1,47 @@
 .portal-text-btn {
-  padding: 9px 10px;
-  border-radius: 10px;
+  display: inline-flex;
+  align-items: center;
+  height: var(--73-control-height);
+  padding: 0 12px;
+  border-radius: var(--73-radius-control);
   background: transparent;
-  color: var(--ptn-ink-strong);
-  font-weight: 700;
+  color: var(--73-ink-soft);
+  font-weight: 500;
   font-size: 13px;
   line-height: 1.2;
   transition:
     background-color 160ms ease,
-    color 160ms ease,
-    box-shadow 160ms ease,
-    transform 160ms ease;
+    color 160ms ease;
 }
 
 .portal-text-btn:hover {
-  color: var(--ptn-accent-ink);
-  background: color-mix(in srgb, var(--73-accent-soft) 92%, transparent);
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--73-accent) 34%, transparent);
-  transform: translateY(-1px);
-}
-
-.portal-text-btn:active {
-  transform: translateY(0);
+  color: var(--73-accent);
+  background: var(--73-bg-soft);
 }
 
 .portal-solid-btn {
-  padding: 9px 14px;
-  border-radius: 10px;
-  background: var(--ptn-accent-gradient);
-  color: var(--ptn-inverse);
-  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  height: var(--73-control-height);
+  padding: 0 14px;
+  border-radius: var(--73-radius-control);
+  background: var(--73-accent);
+  color: var(--73-accent-contrast);
+  font-weight: 500;
   font-size: 13px;
-  box-shadow: 0 10px 20px color-mix(in srgb, var(--73-accent) 22%, transparent);
+  box-shadow: none;
   line-height: 1.2;
-  transition:
-    background 180ms ease,
-    box-shadow 180ms ease,
-    filter 180ms ease,
-    transform 160ms ease;
+  transition: background-color 180ms ease;
 }
 
 .portal-solid-btn:hover {
-  background: var(--73-app-grad-accent-04);
-  box-shadow: 0 14px 26px color-mix(in srgb, var(--73-accent) 30%, transparent);
-  filter: saturate(1.06);
-  transform: translateY(-1px);
-}
-
-.portal-solid-btn:active {
-  box-shadow: 0 8px 16px color-mix(in srgb, var(--73-accent) 24%, transparent);
-  transform: translateY(0);
+  background: color-mix(in srgb, var(--73-accent) 88%, #000);
 }
 
 .portal-text-btn:focus-visible,
 .portal-solid-btn:focus-visible {
-  outline: 3px solid var(--ptn-focus-halo);
-  outline-offset: 2px;
+  outline: none;
+  box-shadow: var(--73-focus-ring);
 }
 
 @media (max-width: 1180px) {
@@ -63,7 +49,6 @@
     grid-template-columns: auto max-content minmax(0, 1fr);
     grid-template-areas: 'brand nav tools';
     gap: 10px 12px;
-    padding: 10px 14px;
   }
 
   .portal-brand {
@@ -74,7 +59,7 @@
      不依赖两个文件的注入顺序 */
   .portal-header .portal-nav {
     grid-area: nav;
-    gap: 6px;
+    gap: 4px;
     justify-content: space-between;
   }
 
@@ -94,7 +79,7 @@
     grid-template-areas:
       'brand nav'
       'tools tools';
-    gap: 10px 14px;
+    gap: 8px 12px;
   }
 
   .portal-header--dev {
@@ -106,23 +91,8 @@
   }
 }
 
-/* R047 断点收敛：原档位 780px → 640px */
-@media (max-width: 640px) {
-  .portal-header {
-    top: 0;
-    margin: 0 0 12px;
-    padding: 12px 16px;
-  }
-
-  .portal-header__tools {
-    width: 100%;
-    flex-wrap: wrap;
-  }
-}
-
 /* 移动端首页：顶栏收成一行的搜索条，其余入口交给页面里的宫格。
-   这一档的卡片形态由 styles/unified-top-card.css 的 !important 规则压成白色通栏，
-   所以这里不再重复写 top / margin / padding ——写了也是被覆盖。 */
+   通栏形态由 styles/unified-top-card.css 的 !important 规则统一处理。 */
 @media (max-width: 900px) {
   .portal-header.app-top-nav--home .portal-brand,
   .portal-header.app-top-nav--home .portal-nav,
@@ -141,12 +111,10 @@
     gap: 8px;
   }
 
-  .portal-header.app-top-nav--home .portal-search {
+  .portal-header.app-top-nav--home :deep(.portal-search) {
     flex: 1 1 0;
     width: auto;
     min-width: 0;
-    min-height: 42px;
-    background: color-mix(in srgb, var(--73-accent-soft) 96%, transparent);
   }
 
   .portal-header.app-top-nav--home :deep(.portal-search-scope) {
@@ -158,8 +126,8 @@
 @media (max-width: 1180px) {
   .portal-header--dev {
     gap: 8px;
-    margin: 0 0 8px;
-    padding: 8px 10px;
+    margin: 0;
+    padding: 0 12px;
   }
 
   .portal-header--dev .portal-brand {
@@ -167,10 +135,9 @@
   }
 
   .portal-header--dev .portal-brand__mark {
-    width: 32px;
-    height: 32px;
-    border-radius: 10px;
-    font-size: 13px;
+    width: 28px;
+    height: 28px;
+    border-radius: 8px;
   }
 
   .portal-header--dev .portal-brand__copy {
@@ -191,13 +158,11 @@
     flex-wrap: nowrap;
   }
 
-  .portal-header--dev .portal-icon-btn {
+  .portal-header--dev :deep(.portal-icon-btn) {
     width: 32px;
     height: 32px;
   }
 
-  /* 用户胶囊是子组件，规则挂在带 `.portal-header` 前缀的选择器上（特异性压过子组件自己的
-     1180 档），保证「dev 版式更紧」这一档仍然生效 */
   .portal-header.portal-header--dev :deep(.portal-user__trigger) {
     max-width: 190px;
     padding: 4px 10px 4px 4px;

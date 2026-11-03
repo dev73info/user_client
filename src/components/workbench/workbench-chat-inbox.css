@@ -7,80 +7,84 @@
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  border: 1px solid var(--73-border-soft);
-  border-radius: 14px;
+  border: 0;
+  border-right: 1px solid var(--73-border-soft);
+  border-radius: 0;
   background: var(--73-surface-strong);
 }
 
 .workbench-inbox__header {
   display: flex;
-  align-items: center;
-  gap: 8px;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 10px;
   flex: 0 0 auto;
-  padding: 14px 10px 10px;
+  padding: 14px 14px 12px;
+  border-bottom: 1px solid var(--73-border-soft);
 }
 
-.workbench-inbox__compose {
-  width: 34px;
-  height: 34px;
-  display: grid;
-  place-items: center;
-  flex: 0 0 auto;
-  border: 0;
-  border-radius: 8px;
-  background: transparent;
-  color: var(--73-ink-muted);
-  cursor: pointer;
-  transition:
-    color 140ms ease,
-    background-color 140ms ease;
-}
-
-.workbench-inbox__compose:hover {
-  background: var(--73-accent-soft);
-  color: var(--73-accent);
-}
-
-.workbench-inbox__compose:focus-visible {
-  outline: 2px solid var(--73-accent);
-  outline-offset: 2px;
-}
-
-.workbench-inbox__search {
-  height: 38px;
-  min-width: 0;
+.workbench-inbox__heading {
   display: flex;
   align-items: center;
   gap: 8px;
-  flex: 1 1 auto;
-  padding: 0 11px;
-  border: 1px solid var(--73-border-soft);
-  border-radius: 8px;
-  background: var(--73-surface-strong);
-  color: var(--73-ink-placeholder);
 }
 
-.workbench-inbox__search:focus-within {
-  border-color: color-mix(in srgb, var(--73-accent) 62%, transparent);
-}
-
-.workbench-inbox__search input {
-  width: 100%;
-  min-width: 0;
-  border: 0;
-  outline: 0;
-  background: transparent;
+.workbench-inbox__heading h2 {
+  margin: 0;
   color: var(--73-ink);
-  font: inherit;
-  font-size: 13px;
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1.3;
 }
 
-.workbench-inbox__search input::-webkit-search-cancel-button {
-  display: none;
+.workbench-inbox__count {
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: var(--73-inset);
+  color: var(--73-ink-muted);
+  font-family: var(--73-font-family-mono);
+  font-size: 11px;
+  line-height: 1.5;
 }
 
-.workbench-inbox__search input::placeholder {
-  color: var(--73-ink-placeholder);
+/* 搜索框走 TInput（与工作台各列表页同一套高 / 圆角 / 描边），这里只给弹性宽度 */
+.workbench-inbox__header :deep(.workbench-inbox__search) {
+  width: 100%;
+}
+
+.workbench-inbox__tabs {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex: 0 0 auto;
+  padding: 0 14px;
+  border-bottom: 1px solid var(--73-border-soft);
+}
+
+.workbench-inbox__tab {
+  height: 34px;
+  padding: 0 2px;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  background: transparent;
+  color: var(--73-ink-muted);
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 400;
+  cursor: pointer;
+  transition:
+    color var(--73-transition),
+    border-color var(--73-transition);
+}
+
+.workbench-inbox__tab:hover {
+  color: var(--73-ink);
+}
+
+.workbench-inbox__tab.is-active {
+  border-bottom-color: var(--73-accent);
+  color: var(--73-accent);
+  font-weight: 500;
 }
 
 .workbench-inbox__list {
@@ -88,9 +92,9 @@
   display: flex;
   flex: 1 1 auto;
   flex-direction: column;
-  gap: 2px;
+  gap: 0;
   overflow-y: auto;
-  padding: 0 8px 14px;
+  padding: 0;
   scrollbar-width: thin;
   scrollbar-color: color-mix(in srgb, var(--73-ink) 18%, transparent) transparent;
 }
@@ -107,12 +111,14 @@
   width: 100%;
   min-width: 0;
   display: grid;
-  grid-template-columns: 36px minmax(0, 1fr) auto;
-  align-items: center;
+  grid-template-columns: 40px minmax(0, 1fr) auto;
+  align-items: start;
   gap: 10px;
-  padding: 10px;
-  border: 1px solid transparent;
-  border-radius: 8px;
+  padding: 12px 14px;
+  border: 0;
+  border-left: 2px solid transparent;
+  border-bottom: 1px solid var(--73-border-soft);
+  border-radius: 0;
   background: transparent;
   color: inherit;
   cursor: pointer;
@@ -128,7 +134,7 @@
 }
 
 .workbench-inbox__row.is-active {
-  border-color: color-mix(in srgb, var(--73-accent) 26%, transparent);
+  border-left-color: var(--73-accent);
   background: color-mix(in srgb, var(--73-accent) 7%, transparent);
 }
 
@@ -141,8 +147,8 @@
    五段彩虹），列表里像贴了五张不同风格的贴纸，压过了真正要读的标题。 */
 .workbench-inbox__avatar {
   position: relative;
-  width: 36px;
-  height: 36px;
+  width: 40px;
+  height: 40px;
   display: grid;
   place-items: center;
   border-radius: 8px;
@@ -208,14 +214,15 @@
   min-width: 0;
   flex: 1 1 auto;
   color: var(--73-ink);
-  font-size: 13.5px;
+  font-size: 13px;
   font-weight: 600;
-  line-height: 1.35;
+  line-height: 1.4;
 }
 
 .workbench-inbox__title-row time {
   flex: 0 0 auto;
   color: var(--73-ink-placeholder);
+  font-family: var(--73-font-family-mono);
   font-size: 11px;
   font-variant-numeric: tabular-nums;
 }
@@ -240,8 +247,8 @@
   place-items: center;
   padding: 0 5px;
   border-radius: 999px;
-  background: var(--73-danger);
-  color: var(--73-surface-strong);
+  background: var(--73-accent);
+  color: var(--73-accent-contrast);
   font-size: 10.5px;
   font-style: normal;
   font-weight: 600;

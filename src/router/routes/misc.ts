@@ -10,9 +10,6 @@ export const portalMiscRoutes: RouteRecordRaw[] = [
     path: '/messages',
     name: 'messages',
     component: () => import('@/views/MessagesView.vue'),
-    meta: {
-      hideSiteFooter: true,
-    },
   },
   {
     path: '/my-custom-resources',

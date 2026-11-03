@@ -1,11 +1,10 @@
-/** * 资金明细：开发者自己的**收入侧资金进出**合成一张表。 * *
-两类台账按时间倒序拼成一段，用「类型」区分： * * | 类型 | 数据来源 | 说明 | * | --- | --- | --- | *
-| 收入 | 父级传进来的 `income`（钱包总览的到账凭据） | 每个里程碑分账到账一笔 | * | 退款冲减 |
-同上的 `refund_developer_cny > 0` | 售后按原分账份额从开发者收回 | * | 收入提现 | `GET
-/api/payment/withdrawals` | 接单收入的提现出款单 | * *
+/** * 资金明细：开发者自己的**资金进出**合成一张表。 * * 收入 /
+退款冲减来自父级传进来的到账凭据；接单收入提现与保证金提现走各自的出款单接口；
+保证金充值来自预付账户流水（`kind = recharge`）。 * * 五类台账按时间倒序拼成一段，用「类型」区分。 *
 金额一律按**正数**展示、方向靠「类型」区分（与原来的收入记录同一口径），不做正负号。 *
 合并与文案都在 `shared/devFundDisplay.ts`（纯函数，有单测），本文件只留排版。 */
 <script setup lang="ts">
+import type { PrepaidLedgerEntry } from '@/api/devOrderDeposit'
 import type { DevWalletIncomeItem } from '@/api/devWallet'
 import { LIST_PAGE_SIZES } from '@/composables/useClientPagination'
 import { useDevFundRecords } from '@/composables/useDevFundRecords'
@@ -20,6 +19,8 @@ import { TOption, TPagination, TSelect, TTable, TTableColumn, TTag, TTooltip } f
 
 const props = defineProps<{
   income: DevWalletIncomeItem[]
+  /** 预付账户最近流水：保证金充值行从这里补，其余 kind 由合并层忽略。 */
+  depositLedger?: PrepaidLedgerEntry[]
   keyword?: string
   kind?: FundRecordKind | 'all'
 }>()

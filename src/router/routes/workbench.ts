@@ -1,7 +1,7 @@
 /**
  * `/workbench` 用户工作台的父路由与子条目（含开发者工作台的 `devWorkbenchRoutes`）。
  *
- * 父级 `meta.hideSiteFooter` 与子条目的 `title` / `description` / `requiresRealname` 原样保留；
+ * 父级 `meta.workbenchShell` 与子条目的 `title` / `description` / `requiresRealname` 原样保留；
  * 末尾 `...devWorkbenchRoutes` 的位置也不能动——它就是开发者条目的插入点。
  */
 import type { RouteRecordRaw } from 'vue-router'
@@ -12,23 +12,19 @@ export const workbenchRoutes: RouteRecordRaw[] = [
   {
     path: '/profile',
     name: 'profile',
-    redirect: { name: 'workbench', query: { view: 'profile' } },
+    redirect: { name: 'workbench' },
   },
   {
     path: '/workbench',
     component: () => import('@/views/UserWorkbenchView.vue'),
     meta: {
-      hideSiteFooter: true,
       workbenchShell: true,
     },
     children: [
       {
         path: '',
         name: 'workbench',
-        component: () => import('@/views/WorkbenchHomeView.vue'),
-        meta: {
-          workbenchChat: true,
-        },
+        component: () => import('@/views/UserWorkbenchOverviewView.vue'),
       },
       {
         path: 'requirements',
@@ -52,7 +48,7 @@ export const workbenchRoutes: RouteRecordRaw[] = [
         path: 'favorites',
         name: 'workbench-favorites',
         component: () => import('@/views/CommunityListView.vue'),
-        meta: { title: '我的收藏', description: '查看收藏的社区帖子' },
+        meta: { title: '我的帖子', description: '查看我发布与收藏的社区帖子' },
       },
       // 需求方不再提供独立 AI 助手页面，旧链接直接回到需求列表。
       { path: 'assistant', redirect: { name: 'workbench-requirements' } },
@@ -112,7 +108,7 @@ export const workbenchRoutes: RouteRecordRaw[] = [
         path: 'points',
         name: 'workbench-points',
         component: () => import('@/views/PointsCenterView.vue'),
-        meta: { title: '积分中心', description: '签到、积分明细与打赏' },
+        meta: { title: '我的积分', description: '签到、积分记录与打赏' },
       },
       {
         path: 'perks',

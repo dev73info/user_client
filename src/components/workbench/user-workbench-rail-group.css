@@ -1,15 +1,15 @@
-/* 图标栏分组入口的版式：中栏列组内页面，右栏放内容，与消息中心的「列表 + 内容」同一骨架。
-   单独一份而不是塞进 user-workbench-shell.css：那份已经贴着 300 行预算，
-   而且这几条只跟图标栏的分组有关，未来调整分组版式不必碰外壳的其他规则。 */
+/* 图标栏分组入口的版式：64px 图标栏 + 中栏导航树 + 内容画布。
+   导航树与消息中心共用 --uw-pane-width（默认 360），切页不跳宽。 */
 
 .user-workbench__main--rail-group {
   height: 100%;
   min-height: 0;
   display: grid;
-  grid-template-columns: minmax(228px, 268px) minmax(0, 1fr);
+  grid-template-columns: var(--uw-pane-width, 360px) minmax(0, 1fr);
   align-content: stretch;
-  gap: 10px;
-  padding: 10px 10px 10px 0;
+  gap: 0;
+  padding: 0;
+  background: var(--73-bg);
 }
 
 .user-workbench__rail-group {

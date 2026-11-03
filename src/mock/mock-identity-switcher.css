@@ -1,0 +1,214 @@
+.mock-switch {
+  position: fixed;
+  top: 12px;
+  left: 12px;
+  z-index: 9998;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+:global(body:has(.user-workbench--icon-shell) .mock-switch) {
+  top: auto;
+  right: 16px;
+  bottom: 16px;
+  left: auto;
+}
+
+.mock-switch__fab {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+  padding: 6px 10px;
+  border: 1px solid color-mix(in srgb, var(--73-ink) 14%, transparent);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--73-surface-strong) 94%, transparent);
+  box-shadow: 0 6px 18px color-mix(in srgb, var(--73-ink) 16%, transparent);
+  color: var(--73-ink);
+  font: inherit;
+  cursor: pointer;
+  touch-action: none;
+  user-select: none;
+}
+
+.mock-switch__tip {
+  color: var(--73-ink-soft);
+}
+
+.mock-switch__dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--73-success);
+}
+
+.mock-switch__fab-text {
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+.mock-switch__fab-identity {
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: var(--73-ink);
+  color: var(--73-surface-strong);
+}
+
+.mock-switch__badge {
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: var(--73-danger);
+  color: var(--73-surface-strong);
+  font-weight: 700;
+}
+
+.mock-switch__panel {
+  width: 280px;
+  margin-top: 8px;
+  padding: 12px;
+  border: 1px solid color-mix(in srgb, var(--73-ink) 12%, transparent);
+  border-radius: 12px;
+  background: var(--73-surface-strong);
+  box-shadow: 0 18px 40px color-mix(in srgb, var(--73-ink) 20%, transparent);
+  color: var(--73-ink);
+}
+
+.mock-switch__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 13px;
+}
+
+.mock-switch__close {
+  border: 0;
+  background: transparent;
+  color: var(--73-ink-muted);
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.mock-switch__hint {
+  margin: 6px 0 0;
+  color: var(--73-ink-muted);
+}
+
+.mock-switch__identities {
+  display: grid;
+  gap: 6px;
+  margin-top: 10px;
+}
+
+.mock-switch__identity {
+  display: grid;
+  gap: 2px;
+  padding: 8px 10px;
+  border: 1px solid color-mix(in srgb, var(--73-ink) 12%, transparent);
+  border-radius: 10px;
+  background: var(--73-surface-strong);
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.mock-switch__identity--active {
+  border-color: var(--73-ink);
+  background: var(--73-accent-soft);
+}
+
+.mock-switch__identity small {
+  color: var(--73-ink-muted);
+}
+
+.mock-switch__section {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid color-mix(in srgb, var(--73-ink) 8%, transparent);
+}
+
+.mock-switch__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 4px 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+.mock-switch__row:disabled {
+  color: var(--73-ink-placeholder);
+  cursor: default;
+}
+
+.mock-switch__count {
+  font-weight: 700;
+}
+
+.mock-switch__list {
+  display: grid;
+  gap: 3px;
+  max-height: 160px;
+  margin: 6px 0 0;
+  padding: 6px 8px;
+  overflow: auto;
+  border-radius: 8px;
+  background: var(--73-surface-strong);
+}
+
+.mock-switch__list code {
+  font-size: 11px;
+  word-break: break-all;
+}
+
+.mock-switch__actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 8px;
+}
+
+.mock-switch__link {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--73-accent);
+  font: inherit;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.mock-switch__link--danger {
+  color: var(--73-danger);
+}
+
+@media (max-width: 900px) {
+  :global(body:has(.user-workbench--icon-shell) .mock-switch) {
+    top: auto;
+    right: 12px;
+    bottom: 74px;
+    left: auto;
+  }
+}
+
+@media (max-width: 640px) {
+  .mock-switch__fab-text,
+  .mock-switch__tip {
+    display: none;
+  }
+
+  .mock-switch {
+    top: 8px;
+    left: 8px;
+  }
+
+  :global(body:has(.user-workbench--icon-shell) .mock-switch) {
+    top: auto;
+    right: 8px;
+    bottom: 70px;
+    left: auto;
+  }
+}

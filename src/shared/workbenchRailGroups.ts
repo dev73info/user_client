@@ -1,6 +1,6 @@
 import type { Component } from 'vue'
 
-import { Box, Tickets } from 'ui_73info'
+import { Box, Grid, Tickets, Wallet } from 'ui_73info'
 
 /**
  * 桌面图标栏的「分组」：图标只负责开一组，组内页面在图标右侧的列表里选，内容在再右侧展示。
@@ -80,9 +80,9 @@ export function buildRailGroups(realnameApproved: boolean): RailGroup[] {
   const assets: RailGroupItem[] = [
     {
       key: 'favorites',
-      label: '我的收藏',
+      label: '我的帖子',
       name: 'workbench-favorites',
-      description: '查看收藏的社区帖子',
+      description: '查看我发布与收藏的社区帖子',
     },
     {
       key: 'coupons',
@@ -92,9 +92,9 @@ export function buildRailGroups(realnameApproved: boolean): RailGroup[] {
     },
     {
       key: 'points',
-      label: '积分中心',
+      label: '我的积分',
       name: 'workbench-points',
-      description: '签到、积分明细与打赏',
+      description: '签到、积分记录与打赏',
     },
     {
       key: 'perks',
@@ -114,6 +114,82 @@ export function buildRailGroups(realnameApproved: boolean): RailGroup[] {
   return [
     { key: 'orders', label: '订单与合同', icon: Tickets, items: orders },
     { key: 'assets', label: '资产与权益', icon: Box, items: assets },
+  ]
+}
+
+/**
+ * 开发者工作台的图标栏分组：与用户侧同一套「分组入口 → 组内列表 → 右栏内容」骨架，
+ * 把原来的 10 个平铺图标收成两组，账户类入口仍留在齿轮弹层里。
+ */
+export function buildDevRailGroups(): RailGroup[] {
+  const delivery: RailGroupItem[] = [
+    {
+      key: 'dev-home',
+      label: '开发者总览',
+      name: 'dev-home',
+      description: '查看开发数据与待办',
+      activeNames: ['dev-dashboard'],
+    },
+    {
+      key: 'dev-resources',
+      label: '资源项目',
+      name: 'dev-resource-list',
+      description: '管理自研工具、主页与版本',
+      activeNames: [
+        'dev-plugins',
+        'dev-plugins-api',
+        'dev-resource-versions',
+        'dev-resource-homepage-edit',
+        'dev-resource-sold-purchases',
+        'dev-tip-settings',
+      ],
+    },
+    {
+      key: 'dev-requirements',
+      label: '我的接单',
+      name: 'dev-my-requirements',
+      description: '查看接单、交付与验收进度',
+    },
+    {
+      key: 'dev-hall',
+      label: '需求大厅',
+      name: 'dev-requirement-hall',
+      description: '浏览可接需求并绑定资源',
+      activeNames: ['dev-requirement-detail'],
+    },
+  ]
+
+  const services: RailGroupItem[] = [
+    {
+      key: 'dev-clients',
+      label: '接入客户端',
+      name: 'dev-oauth-clients',
+      description: '管理 OAuth 应用与接入',
+    },
+    {
+      key: 'dev-teams',
+      label: '团队服务',
+      name: 'workbench-teams',
+      description: '管理团队协作与成员资源',
+      activeNames: ['workbench-team-detail', 'workbench-team-resources'],
+    },
+    {
+      key: 'dev-wallet',
+      label: '收益钱包',
+      name: 'dev-wallet',
+      description: '查看收入、提现与保证金',
+    },
+    {
+      key: 'dev-invoices',
+      label: '我的发票',
+      name: 'dev-invoices',
+      description: '获取发票、查看与下载',
+    },
+  ]
+
+  return [
+    { key: 'dev-delivery', label: '接单与交付', icon: Grid, items: delivery },
+    { key: 'dev-services', label: '收益与服务', icon: Wallet, items: services },
   ]
 }
 

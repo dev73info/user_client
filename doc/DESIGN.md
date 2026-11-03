@@ -183,7 +183,7 @@ components:
 门户侧是**高对比冷灰中性色 + 单一品牌蓝**；开发者侧在同一中性色骨架上加了青绿（进行中）与金色（金额、提示）两支强调色。
 
 - **Primary（`#1f4ad1`）**：品牌蓝，两套体系共用的唯一主色。用于主操作、选中态、链接与强调文字。**每个屏幕只用于一个最重要的动作。**
-- **Primary deep / light（`#2563eb` / `#4f8cff`）**：主按钮渐变 `linear-gradient(135deg, #2563eb, #4f8cff)` 的两端，也用于首页统计卡。
+- **Primary deep / light（`#2563eb` / `#4f8cff`）**：主色加深 / 提亮档，用于悬停与首页统计卡。主按钮不再用「蓝 → 亮蓝」渐变，统一为 `#1f4ad1` 纯色。
 - **Secondary（`#2aa6a4`）**：青绿，仅开发者侧使用，表示「进行中」与辅助强调。
 - **Tertiary（`#b9812b`）**：金色，仅开发者侧使用，表示金额与需要留意的提示。
 - **Neutral（`#edf3f5`）**：门户与开发者共用的页面最外层底色。`body` 在其上叠了三层径向渐变（左上蓝、右上青、右下金），这是这一端的标志性背景。
@@ -281,7 +281,7 @@ components:
 | --- | --- |
 | 门户卡片 | `--portal-panel` 底 + `1px solid var(--portal-border)` 描边 + `var(--portal-shadow)`，悬浮换 `--portal-shadow-hover` |
 | 开发者卡片 | `--dev-surface` 底 + `var(--dev-shadow)` |
-| 主按钮 | 品牌蓝铺底 + 白字；门户侧主按钮用 `--primary-gradient` 蓝色渐变；形态默认胶囊 `999px` |
+| 主按钮 | 品牌蓝 `--73-accent` 铺底 + 白字（不用渐变）；形态默认胶囊 `999px` |
 | 状态标签 | 「浅底 + 深字」（见 Colors 末段），胶囊形态 |
 | 输入框 | `40px` 高，圆角 `10px`，白底 |
 | 表格 / 数字列 | 金额与计数加 `font-variant-numeric: tabular-nums` |

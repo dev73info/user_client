@@ -1,44 +1,13 @@
 import { computed, ref } from 'vue'
 
 import { fetchContractSigningStatus, type ContractSigningStatus } from '@/api/contracts'
-import {
-  listRequirements,
-  type RequirementItem,
-  type RequirementPaymentMode,
-  type RequirementStatus,
-} from '@/api/requirements'
+import { listRequirements, type RequirementItem, type RequirementStatus } from '@/api/requirements'
 import { parseBackendDateTime } from '@/shared/datetime'
-import { requirementPaymentModeLabel } from '@/shared/requirementDisplay'
-import { requirementStatusLabel } from '@/shared/requirementStatus'
 import { useAuthStore } from '@/stores/auth'
 import { TMessage } from 'ui_73info'
 
 /** 「可操作需求」最多摆几条（读数条那格的数也要与它一致，别一处截断一处不截断）。 */
 const ACTIONABLE_LIMIT = 4
-/** 「需求进度」面板最多摆几条。 */
-const RECENT_LIMIT = 5
-
-/**
- * 「需求进度」面板的一行：**展示串已经在算好**，面板只负责摆位置。
- *
- * 状态文案、金额、时间这些口径都来自 `shared/requirementStatus` 与下面几个格式化函数，
- * 组件层要是自己再拼一遍，同一批需求在面板和会话卡上会出现两种写法。
- */
-export type RequirementProgressRow = {
-  requirementId: string
-  title: string
-  /** 第二行副标题：编号 · 担保方式。 */
-  meta: string
-  /** 状态色档，模板里直接拼 `overview-status--${status}`。 */
-  status: RequirementStatus
-  statusText: string
-  budgetText: string
-  timeText: string
-  /** 原样交给 `RequirementProgressGuide`：进度步骤要读状态、预算、绑定资源与版本数。 */
-  requirement: RequirementItem
-  /** 该条的合同签署状态；无担保模式没有合同，为 `null`。 */
-  contractStatus: ContractSigningStatus | null
-}
 
 /** 日期串 → 毫秒。空值与非法值都算 0（排到最后），排序里不抛错。 */
 export function requirementTimeValue(value?: string | null) {
@@ -61,13 +30,6 @@ export function formatRequirementTime(value: string) {
   })
 }
 
-export function formatBudget(value?: number | null) {
-  if (value == null) {
-    return '待议价'
-  }
-  return `¥${value.toFixed(2)}`
-}
-
 export function isSelfManagedRequirement(item: RequirementItem) {
   return item.payment_mode === 'self_managed'
 }
@@ -86,32 +48,6 @@ export function isRequirementContractSigned(
 ) {
   const status = contractSigningStatusMap[item.requirement_id]
   return Boolean(status?.has_contract && status.party_a_signed && status.party_b_signed)
-}
-
-/** 状态文案走全站统一口径；`deposit_paid` 一码两义，拿到支付模式就传进去（见 `requirementStatusLabel`）。 */
-export function formatRequirementStatus(
-  status: RequirementStatus,
-  paymentMode?: RequirementPaymentMode,
-) {
-  return requirementStatusLabel(status, paymentMode)
-}
-
-/**
- * 担保模式下「待付定金」还要分三步：等开发者接单 / 待签合同 / 才轮到付定金。
- * 状态码本身说不出这三步，合同签署状态在这里补上；无担保模式没有合同，直接按状态码写。
- */
-export function formatRequirementDisplayStatus(
-  contractSigningStatusMap: Record<string, ContractSigningStatus | null>,
-  item: RequirementItem,
-) {
-  if (isSelfManagedRequirement(item) || item.status !== 'pending_deposit') {
-    return formatRequirementStatus(item.status, item.payment_mode)
-  }
-  if (item.bound_resource_id == null) {
-    return '待开发者接单'
-  }
-
-  return isRequirementContractSigned(contractSigningStatusMap, item) ? '待付定金' : '待签合同'
 }
 
 export function canPay(
@@ -170,8 +106,8 @@ function isActionable(
 /**
  * 总览页的需求状态域：需求列表、按条的合同签署状态、统计与三种切法。
  *
- * 这**一份** `myRequirements` 同时喂三处（顶部读数条、需求进度面板、会话卡的派生），
- * 所以列表只能在这里取一次：会话域拿它算「哪些需求有会话可聊」，读数与面板各取一个切片。
+ * 这**一份** `myRequirements` 同时喂两处（顶部读数条、会话卡的派生），
+ * 所以列表只能在这里取一次：会话域拿它算「哪些需求有会话可聊」，读数条再取自己的切片。
  * 会话域在 `useRequirementConversations`，它接的正是这里的 `myRequirements`。
  */
 export function useRequirementOverview() {
@@ -211,21 +147,6 @@ export function useRequirementOverview() {
     sortedRequirements.value
       .filter((item) => isActionable(contractSigningStatusMap.value, item))
       .slice(0, ACTIONABLE_LIMIT),
-  )
-
-  /** 需求进度面板的行：展示串在这里一次算齐（口径不再散进模板）。 */
-  const recentRequirements = computed<RequirementProgressRow[]>(() =>
-    sortedRequirements.value.slice(0, RECENT_LIMIT).map((item) => ({
-      requirementId: item.requirement_id,
-      title: item.title,
-      meta: `${item.requirement_id} · ${requirementPaymentModeLabel(item.payment_mode)}`,
-      status: item.status,
-      statusText: formatRequirementDisplayStatus(contractSigningStatusMap.value, item),
-      budgetText: formatBudget(item.budget),
-      timeText: formatRequirementTime(item.created_time),
-      requirement: item,
-      contractStatus: contractSigningStatusMap.value[item.requirement_id] ?? null,
-    })),
   )
 
   async function loadMyRequirements() {
@@ -274,7 +195,6 @@ export function useRequirementOverview() {
     requirementStats,
     sortedRequirements,
     actionableRequirements,
-    recentRequirements,
     loadMyRequirements,
   }
 }

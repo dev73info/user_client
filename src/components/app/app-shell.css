@@ -72,6 +72,13 @@
 }
 
 @media (max-width: 900px) {
+  /* 沉浸式工作台的父级内容会把百分比高度撑开，这里直接锁定视口高度，
+     让工作台内部滚动，底部固定快捷导航才不会压住最后一屏内容。 */
+  .app-view-container.app-view-container--immersive {
+    height: 100dvh;
+    min-height: 0;
+  }
+
   .app-top-nav:not(.app-top-nav--home) {
     display: none;
   }

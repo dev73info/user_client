@@ -1,7 +1,24 @@
 <script setup lang="ts">
+import { useRouter } from 'vue-router'
+
 import type { HeaderLink } from '@/composables/usePortalTopNavNav'
+import { PORTAL_CONTENT_ANCHORS, scrollToPortalAnchor } from '@/utils/portalScroll'
 
 defineProps<{ links: HeaderLink[] }>()
+
+const router = useRouter()
+
+/**
+ * 点顶栏一级栏目时重新对齐内容起点：路由 path 没变（例如在社区页再点一次
+ * 「社区中心」，只是去掉 ?post=）时，App 里的 path watcher 不会触发。
+ */
+function handleNavClick(link: HeaderLink) {
+  if (!link.to) return
+  const resolved = router.resolve(link.to)
+  const anchor = PORTAL_CONTENT_ANCHORS[String(resolved.name ?? '')]
+  if (!anchor) return
+  window.setTimeout(() => scrollToPortalAnchor(anchor), 0)
+}
 </script>
 
 <template>
@@ -14,6 +31,7 @@ defineProps<{ links: HeaderLink[] }>()
         exact-active-class=""
         class="portal-nav__link"
         :class="{ active: link.active }"
+        @click="handleNavClick(link)"
       >
         {{ link.label }}
       </RouterLink>
@@ -26,9 +44,9 @@ defineProps<{ links: HeaderLink[] }>()
 .portal-nav {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 4px;
   justify-content: flex-start;
-  width: 100%;
+  width: auto;
   min-width: 0;
 }
 
@@ -36,37 +54,42 @@ defineProps<{ links: HeaderLink[] }>()
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  flex: 1 1 0;
-  min-width: max-content;
+  flex: 0 0 auto;
+  height: 56px;
+  padding: 0 12px;
   border: 0;
-  padding: 10px 12px;
-  border-radius: 10px;
+  border-bottom: 2px solid transparent;
+  border-radius: 0;
   font-size: 13px;
-  font-weight: 700;
+  font-weight: 500;
   text-align: center;
   color: var(--ptn-ink-body);
   text-decoration: none;
   background: transparent;
   transition:
-    background-color 140ms ease,
     color 140ms ease,
-    transform 160ms ease;
+    border-color 140ms ease;
 }
 
 .portal-nav__link:hover {
-  color: var(--ptn-accent-ink);
+  color: var(--ptn-ink-strong);
 }
 
-/* 悬停与选中都只靠字色区分，不再出现浅蓝胶囊底 */
 .portal-nav__link.active {
   color: var(--ptn-accent-ink);
-  background: transparent;
+  border-bottom-color: var(--ptn-accent-brand);
+  font-weight: 600;
 }
 
-/* 与顶栏同一档：中窄屏收一号内边距，把宽度还给工具栏 */
 @media (max-width: 1180px) {
   .portal-nav__link {
-    padding: 9px 8px;
+    padding: 0 8px;
+  }
+}
+
+@media (max-width: 900px) {
+  .portal-nav__link {
+    height: 40px;
   }
 }
 

@@ -1,0 +1,260 @@
+/* 由 resource-detail-workbench.css 按顶层规则边界切分（第 1/3 段），
+   顺序与原文一致；跨文件级联依赖顺序。 */
+
+/* ============================================================================
+   资源详情面板 · Workbench 亮色（桌面端覆盖层）
+   ============================================================================
+
+   对应 Stitch「资源详情」亮色稿：封面、摘要卡、历史版本、页面内容、评论。
+   只作用于 ≥901px；窄屏继续走原分片里的单列布局。
+   选择器带 `.resource-detail-page--panel` 提高特异性，压过各子组件自己的
+   scoped 样式；颜色一律走 `--73-*` 令牌，不出现裸色值。
+   ============================================================================ */
+
+@media (min-width: 901px) {
+  /* --- 面板外壳：去掉旧的玻璃卡片，内容直接铺在列表页画布上 --- */
+  .resource-detail-page.resource-detail-page--panel {
+    width: 100%;
+    max-width: none;
+    margin: 0;
+    padding: 0;
+    background: transparent;
+    border: 0;
+    box-shadow: none;
+  }
+
+  .resource-detail-page--panel .resource-detail-page__panel {
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+    backdrop-filter: none;
+  }
+
+  /* --- 两栏骨架 --- */
+  .resource-detail-page--panel .resource-detail-page__lead {
+    display: grid;
+    grid-template-columns: minmax(0, 2fr) minmax(300px, 1fr);
+    align-items: start;
+    gap: 16px;
+  }
+
+  .resource-detail-page--panel .resource-detail-page__left-stack {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    overflow: visible;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+  }
+
+  /* cover 与摘要卡在左列之间的间距 */
+  .resource-detail-page--panel .resource-detail-page__left-stack > * + * {
+    margin-top: 16px;
+  }
+
+  .resource-detail-page--panel .resource-detail-page__versions-side-card {
+    min-width: 0;
+  }
+
+  .resource-detail-page--panel .resource-detail-page__detail-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 2fr) minmax(300px, 1fr);
+    align-items: start;
+    gap: 16px;
+    margin-top: 16px;
+  }
+
+  /* --- 卡片基础形态 --- */
+  .resource-detail-page--panel .resource-detail-page__cover-card,
+  .resource-detail-page--panel .resource-detail-page__summary-card,
+  .resource-detail-page--panel .resource-detail-page__content-card {
+    border: 1px solid var(--73-border);
+    border-radius: var(--73-radius-card);
+    background: var(--73-surface);
+    box-shadow: var(--73-shadow-card);
+  }
+
+  /* --- 封面：16:9 --- */
+  .resource-detail-page--panel .resource-detail-page__cover-card {
+    position: relative;
+    overflow: hidden;
+    width: 100%;
+    aspect-ratio: 16 / 9;
+    padding: 0;
+  }
+
+  .resource-detail-page--panel .resource-detail-page__cover-image {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  .resource-detail-page--panel .resource-detail-page__cover-placeholder {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(135deg, var(--73-bg-soft), var(--73-inset));
+    font-size: 48px;
+    opacity: 0.7;
+  }
+
+  /* --- 摘要卡 --- */
+  .resource-detail-page--panel .resource-detail-page__summary-card {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding: 20px;
+  }
+
+  .resource-detail-page--panel .resource-detail-page__headline-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+
+  .resource-detail-page--panel .resource-detail-page__headline-left {
+    display: inline-flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .resource-detail-page--panel .resource-detail-page__status-pill,
+  .resource-detail-page--panel .resource-detail-page__price-pill,
+  .resource-detail-page--panel .resource-detail-page__repost-badge {
+    display: inline-flex;
+    align-items: center;
+    height: 22px;
+    padding: 0 8px;
+    border: 1px solid var(--73-border);
+    border-radius: 4px;
+    background: var(--73-inset);
+    color: var(--73-ink-soft);
+    font-size: 11px;
+    font-weight: 500;
+    line-height: 1;
+  }
+
+  .resource-detail-page--panel .resource-detail-page__price-pill {
+    border-color: var(--73-success-line);
+    background: var(--73-success-soft);
+    color: var(--73-success-text);
+  }
+
+  .resource-detail-page--panel .resource-detail-page__price-pill.is-paid {
+    border-color: var(--73-accent-line);
+    background: var(--73-accent-soft);
+    color: var(--73-accent);
+  }
+
+  .resource-detail-page--panel .resource-detail-page__repost-badge {
+    border-color: var(--73-accent-line);
+    background: var(--73-accent-soft);
+    color: var(--73-accent);
+  }
+
+  .resource-detail-page--panel .resource-detail-page__repost-badge.is-repost {
+    border-color: var(--73-warning-line);
+    background: var(--73-warning-soft);
+    color: var(--73-warning-text);
+  }
+
+  .resource-detail-page--panel .resource-detail-page__headline-right {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  .resource-detail-page--panel .resource-detail-page__author-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 8px;
+    border: 1px solid var(--73-border);
+    border-radius: 4px;
+    background: var(--73-surface);
+    color: var(--73-ink-soft);
+    font-size: 12px;
+    text-decoration: none;
+  }
+
+  .resource-detail-page--panel .resource-detail-page__author-pill-label {
+    color: var(--73-ink-muted);
+    font-size: 11px;
+  }
+
+  .resource-detail-page--panel .resource-detail-page__meta--aside {
+    margin: 0;
+    color: var(--73-ink-muted);
+    font-size: 11px;
+  }
+
+  .resource-detail-page--panel .resource-detail-page__meta-label--green {
+    color: var(--73-success-text);
+  }
+
+  .resource-detail-page--panel .resource-detail-page__identity-block {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .resource-detail-page--panel .resource-detail-page__title {
+    margin: 0;
+    color: var(--73-ink);
+    font-size: 24px;
+    font-weight: 600;
+    line-height: 1.3;
+    letter-spacing: -0.02em;
+  }
+
+  .resource-detail-page--panel .resource-detail-page__repost-meta {
+    font-size: 11px;
+    color: var(--73-ink-muted);
+  }
+
+  .resource-detail-page--panel .resource-detail-page__repost-origin {
+    color: var(--73-accent);
+    text-decoration: none;
+  }
+
+  .resource-detail-page--panel .resource-detail-page__summary {
+    margin: 0;
+    color: var(--73-ink-soft);
+    font-size: 13px;
+    line-height: 1.6;
+  }
+
+  .resource-detail-page--panel .resource-detail-page__tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  .resource-detail-page--panel .resource-detail-page__tag {
+    display: inline-flex;
+    align-items: center;
+    padding: 2px 6px;
+    border: 1px solid var(--73-accent-line);
+    border-radius: 4px;
+    background: var(--73-accent-soft);
+    color: var(--73-accent);
+    font-family: var(--73-font-family-mono);
+    font-size: 10px;
+    line-height: 1.4;
+  }
+
+  /* --- 主操作行 --- */
+  .resource-detail-page--panel .resource-detail-page__cta-row {
+    margin-top: 4px;
+  }
+}

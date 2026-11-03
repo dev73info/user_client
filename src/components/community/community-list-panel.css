@@ -1,0 +1,167 @@
+.community-list-panel {
+  min-width: 0;
+  padding: 16px;
+  border: 1px solid var(--73-border);
+  border-radius: 14px;
+  background: var(--73-surface-strong);
+  color: var(--73-ink);
+}
+.community-page__header,
+.community-page__header-actions,
+.community-page__tabs-row,
+.community-page__tabs-actions,
+.community-page__tabs,
+.community-filters,
+.community-inline-error,
+.community-error {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.community-page__tabs-row {
+  gap: 12px;
+  margin-bottom: 12px;
+}
+.community-page__tabs-row .community-page__tabs {
+  flex: 1 1 auto;
+  margin-bottom: 0;
+}
+.community-page__tabs-actions {
+  flex: 0 0 auto;
+  gap: 8px;
+  margin-left: auto;
+}
+.community-page__header {
+  justify-content: space-between;
+  margin-bottom: 14px;
+}
+.community-page__header-actions {
+  margin-left: auto;
+}
+.community-page__header h1 {
+  margin: 0;
+  font-size: 20px;
+}
+.community-page__publish {
+  display: inline-flex;
+  gap: 6px;
+}
+.community-page__tabs {
+  gap: 5px;
+}
+.community-page__tabs button {
+  min-height: 34px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 9px;
+  background: transparent;
+  color: var(--73-ink-soft);
+  cursor: pointer;
+  font: inherit;
+  font-size: 12px;
+}
+.community-page__tabs button.active {
+  background: var(--73-accent-soft);
+  color: var(--73-accent);
+}
+/* 社区列表的筛选条：下拉定宽排在搜索框左侧，搜索框吃剩余宽度，按钮只占自身宽度。 */
+.community-filters {
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+/* 搜索框走 TInput（与工作台各列表页同一套高 / 圆角 / 描边），这里只给弹性宽度 */
+.community-filters :deep(.community-filters__keyword) {
+  flex: 1 1 220px;
+  min-width: 0;
+}
+/* TSelect 根节点默认按内容定宽；它关了 attrs 透传，
+   父组件的 scope id 落不到根节点上，只能从面板 :deep() 选。 */
+.community-filters :deep(.community-filters__select) {
+  flex: 0 0 auto;
+  font-size: 12px;
+}
+.community-page__loading {
+  display: block;
+  min-height: 180px;
+}
+.community-page__posts {
+  display: grid;
+  gap: 8px;
+}
+.community-error {
+  justify-content: center;
+  min-height: 160px;
+  padding: 20px;
+  border: 1px solid var(--73-border);
+  border-radius: 12px;
+  color: var(--73-danger);
+  background: var(--73-surface-strong);
+}
+.community-inline-error {
+  justify-content: space-between;
+  margin-bottom: 12px;
+  color: var(--73-danger);
+  font-size: 12px;
+}
+.community-inline-error button {
+  border: 0;
+  background: transparent;
+  color: var(--73-accent);
+  cursor: pointer;
+}
+.community-list-panel--rail {
+  padding: 12px;
+}
+.community-list-panel--rail .community-page__tabs {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+.community-list-panel--rail.community-list-panel--two-modes .community-page__tabs {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.community-list-panel--rail .community-page__tabs button {
+  min-height: 36px;
+  padding: 0 4px;
+}
+.community-list-panel--rail .community-filters {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+}
+.community-list-panel--rail .community-filters :deep(.community-filters__keyword) {
+  grid-column: 1 / -1;
+}
+.community-list-panel--rail .community-filters :deep(.community-filters__select) {
+  width: 100%;
+}
+.community-list-panel--rail .community-filters :deep(button) {
+  width: 100%;
+}
+@media (max-width: 640px) {
+  .community-list-panel {
+    padding: 14px;
+  }
+  .community-page__tabs-row {
+    flex-wrap: wrap;
+  }
+  .community-page__header {
+    margin-bottom: 14px;
+  }
+  .community-page__tabs {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  .community-list-panel--two-modes .community-page__tabs {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .community-page__tabs button,
+  .community-filters :deep(.community-filters__keyword),
+  .community-filters :deep(.community-filters__select),
+  .community-filters :deep(button),
+  .community-page__publish {
+    min-height: 44px;
+  }
+  .community-error {
+    flex-direction: column;
+    text-align: center;
+  }
+}

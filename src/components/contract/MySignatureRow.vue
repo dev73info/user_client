@@ -115,19 +115,15 @@ function effectiveUntilLabel(item: MyContractSummary): string {
           <small>创建时间</small>
           <span>{{ item.created_at }}</span>
         </time>
-      </aside>
-    </div>
-    <div class="requirement-actions">
-      <div class="requirement-actions__list" @click.stop @keydown.stop>
         <button
           class="ghost small"
           :class="stateOf(item) === 'pending' ? 'action-primary' : 'action-emphasis'"
           type="button"
-          @click="emit('open')"
+          @click.stop="emit('open')"
         >
           {{ stateOf(item) === 'pending' ? '去签署' : '查看详情' }}
         </button>
-      </div>
+      </aside>
     </div>
   </li>
 </template>

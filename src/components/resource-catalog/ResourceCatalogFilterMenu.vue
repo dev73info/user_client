@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref } from 'vue'
+import { RefreshLeft, TIcon } from 'ui_73info'
 import { useMultiSelectTags } from '@/composables/useMultiSelectTags'
 import type { FilterSectionView } from '@/components/resource-catalog/resourceCatalogModel'
 
@@ -76,9 +77,10 @@ function handleTagClick(section: FilterSectionView, tag: string) {
             class="portal-resource-browser__menu-clear"
             type="button"
             :aria-label="`清空「${section.label}」筛选`"
+            :title="`清空「${section.label}」筛选`"
             @click="emit('clear-section', section.id)"
           >
-            清空
+            <TIcon><RefreshLeft /></TIcon>
           </button>
         </div>
 

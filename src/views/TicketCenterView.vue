@@ -8,7 +8,7 @@ import {
   ticketPriorityLabel,
   ticketStatusLabel,
 } from '@/shared/ticketDisplay'
-import { TButton, TDialog } from 'ui_73info'
+import { Search, TButton, TDialog, TIcon, TInput } from 'ui_73info'
 
 const {
   auth,
@@ -70,7 +70,19 @@ const {
           <TButton variant="solid" tone="accent" @click="openCompose">新建工单</TButton>
         </div>
         <div class="ticket-filters">
-          <input v-model="keyword" type="search" placeholder="搜索标题、编号或分类" />
+          <TInput
+            v-model="keyword"
+            class="ticket-filters__search"
+            clearable
+            placeholder="搜索标题、编号或分类"
+            aria-label="搜索工单"
+          >
+            <template #prefix>
+              <TIcon>
+                <Search />
+              </TIcon>
+            </template>
+          </TInput>
           <select v-model="status">
             <option
               v-for="option in TICKET_STATUS_FILTER_OPTIONS"

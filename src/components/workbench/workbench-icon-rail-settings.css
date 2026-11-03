@@ -12,8 +12,8 @@
 
 .workbench-icon-rail__settings-trigger {
   position: relative;
-  width: 48px;
-  height: 48px;
+  width: 40px;
+  height: 40px;
   display: grid;
   place-items: center;
   border-radius: 8px;
@@ -36,19 +36,37 @@
   background: color-mix(in srgb, var(--73-accent) 10%, transparent);
 }
 
+.workbench-icon-rail__settings-avatar {
+  width: 32px;
+  height: 32px;
+  display: grid;
+  place-items: center;
+  border-radius: 999px;
+  background: var(--73-inset);
+  color: var(--73-ink-soft);
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1;
+  transition:
+    color 150ms ease,
+    background 150ms ease;
+}
+
+.workbench-icon-rail__settings-trigger:hover .workbench-icon-rail__settings-avatar {
+  background: var(--73-border-soft);
+  color: var(--73-ink);
+}
+
+.workbench-icon-rail__settings.is-open .workbench-icon-rail__settings-avatar,
+.workbench-icon-rail__settings-trigger.is-active .workbench-icon-rail__settings-avatar {
+  background: color-mix(in srgb, var(--73-accent) 12%, transparent);
+  color: var(--73-accent);
+}
+
 .workbench-icon-rail__settings-trigger:focus-visible,
 .workbench-icon-rail__settings-option:focus-visible {
   outline: 2px solid var(--73-accent);
   outline-offset: 3px;
-}
-
-.workbench-icon-rail__settings-trigger svg {
-  width: 22px;
-  height: 22px;
-  stroke: currentColor;
-  stroke-width: 1.8;
-  stroke-linecap: round;
-  stroke-linejoin: round;
 }
 
 .workbench-icon-rail__settings-menu {

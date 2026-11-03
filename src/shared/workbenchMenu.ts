@@ -100,12 +100,6 @@ export const devWorkbenchItems: DevWorkbenchItem[] = [
     icon: Connection,
   },
   {
-    label: 'AI 需求助手',
-    name: 'dev-assistant',
-    description: '对话梳理需求并生成草稿',
-    icon: Compass,
-  },
-  {
     label: '需求大厅',
     name: 'dev-requirement-hall',
     description: '浏览并关联可接需求',

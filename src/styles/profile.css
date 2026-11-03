@@ -3,11 +3,10 @@
    分片只搬运不修改：声明、选择器、媒体查询一字未改，色值也没动；改顺序会让级联悄悄变样。
    01 个人中心外壳与钱包 / 02 需求单行与摘要 / 03 需求单操作区 /
    04 需求单 640 档与审核卡片 / 05 归档横幅与需求弹窗 /
-   06 优惠券列表与账号弹窗 / 07 总览骨架 */
+   06 优惠券列表与账号弹窗 */
 @import './profile/01-profile-shell-wallet.css';
 @import './profile/02-requirement-row.css';
 @import './profile/03-requirement-actions.css';
 @import './profile/04-requirement-responsive-review.css';
 @import './profile/05-requirement-banners-modals.css';
 @import './profile/06-coupon-account-dialogs.css';
-@import './profile/07-overview-skeleton.css';

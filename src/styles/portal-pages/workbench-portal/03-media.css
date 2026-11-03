@@ -1,0 +1,172 @@
+/* 由 04-workbench-portal.css 按顶层规则边界切分（第 3/4 段），
+   顺序与原文一致；跨文件级联依赖顺序。 */
+
+/* --- 需求大厅：页头 chip / 脉冲状态点 / 分页卡（对齐 Stitch 源码） --- */
+@media (min-width: 901px) {
+  .portal-page.portal-page--nav .requirement-hero {
+    padding-bottom: 14px;
+    border-bottom: 1px solid var(--73-border);
+  }
+
+  .portal-hero-strip__eyebrow-chip {
+    display: inline-flex;
+    align-items: center;
+    margin-bottom: 8px;
+    padding: 2px 8px;
+    border: 1px solid var(--73-accent-line);
+    border-radius: 4px;
+    background: var(--73-accent-soft);
+    color: var(--73-accent);
+    font-family: var(--73-font-family-mono);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+  }
+
+  .requirement-hero__stat {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 14px;
+    border: 1px solid var(--73-border);
+    border-radius: var(--73-radius-pill);
+    background: var(--73-surface);
+    box-shadow: var(--73-shadow-card);
+    color: var(--73-ink-soft);
+    font-size: 12px;
+  }
+
+  .requirement-hero__stat strong {
+    color: var(--73-ink);
+    font-family: var(--73-font-family-mono);
+    font-size: 13px;
+    font-weight: 600;
+  }
+
+  .requirement-hero__stat .requirement-hero__done strong {
+    color: var(--73-accent);
+  }
+
+  .requirement-hero__pulse {
+    position: relative;
+    width: 8px;
+    height: 8px;
+    border-radius: var(--73-radius-pill);
+    background: var(--73-success);
+  }
+
+  .requirement-hero__pulse::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: var(--73-radius-pill);
+    background: var(--73-success);
+    opacity: 0.45;
+    animation: requirement-hero-pulse 1.8s ease-out infinite;
+  }
+
+  @keyframes requirement-hero-pulse {
+    0% {
+      transform: scale(1);
+      opacity: 0.45;
+    }
+    70%,
+    100% {
+      transform: scale(2.4);
+      opacity: 0;
+    }
+  }
+
+  .requirement-hall__pager-card {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 10px 16px;
+    border: 1px solid var(--73-border);
+    border-radius: var(--73-radius-inner);
+    background: var(--73-surface);
+    box-shadow: var(--73-shadow-card);
+  }
+
+  .requirement-hall__pager-range {
+    color: var(--73-ink-muted);
+    font-size: 12px;
+    white-space: nowrap;
+  }
+
+  .requirement-hall__pager-range strong {
+    margin: 0 2px;
+    color: var(--73-ink);
+    font-family: var(--73-font-family-mono);
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .portal-page--nav .requirement-hall__pager-card .requirement-hall__pager {
+    width: auto;
+    margin: 0 0 0 auto;
+    justify-content: flex-end;
+  }
+
+  /* 页码按钮改 32px 方块 + 描边、选中页实底蓝；组件样式带 scope 属性，这里加两级前缀压过 */
+  .portal-page--nav .requirement-hall__pager-card .t73-pagination__pages {
+    gap: 4px;
+  }
+
+  .portal-page--nav .requirement-hall__pager-card .t73-pagination__button {
+    min-width: 32px;
+    height: 32px;
+    padding: 0 8px;
+    border: 1px solid var(--73-border);
+    background: var(--73-surface);
+    color: var(--73-ink-soft);
+    font-size: 12px;
+  }
+
+  .portal-page--nav .requirement-hall__pager-card .t73-pagination__button:hover:not(:disabled) {
+    border-color: var(--73-border-hover);
+    background: var(--73-inset);
+    color: var(--73-ink);
+  }
+
+  .portal-page--nav .requirement-hall__pager-card .t73-pagination__button:disabled {
+    opacity: 0.4;
+  }
+
+  .portal-page--nav
+    .requirement-hall__pager-card
+    .t73-pagination__page:not(.t73-pagination__page--active) {
+    border-color: transparent;
+    background: transparent;
+  }
+
+  /* 未选中的页码悬停时只铺一层灰底，文字保持可读；不能沿用主色文字撞蓝底。 */
+  .portal-page--nav
+    .requirement-hall__pager-card
+    .t73-pagination__page:not(.t73-pagination__page--active):hover:not(:disabled) {
+    background: var(--73-inset);
+    color: var(--73-ink);
+  }
+
+  .portal-page--nav .requirement-hall__pager-card .t73-pagination__page--active {
+    border-color: var(--73-accent);
+    background: var(--73-accent);
+    color: var(--73-accent-contrast);
+    font-weight: 600;
+  }
+
+  /* 选中页悬停仍是蓝底白字，避免 hover 的灰底/主色文字把当前页盖掉。 */
+  .portal-page--nav
+    .requirement-hall__pager-card
+    .t73-pagination__page--active:hover:not(:disabled) {
+    border-color: var(--73-accent);
+    background: var(--73-accent);
+    color: var(--73-accent-contrast);
+  }
+
+  .portal-page--nav .requirement-hall__pager-card .t73-pagination__gap {
+    min-width: 20px;
+    height: 32px;
+  }
+}
