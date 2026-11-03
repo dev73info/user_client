@@ -1,6 +1,7 @@
 import type { RequirementItem, RequirementOverviewResp } from '@/api/requirements'
 import type { MockRequirementRow } from '@/mock/db/requirements'
-import { CLIENT_USERNAME, DEV_USERNAME, requirements, settledIncome } from '../../db'
+import { CLIENT_USERNAME, DEV_USERNAME, requirements } from '../../db'
+import { datetime } from '../../db/shared'
 import { readString } from '../../response'
 
 /** 未接单、已过审核（待付定金）的需求才会出现在开发者需求大厅。 */
@@ -76,6 +77,28 @@ export function toSpotlightItem(item: MockRequirementRow) {
   }
 }
 
+/** 大厅侧栏固定展示 10 条 mock 交付记录，保证分页与右侧栏在同一屏内可验收。 */
+const MOCK_RECENT_DEAL_LIMIT = 10
+const MOCK_RECENT_DEAL_AMOUNTS = [128, 86, 320, 45, 168, 72, 240, 36, 98, 54]
+
+function buildRecentDeals() {
+  return requirements.slice(0, MOCK_RECENT_DEAL_LIMIT).map((item, index) => {
+    const paidAt = datetime(-index, 9 + ((index * 3) % 9), (index * 7) % 60)
+    const rated = index % 4 !== 3
+
+    return {
+      payment_id: `PAY-MOCK-RECENT-${index + 1}`,
+      requirement_id: item.requirement_id,
+      title: item.title,
+      amount_cny: MOCK_RECENT_DEAL_AMOUNTS[index] ?? 0,
+      paid_at: paidAt,
+      comment_rating: rated ? [5, 4.5, 4][index % 3] : null,
+      comment_text: rated ? '交付准时，沟通顺畅。' : null,
+      commented_at: rated ? paidAt : null,
+    }
+  })
+}
+
 /** 概览口径：需求方看到的是「我发过多少单、成交多少」，与门户公开口径分开算。 */
 export function buildOverview(items: MockRequirementRow[]): RequirementOverviewResp {
   const turnOver = items.reduce((total, item) => {
@@ -93,15 +116,6 @@ export function buildOverview(items: MockRequirementRow[]): RequirementOverviewR
     positive_rate_change_rate: 1.2,
     total_turnover_cny: turnOver,
     total_turnover_change_rate: 8.4,
-    recent_deals: settledIncome.slice(0, 4).map((income) => ({
-      payment_id: income.payment_id,
-      requirement_id: income.requirement_id,
-      title: income.title,
-      amount_cny: income.amount_cny,
-      paid_at: income.paid_at,
-      comment_rating: 5,
-      comment_text: '交付准时，沟通顺畅。',
-      commented_at: income.paid_at,
-    })),
+    recent_deals: buildRecentDeals(),
   }
 }

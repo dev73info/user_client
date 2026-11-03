@@ -6,6 +6,7 @@ import WorkbenchIconRail from '@/components/workbench/WorkbenchIconRail.vue'
 
 const routes = [
   'workbench',
+  'workbench-messages',
   'workbench-requirements',
   'workbench-signatures',
   'workbench-invoices',
@@ -30,7 +31,7 @@ const routes = [
   component: { template: '<div />' },
   meta: name.startsWith('dev-')
     ? { devArea: true, workbenchChat: name === 'dev-messages' }
-    : name === 'workbench'
+    : name === 'workbench-messages'
       ? { workbenchChat: true }
       : {},
 }))
@@ -39,7 +40,13 @@ async function render(name: string, { isDevWorkbenchMode = false, realnameApprov
   const router = createRouter({ history: createMemoryHistory(), routes })
   await router.push({ name })
   const wrapper = mount(WorkbenchIconRail, {
-    props: { isDevWorkbenchMode, unreadCount: 3, teamInvitationCount: 2, realnameApproved },
+    props: {
+      isDevWorkbenchMode,
+      unreadCount: 3,
+      teamInvitationCount: 2,
+      realnameApproved,
+      username: 'client_flow_03562487',
+    },
     global: { plugins: [router] },
   })
   await flushPromises()
@@ -105,7 +112,7 @@ describe('工作台图标栏', () => {
         .findAll('.workbench-icon-rail__item')
         .find((button) => button.attributes('aria-label') === label)!
 
-    await router.push({ name: 'workbench', query: { requirement_id: 'REQ-1' } })
+    await router.push({ name: 'workbench-messages', query: { requirement_id: 'REQ-1' } })
     await flushPromises()
 
     await railButton('资产与权益').trigger('click')
@@ -114,7 +121,7 @@ describe('工作台图标栏', () => {
 
     await railButton('消息').trigger('click')
     await flushPromises()
-    expect(router.currentRoute.value.name).toBe('workbench')
+    expect(router.currentRoute.value.name).toBe('workbench-messages')
     expect(router.currentRoute.value.query.requirement_id).toBe('REQ-1')
     wrapper.unmount()
   })
@@ -129,9 +136,9 @@ describe('工作台图标栏', () => {
     await router.push({ name: 'dev-messages', query: { requirement_id: 'REQ-2' } })
     await flushPromises()
 
-    await railButton('资源项目').trigger('click')
+    await railButton('接单与交付').trigger('click')
     await flushPromises()
-    expect(router.currentRoute.value.name).toBe('dev-resource-list')
+    expect(router.currentRoute.value.name).toBe('dev-home')
 
     await railButton('消息').trigger('click')
     await flushPromises()
@@ -140,15 +147,16 @@ describe('工作台图标栏', () => {
     wrapper.unmount()
   })
 
-  it('用户模式只剩消息 / 两个分组 / 系统通知，不再平铺账户类入口', async () => {
+  it('用户模式只剩总览 / 消息 / 两个分组 / 系统通知，不再平铺账户类入口', async () => {
     const { wrapper } = await render('workbench')
 
-    // 8 个按钮 = 消息 + 订单与合同 + 资产与权益 + 系统通知 + 齿轮（齿轮也是 __item）
+    // 5 个导航按钮 = 总览 + 消息 + 订单与合同 + 资产与权益 + 系统通知
     expect(wrapper.findAll('.workbench-icon-rail__items .workbench-icon-rail__item')).toHaveLength(
-      4,
+      5,
     )
     const labels = itemLabels(wrapper)
     expect(labels).toEqual([
+      '工作台总览',
       '消息',
       '订单与合同',
       '资产与权益',
@@ -157,9 +165,11 @@ describe('工作台图标栏', () => {
       '账户菜单',
     ])
     expect(wrapper.find('.workbench-icon-rail__item.is-active').attributes('aria-label')).toBe(
-      '消息',
+      '工作台总览',
     )
     expect(wrapper.find('.workbench-icon-rail__badge').text()).toBe('3')
+    expect(wrapper.find('.workbench-icon-rail__settings-avatar').text()).toBe('C')
+    expect(wrapper.find('.workbench-icon-rail__avatar').exists()).toBe(false)
     wrapper.unmount()
   })
 
@@ -185,19 +195,19 @@ describe('工作台图标栏', () => {
     wrapper.unmount()
   })
 
-  it('齿轮弹层只剩账户四条', async () => {
+  it('齿轮弹层只剩账户三条', async () => {
     const { wrapper } = await render('dev-home', { isDevWorkbenchMode: true })
 
-    expect(itemLabels(wrapper)).toContain('开发者总览')
+    expect(itemLabels(wrapper)).toContain('接单与交付')
     expect(wrapper.find('.workbench-icon-rail__item.is-active').attributes('aria-label')).toBe(
-      '开发者总览',
+      '工作台总览',
     )
 
     await wrapper.find('.workbench-icon-rail__settings-trigger').trigger('click')
     const labels = wrapper
       .findAll('.workbench-icon-rail__settings-option')
       .map((item) => item.text())
-    expect(labels).toEqual(['个人账户', '账户详情', '已授权应用', '工单中心'])
+    expect(labels).toEqual(['账户详情', '已授权应用', '工单中心'])
     wrapper.unmount()
   })
 
@@ -228,7 +238,7 @@ describe('工作台图标栏', () => {
     const { wrapper } = await render('workbench', { realnameApproved: false })
 
     expect(wrapper.findAll('.workbench-icon-rail__items .workbench-icon-rail__item')).toHaveLength(
-      4,
+      5,
     )
     wrapper.unmount()
   })
@@ -244,7 +254,9 @@ describe('工作台图标栏', () => {
     // 默认不渲染气泡，只有交互后才出现
     expect(document.querySelector('.workbench-icon-rail__tooltip--floating')).toBeNull()
 
-    const item = wrapper.findAll('.workbench-icon-rail__items .workbench-icon-rail__item')[1]!
+    const item = wrapper
+      .findAll('.workbench-icon-rail__items .workbench-icon-rail__item')
+      .find((button) => button.attributes('aria-label') === '订单与合同')!
     await item.trigger('mouseenter')
 
     const floating = document.querySelector('.workbench-icon-rail__tooltip--floating')

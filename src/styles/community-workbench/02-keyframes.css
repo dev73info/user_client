@@ -1,0 +1,75 @@
+/* 由 community-workbench.css 按顶层规则边界切分（第 2/2 段），
+   顺序与原文一致；跨文件级联依赖顺序。 */
+
+@keyframes community-hero-pulse {
+  0% {
+    transform: scale(1);
+    opacity: 0.45;
+  }
+  70%,
+  100% {
+    transform: scale(2.4);
+    opacity: 0;
+  }
+}
+
+@media (min-width: 901px) {
+  .community-page.community-page--split .community-hero {
+    padding-bottom: 14px;
+    border-bottom: 1px solid var(--73-border);
+  }
+
+  .community-hero__stat {
+    align-self: flex-end;
+  }
+
+  /* 视图切换沿用资源项目的下划线页签，不再单独做分段控件 */
+  .community-page.community-page--split .community-page__tabs {
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+  }
+
+  .community-page.community-page--split .community-page__tabs button {
+    position: relative;
+    height: var(--73-control-height);
+    padding: 0 12px;
+    border-radius: 0;
+    font-size: 13px;
+    font-weight: 500;
+    transition: color var(--73-transition);
+  }
+
+  .community-page.community-page--split .community-page__tabs button:hover {
+    color: var(--73-ink);
+  }
+
+  .community-page.community-page--split .community-page__tabs button.active {
+    background: transparent;
+    color: var(--73-accent);
+    font-weight: 600;
+  }
+
+  .community-page.community-page--split .community-page__tabs button.active::after {
+    content: '';
+    position: absolute;
+    left: 10px;
+    right: 10px;
+    bottom: 2px;
+    height: 2px;
+    border-radius: 2px;
+    background: var(--73-accent);
+  }
+
+  /* 选中帖子：浅蓝底 + 左侧蓝色标线（源码 selected 行） */
+  .community-page.community-page--split .community-post-card.active {
+    border-color: var(--73-accent-line);
+    border-left: 3px solid var(--73-accent);
+    background: var(--73-accent-soft);
+  }
+
+  .community-page.community-page--split .community-post-card {
+    border-left: 3px solid transparent;
+  }
+}

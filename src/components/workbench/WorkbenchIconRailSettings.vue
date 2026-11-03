@@ -1,22 +1,23 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { TIcon } from 'ui_73info'
 
 import {
   workbenchRailAccountMenuItems,
   type WorkbenchRailAccountMenuItem,
 } from '@/shared/workbenchRailAccountMenu'
 
+const props = defineProps<{
+  username?: string
+}>()
+
 const route = useRoute()
 const router = useRouter()
 const open = ref(false)
 const rootRef = ref<HTMLElement | null>(null)
+const avatarInitial = computed(() => (props.username || '?').slice(0, 1).toUpperCase())
 
 const currentName = computed(() => String(route.name ?? ''))
-const personalAccountActive = computed(
-  () => currentName.value === 'workbench' && route.query.view === 'profile',
-)
 
 type MenuTarget = {
   name: string
@@ -27,10 +28,8 @@ function isActive(item: WorkbenchRailAccountMenuItem) {
   return currentName.value === item.to.name
 }
 
-/** 停在账户类页面时齿轮点亮（这些页面不再出现在图标栏上，齿轮就是它们的归属标记）。 */
-const accountModeActive = computed(
-  () => personalAccountActive.value || workbenchRailAccountMenuItems.some(isActive),
-)
+/** 停在账户类页面时账户图标点亮（这些页面不再出现在图标栏上，它就是它们的归属标记）。 */
+const accountModeActive = computed(() => workbenchRailAccountMenuItems.some(isActive))
 
 function close() {
   open.value = false
@@ -88,14 +87,7 @@ onBeforeUnmount(() => {
       title="账户"
       @click="toggle"
     >
-      <TIcon :size="22">
-        <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
-          <circle cx="12" cy="12" r="3.2" />
-          <path
-            d="M19.2 13.5a7.8 7.8 0 0 0 0-3l2-1.5-2-3.5-2.4 1a8.8 8.8 0 0 0-2.7-1.5L13.8 2h-3.6L10 4.9A8.8 8.8 0 0 0 7.2 6.4l-2.4-1-2 3.5 2 1.5a7.8 7.8 0 0 0 0 3l-2 1.5 2 3.5 2.4-1a8.8 8.8 0 0 0 2.8 1.5l.2 2.9h3.6l.2-2.9a8.8 8.8 0 0 0 2.7-1.5l2.4 1 2-3.5-2-1.5Z"
-          />
-        </svg>
-      </TIcon>
+      <span class="workbench-icon-rail__settings-avatar">{{ avatarInitial }}</span>
       <span class="workbench-icon-rail__tooltip">账户</span>
     </button>
 
@@ -106,16 +98,6 @@ onBeforeUnmount(() => {
       aria-label="账户"
       @click.stop
     >
-      <button
-        class="workbench-icon-rail__settings-option"
-        :class="{ 'is-active': personalAccountActive }"
-        type="button"
-        role="menuitem"
-        :aria-current="personalAccountActive ? 'page' : undefined"
-        @click="go({ name: 'workbench', query: { view: 'profile' } })"
-      >
-        个人账户
-      </button>
       <button
         v-for="item in workbenchRailAccountMenuItems"
         :key="item.key"

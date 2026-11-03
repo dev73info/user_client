@@ -1,50 +1,5 @@
 import type { PointsTransfer, UserPointsLog } from '@/api/points'
 
-export type PointsRecordTab = 'transfers' | 'logs'
-export const POINTS_RECORD_TABS: ReadonlyArray<{ key: PointsRecordTab; label: string }> = [
-  { key: 'logs', label: '积分明细' },
-  { key: 'transfers', label: '打赏记录' },
-]
-
-export type TransferScope = 'all' | 'sent' | 'received'
-export type TransferScopeOption = { value: TransferScope; label: string; count: number }
-
-export function pointsTransferScopes(
-  transfers: PointsTransfer[],
-  me: string,
-): TransferScopeOption[] {
-  return [
-    { value: 'all', label: '全部', count: transfers.length },
-    {
-      value: 'sent',
-      label: '我打赏的',
-      count: transfers.filter((item) => pointsTransferMatchesScope(item, 'sent', me)).length,
-    },
-    {
-      value: 'received',
-      label: '我收到的',
-      count: transfers.filter((item) => pointsTransferMatchesScope(item, 'received', me)).length,
-    },
-  ]
-}
-
-export function pointsTransferMatchesScope(
-  transfer: PointsTransfer,
-  scope: TransferScope,
-  me: string,
-): boolean {
-  if (scope === 'all') return true
-  return scope === 'sent' ? transfer.from_username === me : transfer.to_username === me
-}
-
-export function pointsTransferMatchesKeyword(transfer: PointsTransfer, keyword: string): boolean {
-  const search = keyword.trim().toLocaleLowerCase()
-  if (!search) return true
-  return [transfer.from_username, transfer.to_username, transfer.note ?? ''].some((value) =>
-    value.toLocaleLowerCase().includes(search),
-  )
-}
-
 export function pointsSelfName(username: string, me: string): string {
   return username === me ? '我' : username
 }

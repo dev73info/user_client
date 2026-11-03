@@ -37,11 +37,8 @@ export function useWorkbenchMenu(options: {
 
   /** 实名通过后「我的合同」才出现在账户服务里。 */
   const realnameApproved = ref(false)
-  // 菜单修正稿：用户侧默认展开「订单与合同 / 资产与权益」，账户组收起；
-  // 开发者侧两组合并成财务中心与团队服务，也默认展开。
-  const openGroupKeys = ref<string[]>(
-    options.isDevWorkbenchMode.value ? ['finance', 'team'] : ['orders', 'assets'],
-  )
+  // 分组按手风琴展开：同一时间只保留一个分组，初始状态由进页监听按当前路由补上。
+  const openGroupKeys = ref<string[]>([])
 
   const menuGroups = computed<WorkbenchMenuGroup[]>(() => buildMenuGroups(realnameApproved.value))
 
@@ -82,7 +79,7 @@ export function useWorkbenchMenu(options: {
       return
     }
 
-    openGroupKeys.value = [...openGroupKeys.value, group.key]
+    openGroupKeys.value = [group.key]
   }
 
   function isMessageMenuOpen() {
@@ -91,7 +88,7 @@ export function useWorkbenchMenu(options: {
 
   function openMessageCenter() {
     if (!isMessageMenuOpen()) {
-      openGroupKeys.value = [...openGroupKeys.value, MESSAGES_GROUP_KEY]
+      openGroupKeys.value = [MESSAGES_GROUP_KEY]
     }
 
     options.openMessagesCenter()
@@ -132,12 +129,10 @@ export function useWorkbenchMenu(options: {
       const activeGroup = allMenuGroups.value.find((group) =>
         group.items.some((item) => isMenuItemActive(item)),
       )
-      if (activeGroup && !openGroupKeys.value.includes(activeGroup.key)) {
-        openGroupKeys.value = [...openGroupKeys.value, activeGroup.key]
-      }
-      if (options.isMessagesRoute.value && !openGroupKeys.value.includes(MESSAGES_GROUP_KEY)) {
-        openGroupKeys.value = [...openGroupKeys.value, MESSAGES_GROUP_KEY]
-      }
+      openGroupKeys.value = [
+        ...(options.isMessagesRoute.value ? [MESSAGES_GROUP_KEY] : []),
+        ...(activeGroup ? [activeGroup.key] : []),
+      ]
       options.closeMobileMenu()
       options.scrollToHash()
     },

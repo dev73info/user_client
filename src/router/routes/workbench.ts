@@ -12,7 +12,7 @@ export const workbenchRoutes: RouteRecordRaw[] = [
   {
     path: '/profile',
     name: 'profile',
-    redirect: { name: 'workbench', query: { view: 'profile' } },
+    redirect: { name: 'workbench' },
   },
   {
     path: '/workbench',
@@ -24,10 +24,7 @@ export const workbenchRoutes: RouteRecordRaw[] = [
       {
         path: '',
         name: 'workbench',
-        component: () => import('@/views/WorkbenchHomeView.vue'),
-        meta: {
-          workbenchChat: true,
-        },
+        component: () => import('@/views/UserWorkbenchOverviewView.vue'),
       },
       {
         path: 'requirements',
@@ -111,7 +108,7 @@ export const workbenchRoutes: RouteRecordRaw[] = [
         path: 'points',
         name: 'workbench-points',
         component: () => import('@/views/PointsCenterView.vue'),
-        meta: { title: '积分中心', description: '签到、积分明细与打赏' },
+        meta: { title: '我的积分', description: '签到、积分记录与打赏' },
       },
       {
         path: 'perks',

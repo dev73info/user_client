@@ -22,6 +22,7 @@ import {
   nextResourceVisibility,
   pendingVersionRejectNote,
   publishedVersionCount,
+  requirementSubscriptionLabel,
   settlementHint,
   statusBadgeClass,
 } from '@/shared/requirementRowRules'
@@ -193,6 +194,10 @@ describe('行内判定：取消 / 改稿 / 解除合作', () => {
 })
 
 describe('行内展示：状态、时间与金额', () => {
+  it('订阅开关文案始终为「订阅」，开关状态由 aria-pressed 表达', () => {
+    expect(requirementSubscriptionLabel()).toBe('订阅')
+  })
+
   it('担保需求「待付定金」按事实拆成三句', () => {
     const noResource = requirement({ bound_resource_id: null })
     expect(formatRequirementDisplayStatus(noResource, facts())).toBe('待接单')

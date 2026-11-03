@@ -136,7 +136,7 @@ afterEach(() => {
   wrapper = undefined
 })
 
-describe('积分中心', () => {
+describe('我的积分', () => {
   it('签到后更新状态并刷新积分余额', async () => {
     wrapper = mount(PointsCenterView, {
       global: { stubs: { WorkbenchBarSlot: { template: '<div><slot /></div>' } } },
@@ -147,6 +147,74 @@ describe('积分中心', () => {
     expect(mocks.checkin).toHaveBeenCalledWith('user-token')
     expect(wrapper.text()).toContain('今日已签到')
     expect(mocks.me).toHaveBeenCalledTimes(2)
+  })
+
+  it('读数条只报读数，签到与打赏入口收在记录工具栏，打赏在弹窗里打开', async () => {
+    wrapper = mount(PointsCenterView, {
+      global: { stubs: { WorkbenchBarSlot: { template: '<div><slot /></div>' } } },
+    })
+    await flushPromises()
+    const strip = wrapper.get('.wb-strip')
+    expect(strip.text()).toContain('积分记录')
+    expect(strip.text()).toContain('含打赏 0 笔')
+    expect(strip.text()).not.toContain('每日签到')
+    expect(strip.text()).not.toContain('发起积分打赏')
+    const toolbar = wrapper.get('.points-records__toolbar')
+    expect(toolbar.text()).toContain('每日签到')
+    expect(toolbar.text()).toContain('发起积分打赏')
+    expect(wrapper.text()).not.toContain('导出 CSV')
+    expect(wrapper.find('[role="tablist"]').exists()).toBe(false)
+    expect(wrapper.find('[aria-label="接收方用户名"]').exists()).toBe(false)
+
+    await button('发起积分打赏').trigger('click')
+    await flushPromises()
+    expect(wrapper.find('[aria-label="接收方用户名"]').exists()).toBe(true)
+  })
+
+  it('积分明细与打赏合并为一个积分记录列表', async () => {
+    mocks.me.mockResolvedValueOnce({
+      username: 'tester',
+      points_balance: 100,
+      logs: [
+        {
+          id: 2,
+          username: 'tester',
+          delta: -10,
+          balance_after: 90,
+          reason: '打赏给 receiver',
+          source_type: null,
+          source_id: null,
+          operator: null,
+          created_at: '2026-10-27 12:00:00',
+        },
+        {
+          id: 1,
+          username: 'tester',
+          delta: 5,
+          balance_after: 100,
+          reason: '每日签到',
+          source_type: null,
+          source_id: null,
+          operator: null,
+          created_at: '2026-10-27 09:00:00',
+        },
+      ],
+      logs_total: 2,
+      logs_page: 1,
+      logs_page_size: 10,
+      username_gradient_owned: false,
+      username_gradient: false,
+      perks: [],
+    })
+    wrapper = mount(PointsCenterView, {
+      global: { stubs: { WorkbenchBarSlot: { template: '<div><slot /></div>' } } },
+    })
+    await flushPromises()
+    expect(wrapper.find('[role="tablist"]').exists()).toBe(false)
+    expect(wrapper.get('table').attributes('aria-label')).toBe('积分记录')
+    expect(wrapper.findAll('tbody tr')).toHaveLength(2)
+    expect(wrapper.text()).toContain('打赏给 receiver')
+    expect(wrapper.text()).toContain('每日签到')
   })
 
   it('打赏提交真实接收方、金额和附言', async () => {

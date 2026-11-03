@@ -71,3 +71,9 @@ html::-webkit-scrollbar-thumb:hover {
   display: flex;
   flex-direction: column;
 }
+
+/* 门户页自己管理进入落点。浏览器默认的滚动锚定会在页面内容异步增减时
+   悄悄改 scrollTop（社区分栏切换最明显），把刚落好的位置带跑。 */
+.app-shell-scrollbar > .t73-scrollbar__wrap {
+  overflow-anchor: none;
+}

@@ -77,6 +77,41 @@ export function requirementGuaranteeRequestMode(
   return filter === 'all' ? undefined : filter
 }
 
+/* ---------- 需求大厅：排序 ---------- */
+
+export type RequirementHallSort = 'latest' | 'price_desc'
+
+/** 排序下拉：默认价格从高到低，最新按更新时间倒序。 */
+export const REQUIREMENT_HALL_SORT_OPTIONS: Array<{
+  label: string
+  value: RequirementHallSort
+}> = [
+  { label: '最新', value: 'latest' },
+  { label: '价格', value: 'price_desc' },
+]
+
+export function normalizeRequirementHallSort(value: unknown): RequirementHallSort {
+  return value === 'latest' ? 'latest' : 'price_desc'
+}
+
+/** 价格排序时没有预算的需求排在最后；同价时仍按更新时间倒序，避免翻页顺序抖动。 */
+export function sortRequirementHallItems<T extends PublicRequirementSpotlightItem>(
+  items: T[],
+  sort: RequirementHallSort,
+): T[] {
+  const updatedAt = (item: T) => item.updated_at || item.created_at
+  return [...items].sort((left, right) => {
+    if (sort === 'price_desc') {
+      const leftBudget = left.budget ?? Number.NEGATIVE_INFINITY
+      const rightBudget = right.budget ?? Number.NEGATIVE_INFINITY
+      if (leftBudget !== rightBudget) {
+        return rightBudget - leftBudget
+      }
+    }
+    return updatedAt(right).localeCompare(updatedAt(left))
+  })
+}
+
 /* ---------- 需求大厅：列表筛选、读数与空态 ---------- */
 
 /**
@@ -138,8 +173,8 @@ export function requirementHallEmptyTitle(
   return '当前没有可展示的需求'
 }
 
-/** 侧栏「最近交付」只取前几条；概览还没回来时是空列表（模板据此出空态）。 */
-export function requirementRecentDeals<T>(deals: T[] | undefined | null, limit = 3): T[] {
+/** 侧栏「最近交付」最多展示 10 条；概览还没回来时是空列表（模板据此出空态）。 */
+export function requirementRecentDeals<T>(deals: T[] | undefined | null, limit = 10): T[] {
   return deals?.slice(0, limit) ?? []
 }
 

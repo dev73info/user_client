@@ -156,11 +156,13 @@ describe('大厅读数、空态与最近交付', () => {
     expect(requirementHallEmptyTitle('', 'all')).toBe('当前没有可展示的需求')
   })
 
-  it('最近交付只取前 3 条，概览没回来时是空列表', () => {
-    const deals = [1, 2, 3, 4].map((id) => ({ payment_id: id }))
-    expect(requirementRecentDeals(deals).map((deal) => deal.payment_id)).toEqual([1, 2, 3])
+  it('最近交付最多取前 10 条，概览没回来时是空列表', () => {
+    const deals = Array.from({ length: 12 }, (_, index) => ({ payment_id: index + 1 }))
+    expect(requirementRecentDeals(deals).map((deal) => deal.payment_id)).toEqual([
+      1, 2, 3, 4, 5, 6, 7, 8, 9, 10,
+    ])
     expect(requirementRecentDeals(undefined)).toEqual([])
-    expect(requirementRecentDeals([], 3)).toEqual([])
+    expect(requirementRecentDeals([], 10)).toEqual([])
   })
 
   it('星级按 0.5 步算满星 / 半星 / 空星，没有评分全空', () => {

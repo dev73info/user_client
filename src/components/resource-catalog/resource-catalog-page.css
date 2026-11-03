@@ -25,7 +25,7 @@
   /* 结果区：2–3 列自适应；窄屏在 900px 处回落单列 */
   grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
   align-items: stretch;
-  gap: 14px;
+  gap: 16px;
 }
 
 @media (max-width: 900px) {

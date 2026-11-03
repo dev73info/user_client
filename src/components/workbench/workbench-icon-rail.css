@@ -11,26 +11,6 @@
   color: var(--73-ink-muted);
 }
 
-.workbench-icon-rail__brand {
-  width: 40px;
-  height: 40px;
-  display: grid;
-  place-items: center;
-  flex: 0 0 auto;
-  border-radius: 8px;
-  background: var(--73-accent);
-  color: var(--73-accent-contrast);
-  font-size: 15px;
-  font-weight: 700;
-  letter-spacing: -0.02em;
-  text-decoration: none;
-}
-
-.workbench-icon-rail__brand:focus-visible {
-  outline: 2px solid var(--73-accent);
-  outline-offset: 2px;
-}
-
 .workbench-icon-rail__item {
   border: 0;
   font: inherit;
@@ -109,25 +89,6 @@
   margin-top: 0;
 }
 
-.workbench-icon-rail__avatar {
-  width: 32px;
-  height: 32px;
-  display: grid;
-  place-items: center;
-  flex: 0 0 auto;
-  border-radius: 999px;
-  background: var(--73-inset);
-  color: var(--73-ink-soft);
-  font-size: 13px;
-  font-weight: 600;
-  text-decoration: none;
-}
-
-.workbench-icon-rail__avatar:hover {
-  background: var(--73-border-soft);
-  color: var(--73-ink);
-}
-
 .workbench-icon-rail__tooltip {
   position: absolute;
   left: calc(100% + 10px);
@@ -163,17 +124,6 @@
   opacity: 1;
   transform: translate(0, -50%);
   pointer-events: none;
-}
-
-/* 齿轮触发器与导航项同宽 */
-.workbench-icon-rail :deep(.workbench-icon-rail__settings-trigger) {
-  width: 40px;
-  height: 40px;
-}
-
-.workbench-icon-rail :deep(.workbench-icon-rail__settings-trigger svg) {
-  width: 20px;
-  height: 20px;
 }
 
 @media (max-width: 900px) {

@@ -5,7 +5,6 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { defineComponent, h, ref } from 'vue'
 
 import { useAuthStore } from '@/stores/auth'
-import { useProfilePublishRequirement } from '@/composables/useProfilePublishRequirement'
 import type { RequirementItem } from '@/api/requirements'
 import type { useMyRequirementsData } from '@/composables/useMyRequirementsData'
 import { useRequirementHallPublish } from '@/composables/useRequirementHallPublish'
@@ -146,37 +145,6 @@ async function hallEntry(): Promise<EntryHarness> {
   }
 }
 
-/** 个人中心：`v-bind="publishModalBindings"`，靠 bindings 里的 `onUpdate:*` 回调回推。 */
-async function profileEntry(): Promise<EntryHarness> {
-  const { api, wrapper } = await withSetup(() =>
-    useProfilePublishRequirement({
-      reloadRequirements: vi.fn(async () => {}),
-      onNeedLogin: vi.fn(),
-      onNeedRealname: vi.fn(),
-    }),
-  )
-
-  await api.ensurePublishRealnameApproved()
-
-  return {
-    fill: (paymentMode, developmentCycleDays) => {
-      const bindings = api.publishModalBindings.value
-      bindings['onUpdate:publishTitle'](FORM.title)
-      bindings['onUpdate:publishDescription'](FORM.description)
-      bindings['onUpdate:publishBudget'](FORM.budget)
-      bindings['onUpdate:publishAcceptance'](FORM.acceptance)
-      bindings['onUpdate:publishPaymentMode'](paymentMode)
-      // `v-bind="publishModalBindings"` 的接线：不铺这一对键（`includeDevelopmentCycle: false`）时，
-      // 这里拿到的是 `undefined` —— 断言它就是函数，等于把「弹窗那侧接得到值」钉死。
-      const updateCycle = bindings['onUpdate:publishDevelopmentCycleDays']
-      expect(typeof updateCycle).toBe('function')
-      updateCycle?.(developmentCycleDays)
-    },
-    submit: () => api.submitRequirementPublish(),
-    unmount: () => wrapper.unmount(),
-  }
-}
-
 /** 取那次建单调用的载荷（顺带钉住「只发一次」与令牌）。 */
 function capturedPayload(): unknown {
   expect(mocks.createRequirement).toHaveBeenCalledTimes(1)
@@ -246,14 +214,10 @@ describe('我的需求（工厂直连建单接口）', () => {
 })
 
 /**
- * 大厅与个人中心：同一份断言跑两遍。
- *
- * 这条用例替换掉的是旧断言「载荷没有 `development_cycle_days` 键」——那是在给漏接的字段做担保。
+ * 大厅：这条用例替换掉的是旧断言「载荷没有 `development_cycle_days` 键」——
+ * 那是在给漏接的字段做担保。
  */
-const ENTRIES: Array<[string, () => Promise<EntryHarness>]> = [
-  ['需求大厅', hallEntry],
-  ['个人中心', profileEntry],
-]
+const ENTRIES: Array<[string, () => Promise<EntryHarness>]> = [['需求大厅', hallEntry]]
 
 for (const [label, mountEntry] of ENTRIES) {
   describe(`${label}（担保模式 / 自管模式）`, () => {

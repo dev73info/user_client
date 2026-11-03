@@ -23,8 +23,16 @@ const props = withDefaults(
     hideAllMode?: boolean
     /** 分栏页的工具栏已经提到页面顶部：面板内不再重复渲染页签 / 搜索 / 筛选 / 发布 */
     hideChrome?: boolean
+    /** 页头（标题 / 刷新 / 发布）已经由外壳的读数条承担：只留页签与筛选 */
+    hideHeader?: boolean
   }>(),
-  { selectable: false, selectedPostId: null, hideAllMode: false, hideChrome: false },
+  {
+    selectable: false,
+    selectedPostId: null,
+    hideAllMode: false,
+    hideChrome: false,
+    hideHeader: false,
+  },
 )
 
 const emit = defineEmits<{
@@ -114,7 +122,7 @@ async function submitPost(payload: CreateCommunityPostPayload) {
     aria-label="社区帖子列表"
   >
     <template v-if="!hideChrome">
-      <header class="community-page__header">
+      <header v-if="!hideHeader" class="community-page__header">
         <h1>{{ hideAllMode ? '我的帖子' : '社区' }}</h1>
         <div class="community-page__header-actions">
           <TButton icon-only aria-label="刷新社区帖子" @click="list.load">
@@ -132,18 +140,23 @@ async function submitPost(payload: CreateCommunityPostPayload) {
         </div>
       </header>
 
-      <div class="community-page__tabs" role="tablist" aria-label="社区帖子范围">
-        <button
-          v-for="item in modes"
-          :key="item.value"
-          type="button"
-          role="tab"
-          :aria-selected="list.mode === item.value"
-          :class="{ active: list.mode === item.value }"
-          @click="list.setMode(item.value)"
-        >
-          {{ item.label }}
-        </button>
+      <div class="community-page__tabs-row">
+        <div class="community-page__tabs" role="tablist" aria-label="社区帖子范围">
+          <button
+            v-for="item in modes"
+            :key="item.value"
+            type="button"
+            role="tab"
+            :aria-selected="list.mode === item.value"
+            :class="{ active: list.mode === item.value }"
+            @click="list.setMode(item.value)"
+          >
+            {{ item.label }}
+          </button>
+        </div>
+        <div v-if="$slots.actions" class="community-page__tabs-actions">
+          <slot name="actions" />
+        </div>
       </div>
 
       <form
@@ -212,10 +225,10 @@ async function submitPost(payload: CreateCommunityPostPayload) {
       v-if="!list.error && (list.posts.length > 0 || list.page > 1)"
       :page="list.page"
       :loading="list.loading"
-      :has-previous="list.hasPrevious"
       :has-next="list.hasNext"
-      @previous="list.previousPage"
-      @next="list.nextPage"
+      :count="list.posts.length"
+      :page-size="list.pageSize"
+      @change="list.goToPage"
     />
 
     <CommunityPostFormDialog
@@ -231,156 +244,4 @@ async function submitPost(payload: CreateCommunityPostPayload) {
   </section>
 </template>
 
-<style scoped>
-.community-list-panel {
-  min-width: 0;
-  padding: 16px;
-  border: 1px solid var(--73-border);
-  border-radius: 14px;
-  background: var(--73-surface-strong);
-  color: var(--73-ink);
-}
-.community-page__header,
-.community-page__header-actions,
-.community-page__tabs,
-.community-filters,
-.community-inline-error,
-.community-error {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-.community-page__header {
-  justify-content: space-between;
-  margin-bottom: 14px;
-}
-.community-page__header-actions {
-  margin-left: auto;
-}
-.community-page__header h1 {
-  margin: 0;
-  font-size: 20px;
-}
-.community-page__publish {
-  display: inline-flex;
-  gap: 6px;
-}
-.community-page__tabs {
-  gap: 5px;
-  margin-bottom: 12px;
-}
-.community-page__tabs button {
-  min-height: 34px;
-  padding: 0 12px;
-  border: 0;
-  border-radius: 9px;
-  background: transparent;
-  color: var(--73-ink-soft);
-  cursor: pointer;
-  font: inherit;
-  font-size: 12px;
-}
-.community-page__tabs button.active {
-  background: var(--73-accent-soft);
-  color: var(--73-accent);
-}
-/* 社区列表的筛选条：下拉定宽排在搜索框左侧，搜索框吃剩余宽度，按钮只占自身宽度。 */
-.community-filters {
-  flex-wrap: wrap;
-  margin-bottom: 12px;
-}
-/* 搜索框走 TInput（与工作台各列表页同一套高 / 圆角 / 描边），这里只给弹性宽度 */
-.community-filters :deep(.community-filters__keyword) {
-  flex: 1 1 220px;
-  min-width: 0;
-}
-/* TSelect 根节点默认 width: 100%，这里按内容收窄；它关了 attrs 透传，
-   父组件的 scope id 落不到根节点上，只能从面板 :deep() 选。 */
-.community-filters :deep(.community-filters__select) {
-  flex: 0 0 auto;
-  width: 136px;
-  font-size: 12px;
-}
-.community-page__loading {
-  display: block;
-  min-height: 180px;
-}
-.community-page__posts {
-  display: grid;
-  gap: 8px;
-}
-.community-error {
-  justify-content: center;
-  min-height: 160px;
-  padding: 20px;
-  border: 1px solid var(--73-border);
-  border-radius: 12px;
-  color: var(--73-danger);
-  background: var(--73-surface-strong);
-}
-.community-inline-error {
-  justify-content: space-between;
-  margin-bottom: 12px;
-  color: var(--73-danger);
-  font-size: 12px;
-}
-.community-inline-error button {
-  border: 0;
-  background: transparent;
-  color: var(--73-accent);
-  cursor: pointer;
-}
-.community-list-panel--rail {
-  padding: 12px;
-}
-.community-list-panel--rail .community-page__tabs {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-}
-.community-list-panel--rail.community-list-panel--two-modes .community-page__tabs {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-}
-.community-list-panel--rail .community-page__tabs button {
-  min-height: 36px;
-  padding: 0 4px;
-}
-.community-list-panel--rail .community-filters {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-}
-.community-list-panel--rail .community-filters :deep(.community-filters__keyword) {
-  grid-column: 1 / -1;
-}
-.community-list-panel--rail .community-filters :deep(.community-filters__select) {
-  width: 100%;
-}
-.community-list-panel--rail .community-filters :deep(button) {
-  width: 100%;
-}
-@media (max-width: 640px) {
-  .community-list-panel {
-    padding: 14px;
-  }
-  .community-page__header {
-    margin-bottom: 14px;
-  }
-  .community-page__tabs {
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
-  .community-list-panel--two-modes .community-page__tabs {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-  .community-page__tabs button,
-  .community-filters :deep(.community-filters__keyword),
-  .community-filters :deep(.community-filters__select),
-  .community-filters :deep(button),
-  .community-page__publish {
-    min-height: 44px;
-  }
-  .community-error {
-    flex-direction: column;
-    text-align: center;
-  }
-}
-</style>
+<style scoped src="./community-list-panel.css"></style>

@@ -1,9 +1,8 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
-import { Plus, Search, TIcon, TInput } from 'ui_73info'
+import { Search, TIcon, TInput } from 'ui_73info'
 
 import type { MessageThread } from '@/shared/messagesThreads'
-import { toneBadgeClass } from '@/shared/messagesThreads'
 
 const props = defineProps<{
   threads: MessageThread[]
@@ -15,7 +14,6 @@ const keyword = defineModel<string>('keyword', { required: true })
 
 const emit = defineEmits<{
   select: [thread: MessageThread]
-  compose: []
   pin: [thread: MessageThread, pinned: boolean]
   remove: [thread: MessageThread]
 }>()
@@ -229,18 +227,6 @@ onBeforeUnmount(() => {
       <div class="workbench-inbox__heading">
         <h2>消息中心</h2>
         <span class="workbench-inbox__count">{{ threads.length }}</span>
-        <button
-          class="workbench-inbox__compose"
-          type="button"
-          aria-label="发起会话"
-          title="发起会话"
-          @click="emit('compose')"
-        >
-          <TIcon :size="15">
-            <Plus />
-          </TIcon>
-          <span>新建会话</span>
-        </button>
       </div>
       <TInput
         v-model="keyword"
@@ -308,15 +294,8 @@ onBeforeUnmount(() => {
               <strong :title="thread.title">{{ thread.title }}</strong>
               <time>{{ formatTime(thread) }}</time>
             </span>
-            <!-- 只有真会话才报对方是谁；「会话待开启」那一行的状态已经写在状态胶囊里，不再重复一行 -->
-            <span v-if="thread.kind === 'conversation'" class="workbench-inbox__meta">
-              {{ thread.partnerLabel }}
-            </span>
             <span class="workbench-inbox__preview" :title="thread.description">{{
               thread.description
-            }}</span>
-            <span class="workbench-inbox__tag" :class="toneBadgeClass(thread.tone)">{{
-              thread.statusLabel
             }}</span>
           </span>
 

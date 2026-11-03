@@ -32,6 +32,14 @@
   --73-app-accent-bright: #2563eb;
   /* 更鲜艳的成功绿：工作台「已完成」这类状态字用它，--73-success 偏墨绿，读着不够亮 */
   --73-app-success-vivid: #16a34a;
+  /* --- 首页 / 资源卡：奖牌档、深色遮罩与开关投影用的固定色（库令牌里没有对应值） --- */
+  --73-app-ink-strong: #111827;
+  --73-app-shade: #000;
+  --73-app-medal-gold: #fbbf24;
+  --73-app-medal-silver: #cbd5e1;
+  --73-app-medal-bronze-ink: #fff7ed;
+  --73-app-warning-bright: #fcd34d;
+  --73-app-shadow-thumb: rgba(15, 23, 42, 0.06);
   --73-app-grad-accent-soft-01: linear-gradient(180deg, #eef4ff 0%, #ffffff 100%); /* src/components/account/TwoFactorDialog.vue */
   --73-app-grad-accent-soft-02: linear-gradient(180deg, #f8fbff 0%, #ffffff 100%); /* src/components/account/TwoFactorDialog.vue */
   --73-app-grad-soft-01: linear-gradient(180deg, rgba(125, 211, 252, 0.9), rgba(149, 213, 178, 1)); /* src/components/app/app-shell-global.css */
@@ -47,9 +55,6 @@
   --73-app-grad-accent-soft-04: linear-gradient(135deg, #eef2ff, #dbeafe); /* src/components/mobile-resource/mobile-resource-card.css */
   --73-app-grad-soft-09: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(248, 250, 252, 0.94)); /* src/components/mobile-resource/mobile-resource-header.css */
   --73-app-grad-soft-10: linear-gradient(160deg, rgba(223, 236, 255, 0.96), rgba(207, 226, 255, 0.9)); /* src/components/PortalMobileDock.vue */
-  --73-app-grad-accent-soft-05: linear-gradient(135deg, #eef5ff, #ffffff); /* src/components/profile/profile-page.css */
-  --73-app-grad-accent-soft-06: linear-gradient(135deg, #f8fbff 0%, #ffffff 100%); /* src/components/profile/ProfileAvatarCropModal.vue */
-  --73-app-grad-soft-11: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%); /* src/components/profile/ProfileAvatarCropModal.vue */
   --73-app-grad-soft-12: linear-gradient(180deg, rgba(255, 255, 255, 0.9), #ffffff); /* src/components/publish-modal-confirm.css */
   --73-app-grad-soft-13: linear-gradient(180deg, #ffffff 0%, rgba(248, 250, 252, 0.96) 100%); /* src/components/publish-modal-form.css */
   --73-app-grad-soft-14: radial-gradient(circle at bottom right, rgba(100, 213, 255, 0.12), transparent 26%); /* src/components/RealnameHero.vue */

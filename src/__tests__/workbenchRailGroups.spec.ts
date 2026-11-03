@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
 import {
+  buildDevRailGroups,
   buildRailGroups,
   railGroupItemActive,
   railGroupItemTo,
@@ -8,7 +9,7 @@ import {
 } from '@/shared/workbenchRailGroups'
 import { workbenchRailAccountMenuItems } from '@/shared/workbenchRailAccountMenu'
 
-/** 图标栏能到的全部入口：两个分组里的页面 + 齿轮弹层里的账户四条 + 个人账户。 */
+/** 图标栏能到的全部入口：两个分组里的页面 + 齿轮弹层里的账户三条 + 工作台根页。 */
 function reachableRouteNames(realnameApproved: boolean): string[] {
   return [
     ...buildRailGroups(realnameApproved).flatMap((group) => group.items.map((item) => item.name)),
@@ -37,7 +38,7 @@ describe('buildRailGroups', () => {
     expect(buildRailGroups(true)[1]?.items.map((item) => item.label)).toEqual([
       '我的帖子',
       '优惠券中心',
-      '积分中心',
+      '我的积分',
       '我的权益',
       '勋章与邀请',
     ])
@@ -86,6 +87,46 @@ describe('railGroupOf / railGroupItemActive', () => {
   })
 })
 
+describe('buildDevRailGroups', () => {
+  it('开发者图标栏同样收成两个分组：接单与交付、收益与服务', () => {
+    expect(buildDevRailGroups().map((group) => group.key)).toEqual(['dev-delivery', 'dev-services'])
+    expect(buildDevRailGroups().map((group) => group.label)).toEqual(['接单与交付', '收益与服务'])
+  })
+
+  it('接单与交付按总览 → 资源 → 接单 → 大厅排', () => {
+    expect(buildDevRailGroups()[0]?.items.map((item) => item.label)).toEqual([
+      '开发者总览',
+      '资源项目',
+      '我的接单',
+      '需求大厅',
+    ])
+  })
+
+  it('收益与服务包含客户端、团队、钱包与发票', () => {
+    expect(buildDevRailGroups()[1]?.items.map((item) => item.label)).toEqual([
+      '接入客户端',
+      '团队服务',
+      '收益钱包',
+      '我的发票',
+    ])
+  })
+
+  it('资源/需求/团队的子页面仍高亮所属父条目', () => {
+    const groups = buildDevRailGroups()
+
+    expect(railGroupOf(groups, 'dev-resource-versions')?.key).toBe('dev-delivery')
+    expect(railGroupOf(groups, 'dev-requirement-detail')?.key).toBe('dev-delivery')
+    expect(railGroupOf(groups, 'workbench-team-detail')?.key).toBe('dev-services')
+  })
+
+  it('消息与系统通知不在开发者分组里', () => {
+    const groups = buildDevRailGroups()
+
+    expect(railGroupOf(groups, 'dev-messages')).toBeNull()
+    expect(railGroupOf(groups, 'dev-notifications')).toBeNull()
+  })
+})
+
 describe('图标栏不重复、也不漏入口', () => {
   it('每个路由名只出现一次（齿轮与分组不再各列一遍）', () => {
     const names = reachableRouteNames(true)
@@ -98,7 +139,7 @@ describe('图标栏不重复、也不漏入口', () => {
     const names = reachableRouteNames(true)
 
     for (const name of [
-      'workbench', // 个人账户（?view=profile）
+      'workbench', // 工作台根页（消息入口）
       'workbench-account',
       'workbench-authorized-apps',
       'workbench-tickets',

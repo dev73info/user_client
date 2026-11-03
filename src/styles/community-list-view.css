@@ -1,0 +1,123 @@
+.community-page {
+  width: min(1280px, calc(100% - 24px));
+  margin: 0 auto;
+  padding: 0 0 64px;
+  color: var(--73-ink);
+}
+/* 工作台收藏页是单纸页：高度交给内容，读数条与纸身自己撑开 */
+.community-favorites-page {
+  height: auto;
+  min-height: 100%;
+}
+.community-favorites-page .wallet-section {
+  min-height: 0;
+}
+/* 顶部工具栏单独一行，下面才是「侧边帖子 + 中间内容」两栏；两栏撑到视口底，
+   左栏的分页器才有「列底」可沉 */
+.community-page--split {
+  display: flex;
+  flex-direction: column;
+  height: calc(100dvh - var(--portal-header-footprint, 98px) - 24px);
+  overflow: hidden;
+  padding-bottom: 0;
+}
+.community-page--split .community-page__detail-column {
+  min-height: 0;
+  overflow: auto;
+}
+.community-page__split-body {
+  display: grid;
+  grid-template-columns: minmax(240px, 280px) minmax(0, 1fr);
+  gap: 14px;
+  align-items: stretch;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+.community-page__list-column {
+  min-width: 0;
+}
+/* 左栏固定成视口高的一列：帖子在中间滚动，分页器沉到列底（而不是跟着列表中途停住） */
+.community-page--split .community-page__list-column {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+}
+.community-page__detail-column {
+  min-width: 0;
+}
+
+/* 分栏页的列表栏不再外套一层卡：帖子行本身已经是卡，外面这层边界是重复的层级。
+   与工作台收藏页的口径一致，列表直接落在页面底上。 */
+.community-page--split .community-page__list-column :deep(.community-list-panel) {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+
+/* 帖子区自己滚，表尾（分页）留在列底 */
+.community-page--split :deep(.community-page__results) {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+}
+
+.community-page--split :deep(.community-pagination) {
+  margin-top: auto;
+}
+
+/* 工作台收藏页（不带 --split）：列表撑满内容区，分页沉到表尾。
+   与「我的发票 / 积分记录」同一口径：视口减顶栏、外壳内边距与内容区 18px 内边距
+   （这一页不挂 .wb-sheet，内容区内边距没有归零），否则百分比高度会被外壳的
+   min-height: 0 吃掉。 */
+.community-page:not(.community-page--split) {
+  display: flex;
+  flex-direction: column;
+  height: calc(100dvh - var(--portal-header-footprint, 98px) - 60px);
+}
+
+.community-page:not(.community-page--split) .community-page__list-column {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.community-page:not(.community-page--split)
+  .community-page__list-column
+  :deep(.community-list-panel) {
+  flex: 1 1 auto;
+}
+
+.community-page:not(.community-page--split) :deep(.community-pagination) {
+  margin-top: auto;
+}
+@media (max-width: 900px) {
+  .community-page--split {
+    height: auto;
+    overflow: visible;
+    padding-bottom: 64px;
+  }
+  .community-page__split-body {
+    grid-template-columns: 1fr;
+  }
+  .community-page--split .community-page__detail-column {
+    display: none;
+  }
+  .community-page--split .community-page__list-column {
+    overflow: visible;
+  }
+  .community-page--split :deep(.community-page__results) {
+    overflow: visible;
+  }
+}
+@media (max-width: 640px) {
+  .community-page {
+    padding-top: 16px;
+  }
+}

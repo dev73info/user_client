@@ -60,78 +60,6 @@
   overscroll-behavior: contain;
 }
 
-.user-workbench__content--workspace :deep(.community-page) {
-  width: 100%;
-  height: 100%;
-  margin: 0;
-  padding: 0;
-}
-
-.user-workbench__content--workspace :deep(.community-list-panel) {
-  min-height: 100%;
-  display: flex;
-  flex-direction: column;
-  padding: 0;
-  border: 0;
-  border-radius: 0;
-  background: transparent;
-}
-
-.user-workbench__content--workspace :deep(.community-page__header h1) {
-  font-size: 19px;
-  font-weight: 600;
-  letter-spacing: 0;
-}
-
-.user-workbench__content--workspace :deep(.community-page__tabs) {
-  gap: 6px;
-}
-
-.user-workbench__content--workspace :deep(.community-page__tabs button) {
-  min-height: 34px;
-  padding: 0 12px;
-  border-radius: 8px;
-  font-size: 13px;
-}
-
-.user-workbench__content--workspace :deep(.community-filters input),
-.user-workbench__content--workspace :deep(.community-filters select) {
-  min-height: 38px;
-  border-radius: 8px;
-  padding: 0 12px;
-  font-size: 13px;
-}
-
-.user-workbench__content--workspace :deep(.community-filters input:disabled) {
-  color: var(--73-ink-placeholder);
-  opacity: 0.72;
-}
-
-.user-workbench__content--workspace :deep(.community-page__publish),
-.user-workbench__content--workspace :deep(.community-filters button) {
-  min-height: 36px;
-  border-radius: 8px;
-}
-
-.user-workbench__content--workspace :deep(.community-page__results) {
-  min-height: 0;
-  display: flex;
-  flex: 1 1 auto;
-  flex-direction: column;
-}
-
-.user-workbench__content--workspace :deep(.community-page__loading) {
-  min-height: 0;
-  display: flex;
-  flex: 1 1 auto;
-  flex-direction: column;
-}
-
-.user-workbench__content--workspace :deep(.community-page__loading > .t73-empty) {
-  min-height: 260px;
-  flex: 1 1 auto;
-}
-
 /* 「我的需求」：设计稿是整块浅灰画布。去掉工作区白纸的描边、圆角与内边距，
    让页面自己铺满并根据需要滚动；其余菜单页仍走原来的白纸版式。 */
 .user-workbench__main--icon-shell.user-workbench__main--gray-canvas {
@@ -214,16 +142,7 @@
 }
 
 /* 基准稿的内容区：浅灰画布、最大 1200px、24px 内边距；页面根不再自带白纸 */
-/* 统一页头：与内容同宽居中，随内容一起滚动 */
-.user-workbench__shell-head {
-  width: 100%;
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 24px 24px 0;
-}
-
-.user-workbench__content--workspace :deep(.page-shell.wb-sheet),
-.user-workbench__content--workspace :deep(.page-shell.profile-page) {
+.user-workbench__content--workspace :deep(.page-shell.wb-sheet) {
   max-width: 1200px;
   margin: 0 auto;
   padding: 24px;
@@ -260,6 +179,13 @@
     padding: 0;
   }
 
+  /* 底部快捷导航出现时，工作台整体收在导航上方，最后一屏内容不会再压到导航下面；
+     `72px` 为导航高度与呼吸间距，再叠加底部安全区；进入会话后导航自动隐藏
+     （PortalMobileDock 的 v-if），工作台恢复整屏高度。 */
+  body:has(.portal-mobile-dock) .user-workbench {
+    height: calc(100dvh - 72px - max(8px, env(safe-area-inset-bottom)));
+  }
+
   .user-workbench--icon-shell {
     grid-template-columns: minmax(0, 1fr);
   }
@@ -280,13 +206,25 @@
   .user-workbench__main--chat,
   .user-workbench__main--icon-shell {
     height: 100%;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0;
     padding: 0;
     border-radius: 0;
   }
 
+  .user-workbench__main--icon-shell.user-workbench__main--rail-group {
+    height: 100%;
+    min-height: 0;
+    display: flex;
+  }
+
   .user-workbench__content--chat,
   .user-workbench__content--workspace {
-    height: 100%;
+    height: auto;
+    min-height: 0;
+    flex: 1 1 0;
   }
 
   .user-workbench__content--workspace {

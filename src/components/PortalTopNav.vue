@@ -80,7 +80,7 @@ function logoutFromMenu() {
       <img class="portal-brand__mark" src="/icons/home-icon.svg" alt="73info 首页" />
       <div class="portal-brand__copy">
         <strong>73info.cn</strong>
-        <span class="portal-brand__badge">开发者与协作网</span>
+        <span class="portal-brand__badge">柒叁信息</span>
       </div>
     </RouterLink>
 
@@ -155,8 +155,9 @@ function logoutFromMenu() {
         </section>
       </div>
       <template v-if="!auth.isAuthed">
-        <button class="portal-text-btn" type="button" @click="openAuth('login')">登录</button>
-        <button class="portal-solid-btn" type="button" @click="openAuth('register')">注册</button>
+        <button class="portal-solid-btn portal-auth-btn" type="button" @click="openAuth('login')">
+          登录 / 注册
+        </button>
       </template>
       <PortalUserMenu
         v-else

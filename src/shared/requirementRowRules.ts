@@ -256,8 +256,8 @@ export function toggleResourceVisibilityLabel(item: RequirementItem) {
   if (currentResourceVisibility(item) === 'review') return '审核中'
   return nextResourceVisibility(item) === 'public' ? '公开' : '私有'
 }
-export function requirementSubscriptionLabel(item: RequirementItem) {
-  return item.subscribe_status_change ? '取消订阅' : '订阅'
+export function requirementSubscriptionLabel() {
+  return '订阅'
 }
 
 /** R014：锁定剩余天数文案（未锁定返回空串）。 */

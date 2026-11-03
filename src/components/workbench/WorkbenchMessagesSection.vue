@@ -1,7 +1,9 @@
 <script setup lang="ts">
+import { onBeforeUnmount, onMounted, ref } from 'vue'
 import { ChatDotRound } from 'ui_73info'
 
 import type { RequirementConversation } from '@/api/conversations'
+import { MOBILE_MENU_BREAKPOINT_PX } from '@/composables/useWorkbenchMobileMenu'
 import { conversationMeta, partnerLabel, unreadCountText } from '@/shared/workbenchDisplay'
 import { conversationLink, isConversationRouteActive } from '@/shared/workbenchRoutes'
 
@@ -38,10 +40,46 @@ const emit = defineEmits<{
   (event: 'open-all'): void
   (event: 'navigate'): void
 }>()
+
+const isMobileViewport = ref(false)
+let mobileMediaQuery: MediaQueryList | null = null
+
+function syncMobileViewport() {
+  isMobileViewport.value = mobileMediaQuery?.matches ?? false
+}
+
+onMounted(() => {
+  if (typeof window.matchMedia !== 'function') {
+    return
+  }
+  mobileMediaQuery = window.matchMedia(`(max-width: ${MOBILE_MENU_BREAKPOINT_PX}px)`)
+  syncMobileViewport()
+  mobileMediaQuery.addEventListener('change', syncMobileViewport)
+})
+
+onBeforeUnmount(() => {
+  mobileMediaQuery?.removeEventListener('change', syncMobileViewport)
+})
 </script>
 
 <template>
-  <section class="user-workbench__menu-group" :class="{ active: props.active, open: props.open }">
+  <WorkbenchMenuItem
+    v-if="isMobileViewport"
+    variant="link"
+    label="消息中心"
+    :icon="ChatDotRound"
+    :to="{ name: props.routeName }"
+    :active="props.active"
+    :badge="props.unreadMessageCount > 0 ? unreadCountText(props.unreadMessageCount) : ''"
+    :badge-title="`${props.unreadMessageCount} 条未读消息`"
+    @navigate="emit('navigate')"
+  />
+
+  <section
+    v-else
+    class="user-workbench__menu-group"
+    :class="{ active: props.active, open: props.open }"
+  >
     <WorkbenchMenuItem
       variant="head"
       label="消息中心"

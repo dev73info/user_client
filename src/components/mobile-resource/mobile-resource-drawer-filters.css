@@ -19,6 +19,7 @@
 }
 
 .mobile-level-trigger {
+  position: relative;
   border: 1px solid var(--73-accent-soft);
   background: var(--73-surface-strong);
   display: flex;
@@ -32,13 +33,38 @@
   font: inherit;
   min-height: 44px;
   cursor: pointer;
+  transition:
+    background-color 180ms ease,
+    border-color 180ms ease;
+}
+
+.mobile-level-trigger--open {
+  border-color: var(--73-accent);
+  background: var(--73-accent-soft);
 }
 
 .mobile-level-trigger strong {
+  flex: 1;
   max-width: 100%;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  text-align: center;
+}
+
+.mobile-level-chevron {
+  position: absolute;
+  right: 12px;
+  width: 7px;
+  height: 7px;
+  border-right: 2px solid currentColor;
+  border-bottom: 2px solid currentColor;
+  transform: rotate(45deg) translateY(-2px);
+  transition: transform 180ms ease;
+}
+
+.mobile-level-trigger--open .mobile-level-chevron {
+  transform: rotate(225deg) translateY(-2px);
 }
 
 .mobile-level-options {
@@ -55,6 +81,19 @@
   background: var(--73-surface-strong);
   z-index: 2;
   box-shadow: 0 8px 24px color-mix(in srgb, var(--73-accent) 12%, transparent);
+  animation: mobile-level-options-in 160ms ease-out;
+}
+
+@keyframes mobile-level-options-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .mobile-level-option {
@@ -74,11 +113,11 @@
 }
 
 .mobile-chip {
-  border: 1px solid var(--73-accent-soft);
+  border: 1px solid var(--73-border);
   border-radius: 999px;
   padding: 6px 12px;
-  background: var(--73-accent-soft);
-  color: var(--73-accent);
+  background: var(--73-surface-strong);
+  color: var(--73-ink-soft);
   font-size: 12px;
   font-weight: 700;
 }

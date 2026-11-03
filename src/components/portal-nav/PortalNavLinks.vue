@@ -1,7 +1,24 @@
 <script setup lang="ts">
+import { useRouter } from 'vue-router'
+
 import type { HeaderLink } from '@/composables/usePortalTopNavNav'
+import { PORTAL_CONTENT_ANCHORS, scrollToPortalAnchor } from '@/utils/portalScroll'
 
 defineProps<{ links: HeaderLink[] }>()
+
+const router = useRouter()
+
+/**
+ * 点顶栏一级栏目时重新对齐内容起点：路由 path 没变（例如在社区页再点一次
+ * 「社区中心」，只是去掉 ?post=）时，App 里的 path watcher 不会触发。
+ */
+function handleNavClick(link: HeaderLink) {
+  if (!link.to) return
+  const resolved = router.resolve(link.to)
+  const anchor = PORTAL_CONTENT_ANCHORS[String(resolved.name ?? '')]
+  if (!anchor) return
+  window.setTimeout(() => scrollToPortalAnchor(anchor), 0)
+}
 </script>
 
 <template>
@@ -14,6 +31,7 @@ defineProps<{ links: HeaderLink[] }>()
         exact-active-class=""
         class="portal-nav__link"
         :class="{ active: link.active }"
+        @click="handleNavClick(link)"
       >
         {{ link.label }}
       </RouterLink>

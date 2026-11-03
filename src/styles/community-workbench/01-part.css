@@ -1,0 +1,273 @@
+/* 由 community-workbench.css 按顶层规则边界切分（第 1/2 段），
+   顺序与原文一致；跨文件级联依赖顺序。 */
+
+/* ============================================================================
+   社区中心 · Workbench 亮色（桌面端覆盖层）
+   ============================================================================
+
+   社区页是独立的左右分栏（列表 + 详情），不共用 `.portal-page` 骨架；
+   这里把画布、工具栏、列表卡与详情卡统一到工作台样式。只作用于 ≥901px。
+   ============================================================================ */
+
+@media (min-width: 901px) {
+  main.community-page.community-page--split {
+    width: 100%;
+    max-width: none;
+    margin: 0;
+    padding: 24px max(24px, calc((100% - 1280px) / 2)) 40px;
+    background: var(--73-bg);
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    height: auto;
+    overflow: visible;
+  }
+
+  .community-page.community-page--split .community-page__split-body {
+    display: grid;
+    grid-template-columns: 320px minmax(0, 1fr);
+    align-items: start;
+    gap: 16px;
+    flex: 0 0 auto;
+    min-height: 0;
+  }
+
+  .community-page.community-page--split .community-page__list-column,
+  .community-page.community-page--split .community-page__detail-column {
+    overflow: visible;
+    min-width: 0;
+  }
+
+  /* --- 工具条 --- */
+  .community-page.community-page--split .community-toolbar {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-bottom: 0;
+    padding: 14px;
+    border: 1px solid var(--73-border);
+    border-radius: var(--73-radius-inner);
+    background: var(--73-surface);
+    box-shadow: var(--73-shadow-card);
+  }
+
+  .community-page.community-page--split .community-toolbar__row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+
+  .community-page.community-page--split .community-toolbar__actions {
+    margin-left: auto;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .community-page.community-page--split .community-page__tabs {
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+  }
+
+  .community-page.community-page--split .community-page__tabs button {
+    height: 32px;
+    padding: 0 12px;
+    border: 0;
+    border-radius: 6px;
+    background: transparent;
+    color: var(--73-ink-soft);
+    font-family: inherit;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+  }
+
+  .community-page.community-page--split .community-page__tabs button.active {
+    background: transparent;
+    color: var(--73-accent);
+    font-weight: 600;
+  }
+
+  .community-page.community-page--split .community-toolbar__publish,
+  .community-page.community-page--split .community-page__publish {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    height: var(--73-control-height);
+    padding: 0 14px;
+    border: 1px solid var(--73-accent);
+    border-radius: var(--73-radius-control);
+    background: var(--73-accent);
+    color: var(--73-accent-contrast);
+    font-family: inherit;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+  }
+
+  .community-page.community-page--split .community-filters {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 12px;
+    padding-top: 12px;
+    border-top: 1px solid var(--73-border-soft);
+  }
+
+  .community-page.community-page--split .community-filters__keyword {
+    flex: 1 1 220px;
+    min-width: 200px;
+  }
+
+  /* --- 左栏列表 --- */
+  .community-page.community-page--split .community-page__results {
+    overflow: visible;
+  }
+
+  .community-page.community-page--split .community-page__posts {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .community-page.community-page--split .community-post-card {
+    padding: 16px;
+    border: 1px solid var(--73-border);
+    border-radius: var(--73-radius-inner);
+    background: var(--73-surface);
+    box-shadow: var(--73-shadow-card);
+    cursor: pointer;
+    transition:
+      border-color var(--73-transition),
+      box-shadow var(--73-transition);
+  }
+
+  .community-page.community-page--split .community-post-card:hover {
+    border-color: var(--73-border-hover);
+    box-shadow: var(--73-shadow-card-hover);
+  }
+
+  .community-page.community-page--split .community-post-card.active {
+    border-color: var(--73-accent-line);
+    background: var(--73-accent-soft);
+  }
+
+  .community-page.community-page--split .community-post-card__title {
+    color: var(--73-ink);
+    font-size: 14px;
+    font-weight: 600;
+  }
+
+  .community-page.community-page--split .community-post-card__meta,
+  .community-page.community-page--split .community-post-card__stats {
+    color: var(--73-ink-muted);
+    font-size: 11px;
+  }
+
+  .community-page.community-page--split .community-post-card__footer {
+    margin-top: 0;
+    padding-top: 4px;
+    border-top: 1px solid var(--73-border-soft);
+  }
+
+  .community-page.community-page--split .community-tag {
+    padding: 2px 6px;
+    border: 1px solid var(--73-border);
+    border-radius: 4px;
+    background: var(--73-inset);
+    color: var(--73-ink-muted);
+    font-size: 10px;
+    font-weight: 400;
+  }
+
+  .community-page.community-page--split .community-status {
+    padding: 2px 6px;
+    border: 1px solid var(--73-border);
+    border-radius: 4px;
+    background: var(--73-inset);
+    color: var(--73-ink-muted);
+    font-size: 10px;
+    font-weight: 500;
+  }
+
+  /* 状态色不能被上面的统一弱化覆盖：公开绿 / 审核中黄 / 私有蓝 */
+  .community-page.community-page--split .community-status--published {
+    color: var(--73-success);
+  }
+
+  .community-page.community-page--split .community-status--pending_review {
+    color: var(--73-warning);
+  }
+
+  .community-page.community-page--split .community-status--rejected {
+    color: var(--73-accent);
+  }
+
+  .community-page.community-page--split .community-pagination {
+    margin-top: 12px;
+  }
+
+  /* --- 右栏详情 --- */
+  .community-page.community-page--split .community-post-panel {
+    padding: 20px;
+    border: 1px solid var(--73-border);
+    border-radius: var(--73-radius-inner);
+    background: var(--73-surface);
+    box-shadow: var(--73-shadow-card);
+  }
+
+  .community-page.community-page--split .portal-hero-strip {
+    margin-bottom: 0;
+  }
+}
+
+/* --- 社区页头：chip + 脉冲状态点（对齐 Stitch 源码） --- */
+.community-hero__stat {
+  display: inline-flex;
+  align-items: center;
+  align-self: flex-start;
+  gap: 6px;
+  min-height: 32px;
+  padding: 6px 14px;
+  border: 1px solid var(--73-border);
+  border-radius: var(--73-radius-pill);
+  background: var(--73-surface);
+  box-shadow: var(--73-shadow-card);
+  color: var(--73-ink-soft);
+  font-size: 12px;
+}
+
+@media (max-width: 900px) {
+  .community-hero__stat {
+    margin-top: 8px;
+  }
+}
+
+.community-hero__stat strong {
+  color: var(--73-ink);
+  font-family: var(--73-font-family-mono);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.community-hero__pulse {
+  position: relative;
+  width: 8px;
+  height: 8px;
+  border-radius: var(--73-radius-pill);
+  background: var(--73-success);
+}
+
+.community-hero__pulse::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: var(--73-radius-pill);
+  background: var(--73-success);
+  opacity: 0.45;
+  animation: community-hero-pulse 1.8s ease-out infinite;
+}

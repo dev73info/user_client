@@ -1,45 +1,79 @@
 <script setup lang="ts">
-import { TButton } from 'ui_73info'
+import { computed } from 'vue'
+import { TPagination } from 'ui_73info'
 
 /**
- * 社区帖子分页：接口按 limit/offset 分页、不返回总数，所以保留上一页/下一页，
- * 但外观与工作台其它列表的表尾统一（`.wb-pager`：左边读数、右边控件）。
+ * 社区帖子分页：接口按 limit/offset 分页、不返回总数。
+ * 外观与工作台其它列表共用 TPagination；页码只渲染“确定存在”的相邻页，
+ * 所以不会为了凑页码去虚构总条数。
  */
-defineProps<{
+const props = defineProps<{
   page: number
+  pageSize: number
+  /** 当前页实际条数，用来确认下一页是否存在 */
+  count: number
   loading: boolean
-  hasPrevious: boolean
   hasNext: boolean
 }>()
 
-const emit = defineEmits<{ previous: []; next: [] }>()
+const emit = defineEmits<{ change: [page: number] }>()
+
+const knownTotal = computed(
+  () => (props.page - 1) * props.pageSize + props.count + (props.hasNext ? props.pageSize : 0),
+)
 </script>
 
 <template>
-  <nav class="wb-pager community-pagination" aria-label="社区帖子分页">
+  <div class="wb-pager community-pagination">
     <span class="wb-pager__count">第 {{ page }} 页</span>
-    <div class="community-pagination__nav">
-      <TButton :disabled="!hasPrevious || loading" @click="emit('previous')">上一页</TButton>
-      <TButton :disabled="!hasNext || loading" @click="emit('next')">下一页</TButton>
-    </div>
-  </nav>
+    <TPagination
+      :current-page="page"
+      :total="knownTotal"
+      :page-size="pageSize"
+      :show-total="false"
+      :disabled="loading"
+      aria-label="社区帖子分页"
+      @change="emit('change', $event)"
+    />
+  </div>
 </template>
 
 <style scoped>
-/* 表尾口径走统一层 .wb-pager；这里只补按钮组与窄屏高度 */
+/* 分栏页列表很长时 margin-top:auto 会归零，用 padding 保证表尾上方始终有间距 */
 .community-pagination {
-  margin-top: 16px;
+  padding-top: 12px;
 }
 
-.community-pagination__nav {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
+/* 与需求大厅表尾同一档：32px 方块、未选中纯数字、选中实底蓝、hover 灰底。 */
+.community-pagination :deep(.t73-pagination__pages) {
+  gap: 4px;
 }
 
-@media (max-width: 640px) {
-  .community-pagination__nav :deep(button) {
-    min-height: 44px;
-  }
+.community-pagination :deep(.t73-pagination__button) {
+  min-width: 32px;
+  height: 32px;
+  padding: 0 8px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--73-ink-soft);
+  font-size: 12px;
+}
+
+.community-pagination :deep(.t73-pagination__button:hover:not(:disabled)) {
+  border-color: transparent;
+  background: var(--73-inset);
+  color: var(--73-ink);
+}
+
+.community-pagination :deep(.t73-pagination__page--active),
+.community-pagination :deep(.t73-pagination__page--active:hover:not(:disabled)) {
+  border-color: var(--73-accent);
+  background: var(--73-accent);
+  color: var(--73-accent-contrast);
+  font-weight: 600;
+}
+
+.community-pagination :deep(.t73-pagination__button:disabled) {
+  opacity: 0.4;
 }
 </style>

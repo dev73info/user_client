@@ -1,6 +1,6 @@
 <script setup lang="ts">
 /**
- * 发起积分打赏（基准稿：积分中心页内嵌卡片）。
+ * 发起积分打赏（我的积分弹窗里的表单）。
  *
  * 表单字段与提交都沿用 `usePointsTransfer`：这里只负责版式、快捷金额与实时结算账单。
  * 打赏不可逆与人工风控阈值来自后端 `TransferMetaResponse`，不在前端自造规则。
@@ -20,12 +20,15 @@ const props = defineProps<{
   dailyCap: number | null
   manualThreshold: number | null
   saving: boolean
+  /** 弹窗形态：纸壳归弹窗，卡片退成纯排版 */
+  flat?: boolean
+  /** 弹窗标题已经写着「发起积分打赏」，卡头不再重复一遍 */
+  hideHead?: boolean
 }>()
 
 const emit = defineEmits<{ (e: 'submit'): void; (e: 'cancel'): void }>()
 
 const recipientRef = ref<InstanceType<typeof TInput> | null>(null)
-const rootRef = ref<HTMLElement | null>(null)
 const quickAmounts = [50, 100, 200, 500]
 
 const fee = computed(() => pointsTransferFee(amount.value, props.feeRate ?? 0))
@@ -46,25 +49,17 @@ function pickAmount(value: number) {
   amount.value = value
 }
 
-/** 页头「发起积分打赏」滚动到这里后把焦点放进接收方输入框。 */
+/** 弹窗打开后把焦点放进接收方输入框。 */
 function focusRecipient() {
   recipientRef.value?.focus?.()
 }
 
-/** 滚动到卡片并把焦点放进接收方输入框。 */
-function scrollToCard() {
-  if (typeof rootRef.value?.scrollIntoView === 'function') {
-    rootRef.value.scrollIntoView({ behavior: 'smooth', block: 'start' })
-  }
-  focusRecipient()
-}
-
-defineExpose({ focusRecipient, scrollToCard })
+defineExpose({ focusRecipient })
 </script>
 
 <template>
-  <section ref="rootRef" class="points-reward" aria-label="发起积分打赏">
-    <header class="points-reward__head">
+  <section class="points-reward" :class="{ 'points-reward--flat': flat }" aria-label="发起积分打赏">
+    <header v-if="!hideHead" class="points-reward__head">
       <div class="points-reward__title">
         <span class="points-reward__icon" aria-hidden="true">
           <TIcon :size="18"><Promotion /></TIcon>
@@ -170,243 +165,4 @@ defineExpose({ focusRecipient, scrollToCard })
   </section>
 </template>
 
-<style scoped>
-.points-reward {
-  padding: 20px;
-  border: 1px solid var(--73-border);
-  border-radius: 12px;
-  background: var(--73-surface);
-  box-shadow: 0 1px 2px color-mix(in srgb, var(--73-ink) 5%, transparent);
-}
-
-.points-reward__head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  flex-wrap: wrap;
-  padding-bottom: 14px;
-  border-bottom: 1px solid var(--73-border-soft);
-}
-
-.points-reward__title {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.points-reward__icon {
-  width: 32px;
-  height: 32px;
-  display: grid;
-  place-items: center;
-  border-radius: 8px;
-  background: var(--73-accent-soft);
-  color: var(--73-accent);
-}
-
-.points-reward__title h2 {
-  margin: 0;
-  color: var(--73-ink);
-  font-size: 16px;
-  font-weight: 600;
-}
-
-.points-reward__title p {
-  margin: 2px 0 0;
-  color: var(--73-ink-muted);
-  font-size: 12px;
-}
-
-.points-reward__risk {
-  padding: 2px 8px;
-  border: 1px solid var(--73-border);
-  border-radius: 4px;
-  background: var(--73-inset);
-  color: var(--73-ink-muted);
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.04em;
-}
-
-.points-reward__form {
-  display: grid;
-  grid-template-columns: minmax(0, 7fr) minmax(260px, 5fr);
-  gap: 24px;
-  padding-top: 16px;
-}
-
-.points-reward__fields {
-  display: grid;
-  gap: 14px;
-  align-content: start;
-}
-
-.points-reward__field {
-  display: grid;
-  gap: 6px;
-}
-
-.points-reward__label-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-}
-
-.points-reward__label {
-  color: var(--73-ink-soft);
-  font-size: 12px;
-  font-weight: 500;
-}
-
-.points-reward__label i {
-  color: var(--73-danger);
-  font-style: normal;
-}
-
-.points-reward__balance {
-  color: var(--73-ink-muted);
-  font-size: 12px;
-}
-
-.points-reward__at {
-  color: var(--73-ink-placeholder);
-  font-family: var(--73-font-family-mono);
-}
-
-.points-reward__quick {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-
-.points-reward__quick-btn {
-  padding: 3px 10px;
-  border: 1px solid var(--73-border);
-  border-radius: 4px;
-  background: var(--73-bg);
-  color: var(--73-ink-soft);
-  font-family: var(--73-font-family-mono);
-  font-size: 11px;
-  cursor: pointer;
-  transition:
-    color var(--73-transition),
-    border-color var(--73-transition),
-    background-color var(--73-transition);
-}
-
-.points-reward__quick-btn:hover {
-  border-color: var(--73-border-hover);
-  color: var(--73-ink);
-}
-
-.points-reward__quick-btn.is-active {
-  border-color: var(--73-accent-line);
-  background: var(--73-accent-soft);
-  color: var(--73-accent);
-  font-weight: 600;
-}
-
-.points-reward__textarea {
-  width: 100%;
-  padding: 8px 10px;
-  border: 1px solid var(--73-border);
-  border-radius: 8px;
-  background: var(--73-surface);
-  color: var(--73-ink);
-  font: inherit;
-  font-size: 13px;
-  line-height: 1.6;
-  outline: none;
-  resize: vertical;
-}
-
-.points-reward__textarea:focus {
-  border-color: var(--73-accent);
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--73-accent) 15%, transparent);
-}
-
-.points-reward__summary {
-  display: flex;
-  flex-direction: column;
-  padding: 16px;
-  border: 1px solid var(--73-border);
-  border-radius: 10px;
-  background: color-mix(in srgb, var(--73-bg) 70%, var(--73-surface));
-}
-
-.points-reward__summary-title {
-  color: var(--73-ink-soft);
-  font-size: 12px;
-  font-weight: 600;
-  letter-spacing: 0.04em;
-}
-
-.points-reward__calc {
-  display: grid;
-  gap: 10px;
-  margin: 12px 0 0;
-}
-
-.points-reward__calc > div {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  color: var(--73-ink-soft);
-  font-size: 13px;
-}
-
-.points-reward__calc dd {
-  margin: 0;
-  font-family: var(--73-font-family-mono);
-  font-weight: 600;
-  color: var(--73-ink);
-}
-
-.points-reward__calc dd.is-fee {
-  color: var(--73-danger);
-  font-weight: 500;
-}
-
-.points-reward__calc-total {
-  padding-top: 10px;
-  border-top: 1px solid var(--73-border);
-}
-
-.points-reward__calc-total dt {
-  color: var(--73-success-text);
-}
-
-.points-reward__calc-total dd {
-  color: var(--73-success-text);
-}
-
-.points-reward__rule {
-  margin: 14px 0 0;
-  padding: 8px 10px;
-  border: 1px solid var(--73-border);
-  border-radius: 8px;
-  background: var(--73-surface);
-  color: var(--73-ink-muted);
-  font-size: 11px;
-  line-height: 1.6;
-}
-
-.points-reward__actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 10px;
-  margin-top: auto;
-  padding-top: 14px;
-  border-top: 1px solid var(--73-border);
-}
-
-@media (max-width: 900px) {
-  .points-reward__form {
-    grid-template-columns: 1fr;
-  }
-}
-</style>
+<style scoped src="./points-reward-card.css"></style>

@@ -36,7 +36,7 @@ defineProps<{
   uploadingInvoiceId: number | null
   /** 已结单才出评价入口。 */
   canComment: boolean
-  /** 我这一单已经评过：入口是「修改评价」而不是「去评价」。 */
+  /** 我这一单已经评过：入口是「修改评价」而不是「评价」。 */
   commented: boolean
 }>()
 
@@ -121,7 +121,7 @@ const emit = defineEmits<{
       tone="accent"
       @click="emit('openComment')"
     >
-      去评价
+      评价
     </TButton>
     <TButton
       v-if="canComment && commented"

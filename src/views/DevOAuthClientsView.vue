@@ -3,7 +3,7 @@ import { onMounted, ref } from 'vue'
 
 import OAuthClientCreateDialog from '@/components/dev/OAuthClientCreateDialog.vue'
 import { useDevOAuthClients } from '@/composables/useDevOAuthClients'
-import { TButton, TInput } from 'ui_73info'
+import { Refresh, TButton, TIcon, TInput } from 'ui_73info'
 
 const {
   clients,
@@ -55,7 +55,15 @@ async function handleCreate() {
       </div>
       <div class="dev-oauth-clients__head-actions">
         <TButton variant="solid" tone="accent" @click="openCreate">新建客户端</TButton>
-        <TButton variant="outline" :loading="loading" @click="loadClients">刷新</TButton>
+        <TButton
+          icon-only
+          :loading="loading"
+          aria-label="刷新接入客户端"
+          title="刷新接入客户端"
+          @click="loadClients"
+        >
+          <TIcon><Refresh /></TIcon>
+        </TButton>
       </div>
     </header>
 

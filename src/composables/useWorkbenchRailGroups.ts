@@ -2,6 +2,7 @@ import { computed, type Ref } from 'vue'
 import { useRoute } from 'vue-router'
 
 import {
+  buildDevRailGroups,
   buildRailGroups,
   railGroupItemActive,
   railGroupOf,
@@ -15,10 +16,18 @@ import {
  * 账户那几条仍在齿轮弹层里，两边互不依赖。实名状态由调用方传进来复用
  * （侧边栏已经查过一次，不要为了同一件事再发一次请求）。
  */
-export function useWorkbenchRailGroups(options: { realnameApproved: Ref<boolean> }) {
+export function useWorkbenchRailGroups(options: {
+  realnameApproved: Ref<boolean>
+  /** 开发者模式走另一份分组（接单与交付 / 收益与服务）。 */
+  isDevWorkbenchMode?: Ref<boolean>
+}) {
   const route = useRoute()
 
-  const groups = computed(() => buildRailGroups(options.realnameApproved.value))
+  const groups = computed(() =>
+    options.isDevWorkbenchMode?.value
+      ? buildDevRailGroups()
+      : buildRailGroups(options.realnameApproved.value),
+  )
   const currentName = computed(() => String(route.name ?? ''))
   const activeGroup = computed(() => railGroupOf(groups.value, currentName.value))
 

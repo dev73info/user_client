@@ -121,7 +121,7 @@ function onKeydown(event: KeyboardEvent) {
   width: calc(50% - 3px);
   border-radius: 6px;
   background: var(--73-surface);
-  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.06);
+  box-shadow: 0 1px 2px var(--73-app-shadow-thumb);
   pointer-events: none;
   transition: transform 180ms cubic-bezier(0.22, 1, 0.36, 1);
 }

@@ -29,7 +29,14 @@ const statusLabel = computed(() =>
   requirementStatusLabel(props.card.status, props.card.payment_mode),
 )
 
-/** 状态 chip 的语义色：待审核琥珀、已完成绿、终止态中性、其余在途蓝。 */
+/** 大厅里「已完成」和担保单的「已付定金」都不再提供筛选/判断价值，不占 chip。 */
+const showStatusChip = computed(
+  () =>
+    props.card.status !== 'completed' &&
+    !(props.card.status === 'deposit_paid' && props.card.payment_mode === 'platform_guarantee'),
+)
+
+/** 状态 chip 的语义色：待审核琥珀、终止态中性、其余在途蓝；已完成不展示状态 chip。 */
 const statusTone = computed(() => {
   const status = props.card.status
   if (status === 'completed') return 'success'
@@ -39,6 +46,9 @@ const statusTone = computed(() => {
 })
 
 const guaranteeLabel = computed(() => requirementPaymentModeLabel(props.card.payment_mode))
+const guaranteeTone = computed(() =>
+  props.card.payment_mode === 'platform_guarantee' ? 'success' : 'warning',
+)
 
 function open(): void {
   emit('open', props.card)
@@ -56,10 +66,14 @@ function open(): void {
   >
     <div class="requirement-hall__card-main">
       <div class="requirement-hall__badges">
-        <span class="requirement-hall__badge" :class="`requirement-hall__badge--${statusTone}`">
+        <span
+          v-if="showStatusChip"
+          class="requirement-hall__badge"
+          :class="`requirement-hall__badge--${statusTone}`"
+        >
           {{ statusLabel }}
         </span>
-        <span class="requirement-hall__badge requirement-hall__badge--guarantee">
+        <span class="requirement-hall__badge" :class="`requirement-hall__badge--${guaranteeTone}`">
           {{ guaranteeLabel }}
         </span>
         <span class="requirement-hall__id">{{ props.card.requirement_id }}</span>
@@ -102,7 +116,7 @@ function open(): void {
 <style scoped>
 .requirement-hall__card {
   height: 100%;
-  min-height: 200px;
+  min-height: 180px;
   cursor: pointer;
   transition:
     border-color var(--73-transition),

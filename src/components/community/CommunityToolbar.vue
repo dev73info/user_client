@@ -198,11 +198,10 @@ function changeStatus(value: SelectModelValue) {
   min-width: 0;
 }
 
-/* TSelect 根节点默认 width: 100%，在筛选行里要按内容收窄；它关了 attrs 透传，
+/* TSelect 根节点默认按内容定宽；这里只固定不参与伸缩。它关了 attrs 透传，
    父组件的 scope id 落不到根节点上，只能从工具栏 :deep() 选。 */
 .community-filters :deep(.community-filters__select) {
   flex: 0 0 auto;
-  width: 136px;
   font-size: 12px;
 }
 

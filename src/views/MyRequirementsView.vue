@@ -91,6 +91,12 @@ const {
     />
 
     <section class="wallet-section">
+      <div class="wb-card-head">
+        <div class="wb-card-head__title-block">
+          <h3 class="wb-card-head__title">我的需求</h3>
+        </div>
+      </div>
+
       <RequirementToolbar
         v-model:keyword="keyword"
         v-model:selected-state="selectedState"
@@ -169,10 +175,6 @@ const {
 </template>
 
 <style scoped>
-.my-requirements-page {
-  gap: 16px;
-}
-
 /* 弹窗类样式都不在本块：`.download-picker*` 与 `.pay-modal .claim-notes*` 在 `styles/profile.css`——
    相应弹窗拆成组件后没有 scoped 块，留在视图 scoped 里会静默失配。 */
 

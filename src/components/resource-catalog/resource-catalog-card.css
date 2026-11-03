@@ -10,6 +10,7 @@
   border: 1px solid var(--73-border);
   border-radius: var(--73-radius-inner);
   background: var(--73-surface);
+  box-shadow: var(--73-shadow-card);
   transition:
     border-color var(--73-transition),
     box-shadow var(--73-transition);
@@ -52,7 +53,7 @@
   flex-direction: column;
   gap: 8px;
   min-width: 0;
-  padding: 14px;
+  padding: 16px;
 }
 
 .portal-resource-browser__body h3 {
@@ -60,7 +61,7 @@
   margin: 0;
   overflow: hidden;
   color: var(--73-ink);
-  font-size: 15px;
+  font-size: 14px;
   font-weight: 600;
   line-height: 1.35;
   -webkit-box-orient: vertical;

@@ -11,11 +11,12 @@
     text-align: left;
   }
 
-  /* 触屏档：操作区竖排两段——开关芯片独占一行，动作行排在下面，主操作整宽置底（拇指可达）。
+  /* 触屏档：操作区保持左右两段——开关芯片在左、动作在右，窄到放不下再换行。
      触摸目标不小于 44px（对齐项目既有约定）。 */
   .requirement-actions {
-    flex-direction: column;
-    align-items: stretch;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
     padding: 10px 0 0;
   }
 
@@ -24,17 +25,18 @@
   }
 
   .requirement-actions__list {
-    justify-content: flex-start;
+    flex: 0 1 auto;
+    justify-content: flex-end;
   }
 
   .profile-page .requirement-actions button.ghost {
     min-height: 44px;
   }
 
-  /* 主操作单独占最后一行整宽：窄屏折行后它不会被挤在中间，也不与其它按钮抢位置 */
+  /* 主操作留在动作组最右侧，不再独占整行 */
   .profile-page .requirement-actions button.ghost.action-primary {
-    flex: 1 1 100%;
-    order: 99;
+    flex: 0 0 auto;
+    order: 0;
   }
 
   .requirement-toggle {

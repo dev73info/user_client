@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, watch } from 'vue'
+import { onBeforeUnmount, ref, watch } from 'vue'
 import { Close, TIcon } from 'ui_73info'
 import type {
   EntryOption,
@@ -38,6 +38,7 @@ const emit = defineEmits<{
 
 const rootDropdownOpen = ref(false)
 const entryDropdownOpen = ref(false)
+const levelRowRef = ref<HTMLElement | null>(null)
 
 function isSectionExpanded(sectionId: number): boolean {
   return props.expandedSectionIds.includes(sectionId)
@@ -67,6 +68,45 @@ function selectEntry(option: EntryOption) {
   entryDropdownOpen.value = false
   emit('select-entry', option)
 }
+
+function closeDropdowns() {
+  rootDropdownOpen.value = false
+  entryDropdownOpen.value = false
+}
+
+function handleOutsidePointerDown(event: PointerEvent) {
+  const target = event.target
+  if (target instanceof Node && levelRowRef.value?.contains(target)) {
+    return
+  }
+  closeDropdowns()
+}
+
+function handleEscape(event: KeyboardEvent) {
+  if (event.key === 'Escape') {
+    closeDropdowns()
+  }
+}
+
+function bindGlobalCloseListeners() {
+  document.addEventListener('pointerdown', handleOutsidePointerDown)
+  document.addEventListener('keydown', handleEscape)
+}
+
+function unbindGlobalCloseListeners() {
+  document.removeEventListener('pointerdown', handleOutsidePointerDown)
+  document.removeEventListener('keydown', handleEscape)
+}
+
+watch([rootDropdownOpen, entryDropdownOpen], ([rootOpen, entryOpen]) => {
+  if (rootOpen || entryOpen) {
+    bindGlobalCloseListeners()
+    return
+  }
+  unbindGlobalCloseListeners()
+})
+
+onBeforeUnmount(unbindGlobalCloseListeners)
 
 // 抽屉关闭时顺手收起两个下拉（原来由父级的 closeMenu 一起做）
 watch(
@@ -99,11 +139,18 @@ watch(
         </button>
       </header>
 
-      <div class="mobile-menu-body">
-        <div class="mobile-level-row">
+      <div class="mobile-menu-body" @scroll.passive="closeDropdowns">
+        <div ref="levelRowRef" class="mobile-level-row">
           <div class="mobile-level-item">
-            <button type="button" class="mobile-level-trigger" @click="toggleRootDropdown">
+            <button
+              type="button"
+              class="mobile-level-trigger"
+              :class="{ 'mobile-level-trigger--open': rootDropdownOpen }"
+              :aria-expanded="rootDropdownOpen"
+              @click="toggleRootDropdown"
+            >
               <strong>{{ props.currentRootLabel }}</strong>
+              <span class="mobile-level-chevron" aria-hidden="true" />
             </button>
             <div v-if="rootDropdownOpen" class="mobile-level-options">
               <button
@@ -120,8 +167,15 @@ watch(
           </div>
 
           <div class="mobile-level-item">
-            <button type="button" class="mobile-level-trigger" @click="toggleEntryDropdown">
+            <button
+              type="button"
+              class="mobile-level-trigger"
+              :class="{ 'mobile-level-trigger--open': entryDropdownOpen }"
+              :aria-expanded="entryDropdownOpen"
+              @click="toggleEntryDropdown"
+            >
               <strong>{{ props.currentEntryLabel }}</strong>
+              <span class="mobile-level-chevron" aria-hidden="true" />
             </button>
             <div v-if="entryDropdownOpen" class="mobile-level-options">
               <button

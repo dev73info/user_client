@@ -26,6 +26,10 @@ defineProps<{
   guaranteeFilter: RequirementGuaranteeFilter
   /** 下拉选项：全部 + 两档担保方式，文案与卡片上的胶囊同一口径 */
   options: Array<{ label: string; value: string }>
+  /** 当前排序（`latest` / `price_desc`） */
+  sort: string
+  /** 排序下拉选项 */
+  sortOptions: Array<{ label: string; value: string }>
   /** 大厅列表加载中 */
   loading: boolean
   /** 大厅概览加载中 */
@@ -34,6 +38,7 @@ defineProps<{
 
 const emit = defineEmits<{
   (e: 'guarantee-change', value: SelectModelValue): void
+  (e: 'sort-change', value: SelectModelValue): void
   (e: 'clear-keyword'): void
   (e: 'publish'): void
   (e: 'refresh'): void
@@ -44,6 +49,22 @@ const keyword = defineModel<string>('keyword', { required: true })
 
 <template>
   <div class="requirement-hall__toolbar">
+    <TSelect
+      class="requirement-hall__guarantee-select"
+      :model-value="guaranteeFilter"
+      :options="options"
+      aria-label="按担保方式筛选需求"
+      @update:model-value="emit('guarantee-change', $event)"
+    />
+
+    <TSelect
+      class="requirement-hall__sort-select"
+      :model-value="sort"
+      :options="sortOptions"
+      aria-label="需求排序方式"
+      @update:model-value="emit('sort-change', $event)"
+    />
+
     <TInput
       v-model="keyword"
       class="requirement-hall__search"
@@ -59,14 +80,6 @@ const keyword = defineModel<string>('keyword', { required: true })
         </TIcon>
       </template>
     </TInput>
-
-    <TSelect
-      class="requirement-hall__guarantee-select"
-      :model-value="guaranteeFilter"
-      :options="options"
-      aria-label="按担保方式筛选需求"
-      @update:model-value="emit('guarantee-change', $event)"
-    />
 
     <div class="portal-page__header-actions requirement-hall__header-actions">
       <button class="requirement-hall__publish-btn" type="button" @click="emit('publish')">
@@ -145,12 +158,12 @@ const keyword = defineModel<string>('keyword', { required: true })
   margin-bottom: 14px;
 }
 
-/* 担保方式下拉：定宽，避免切换选项时整行跟着跳宽。
+/* 担保与排序下拉：宽度跟当前文案走，不再固定定宽。
    TSelect 关了 attrs 透传（`inheritAttrs: false`），根节点拿不到本文件的 scope id，
    所以只能从工具栏用 :deep() 选它——直接写 .requirement-hall__guarantee-select 是选不到的。 */
-.requirement-hall__toolbar :deep(.requirement-hall__guarantee-select) {
+.requirement-hall__toolbar :deep(.requirement-hall__guarantee-select),
+.requirement-hall__toolbar :deep(.requirement-hall__sort-select) {
   flex: 0 0 auto;
-  width: 132px;
 }
 
 /* 搜索框走 TInput（与工作台各列表页同一套高 / 圆角 / 描边），这里只给弹性宽度 */
@@ -166,6 +179,7 @@ const keyword = defineModel<string>('keyword', { required: true })
   }
 
   .requirement-hall__toolbar :deep(.requirement-hall__guarantee-select),
+  .requirement-hall__toolbar :deep(.requirement-hall__sort-select),
   .requirement-hall__toolbar :deep(.requirement-hall__search),
   .portal-page--nav .requirement-hall__header-actions {
     flex: 1 1 100%;

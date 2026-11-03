@@ -157,16 +157,17 @@ const emit = defineEmits<{
 
 @media (max-width: 900px) {
   .user-workbench__aside {
+    /* 与工作台内容区共用同一段导航让位：抽屉底边落在移动导航上方，二者不重叠。 */
+    --uw-mobile-dock-clearance: calc(72px + max(8px, env(safe-area-inset-bottom)));
+
     position: fixed;
     top: 0;
-    bottom: auto;
+    bottom: var(--uw-mobile-dock-clearance);
     left: 0;
     z-index: 80;
     width: min(84vw, 320px);
-    height: 100vh;
-    height: 100dvh;
-    max-height: 100vh;
-    max-height: 100dvh;
+    height: calc(100dvh - var(--uw-mobile-dock-clearance));
+    max-height: none;
     border-radius: 0 22px 22px 0;
     visibility: hidden;
     transform: translateX(-104%);
@@ -191,9 +192,21 @@ const emit = defineEmits<{
     max-height: none !important;
   }
 
+  .user-workbench__aside-scrollbar :deep(.t73-scrollbar__wrap) {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .user-workbench__aside-scrollbar :deep(.t73-scrollbar__view) {
+    flex: 1 0 auto;
+    display: flex;
+    flex-direction: column;
+  }
+
   .user-workbench__aside-inner {
-    min-height: 100%;
-    padding: 16px 16px calc(96px + env(safe-area-inset-bottom));
+    flex: 1 0 auto;
+    min-height: 0;
+    padding: 16px;
   }
 }
 </style>

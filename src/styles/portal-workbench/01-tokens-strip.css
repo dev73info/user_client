@@ -117,7 +117,18 @@
 
 /* 读数后面跟的同义小标签（环比、口径说明）：与读数同一行、贴着右侧 */
 .wb-strip__tag {
+  display: inline-flex;
+  align-items: center;
+  min-height: 20px;
   margin-left: 2px;
+  padding: 0 7px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--73-ink) 5%, transparent);
+  color: var(--profile-text-sub, var(--73-ink-muted));
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1;
+  white-space: nowrap;
 }
 
 /* 操作槽：页面级主按钮 + 刷新共用这一槽，靠 auto 外边距整体靠右；

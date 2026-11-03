@@ -1,0 +1,250 @@
+/* 由 home.css 按顶层规则边界切分（第 3/7 段），
+   顺序与原文一致；跨文件级联依赖顺序。 */
+
+.portal-step-card__no {
+  color: var(--73-accent);
+  font-family: var(--73-font-family-mono);
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.portal-step-card__title {
+  color: var(--73-ink);
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.portal-step-card__summary {
+  color: var(--73-ink-muted);
+  font-size: 12px;
+  line-height: 1.5;
+  white-space: pre-line;
+}
+
+.portal-step-card__action {
+  margin-top: auto;
+  padding-top: 6px;
+  color: var(--73-accent);
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.portal-step-card__arrow {
+  display: none;
+}
+
+/* ----------------------------------------------------------------------------
+   4. 免费资源卡片
+   ---------------------------------------------------------------------------- */
+
+.portal-spotlight-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.portal-spotlight-card {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid var(--73-border);
+  border-radius: var(--73-radius-inner);
+  background: var(--73-surface);
+  cursor: pointer;
+  transition:
+    border-color var(--73-transition),
+    box-shadow var(--73-transition);
+}
+
+.portal-spotlight-card:hover {
+  border-color: var(--73-border-hover);
+  box-shadow: var(--73-shadow-card-hover);
+}
+
+.portal-spotlight-card__cover {
+  position: relative;
+  overflow: hidden;
+  aspect-ratio: 16 / 9;
+  border-bottom: 1px solid var(--73-border-soft);
+  background: linear-gradient(135deg, var(--73-bg-soft), var(--73-inset));
+}
+
+.portal-spotlight-card__cover-img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.portal-spotlight-card__cover-text {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: color-mix(in srgb, var(--73-accent) 40%, transparent);
+  font-size: 40px;
+  font-weight: 600;
+}
+
+.portal-spotlight-card__badge {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  display: inline-flex;
+  align-items: center;
+  height: 20px;
+  padding: 0 6px;
+  border-radius: 4px;
+  background: var(--73-success);
+  color: var(--73-ink-inverse);
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 1;
+}
+
+.portal-spotlight-card__mark {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  height: 20px;
+  padding: 0 6px;
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--73-app-ink-strong) 62%, transparent);
+  color: var(--73-app-warning-bright);
+  font-size: 10px;
+  font-weight: 500;
+  line-height: 1;
+}
+
+.portal-spotlight-card__mark svg {
+  width: 11px;
+  height: 11px;
+}
+
+.portal-spotlight-card__body {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 8px;
+  padding: 14px;
+}
+
+.portal-spotlight-card__body h3 {
+  margin: 0;
+  overflow: hidden;
+  color: var(--73-ink);
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.35;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.portal-spotlight-card__body p {
+  display: -webkit-box;
+  margin: 0;
+  overflow: hidden;
+  color: var(--73-ink-soft);
+  font-size: 12px;
+  line-height: 1.5;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.portal-spotlight-card__meta-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.portal-spotlight-card__meta-row strong {
+  padding: 2px 6px;
+  border: 1px solid var(--73-border);
+  border-radius: 4px;
+  background: var(--73-inset);
+  color: var(--73-ink-muted);
+  font-family: var(--73-font-family-mono);
+  font-size: 10px;
+  font-weight: 400;
+  line-height: 1.4;
+}
+
+.portal-spotlight-card__footer {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: auto;
+  padding: 10px 14px;
+  border-top: 1px solid var(--73-border-soft);
+}
+
+.portal-spotlight-card__meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.portal-spotlight-card__author {
+  --author-marquee-shift: 0px;
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--73-ink-soft);
+  font-family: var(--73-font-family-mono);
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+.portal-spotlight-card__author-text {
+  display: inline-block;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  vertical-align: bottom;
+}
+
+.portal-spotlight-card__author.is-marquee .portal-spotlight-card__author-text {
+  max-width: none;
+  overflow: visible;
+  text-overflow: clip;
+  animation: portal-spotlight-author-marquee 5.5s linear infinite;
+}
+
+.portal-spotlight-card__author.is-marquee:hover .portal-spotlight-card__author-text {
+  animation-play-state: paused;
+}
+
+@keyframes portal-spotlight-author-marquee {
+  0%,
+  15% {
+    transform: translateX(0);
+  }
+  85%,
+  100% {
+    transform: translateX(var(--author-marquee-shift));
+  }
+}
+
+.username-gradient {
+  color: var(--73-accent);
+}
+
+.portal-spotlight-card__origin {
+  flex-shrink: 0;
+  padding: 1px 6px;
+  border: 1px solid var(--73-accent-line);
+  border-radius: 4px;
+  background: var(--73-accent-soft);
+  color: var(--73-accent);
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 1.4;
+}

@@ -46,11 +46,12 @@ export function useWorkbenchShell() {
   const conversations = useWorkbenchConversations()
   const badges = useWorkbenchBadges({ isDevWorkbenchMode: mode.isDevWorkbenchMode })
 
-  // 图标栏的分组：只在用户模式生效（开发者模式那排是平铺的一级条目）。
-  const railGroups = useWorkbenchRailGroups({ realnameApproved: menu.realnameApproved })
-  const activeRailGroup = computed(() =>
-    mode.isDevWorkbenchMode.value ? null : railGroups.activeGroup.value,
-  )
+  // 图标栏的分组：用户 / 开发者各有一份分组，版式相同（组入口 → 中栏列表 → 右栏内容）。
+  const railGroups = useWorkbenchRailGroups({
+    realnameApproved: menu.realnameApproved,
+    isDevWorkbenchMode: mode.isDevWorkbenchMode,
+  })
+  const activeRailGroup = railGroups.activeGroup
 
   const routeTitle = computed(() => (typeof route.meta.title === 'string' ? route.meta.title : ''))
 

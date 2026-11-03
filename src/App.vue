@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, nextTick, watch } from 'vue'
 import { useRoute } from 'vue-router'
 
 import AppDownloadCard from '@/components/app/AppDownloadCard.vue'
@@ -8,6 +8,7 @@ import PortalTopNav from '@/components/PortalTopNav.vue'
 import PortalMobileDock from '@/components/PortalMobileDock.vue'
 import SupportChatWidget from '@/components/SupportChatWidget.vue'
 import MockIdentitySwitcher from '@/mock/MockIdentitySwitcher.vue'
+import { PORTAL_CONTENT_ANCHORS, scrollToPortalAnchor } from '@/utils/portalScroll'
 import { TScrollbar } from 'ui_73info'
 import { useAppShellAuth } from '@/components/app/useAppShellAuth'
 
@@ -37,6 +38,17 @@ const showSiteFooter = computed(
 )
 const immersiveWorkbench = computed(() =>
   route.matched.some((record) => record.meta.workbenchShell === true),
+)
+
+watch(
+  () => route.path,
+  async () => {
+    const anchor = PORTAL_CONTENT_ANCHORS[String(route.name ?? '')]
+    if (!anchor) return
+    await nextTick()
+    scrollToPortalAnchor(anchor)
+  },
+  { immediate: true },
 )
 </script>
 
@@ -72,7 +84,7 @@ const immersiveWorkbench = computed(() =>
           <AppSiteFooter v-if="showSiteFooter" />
         </div>
       </TScrollbar>
-      <PortalMobileDock v-if="!immersiveWorkbench" />
+      <PortalMobileDock />
     </div>
 
     <!-- mock 身份切换器：只在 pnpm dev 且开了 mock 时渲染，详见 src/mock/ -->

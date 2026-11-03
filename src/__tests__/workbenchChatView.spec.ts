@@ -142,7 +142,11 @@ describe('工作台聊天首页', () => {
 
     expect(wrapper.findAll('.workbench-inbox__row')).toHaveLength(2)
     expect(wrapper.find('.workbench-inbox__row.is-active').text()).toContain('数据清洗插件定制')
-    expect(wrapper.text()).toContain('开发者：dev_flow')
+    // 列表只留标题 / 预览；开发者与需求状态都从行内移除
+    expect(wrapper.find('.workbench-inbox__meta').exists()).toBe(false)
+    expect(wrapper.find('.workbench-inbox__tag').exists()).toBe(false)
+    expect(wrapper.text()).not.toContain('开发者：dev_flow')
+    expect(wrapper.get('.workbench-inbox__row').text()).not.toContain('开发中')
     expect(wrapper.text()).toContain('爬虫小工具')
 
     const modal = wrapper.findComponent({ name: 'RequirementConversationModal' })
@@ -201,27 +205,23 @@ describe('工作台聊天首页', () => {
     wrapper.unmount()
   })
 
-  it('新建会话进入我的需求；没有会话时右侧显示空态', async () => {
+  it('会话列表不再提供「发起会话」入口；没有会话时右侧显示空态', async () => {
     mocks.conversations.mockResolvedValue([])
     mocks.requirements.mockResolvedValue([])
-    const { router, wrapper } = await render()
+    const { wrapper } = await render()
 
     expect(wrapper.find('.workbench-chat__empty').text()).toContain('选择一个会话')
-    await wrapper.find('.workbench-inbox__compose').trigger('click')
-    await flushPromises()
-    expect(router.currentRoute.value.name).toBe('workbench-requirements')
+    expect(wrapper.find('.workbench-inbox__compose').exists()).toBe(false)
+    expect(wrapper.find('.workbench-inbox__header').text()).not.toContain('新建会话')
     wrapper.unmount()
   })
 
   it('开发者消息中心复用聊天布局，并走开发者会话模式', async () => {
-    const { router, wrapper } = await render('dev-messages')
+    const { wrapper } = await render('dev-messages')
 
     expect(wrapper.findComponent({ name: 'RequirementConversationModal' }).props('apiMode')).toBe(
       'dev',
     )
-    await wrapper.find('.workbench-inbox__compose').trigger('click')
-    await flushPromises()
-    expect(router.currentRoute.value.name).toBe('dev-requirement-hall')
     wrapper.unmount()
   })
 

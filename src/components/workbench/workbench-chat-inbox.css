@@ -47,38 +47,6 @@
   line-height: 1.5;
 }
 
-.workbench-inbox__compose {
-  height: 28px;
-  margin-left: auto;
-  padding: 0 10px;
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  flex: 0 0 auto;
-  border: 1px solid var(--73-border);
-  border-radius: 8px;
-  background: var(--73-bg-soft);
-  color: var(--73-ink-soft);
-  font-size: 12px;
-  font-weight: 500;
-  cursor: pointer;
-  transition:
-    color 140ms ease,
-    background-color 140ms ease,
-    border-color 140ms ease;
-}
-
-.workbench-inbox__compose:hover {
-  border-color: var(--73-border-hover);
-  background: var(--73-surface);
-  color: var(--73-ink);
-}
-
-.workbench-inbox__compose:focus-visible {
-  outline: 2px solid var(--73-accent);
-  outline-offset: 2px;
-}
-
 /* 搜索框走 TInput（与工作台各列表页同一套高 / 圆角 / 描边），这里只给弹性宽度 */
 .workbench-inbox__header :deep(.workbench-inbox__search) {
   width: 100%;
@@ -269,17 +237,6 @@
   color: var(--73-ink-placeholder);
   font-size: 12px;
   line-height: 1.45;
-}
-
-.workbench-inbox__tag {
-  justify-self: start;
-  max-width: 100%;
-  padding: 1px 6px;
-  border-radius: 4px;
-  font-family: var(--73-font-family-mono);
-  font-size: 10px;
-  font-weight: 500;
-  line-height: 1.5;
 }
 
 .workbench-inbox__unread {

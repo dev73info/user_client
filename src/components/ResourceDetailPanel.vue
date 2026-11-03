@@ -9,16 +9,12 @@ import {
   type PublicMcResourceItem,
   type PublicMcResourceVersionItem,
 } from '@/api/resources'
-import {
-  API_RESOURCE_PURCHASE_HINT,
-  canPurchaseOnPlatform,
-  resolveVersionPurchaseTarget,
-} from '@/shared/resourceSale'
-import { isApiResourceKind } from '@/shared/resourceApi'
+import { resolveVersionPurchaseTarget } from '@/shared/resourceSale'
 import { useAuthStore } from '@/stores/auth'
 import { useResourceFileDownload } from '@/composables/useResourceFileDownload'
 import { useResourceLike } from '@/composables/useResourceLike'
 import { useResourcePurchase } from '@/composables/useResourcePurchase'
+import { useResourcePurchaseGate } from '@/composables/useResourcePurchaseGate'
 import { useResourceVersionSaleDetail } from '@/composables/useResourceVersionSaleDetail'
 // 富文本管线（Markdown / 清洗 / 代码块高亮 / 表格包裹）在 utils 里，组件只落一次调用；
 // 配套的正文排版在全局样式 `styles/resource-rich-text.css`（v-html 产物没有 data-v）。
@@ -29,7 +25,7 @@ import ResourceDetailCover from '@/components/resource-detail/ResourceDetailCove
 import ResourceDetailSummaryCard from '@/components/resource-detail/ResourceDetailSummaryCard.vue'
 import ResourcePurchaseDialog from '@/components/resource-detail/ResourcePurchaseDialog.vue'
 import ResourceVersionList from '@/components/resource-detail/ResourceVersionList.vue'
-import { TButton, TLoading, TMessage } from 'ui_73info'
+import { TButton, TLoading } from 'ui_73info'
 
 /**
  * 资源详情面板：资源列表页（ResourceCatalogView）里就地渲染的详情内容。
@@ -128,42 +124,14 @@ const {
 })
 
 /**
- * BUG-020：接口资源只在开发者自有站点的服务端下单，平台内没有购买入口。
- *
- * 接口资源的价格是「开放接口下单的售价」，不是平台内商品标价——
- * 所以这里不给它开平台内购买入口（后端会以 409 拒掉），只留一条到开发者站点的引导。
+ * 购买闸与 BUG-020 的入口拦截收在 composable 里（判定口径与提示文案原样保留）；
+ * 面板只接 `isApiResource` / `needsPurchase` 与「打开购买面板」这一个动作。
  */
-const isApiResource = computed(() => isApiResourceKind(resource.value?.resource_kind))
-/** 买断 / 积分资源的购买闸（版本列表按钮也看它，版本售卖不在这里拦）。 */
-const needsPurchase = computed(() => {
-  if (!resource.value) {
-    return false
-  }
-  return canPurchaseOnPlatform({
-    priceFen: resource.value.buyout_price_fen,
-    pricePoints: resource.value.price_points,
-    purchasedByMe: Boolean(resource.value.purchased_by_me),
-    isOwner: isOwner.value,
-    resourceKind: resource.value.resource_kind,
-  })
+const { isApiResource, needsPurchase, openPurchasePanel } = useResourcePurchaseGate({
+  resource,
+  isOwner,
+  openPurchasePanelUnlocked,
 })
-
-/**
- * BUG-020：接口资源没有平台内购买入口——下单只能走开发者站点的开放接口。
- * 打开购买面板的入口在这里再挡一道，避免别的入口（下载 403 引导等）把用户送进一个
- * 必然失败的支付弹窗。面板本身的动作（下单队列 / 支付面 / 轮询）仍在 `useResourcePurchase` 里。
- *
- * `version` 是本次购买的目标版本：版本售卖资源按版本价下单，买断 / 积分资源传空。
- */
-async function openPurchasePanel(
-  version: PublicMcResourceVersionItem | null = null,
-): Promise<void> {
-  if (isApiResource.value) {
-    TMessage.info(API_RESOURCE_PURCHASE_HINT)
-    return
-  }
-  await openPurchasePanelUnlocked(version)
-}
 
 /**
  * 点赞：动作在 `useResourceLike` 里（组件只留按钮），赞态写回本组件的 `resource`。

@@ -1,0 +1,179 @@
+/* 弹窗骨架交给 TDialog，内部按「发起积分打赏」那套双栏排版：左侧填表 / 看法案，
+   右侧是案件概览与动作区，动作永远贴在右栏底部。 */
+.breach-panel__body {
+  display: grid;
+  grid-template-columns: minmax(0, 7fr) minmax(260px, 5fr);
+  gap: 24px;
+  align-items: start;
+}
+
+.breach-panel__main {
+  display: grid;
+  gap: 14px;
+  align-content: start;
+  min-width: 0;
+}
+
+.breach-panel__requirement {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--73-border-soft);
+}
+
+.breach-panel__requirement-title {
+  min-width: 0;
+  color: var(--73-ink);
+  font-size: 15px;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.breach-panel__requirement-no {
+  flex: 0 0 auto;
+  color: var(--73-ink-placeholder);
+  font-family: var(--73-font-family-mono);
+  font-size: 11px;
+}
+
+.breach-panel__hint,
+.breach-panel__tip {
+  margin: 0;
+  padding: 8px 10px;
+  border: 1px solid var(--73-border);
+  border-radius: 8px;
+  background: var(--73-inset);
+  color: var(--73-ink-muted);
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.breach-panel__field {
+  display: grid;
+  gap: 6px;
+}
+
+.breach-panel__label {
+  color: var(--73-ink-soft);
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.breach-panel__label i {
+  color: var(--73-danger);
+  font-style: normal;
+}
+
+.breach-panel__textarea {
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid var(--73-border);
+  border-radius: 8px;
+  background: var(--73-surface);
+  color: var(--73-ink);
+  font: inherit;
+  font-size: 13px;
+  line-height: 1.6;
+  outline: none;
+  resize: vertical;
+}
+
+.breach-panel__textarea:focus {
+  border-color: var(--73-accent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--73-accent) 15%, transparent);
+}
+
+.breach-panel__confirm {
+  padding: 12px 14px;
+  border: 1px solid color-mix(in srgb, var(--73-danger) 28%, transparent);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--73-danger) 6%, var(--73-surface));
+}
+
+.breach-panel__confirm-text {
+  margin: 0;
+  color: var(--73-ink-soft);
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.breach-panel__confirm-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.breach-panel__summary {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px;
+  border: 1px solid var(--73-border);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--73-bg) 70%, var(--73-surface));
+}
+
+.breach-panel__summary-title {
+  color: var(--73-ink-soft);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+}
+
+.breach-panel__meta {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+}
+
+.breach-panel__meta > div {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 12px;
+}
+
+.breach-panel__meta dt {
+  flex: 0 0 auto;
+  color: var(--73-ink-muted);
+}
+
+.breach-panel__meta dd {
+  margin: 0;
+  color: var(--73-ink);
+  font-weight: 500;
+  text-align: right;
+  overflow-wrap: anywhere;
+}
+
+.breach-panel__rule {
+  margin: 0;
+  padding: 8px 10px;
+  border: 1px solid var(--73-border);
+  border-radius: 8px;
+  background: var(--73-surface);
+  color: var(--73-ink-muted);
+  font-size: 11px;
+  line-height: 1.6;
+}
+
+.breach-panel__actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: auto;
+  padding-top: 14px;
+  border-top: 1px solid var(--73-border);
+}
+
+@media (max-width: 900px) {
+  .breach-panel__body {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+}

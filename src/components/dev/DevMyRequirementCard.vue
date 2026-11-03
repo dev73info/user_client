@@ -278,7 +278,7 @@ const flags = computed(() => {
    暖黄 var(--73-warning)，与开发者体系的蓝/青/金三支强调色都对不上，一律换成令牌。 */
 .dev-requirement-card__actions {
   display: flex;
-  justify-content: space-between;
+  justify-content: flex-end;
   align-items: center;
   gap: 12px;
   flex-wrap: wrap;

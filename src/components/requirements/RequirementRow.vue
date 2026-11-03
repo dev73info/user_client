@@ -218,7 +218,7 @@ function runMoreAction(key: unknown) {
     <div class="requirement-actions">
       <div class="requirement-toggles">
         <button
-          class="requirement-toggle"
+          class="requirement-toggle requirement-toggle--subscribe"
           type="button"
           :aria-pressed="item.subscribe_status_change"
           :disabled="subscriptionLoading"
@@ -228,7 +228,7 @@ function runMoreAction(key: unknown) {
           @click.stop="emit('toggleSubscription')"
         >
           <span class="requirement-toggle__track" aria-hidden="true"></span>
-          {{ subscriptionLoading ? '提交中...' : requirementSubscriptionLabel(item) }}
+          {{ subscriptionLoading ? '提交中...' : requirementSubscriptionLabel() }}
         </button>
         <button
           v-if="canToggleRequirementResourceVisibility(item) && !isRequirementArchived(item)"

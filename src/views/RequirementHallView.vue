@@ -35,9 +35,14 @@ const {
   keyword,
   guaranteeFilter,
   guaranteeOptions,
+  hallSort,
+  sortOptions,
   filteredRequirements,
+  hallListTotal,
   resetKeyword,
   onGuaranteeFilterChange,
+  onHallSortChange,
+  goToHallPage,
   resetHallFilters,
   hallStats,
   hallEmptyTitle,
@@ -76,15 +81,15 @@ const {
   notify,
 } = useRequirementHallPublish({ reloadHall: loadHallData })
 
-/** 分页卡左侧的区间文案，口径对齐设计稿的「显示 1 - 20 条，共 N 项」。 */
+/** 分页卡左侧的区间文案，口径对齐设计稿的「显示 1 - 8 条，共 N 项」。 */
 const hallPageRange = computed(() => ({
-  start: hallTotal.value === 0 ? 0 : (hallPage.value - 1) * HALL_PAGE_SIZE + 1,
-  end: Math.min(hallPage.value * HALL_PAGE_SIZE, hallTotal.value),
+  start: hallListTotal.value === 0 ? 0 : (hallPage.value - 1) * HALL_PAGE_SIZE + 1,
+  end: Math.min(hallPage.value * HALL_PAGE_SIZE, hallListTotal.value),
 }))
 </script>
 
 <template>
-  <main class="portal-page portal-page--nav">
+  <main class="portal-page portal-page--nav requirement-hall-page">
     <header class="portal-hero-strip requirement-hero">
       <div class="portal-hero-strip__copy">
         <div class="portal-hero-strip__eyebrow-chip">[ REQUIREMENT HALL · 需求大厅 ]</div>
@@ -112,9 +117,12 @@ const hallPageRange = computed(() => ({
           v-model:keyword="keyword"
           :guarantee-filter="guaranteeFilter"
           :options="guaranteeOptions"
+          :sort="hallSort"
+          :sort-options="sortOptions"
           :loading="loading"
           :overview-loading="overviewLoading"
           @guarantee-change="onGuaranteeFilterChange"
+          @sort-change="onHallSortChange"
           @clear-keyword="resetKeyword"
           @publish="openPublishModal"
           @refresh="loadHallData()"
@@ -124,7 +132,7 @@ const hallPageRange = computed(() => ({
              之后刷新（含切页、切筛选）都保留当前列表，避免整个容器被清空重画。 -->
         <div v-if="showHallSkeleton" class="portal-page__card-grid requirement-hall__grid">
           <article
-            v-for="item in 4"
+            v-for="item in HALL_PAGE_SIZE"
             :key="item"
             class="portal-page__card portal-page__resource-skeleton"
           >
@@ -163,15 +171,15 @@ const hallPageRange = computed(() => ({
         <div v-if="filteredRequirements.length" class="requirement-hall__pager-card">
           <span class="requirement-hall__pager-range">
             显示 <strong>{{ hallPageRange.start }} - {{ hallPageRange.end }}</strong> 条，共
-            <strong>{{ hallTotal }}</strong> 项
+            <strong>{{ hallListTotal }}</strong> 项
           </span>
           <TPagination
             class="requirement-hall__pager"
             :show-total="false"
             :current-page="hallPage"
             :page-size="HALL_PAGE_SIZE"
-            :total="hallTotal"
-            @current-change="loadHallData"
+            :total="hallListTotal"
+            @current-change="goToHallPage"
           />
         </div>
       </section>
@@ -230,6 +238,18 @@ const hallPageRange = computed(() => ({
 
 .requirement-hall__grid {
   align-items: stretch;
+  gap: 12px;
+}
+
+/* 桌面双栏：左栏撑满与右栏同高，分页卡始终贴在右栏底部，不被列表长度带偏。 */
+@media (min-width: 901px) {
+  .portal-page.requirement-hall-page .portal-page__content {
+    align-items: stretch;
+  }
+
+  .requirement-hall-page .requirement-hall__pager-card {
+    margin-top: auto;
+  }
 }
 
 .requirement-hall__pager {

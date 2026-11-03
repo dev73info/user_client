@@ -100,6 +100,17 @@
   transform: translateX(12px);
 }
 
+/* 订阅态使用绿色，文案始终保持「订阅」；点击仍可取消，由 title 说明。 */
+.requirement-toggle--subscribe[aria-pressed='true'] {
+  border-color: var(--73-success-line);
+  background: var(--73-success-soft);
+  color: var(--73-success-text);
+}
+
+.requirement-toggle--subscribe[aria-pressed='true'] .requirement-toggle__track {
+  background: var(--73-success);
+}
+
 .requirement-actions__more {
   gap: 6px;
   color: var(--profile-text-sub);

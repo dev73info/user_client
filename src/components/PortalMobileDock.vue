@@ -163,7 +163,7 @@ function goWorkbench() {
   bottom: max(8px, env(safe-area-inset-bottom));
   z-index: 60;
   display: none;
-  grid-template-columns: repeat(6, minmax(0, 1fr));
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 4px;
   max-width: 720px;
   margin: 0 auto;

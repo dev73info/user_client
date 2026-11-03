@@ -30,17 +30,17 @@ const emit = defineEmits<{
 </script>
 
 <template>
-  <p v-if="loading" class="points-table-state" role="status">正在加载积分明细…</p>
+  <p v-if="loading" class="points-table-state" role="status">正在加载积分记录…</p>
   <div v-else-if="error" class="points-table-state" role="alert">
-    <p>加载积分明细失败：{{ error }}</p>
+    <p>加载积分记录失败：{{ error }}</p>
     <TButton variant="outline" @click="emit('reload')">
       <TIcon><Refresh /></TIcon><span>重新加载</span>
     </TButton>
   </div>
-  <p v-else-if="!allCount" class="points-table-state" role="status">暂无积分明细</p>
+  <p v-else-if="!allCount" class="points-table-state" role="status">暂无积分记录</p>
   <template v-else>
     <div class="points-table-wrap">
-      <table class="points-table" aria-label="积分明细">
+      <table class="points-table" aria-label="积分记录">
         <thead>
           <tr>
             <th>变动原因 / 交易凭据</th>
@@ -73,14 +73,13 @@ const emit = defineEmits<{
 
     <div class="points-pager">
       <span
-        >共 <strong>{{ total }}</strong> 条记录，每页显示
-        <strong>{{ pageSize }}</strong> 条</span
+        >共 <strong>{{ total }}</strong> 条记录，每页显示 <strong>{{ pageSize }}</strong> 条</span
       >
       <div class="points-pager__right">
         <TSelect
           :model-value="pageSize"
           class="points-pager__size"
-          aria-label="每页明细数"
+          aria-label="每页记录数"
           @change="emit('page-size-change', $event)"
         >
           <TOption
@@ -96,7 +95,7 @@ const emit = defineEmits<{
           :total="total"
           :pager-count="5"
           :show-total="false"
-          aria-label="积分明细分页"
+          aria-label="积分记录分页"
           @current-change="emit('page-change', $event)"
         />
       </div>

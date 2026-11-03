@@ -1,0 +1,103 @@
+/* 由 05-workbench-desktop.css 按顶层规则边界切分（第 2/2 段），
+   顺序与原文一致；跨文件级联依赖顺序。 */
+
+@media (min-width: 901px) {
+
+  .catalog-chip-clear {
+    padding: 0 4px;
+    border: 0;
+    background: transparent;
+    color: var(--73-ink-muted);
+    font-family: inherit;
+    font-size: 12px;
+    cursor: pointer;
+  }
+
+  .catalog-chip-clear:hover {
+    color: var(--73-danger);
+  }
+
+  .catalog-toolbar__trailing {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .catalog-pager {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .catalog-pager__btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 32px;
+    height: 32px;
+    padding: 0 10px;
+    border: 1px solid var(--73-border);
+    border-radius: var(--73-radius-control);
+    background: var(--73-surface);
+    color: var(--73-ink);
+    font-family: var(--73-font-family-mono);
+    font-size: 12px;
+    cursor: pointer;
+    transition:
+      background-color var(--73-transition),
+      border-color var(--73-transition);
+  }
+
+  .catalog-pager__btn:hover:not(:disabled) {
+    border-color: var(--73-border-hover);
+    background: var(--73-bg-soft);
+  }
+
+  .catalog-pager__btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  .catalog-pager__btn--active {
+    border-color: var(--73-accent);
+    background: var(--73-accent);
+    color: var(--73-accent-contrast);
+  }
+
+  .catalog-pager__ellipsis {
+    color: var(--73-ink-muted);
+    font-family: var(--73-font-family-mono);
+    font-size: 12px;
+  }
+
+  /* --- 结果区：筛选栏 + 三列卡片 --- */
+  .catalog-master {
+    min-width: 0;
+  }
+
+  .portal-resource-browser {
+    display: grid;
+    grid-template-columns: 220px minmax(0, 1fr);
+    align-items: start;
+    gap: 16px;
+  }
+
+  .portal-resource-browser--no-filters {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .portal-resource-browser__filters {
+    padding: 14px;
+    border: 1px solid var(--73-border);
+    border-radius: var(--73-radius-inner);
+    background: var(--73-surface);
+    box-shadow: var(--73-shadow-card);
+  }
+
+  .portal-resource-browser__grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    align-items: stretch;
+    gap: 16px;
+  }
+}

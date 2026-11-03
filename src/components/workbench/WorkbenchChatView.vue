@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
-import { useRouter } from 'vue-router'
 import { ChatDotRound, TIcon } from 'ui_73info'
 
 import RequirementConversationModal from '@/components/RequirementConversationModal.vue'
@@ -13,7 +12,6 @@ import {
 } from '@/composables/useWorkbenchPaneWidth'
 import type { MessageThread } from '@/shared/messagesThreads'
 
-const router = useRouter()
 const keyword = ref('')
 const isMobile = ref(false)
 const chatRef = ref<HTMLElement | null>(null)
@@ -103,12 +101,6 @@ onBeforeUnmount(() => {
 
 function selectThread(thread: MessageThread) {
   openThread(thread)
-}
-
-function composeConversation() {
-  void router.push(
-    isDevWorkbench.value ? { name: 'dev-requirement-hall' } : { name: 'workbench-requirements' },
-  )
 }
 
 function maxInboxWidth() {
@@ -208,7 +200,6 @@ function resizeInboxByKeyboard(event: KeyboardEvent) {
         :selected-requirement-id="selectedRequirementId"
         :loading="loading"
         @select="selectThread"
-        @compose="composeConversation"
         @pin="setThreadPinned"
         @remove="removeThread"
       />

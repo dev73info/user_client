@@ -12,7 +12,7 @@
   padding: 0 6px;
   border-radius: 4px;
   background: var(--73-success);
-  color: #ffffff;
+  color: var(--73-ink-inverse);
   font-size: 10px;
   font-weight: 600;
   font-variant-numeric: tabular-nums;
@@ -26,7 +26,7 @@
 
 .portal-resource-browser__price-badge.is-points {
   background: var(--73-warning);
-  color: #ffffff;
+  color: var(--73-ink-inverse);
 }
 
 .portal-resource-browser__meta {
@@ -39,15 +39,15 @@
   height: 20px;
   padding: 0 6px;
   border-radius: 4px;
-  background: color-mix(in srgb, #111827 62%, transparent);
-  color: #ffffff;
+  background: color-mix(in srgb, var(--73-app-ink-strong) 62%, transparent);
+  color: var(--73-ink-inverse);
   font-size: 10px;
   font-weight: 500;
   line-height: 1;
 }
 
 .portal-resource-browser__meta.is-repost {
-  background: color-mix(in srgb, #111827 62%, transparent);
+  background: color-mix(in srgb, var(--73-app-ink-strong) 62%, transparent);
 }
 
 .portal-resource-browser__desc {
@@ -158,7 +158,7 @@
   align-items: center;
   justify-content: space-between;
   gap: 8px;
-  padding: 10px 14px;
+  padding: 10px 16px;
   border-top: 1px solid var(--73-border-soft);
 }
 
@@ -214,8 +214,8 @@
 }
 
 .portal-resource-browser__action.is-paid:hover {
-  background: color-mix(in srgb, var(--73-accent) 88%, #000);
-  border-color: color-mix(in srgb, var(--73-accent) 88%, #000);
+  background: color-mix(in srgb, var(--73-accent) 88%, var(--73-app-shade));
+  border-color: color-mix(in srgb, var(--73-accent) 88%, var(--73-app-shade));
 }
 
 .username-gradient {

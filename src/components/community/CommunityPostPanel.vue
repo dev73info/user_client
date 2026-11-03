@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { reactive, watch } from 'vue'
+import { reactive, ref, watch } from 'vue'
 import { TButton, TLoading } from 'ui_73info'
 
 import type { CreateCommunityPostPayload } from '@/api/community'
@@ -47,6 +47,11 @@ const {
   likeBusyId,
 } = commentState
 const editor = reactive(useCommunityPostEditor())
+const commentSectionRef = ref<InstanceType<typeof CommunityCommentSection> | null>(null)
+
+function focusCommentComposer(): void {
+  commentSectionRef.value?.focusComposer()
+}
 
 async function loadPage() {
   await Promise.all([detail.load(), commentState.load()])
@@ -83,6 +88,7 @@ async function submitComment() {
           @edit="editor.openEdit(post)"
           @boost="detail.openBoost"
           @cancel-bounty="detail.cancelBounty"
+          @reply="focusCommentComposer"
         />
         <p
           v-if="actionError && !boostOpen"
@@ -92,6 +98,7 @@ async function submitComment() {
           {{ actionError }}
         </p>
         <CommunityCommentSection
+          ref="commentSectionRef"
           v-model:text="text"
           v-model:reply-to="replyTo"
           :comments="comments"

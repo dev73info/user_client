@@ -151,6 +151,14 @@
   color: var(--73-accent);
 }
 
+.user-workbench .user-workbench__content .requirement-toggle--subscribe[aria-pressed='true'],
+.user-workbench
+  .user-workbench__content
+  .requirement-toggle--subscribe[aria-pressed='true']:hover:not(:disabled) {
+  background: var(--73-success-soft);
+  color: var(--73-success-text);
+}
+
 .user-workbench .user-workbench__content .requirement-toggle__track {
   display: none;
 }
@@ -169,7 +177,6 @@
 /* --- 点数与计数标签：去掉小胶囊 --- */
 .user-workbench .user-workbench__content .points-tabs__count,
 .user-workbench .user-workbench__content .points-metric__tag,
-.user-workbench .user-workbench__content .my-requirements-tabs__count,
 .user-workbench .user-workbench__content .workbench-tree__version {
   padding: 0;
   border: 0;
@@ -208,13 +215,4 @@
 /* 分页：非当前页按钮不再有描边和底色 */
 .user-workbench .user-workbench__content .t73-pagination__button {
   border-color: transparent;
-}
-
-/* 页头：标题不再用 700，副标题更轻 */
-.user-workbench .workbench-page-header__main h1 {
-  font-weight: 600;
-}
-
-.user-workbench .workbench-page-header__main h1 + p {
-  color: var(--73-ink-placeholder);
 }

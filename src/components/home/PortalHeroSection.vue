@@ -36,7 +36,7 @@ const emit = defineEmits<{
         </div>
 
         <h1>
-          <span>资源与需求</span><span class="portal-title-accent">协作</span><span>平台</span>
+          <span>需求</span><span class="portal-title-accent">定制</span><span>与交易平台</span>
         </h1>
 
         <div v-if="signals.length" class="portal-signal-list">
@@ -102,7 +102,7 @@ const emit = defineEmits<{
           <path d="M15.5 20a5 5 0 0 1 5.5-4.9" />
         </svg>
       </span>
-      <span class="portal-entry__label">社区</span>
+      <span class="portal-entry__label">社区中心</span>
     </button>
   </nav>
 </template>
