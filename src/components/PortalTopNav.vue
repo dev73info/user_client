@@ -79,7 +79,6 @@ function logoutFromMenu() {
     <RouterLink class="portal-brand" :to="{ name: 'home' }">
       <img class="portal-brand__mark" src="/icons/home-icon.svg" alt="73info 首页" />
       <div class="portal-brand__copy">
-        <strong>73info.cn</strong>
         <span class="portal-brand__badge">柒叁信息</span>
       </div>
     </RouterLink>
