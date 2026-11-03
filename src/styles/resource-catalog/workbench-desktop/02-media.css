@@ -2,7 +2,6 @@
    顺序与原文一致；跨文件级联依赖顺序。 */
 
 @media (min-width: 901px) {
-
   .catalog-chip-clear {
     padding: 0 4px;
     border: 0;

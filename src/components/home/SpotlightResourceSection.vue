@@ -253,7 +253,9 @@ onBeforeUnmount(() => {
                 :title="card.likedByMe ? '取消点赞' : '点赞'"
                 :aria-pressed="card.likedByMe"
                 :aria-label="
-                  card.likedByMe ? `已点赞 ${card.likeCount}，点击取消` : `点赞，当前 ${card.likeCount}`
+                  card.likedByMe
+                    ? `已点赞 ${card.likeCount}，点击取消`
+                    : `点赞，当前 ${card.likeCount}`
                 "
                 :disabled="isLikeSubmitting(card.resourceId)"
                 @click.stop="emit('like', card)"

@@ -24,19 +24,12 @@
 }
 
 .portal-primary-action:focus-visible,
-
 .portal-secondary-action:focus-visible,
-
 .portal-inline-action:focus-visible,
-
 .portal-link-btn:focus-visible,
-
 .portal-step-card:focus-visible,
-
 .portal-spotlight-card:focus-visible,
-
 .portal-quick-card:focus-visible,
-
 .portal-pagination button:focus-visible {
   outline: none;
   box-shadow: var(--73-focus-ring);

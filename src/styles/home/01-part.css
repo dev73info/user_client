@@ -21,9 +21,7 @@
 }
 
 .portal-home *,
-
 .portal-home *::before,
-
 .portal-home *::after {
   box-sizing: border-box;
 }
@@ -42,7 +40,6 @@
 }
 
 .portal-main,
-
 .portal-sidebar {
   display: flex;
   flex-direction: column;
@@ -221,7 +218,6 @@
 }
 
 .portal-primary-action,
-
 .portal-secondary-action {
   display: inline-flex;
   align-items: center;

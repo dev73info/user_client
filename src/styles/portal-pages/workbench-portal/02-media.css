@@ -2,7 +2,6 @@
    顺序与原文一致；跨文件级联依赖顺序。 */
 
 @media (min-width: 901px) {
-
   .portal-page.portal-page--nav .requirement-hall__budget strong {
     font-size: 18px;
     font-weight: 700;
@@ -246,7 +245,6 @@
 }
 
 @media (min-width: 901px) {
-
   .portal-page.mall-page .mall-orders + .mall-orders {
     margin-top: 0;
   }

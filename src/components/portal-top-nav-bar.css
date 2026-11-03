@@ -271,7 +271,6 @@
   box-shadow: none;
 }
 
-
 /* --- Workbench 通栏的响应式（放在文件末尾，覆盖上面旧的浮动卡片档位） --- */
 @media (max-width: 1180px) {
   .portal-header {

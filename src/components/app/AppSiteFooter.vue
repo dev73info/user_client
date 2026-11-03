@@ -33,9 +33,7 @@ const currentYear = new Date().getFullYear()
         <div class="site-footer-legal">
           <span>平台名称：柒叁信息（73info）</span>
           <span>平台状态：内测中</span>
-          <span>
-            联系与投诉邮箱：<a href="mailto:fanbo@73info.cn">fanbo@73info.cn</a>
-          </span>
+          <span> 联系与投诉邮箱：<a href="mailto:fanbo@73info.cn">fanbo@73info.cn</a> </span>
           <span>
             ICP备案号：
             <a href="https://beian.miit.gov.cn/" target="_blank" rel="noopener noreferrer"

@@ -94,7 +94,10 @@ defineProps<{
   <section class="portal-page__aside-card requirement-hall__recent-card">
     <div class="portal-page__aside-head">
       <div class="requirement-hall__aside-title">
-        <span class="requirement-hall__aside-icon requirement-hall__aside-icon--muted" aria-hidden="true">
+        <span
+          class="requirement-hall__aside-icon requirement-hall__aside-icon--muted"
+          aria-hidden="true"
+        >
           <svg
             viewBox="0 0 24 24"
             width="14"

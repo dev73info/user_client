@@ -115,14 +115,23 @@
   color: var(--73-accent-contrast);
 }
 
-.user-workbench .user-workbench__content .requirement-actions button.ghost.action-primary:hover:not(:disabled),
-.user-workbench .user-workbench__content .requirement-actions button.ghost.action-review:hover:not(:disabled) {
+.user-workbench
+  .user-workbench__content
+  .requirement-actions
+  button.ghost.action-primary:hover:not(:disabled),
+.user-workbench
+  .user-workbench__content
+  .requirement-actions
+  button.ghost.action-review:hover:not(:disabled) {
   background: color-mix(in srgb, var(--73-accent) 85%, var(--73-ink));
   color: var(--73-accent-contrast);
 }
 
 .user-workbench .user-workbench__content .requirement-actions button.ghost.is-danger,
-.user-workbench .user-workbench__content .requirement-actions button.ghost.is-danger:hover:not(:disabled) {
+.user-workbench
+  .user-workbench__content
+  .requirement-actions
+  button.ghost.is-danger:hover:not(:disabled) {
   border: 0;
   background: transparent;
   color: var(--73-danger);

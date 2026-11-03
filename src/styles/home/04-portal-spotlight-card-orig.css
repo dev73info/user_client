@@ -57,13 +57,11 @@
 }
 
 .portal-spotlight-card__likes:hover:not(:disabled),
-
 .portal-spotlight-card__likes.is-liked {
   color: var(--73-danger);
 }
 
 .portal-spotlight-card__likes:disabled,
-
 .portal-spotlight-card__likes.is-busy {
   opacity: 0.55;
   cursor: progress;

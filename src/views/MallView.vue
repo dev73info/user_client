@@ -190,43 +190,43 @@ onMounted(async () => {
         <TEmpty v-else description="商城暂无可兑换内容" />
       </div>
       <div class="mall-orders-grid">
-      <div class="mall-orders">
-        <h3>我的道具卡</h3>
-        <TTable v-if="promoCards.length" :data="promoCards" stripe>
-          <TTableColumn label="道具" min-width="160">
-            <template #default="{ row }">{{ promoCardLabel(row.card_code) }}</template>
-          </TTableColumn>
-          <TTableColumn label="有效天数" width="100" align="center">
-            <template #default="{ row }">{{ row.duration_days }} 天</template>
-          </TTableColumn>
-          <TTableColumn prop="created_at" label="获得时间" width="180" />
-          <TTableColumn label="操作" width="120" align="center">
-            <template #default>
-              <TButton variant="outline" tone="accent" size="sm" @click="goUsePromoCards">
-                去使用
-              </TButton>
-            </template>
-          </TTableColumn>
-        </TTable>
-        <TEmpty v-else description="背包暂无未使用的道具卡" />
-      </div>
-      <div class="mall-orders">
-        <h3>我的兑换</h3>
-        <TTable v-if="orders.length" :data="orders" stripe>
-          <TTableColumn prop="product_name" label="商品" min-width="180" show-overflow-tooltip />
-          <TTableColumn prop="points_cost" label="积分" width="90" align="center" />
-          <TTableColumn label="状态" width="100" align="center">
-            <template #default="{ row }">
-              <TTag :tone="orderStatusTagType(row.status)" size="sm">
-                {{ orderStatusLabel(row.status) }}
-              </TTag>
-            </template>
-          </TTableColumn>
-          <TTableColumn prop="handle_note" label="备注" min-width="140" show-overflow-tooltip />
-          <TTableColumn prop="created_at" label="时间" width="180" />
-        </TTable>
-        <TEmpty v-else description="暂无兑换记录" />
-      </div>
+        <div class="mall-orders">
+          <h3>我的道具卡</h3>
+          <TTable v-if="promoCards.length" :data="promoCards" stripe>
+            <TTableColumn label="道具" min-width="160">
+              <template #default="{ row }">{{ promoCardLabel(row.card_code) }}</template>
+            </TTableColumn>
+            <TTableColumn label="有效天数" width="100" align="center">
+              <template #default="{ row }">{{ row.duration_days }} 天</template>
+            </TTableColumn>
+            <TTableColumn prop="created_at" label="获得时间" width="180" />
+            <TTableColumn label="操作" width="120" align="center">
+              <template #default>
+                <TButton variant="outline" tone="accent" size="sm" @click="goUsePromoCards">
+                  去使用
+                </TButton>
+              </template>
+            </TTableColumn>
+          </TTable>
+          <TEmpty v-else description="背包暂无未使用的道具卡" />
+        </div>
+        <div class="mall-orders">
+          <h3>我的兑换</h3>
+          <TTable v-if="orders.length" :data="orders" stripe>
+            <TTableColumn prop="product_name" label="商品" min-width="180" show-overflow-tooltip />
+            <TTableColumn prop="points_cost" label="积分" width="90" align="center" />
+            <TTableColumn label="状态" width="100" align="center">
+              <template #default="{ row }">
+                <TTag :tone="orderStatusTagType(row.status)" size="sm">
+                  {{ orderStatusLabel(row.status) }}
+                </TTag>
+              </template>
+            </TTableColumn>
+            <TTableColumn prop="handle_note" label="备注" min-width="140" show-overflow-tooltip />
+            <TTableColumn prop="created_at" label="时间" width="180" />
+          </TTable>
+          <TEmpty v-else description="暂无兑换记录" />
+        </div>
       </div>
     </template>
   </main>
