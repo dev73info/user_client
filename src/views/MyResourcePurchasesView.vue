@@ -224,13 +224,6 @@ function openTransfer(order: ResourcePurchaseOrder) {
   cursor: pointer;
 }
 
-.wb-item__title-row {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
 /* R034 接口资源订单标签：与普通已购订单共用同一列表，只补一个来源标记。 */
 .purchases__tag {
   flex: 0 0 auto;

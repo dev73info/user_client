@@ -1,0 +1,707 @@
+/* ============================================================================
+   资源详情面板 · Workbench 亮色（桌面端覆盖层）
+   ============================================================================
+
+   对应 Stitch「资源详情」亮色稿：封面、摘要卡、历史版本、页面内容、评论。
+   只作用于 ≥901px；窄屏继续走原分片里的单列布局。
+   选择器带 `.resource-detail-page--panel` 提高特异性，压过各子组件自己的
+   scoped 样式；颜色一律走 `--73-*` 令牌，不出现裸色值。
+   ============================================================================ */
+
+@media (min-width: 901px) {
+  /* --- 面板外壳：去掉旧的玻璃卡片，内容直接铺在列表页画布上 --- */
+  .resource-detail-page.resource-detail-page--panel {
+    width: 100%;
+    max-width: none;
+    margin: 0;
+    padding: 0;
+    background: transparent;
+    border: 0;
+    box-shadow: none;
+  }
+
+  .resource-detail-page--panel .resource-detail-page__panel {
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+    backdrop-filter: none;
+  }
+
+  /* --- 两栏骨架 --- */
+  .resource-detail-page--panel .resource-detail-page__lead {
+    display: grid;
+    grid-template-columns: minmax(0, 2fr) minmax(300px, 1fr);
+    align-items: start;
+    gap: 16px;
+  }
+
+  .resource-detail-page--panel .resource-detail-page__left-stack {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    overflow: visible;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+  }
+
+  /* cover 与摘要卡在左列之间的间距 */
+  .resource-detail-page--panel .resource-detail-page__left-stack > * + * {
+    margin-top: 16px;
+  }
+
+  .resource-detail-page--panel .resource-detail-page__versions-side-card {
+    min-width: 0;
+  }
+
+  .resource-detail-page--panel .resource-detail-page__detail-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 2fr) minmax(300px, 1fr);
+    align-items: start;
+    gap: 16px;
+    margin-top: 16px;
+  }
+
+  /* --- 卡片基础形态 --- */
+  .resource-detail-page--panel .resource-detail-page__cover-card,
+  .resource-detail-page--panel .resource-detail-page__summary-card,
+  .resource-detail-page--panel .resource-detail-page__content-card {
+    border: 1px solid var(--73-border);
+    border-radius: var(--73-radius-card);
+    background: var(--73-surface);
+    box-shadow: var(--73-shadow-card);
+  }
+
+  /* --- 封面：16:9 --- */
+  .resource-detail-page--panel .resource-detail-page__cover-card {
+    position: relative;
+    overflow: hidden;
+    width: 100%;
+    aspect-ratio: 16 / 9;
+    padding: 0;
+  }
+
+  .resource-detail-page--panel .resource-detail-page__cover-image {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  .resource-detail-page--panel .resource-detail-page__cover-placeholder {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(135deg, var(--73-bg-soft), var(--73-inset));
+    font-size: 48px;
+    opacity: 0.7;
+  }
+
+  /* --- 摘要卡 --- */
+  .resource-detail-page--panel .resource-detail-page__summary-card {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding: 20px;
+  }
+
+  .resource-detail-page--panel .resource-detail-page__headline-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+
+  .resource-detail-page--panel .resource-detail-page__headline-left {
+    display: inline-flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .resource-detail-page--panel .resource-detail-page__status-pill,
+  .resource-detail-page--panel .resource-detail-page__price-pill,
+  .resource-detail-page--panel .resource-detail-page__repost-badge {
+    display: inline-flex;
+    align-items: center;
+    height: 22px;
+    padding: 0 8px;
+    border: 1px solid var(--73-border);
+    border-radius: 4px;
+    background: var(--73-inset);
+    color: var(--73-ink-soft);
+    font-size: 11px;
+    font-weight: 500;
+    line-height: 1;
+  }
+
+  .resource-detail-page--panel .resource-detail-page__price-pill {
+    border-color: var(--73-success-line);
+    background: var(--73-success-soft);
+    color: var(--73-success-text);
+  }
+
+  .resource-detail-page--panel .resource-detail-page__price-pill.is-paid {
+    border-color: var(--73-accent-line);
+    background: var(--73-accent-soft);
+    color: var(--73-accent);
+  }
+
+  .resource-detail-page--panel .resource-detail-page__repost-badge {
+    border-color: var(--73-accent-line);
+    background: var(--73-accent-soft);
+    color: var(--73-accent);
+  }
+
+  .resource-detail-page--panel .resource-detail-page__repost-badge.is-repost {
+    border-color: var(--73-warning-line);
+    background: var(--73-warning-soft);
+    color: var(--73-warning-text);
+  }
+
+  .resource-detail-page--panel .resource-detail-page__headline-right {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  .resource-detail-page--panel .resource-detail-page__author-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 8px;
+    border: 1px solid var(--73-border);
+    border-radius: 4px;
+    background: var(--73-surface);
+    color: var(--73-ink-soft);
+    font-size: 12px;
+    text-decoration: none;
+  }
+
+  .resource-detail-page--panel .resource-detail-page__author-pill-label {
+    color: var(--73-ink-muted);
+    font-size: 11px;
+  }
+
+  .resource-detail-page--panel .resource-detail-page__meta--aside {
+    margin: 0;
+    color: var(--73-ink-muted);
+    font-size: 11px;
+  }
+
+  .resource-detail-page--panel .resource-detail-page__meta-label--green {
+    color: var(--73-success-text);
+  }
+
+  .resource-detail-page--panel .resource-detail-page__identity-block {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .resource-detail-page--panel .resource-detail-page__title {
+    margin: 0;
+    color: var(--73-ink);
+    font-size: 24px;
+    font-weight: 600;
+    line-height: 1.3;
+    letter-spacing: -0.02em;
+  }
+
+  .resource-detail-page--panel .resource-detail-page__repost-meta {
+    font-size: 11px;
+    color: var(--73-ink-muted);
+  }
+
+  .resource-detail-page--panel .resource-detail-page__repost-origin {
+    color: var(--73-accent);
+    text-decoration: none;
+  }
+
+  .resource-detail-page--panel .resource-detail-page__summary {
+    margin: 0;
+    color: var(--73-ink-soft);
+    font-size: 13px;
+    line-height: 1.6;
+  }
+
+  .resource-detail-page--panel .resource-detail-page__tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  .resource-detail-page--panel .resource-detail-page__tag {
+    display: inline-flex;
+    align-items: center;
+    padding: 2px 6px;
+    border: 1px solid var(--73-accent-line);
+    border-radius: 4px;
+    background: var(--73-accent-soft);
+    color: var(--73-accent);
+    font-family: var(--73-font-family-mono);
+    font-size: 10px;
+    line-height: 1.4;
+  }
+
+  /* --- 主操作行 --- */
+  .resource-detail-page--panel .resource-detail-page__cta-row {
+    margin-top: 4px;
+  }
+
+  .resource-detail-page--panel .resource-detail-page__primary-actions {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .resource-detail-page--panel .resource-detail-page__primary-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    height: var(--73-control-height);
+    padding: 0 16px;
+    border: 1px solid var(--73-accent);
+    border-radius: var(--73-radius-control);
+    background: var(--73-accent);
+    color: var(--73-accent-contrast);
+    font-family: inherit;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background-color var(--73-transition);
+  }
+
+  .resource-detail-page--panel .resource-detail-page__primary-btn:hover:not(:disabled) {
+    background: color-mix(in srgb, var(--73-accent) 85%, var(--73-ink));
+  }
+
+  .resource-detail-page--panel .resource-detail-page__primary-btn:disabled {
+    opacity: 0.55;
+    cursor: wait;
+  }
+
+  .resource-detail-page--panel .resource-detail-page__like-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    height: var(--73-control-height);
+    padding: 0 12px;
+    border: 1px solid var(--73-border);
+    border-radius: var(--73-radius-control);
+    background: var(--73-surface);
+    color: var(--73-ink-soft);
+    font-family: var(--73-font-family-mono);
+    font-size: 12px;
+    cursor: pointer;
+  }
+
+  .resource-detail-page--panel .resource-detail-page__like-btn:hover {
+    border-color: var(--73-border-hover);
+    background: var(--73-bg-soft);
+  }
+
+  .resource-detail-page--panel .resource-detail-page__like-btn--active {
+    border-color: var(--73-danger-line);
+    background: var(--73-danger-soft);
+    color: var(--73-danger);
+  }
+
+  .resource-detail-page--panel .resource-detail-page__like-icon {
+    width: 14px;
+    height: 14px;
+  }
+
+  .resource-detail-page--panel .resource-detail-page__api-hint {
+    margin: 0;
+    color: var(--73-ink-muted);
+    font-size: 12px;
+    line-height: 1.6;
+  }
+
+  /* --- 历史版本 --- */
+  .resource-detail-page--panel .resource-detail-page__versions-side-card {
+    padding: 16px;
+  }
+
+  .resource-detail-page--panel .resource-detail-page__section-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin-bottom: 12px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--73-border-soft);
+  }
+
+  .resource-detail-page--panel .resource-detail-page__section-head h2 {
+    margin: 0;
+    color: var(--73-ink);
+    font-size: 16px;
+    font-weight: 600;
+  }
+
+  .resource-detail-page--panel .resource-detail-page__section-head > span,
+  .resource-detail-page--panel .resource-detail-page__section-count {
+    color: var(--73-ink-muted);
+    font-size: 11px;
+  }
+
+  .resource-detail-page--panel .resource-detail-page__version-list {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .resource-detail-page--panel .resource-detail-page__version-card {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 12px 0;
+    border-top: 1px solid var(--73-border-soft);
+  }
+
+  .resource-detail-page--panel .resource-detail-page__version-card:first-child {
+    padding-top: 0;
+    border-top: 0;
+  }
+
+  .resource-detail-page--panel .resource-detail-page__version-headline {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+  }
+
+  .resource-detail-page--panel .resource-detail-page__version-meta {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 8px;
+    min-width: 0;
+  }
+
+  .resource-detail-page--panel .resource-detail-page__version-meta strong {
+    color: var(--73-ink);
+    font-family: var(--73-font-family-mono);
+    font-size: 12px;
+    font-weight: 600;
+  }
+
+  .resource-detail-page--panel .resource-detail-page__version-meta span {
+    color: var(--73-ink-muted);
+    font-size: 10px;
+  }
+
+  .resource-detail-page--panel .resource-detail-page__version-flags {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    flex-shrink: 0;
+  }
+
+  .resource-detail-page--panel .resource-detail-page__version-current {
+    padding: 1px 6px;
+    border: 1px solid var(--73-success-line);
+    border-radius: 4px;
+    background: var(--73-success-soft);
+    color: var(--73-success-text);
+    font-size: 10px;
+    font-weight: 500;
+  }
+
+  .resource-detail-page--panel .resource-detail-page__version-price {
+    padding: 1px 6px;
+    border: 1px solid var(--73-accent-line);
+    border-radius: 4px;
+    background: var(--73-accent-soft);
+    color: var(--73-accent);
+    font-size: 10px;
+  }
+
+  .resource-detail-page--panel .resource-detail-page__version-note-toggle {
+    align-self: flex-start;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: var(--73-accent);
+    font-family: inherit;
+    font-size: 11px;
+    cursor: pointer;
+  }
+
+  .resource-detail-page--panel .resource-detail-page__version-note {
+    margin: 0;
+    color: var(--73-ink-soft);
+    font-size: 12px;
+    line-height: 1.6;
+  }
+
+  .resource-detail-page--panel .resource-detail-page__version-note.is-collapsed {
+    display: -webkit-box;
+    overflow: hidden;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+  }
+
+  .resource-detail-page--panel .resource-detail-page__version-actions {
+    display: flex;
+    justify-content: flex-end;
+    margin-top: 2px;
+  }
+
+  .resource-detail-page--panel .resource-detail-page__version-download {
+    height: 30px;
+    padding: 0 12px;
+    border: 1px solid var(--73-border);
+    border-radius: var(--73-radius-control);
+    background: var(--73-surface);
+    color: var(--73-ink);
+    font-family: inherit;
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    transition:
+      background-color var(--73-transition),
+      border-color var(--73-transition);
+  }
+
+  .resource-detail-page--panel .resource-detail-page__version-download:hover {
+    border-color: var(--73-border-hover);
+    background: var(--73-bg-soft);
+  }
+
+  /* --- 页面内容 --- */
+  .resource-detail-page--panel .resource-detail-page__content-card {
+    padding: 20px;
+  }
+
+  .resource-detail-page--panel .resource-detail-page__content-flow {
+    color: var(--73-ink-soft);
+    font-size: 13px;
+    line-height: 1.7;
+  }
+
+  .resource-detail-page--panel .resource-detail-page__paragraph {
+    margin: 0;
+    color: var(--73-ink-muted);
+    font-size: 12px;
+  }
+
+  /* --- 评论 --- */
+  .resource-detail-page--panel .resource-detail-page__comments-card {
+    padding: 20px;
+  }
+
+  .resource-detail-page--panel .resource-detail-page__comment-composer {
+    margin-bottom: 16px;
+    padding: 12px;
+    border: 1px solid var(--73-border);
+    border-radius: var(--73-radius-inner);
+    background: var(--73-bg-soft);
+  }
+
+  .resource-detail-page--panel .resource-detail-page__comment-input {
+    width: 100%;
+    min-height: 72px;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: var(--73-ink);
+    font-family: inherit;
+    font-size: 13px;
+    line-height: 1.6;
+    outline: none;
+    resize: vertical;
+  }
+
+  .resource-detail-page--panel .resource-detail-page__comment-input::placeholder {
+    color: var(--73-ink-placeholder);
+  }
+
+  .resource-detail-page--panel .resource-detail-page__comment-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin-top: 8px;
+  }
+
+  .resource-detail-page--panel .resource-detail-page__comment-count {
+    color: var(--73-ink-muted);
+    font-family: var(--73-font-family-mono);
+    font-size: 11px;
+  }
+
+  .resource-detail-page--panel .resource-detail-page__comment-count.danger {
+    color: var(--73-danger);
+  }
+
+  .resource-detail-page--panel .resource-detail-page__comment-submit {
+    height: 30px;
+    padding: 0 12px;
+    border: 1px solid var(--73-accent);
+    border-radius: var(--73-radius-control);
+    background: var(--73-accent);
+    color: var(--73-accent-contrast);
+    font-family: inherit;
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+  }
+
+  .resource-detail-page--panel .resource-detail-page__comment-submit:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  .resource-detail-page--panel .resource-detail-page__comment-item {
+    display: flex;
+    gap: 10px;
+    padding: 12px 0;
+    border-top: 1px solid var(--73-border-soft);
+  }
+
+  .resource-detail-page--panel .resource-detail-page__comment-avatar {
+    display: inline-flex;
+    flex: 0 0 32px;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border-radius: var(--73-radius-pill);
+    background: var(--73-inset);
+    color: var(--73-accent);
+    font-size: 12px;
+    font-weight: 600;
+  }
+
+  .resource-detail-page--panel .resource-detail-page__comment-body {
+    min-width: 0;
+  }
+
+  .resource-detail-page--panel .resource-detail-page__comment-meta {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+  }
+
+  .resource-detail-page--panel .resource-detail-page__comment-meta strong {
+    color: var(--73-ink);
+    font-size: 12px;
+    font-weight: 600;
+  }
+
+  .resource-detail-page--panel .resource-detail-page__comment-meta span {
+    color: var(--73-ink-muted);
+    font-size: 10px;
+  }
+
+  .resource-detail-page--panel .resource-detail-page__comment-body p {
+    margin: 4px 0 0;
+    color: var(--73-ink-soft);
+    font-size: 12px;
+    line-height: 1.6;
+  }
+
+  .resource-detail-page--panel .resource-detail-page__comment-gate {
+    padding: 8px 0;
+  }
+
+  .resource-detail-page--panel .resource-detail-page__comment-gate strong {
+    color: var(--73-ink);
+    font-size: 13px;
+  }
+
+  .resource-detail-page--panel .resource-detail-page__comment-gate p {
+    margin: 4px 0 8px;
+    color: var(--73-ink-muted);
+    font-size: 12px;
+  }
+
+  .resource-detail-page--panel .resource-detail-page__comment-action {
+    height: 30px;
+    padding: 0 12px;
+    border: 1px solid var(--73-border);
+    border-radius: var(--73-radius-control);
+    background: var(--73-surface);
+    color: var(--73-accent);
+    font-family: inherit;
+    font-size: 12px;
+    cursor: pointer;
+  }
+
+  /* 加载失败的兜底 */
+  .resource-detail-page--panel .resource-detail-page__load-error {
+    padding: 24px;
+    border: 1px solid var(--73-border);
+    border-radius: var(--73-radius-card);
+    background: var(--73-surface);
+    color: var(--73-ink-soft);
+    text-align: center;
+  }
+}
+
+/* --- 详情独立页形态的返回行（草稿：← 返回资源列表 + 面包屑） --- */
+@media (min-width: 901px) {
+  .resource-detail-page--panel .resource-detail-page__backbar {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 16px;
+    margin-bottom: 16px;
+  }
+
+  .resource-detail-page--panel .resource-detail-page__back-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    height: 32px;
+    padding: 0 10px;
+    border: 1px solid var(--73-border);
+    border-radius: var(--73-radius-control);
+    background: var(--73-surface);
+    color: var(--73-ink-soft);
+    font-family: inherit;
+    font-size: 12px;
+    cursor: pointer;
+    transition:
+      background-color var(--73-transition),
+      border-color var(--73-transition);
+  }
+
+  .resource-detail-page--panel .resource-detail-page__back-btn:hover {
+    border-color: var(--73-border-hover);
+    background: var(--73-bg-soft);
+  }
+
+  .resource-detail-page--panel .resource-detail-page__breadcrumb {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    min-width: 0;
+    color: var(--73-ink-muted);
+    font-size: 12px;
+  }
+
+  .resource-detail-page--panel .resource-detail-page__breadcrumb strong {
+    overflow: hidden;
+    max-width: 460px;
+    color: var(--73-ink);
+    font-weight: 500;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
+
+@media (max-width: 900px) {
+  .resource-detail-page--panel .resource-detail-page__backbar {
+    display: none;
+  }
+}

@@ -143,7 +143,6 @@ const emit = defineEmits<{
               @click="emit('remove-filter', chip)"
             >
               <span>{{ chip.tag }}</span>
-              <span class="catalog-chip__close" aria-hidden="true">×</span>
             </button>
             <button class="catalog-chip-clear" type="button" @click="emit('clear-filters')">
               清除
@@ -154,9 +153,9 @@ const emit = defineEmits<{
       </div>
 
       <div class="catalog-toolbar__trailing">
-        <!-- 分页只在多页时出现（单页整条隐藏） -->
+        <!-- 分页固定在统计行右端：单页时也渲染（前后页置灰），入口位置不随结果多少跳动 -->
         <CatalogPager
-          v-if="listingReported && pageState.total > 1"
+          v-if="listingReported"
           :page-state="pageState"
           :page-numbers="pageNumbers"
           @go-page="emit('go-page', $event)"

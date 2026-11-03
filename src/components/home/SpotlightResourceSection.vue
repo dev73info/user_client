@@ -132,7 +132,7 @@ onBeforeUnmount(() => {
         <span class="portal-section-title__icon" aria-hidden="true">★</span>
         <h2>免费资源</h2>
       </div>
-      <button class="portal-link-btn" type="button" @click="emit('more')">更多免费资源</button>
+      <button class="portal-link-btn" type="button" @click="emit('more')">更多免费资源 →</button>
     </div>
     <template v-if="cards.length > 0">
       <div ref="gridRef" class="portal-spotlight-grid">
@@ -170,14 +170,8 @@ onBeforeUnmount(() => {
                   d="m12 2.8 2.8 5.7 6.3.9-4.6 4.5 1.1 6.3-5.6-2.9-5.6 2.9 1.1-6.3-4.6-4.5 6.3-.9L12 2.8Z"
                 />
               </svg>
+              <span class="portal-spotlight-card__mark-text">{{ card.mark }}</span>
             </span>
-            <div class="portal-spotlight-card__screen portal-spotlight-card__screen--primary"></div>
-            <div
-              class="portal-spotlight-card__screen portal-spotlight-card__screen--secondary"
-            ></div>
-            <div
-              class="portal-spotlight-card__screen portal-spotlight-card__screen--tertiary"
-            ></div>
           </div>
           <div class="portal-spotlight-card__body">
             <h3>{{ card.title }}</h3>
@@ -185,108 +179,104 @@ onBeforeUnmount(() => {
             <div v-if="card.tags.length" class="portal-spotlight-card__meta-row">
               <strong v-for="tag in card.tags" :key="tag">{{ tag }}</strong>
             </div>
-            <div class="portal-spotlight-card__footer">
-              <div class="portal-spotlight-card__footer-main">
-                <span class="portal-spotlight-card__stats">
-                  <span class="portal-spotlight-card__stat" title="浏览量">
-                    <svg
-                      viewBox="0 0 24 24"
-                      width="14"
-                      height="14"
-                      fill="none"
-                      stroke="currentColor"
-                      stroke-width="2"
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      aria-hidden="true"
-                    >
-                      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
-                      <circle cx="12" cy="12" r="3"></circle>
-                    </svg>
-                    {{ card.viewCount }}
-                  </span>
-                  <span class="portal-spotlight-card__stat" title="下载量">
-                    <svg
-                      viewBox="0 0 24 24"
-                      width="14"
-                      height="14"
-                      fill="none"
-                      stroke="currentColor"
-                      stroke-width="2"
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      aria-hidden="true"
-                    >
-                      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-                      <polyline points="7 10 12 15 17 10"></polyline>
-                      <line x1="12" y1="15" x2="12" y2="3"></line>
-                    </svg>
-                    {{ card.downloadCount }}
-                  </span>
+          </div>
+          <div class="portal-spotlight-card__footer">
+            <div class="portal-spotlight-card__meta">
+              <span
+                v-if="card.authorLabel"
+                class="portal-spotlight-card__author"
+                :class="{
+                  'is-marquee': isAuthorMarquee(card.resourceId),
+                  'username-gradient': card.gradient && !card.userColor,
+                }"
+                :style="card.userColor ? { color: card.userColor } : undefined"
+                :title="card.authorLabel"
+                :ref="(el) => bindAuthorMarquee(el, card.resourceId)"
+              >
+                <span class="portal-spotlight-card__author-text">{{ card.authorLabel }}</span>
+              </span>
+              <span
+                v-if="card.originLabel"
+                class="portal-spotlight-card__origin"
+                :class="{ 'is-repost': card.originRepost }"
+                >{{ card.originLabel }}</span
+              >
+              <time v-if="card.metaTime" class="portal-spotlight-card__time">{{
+                card.metaTime
+              }}</time>
+            </div>
+            <div class="portal-spotlight-card__actions">
+              <span class="portal-spotlight-card__stats">
+                <span class="portal-spotlight-card__stat" title="浏览量">
+                  <svg
+                    viewBox="0 0 24 24"
+                    width="14"
+                    height="14"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    aria-hidden="true"
+                  >
+                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                    <circle cx="12" cy="12" r="3"></circle>
+                  </svg>
+                  {{ card.viewCount }}
                 </span>
-                <span
-                  v-if="card.authorLabel"
-                  class="portal-spotlight-card__author"
-                  :class="{
-                    'is-marquee': isAuthorMarquee(card.resourceId),
-                    'username-gradient': card.gradient && !card.userColor,
-                  }"
-                  :style="card.userColor ? { color: card.userColor } : undefined"
-                  :title="card.authorLabel"
-                  :ref="(el) => bindAuthorMarquee(el, card.resourceId)"
+                <span class="portal-spotlight-card__stat" title="下载量">
+                  <svg
+                    viewBox="0 0 24 24"
+                    width="14"
+                    height="14"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    aria-hidden="true"
+                  >
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                    <polyline points="7 10 12 15 17 10"></polyline>
+                    <line x1="12" y1="15" x2="12" y2="3"></line>
+                  </svg>
+                  {{ card.downloadCount }}
+                </span>
+              </span>
+              <button
+                type="button"
+                class="portal-spotlight-card__likes"
+                :class="{
+                  'is-liked': card.likedByMe,
+                  'is-busy': isLikeSubmitting(card.resourceId),
+                }"
+                :title="card.likedByMe ? '取消点赞' : '点赞'"
+                :aria-pressed="card.likedByMe"
+                :aria-label="
+                  card.likedByMe ? `已点赞 ${card.likeCount}，点击取消` : `点赞，当前 ${card.likeCount}`
+                "
+                :disabled="isLikeSubmitting(card.resourceId)"
+                @click.stop="emit('like', card)"
+                @keydown.enter.stop
+                @keydown.space.stop
+              >
+                <svg
+                  viewBox="0 0 24 24"
+                  width="13"
+                  height="13"
+                  :fill="card.likedByMe ? 'currentColor' : 'none'"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  aria-hidden="true"
                 >
-                  <span class="portal-spotlight-card__author-text">{{ card.authorLabel }}</span>
-                </span>
-              </div>
-              <div class="portal-spotlight-card__footer-bottom">
-                <div class="portal-spotlight-card__footer-leading">
-                  <span
-                    v-if="card.originLabel"
-                    class="portal-spotlight-card__origin"
-                    :class="{ 'is-repost': card.originRepost }"
-                    >{{ card.originLabel }}</span
-                  >
-                  <button
-                    type="button"
-                    class="portal-spotlight-card__likes"
-                    :class="{
-                      'is-liked': card.likedByMe,
-                      'is-busy': isLikeSubmitting(card.resourceId),
-                    }"
-                    :title="card.likedByMe ? '取消点赞' : '点赞'"
-                    :aria-pressed="card.likedByMe"
-                    :aria-label="
-                      card.likedByMe
-                        ? `已点赞 ${card.likeCount}，点击取消`
-                        : `点赞，当前 ${card.likeCount}`
-                    "
-                    :disabled="isLikeSubmitting(card.resourceId)"
-                    @click.stop="emit('like', card)"
-                    @keydown.enter.stop
-                    @keydown.space.stop
-                  >
-                    <svg
-                      viewBox="0 0 24 24"
-                      width="13"
-                      height="13"
-                      :fill="card.likedByMe ? 'currentColor' : 'none'"
-                      stroke="currentColor"
-                      stroke-width="2"
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      aria-hidden="true"
-                    >
-                      <path
-                        d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"
-                      ></path>
-                    </svg>
-                    {{ card.likeCount }}
-                  </button>
-                </div>
-                <span v-if="card.metaTime" class="portal-spotlight-card__time">{{
-                  card.metaTime
-                }}</span>
-              </div>
+                  <path
+                    d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"
+                  ></path>
+                </svg>
+                {{ card.likeCount }}
+              </button>
             </div>
           </div>
         </article>

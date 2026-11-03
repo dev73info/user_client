@@ -63,15 +63,17 @@ function select() {
           {{ post.bounty_points }} 积分 · {{ communityBountyLabel(post.bounty_status) }}
         </span>
       </div>
+    </div>
+    <div class="community-post-card__footer">
       <div class="community-post-card__meta">
         <span>作者：{{ post.author }}</span>
         <time :datetime="post.published_at">{{ formatBackendDateTime(post.published_at) }}</time>
       </div>
-    </div>
-    <div class="community-post-card__stats" aria-label="帖子数据">
-      <span>{{ post.like_count }} 点赞</span>
-      <span>{{ post.comment_count }} 评论</span>
-      <span v-if="post.favorited_by_me">已收藏</span>
+      <div class="community-post-card__stats" aria-label="帖子数据">
+        <span>{{ post.like_count }} 点赞</span>
+        <span>{{ post.comment_count }} 评论</span>
+        <span v-if="post.favorited_by_me">已收藏</span>
+      </div>
     </div>
   </article>
 </template>
@@ -79,10 +81,9 @@ function select() {
 <style scoped>
 .community-post-card {
   display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: 18px;
-  padding: 20px;
+  flex-direction: column;
+  gap: 12px;
+  padding: 18px 20px;
   border: 1px solid var(--73-border);
   border-radius: 12px;
   background: var(--73-surface-strong);
@@ -96,6 +97,7 @@ function select() {
 }
 .community-post-card--rail {
   padding: 13px 12px;
+  gap: 8px;
   border-radius: 10px;
   cursor: pointer;
 }
@@ -113,6 +115,15 @@ function select() {
     0 8px 18px color-mix(in srgb, var(--73-accent) 8%, transparent);
 }
 .community-post-card__main {
+  min-width: 0;
+}
+/* 表尾一行：作者/时间在左，点赞与评论在右，窄卡也不会各占一行 */
+.community-post-card__footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
   min-width: 0;
 }
 .community-post-card__heading,
@@ -167,16 +178,19 @@ function select() {
   line-height: 1.6;
 }
 .community-post-card__tags {
-  margin-top: 14px;
+  margin-top: 10px;
 }
 .community-post-card__meta {
-  margin-top: 14px;
+  margin-top: 0;
+  min-width: 0;
   color: var(--73-ink-muted);
   font-size: 12px;
 }
 .community-post-card__stats {
   justify-content: flex-end;
   flex: 0 0 auto;
+  /* 换行到第二行时也贴右，不和作者/时间挤在左边 */
+  margin-left: auto;
   color: var(--73-ink-muted);
   font-size: 12px;
   font-variant-numeric: tabular-nums;

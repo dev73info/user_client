@@ -102,40 +102,44 @@ const {
   display: inline-flex;
   align-items: center;
   flex: 0 1 auto;
-  gap: 9px;
-  width: clamp(220px, 22vw, 320px);
+  gap: 8px;
+  width: clamp(220px, 22vw, 300px);
   min-width: 0;
+  height: var(--73-control-height);
+  min-height: var(--73-control-height);
   padding: 0 10px 0 12px;
-  min-height: 42px;
-  border-radius: 999px;
-  border: 1px solid var(--ptn-line);
-  background: linear-gradient(180deg, var(--ptn-surface), var(--ptn-surface-sunken));
-  box-shadow: inset 0 1px 0 var(--ptn-surface-highlight);
+  border-radius: var(--73-radius-control);
+  border: 1px solid var(--73-border);
+  background: var(--73-surface);
+  box-shadow: none;
   color: var(--ptn-ink-muted);
   transition:
     width 300ms var(--portal-nav-motion),
-    background-color 160ms ease,
     border-color 160ms ease,
     box-shadow 160ms ease,
-    color 160ms ease,
-    transform 220ms var(--portal-nav-motion);
+    color 160ms ease;
 }
 
 .portal-search:hover,
 .portal-search:focus-within {
   border-color: var(--ptn-line-hover);
-  background: var(--ptn-inverse);
+  background: var(--73-surface);
+}
+
+.portal-search:focus-within {
+  border-color: var(--73-accent);
+  box-shadow: var(--73-focus-ring);
 }
 
 .portal-search.is-input-focused,
 .portal-search.is-input-hovered,
 .portal-search.is-filled {
   border-color: var(--ptn-line-hover);
-  background: var(--ptn-inverse);
+  background: var(--73-surface);
 }
 
 .portal-search.is-filled {
-  box-shadow: inset 0 1px 0 var(--ptn-surface-highlight);
+  box-shadow: none;
 }
 
 .portal-search-field {
@@ -167,7 +171,7 @@ const {
 .portal-search input {
   flex: 1;
   min-width: 0;
-  height: 40px;
+  height: calc(var(--73-control-height) - 2px);
   padding-right: 30px;
   border: 0;
   outline: 0;
@@ -176,7 +180,7 @@ const {
   caret-color: var(--ptn-accent-brand);
   color: var(--ptn-ink-strong);
   font: inherit;
-  font-size: 14px;
+  font-size: 13px;
   line-height: 1.4;
   text-overflow: ellipsis;
 }

@@ -195,7 +195,7 @@ describe('行内判定：取消 / 改稿 / 解除合作', () => {
 describe('行内展示：状态、时间与金额', () => {
   it('担保需求「待付定金」按事实拆成三句', () => {
     const noResource = requirement({ bound_resource_id: null })
-    expect(formatRequirementDisplayStatus(noResource, facts())).toBe('待开发者接单')
+    expect(formatRequirementDisplayStatus(noResource, facts())).toBe('待接单')
     expect(formatRequirementDisplayStatus(requirement(), facts({ contract: AWAITING_B }))).toBe(
       '待签合同',
     )
@@ -231,8 +231,9 @@ describe('行内展示：状态、时间与金额', () => {
     expect(formatBudget(null)).toBe('待议价')
     expect(formatBudget(undefined)).toBe('待议价')
     expect(formatBudget(0)).toBe('¥0.00')
-    expect(formatBudget(1200.5)).toBe('¥1200.50')
+    expect(formatBudget(1200.5)).toBe('¥1,200.50')
     expect(formatBudget(999)).toBe('¥999.00')
+    expect(formatBudget(1280000)).toBe('¥1,280,000.00')
   })
 
   it('评价摘要：脏数据（纯数字 / 过短）只显示分数', () => {

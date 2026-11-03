@@ -7,24 +7,35 @@
   flex-wrap: wrap;
   align-items: center;
   gap: 8px;
-  border-bottom: 1px solid var(--73-border);
-  padding-bottom: 10px;
+  border-bottom: 1px solid var(--73-border-soft);
+  padding-bottom: 12px;
 }
 
 .attachment-tab {
   padding: 6px 14px;
-  border: 1px solid var(--73-ink-disabled);
+  border: 1px solid var(--73-border);
   border-radius: 999px;
   background: var(--73-surface-strong);
-  color: var(--73-success);
+  color: var(--73-ink-soft);
   font-size: 13px;
   font-weight: 700;
   cursor: pointer;
+  transition:
+    border-color 140ms ease,
+    background 140ms ease,
+    color 140ms ease;
 }
 
+.attachment-tab:hover {
+  border-color: var(--73-accent-line);
+  background: var(--73-accent-soft);
+  color: var(--73-accent);
+}
+
+/* 选中态走门户主色（原来两端都用成功绿，看着像「已经完成」而不是「当前页签」） */
 .attachment-tab--active {
-  background: var(--73-success);
-  border-color: var(--73-success);
+  background: var(--73-accent);
+  border-color: var(--73-accent);
   color: var(--73-surface-strong);
 }
 
@@ -90,8 +101,8 @@
 .attachment-field textarea {
   width: 100%;
   padding: 8px 10px;
-  border: 1px solid var(--73-ink-disabled);
-  border-radius: 8px;
+  border: 1px solid var(--73-border);
+  border-radius: 10px;
   background: var(--73-surface-strong);
   color: var(--73-ink);
   font: inherit;
@@ -100,19 +111,37 @@
   resize: vertical;
 }
 
+.attachment-field input[type='text']:focus,
+.attachment-field input[type='number']:focus,
+.attachment-field textarea:focus {
+  outline: none;
+  border-color: var(--73-accent);
+  box-shadow: var(--73-focus-ring);
+}
+
 .attachment-btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   min-height: 34px;
   padding: 6px 16px;
-  border: 1px solid var(--73-ink-disabled);
-  border-radius: 8px;
+  border: 1px solid var(--73-border);
+  border-radius: 10px;
   background: var(--73-surface-strong);
   color: var(--73-ink-soft);
   font-size: 13px;
   font-weight: 700;
   cursor: pointer;
+  transition:
+    border-color 140ms ease,
+    background 140ms ease,
+    color 140ms ease;
+}
+
+.attachment-btn:not(:disabled):hover {
+  border-color: var(--73-accent-line);
+  background: var(--73-accent-soft);
+  color: var(--73-accent);
 }
 
 .attachment-btn:disabled {
@@ -121,14 +150,19 @@
 }
 
 .attachment-btn--primary {
-  border-color: var(--73-success);
-  background: var(--73-success);
+  border-color: var(--73-accent);
+  background: var(--primary-gradient, var(--73-accent));
+  color: var(--73-surface-strong);
+}
+
+.attachment-btn--primary:not(:disabled):hover {
+  border-color: var(--73-accent);
   color: var(--73-surface-strong);
 }
 
 .attachment-btn--ghost {
-  border-color: var(--73-ink-disabled);
-  color: var(--73-success);
+  border-color: var(--73-border);
+  color: var(--73-accent);
 }
 
 .attachment-btn--danger {

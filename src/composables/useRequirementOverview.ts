@@ -108,7 +108,7 @@ export function formatRequirementDisplayStatus(
     return formatRequirementStatus(item.status, item.payment_mode)
   }
   if (item.bound_resource_id == null) {
-    return '待开发者接单'
+    return '待接单'
   }
 
   return isRequirementContractSigned(contractSigningStatusMap, item) ? '待付定金' : '待签合同'

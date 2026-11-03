@@ -56,10 +56,6 @@ function goResources() {
   void router.push({ name: 'resources' })
 }
 
-function goCommunity() {
-  void router.push({ name: 'community' })
-}
-
 function goProtectedTarget(target: { name: string; hash?: string }) {
   if (auth.isAuthed) {
     void router.push(target)
@@ -120,15 +116,6 @@ function goWorkbench() {
     >
       <span>◫</span>
       <small>资源</small>
-    </button>
-    <button
-      type="button"
-      class="portal-mobile-dock__item"
-      :class="{ active: ['community', 'community-post'].includes(routeName) }"
-      @click="goCommunity"
-    >
-      <span>◎</span>
-      <small>社区</small>
     </button>
     <button
       type="button"

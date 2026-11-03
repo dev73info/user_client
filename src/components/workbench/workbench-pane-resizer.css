@@ -1,0 +1,28 @@
+/* 中栏拖拽条：12px 命中区 + 2px 竖线，悬停 / 聚焦 / 拖动时转主色。
+   消息中心的会话分隔条与分组导航的分隔条共用这一份（见 WorkbenchPaneResizer.vue）。 */
+.workbench-pane-resizer {
+  position: relative;
+  width: 12px;
+  min-height: 0;
+  align-self: stretch;
+  cursor: col-resize;
+  touch-action: none;
+  outline: none;
+}
+
+.workbench-pane-resizer::before {
+  content: '';
+  position: absolute;
+  top: 20px;
+  bottom: 20px;
+  left: 5px;
+  width: 2px;
+  border-radius: 999px;
+  background: var(--73-border-soft);
+  transition: background 140ms ease;
+}
+
+.workbench-pane-resizer:hover::before,
+.workbench-pane-resizer:focus-visible::before {
+  background: var(--73-accent);
+}

@@ -80,9 +80,6 @@ const notOpened = computed(() => !props.loading && !props.error && !props.deposi
         >
           处理中 {{ money(props.deposit?.pendingWithdrawalFen) }}
         </TTag>
-        <TTag variant="outline" :tone="canWithdraw ? 'success' : 'info'">
-          {{ canWithdraw ? '满足提现条件' : '不满足提现条件' }}
-        </TTag>
         <TTag v-if="creditText" variant="outline" tone="accent">{{ creditText }}</TTag>
       </div>
       <p v-if="props.error" class="wallet-hero__note" role="alert">{{ props.error }}</p>

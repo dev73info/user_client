@@ -80,9 +80,9 @@ export function buildRailGroups(realnameApproved: boolean): RailGroup[] {
   const assets: RailGroupItem[] = [
     {
       key: 'favorites',
-      label: '我的收藏',
+      label: '我的帖子',
       name: 'workbench-favorites',
-      description: '查看收藏的社区帖子',
+      description: '查看我发布与收藏的社区帖子',
     },
     {
       key: 'coupons',

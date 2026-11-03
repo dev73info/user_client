@@ -18,8 +18,6 @@ const props = defineProps<{
   overview: DevWalletOverview | null
   /** 可提现余额是否达标（不达标时大数与标签都压弱） */
   canWithdraw: boolean
-  /** T+1 到账与免手续费的说明，由后端下发；两条路径共用 */
-  payoutScheduleNote: string
   autoWithdrawEnabled: boolean
   autoWithdrawSaving: boolean
   /** 自动提现开关是否可点：通道不可用时禁用，但已开启的要允许关闭 */
@@ -60,7 +58,7 @@ const emit = defineEmits<{
           {{ money(props.overview?.withdrawable_balance_cny) }}
         </span>
       </div>
-      <!-- 状态标签与 T+1 说明同处一行：标签靠左，说明贴右边界。说明文字由后端下发 -->
+      <!-- 状态标签一行：只留「提现处理中」这类真实在途状态 -->
       <div class="wallet-hero__meta">
         <div class="wallet-hero__tags">
           <TTag
@@ -70,11 +68,7 @@ const emit = defineEmits<{
           >
             提现处理中 {{ money(props.overview?.pending_withdraw_cny) }}
           </TTag>
-          <TTag variant="outline" :tone="props.canWithdraw ? 'success' : 'info'">
-            {{ props.canWithdraw ? '满足提现条件' : '不满足提现条件' }}
-          </TTag>
         </div>
-        <p class="wallet-hero__note">{{ props.payoutScheduleNote }}</p>
       </div>
     </div>
 

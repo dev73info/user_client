@@ -35,7 +35,7 @@ describe('buildRailGroups', () => {
 
   it('资产与权益按券 / 积分 / 权益排（积分商城不在这里，走顶栏）', () => {
     expect(buildRailGroups(true)[1]?.items.map((item) => item.label)).toEqual([
-      '我的收藏',
+      '我的帖子',
       '优惠券中心',
       '积分中心',
       '我的权益',

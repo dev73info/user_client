@@ -21,6 +21,10 @@ const emit = defineEmits<{
 
 <template>
   <section class="workbench-rail-group" :aria-label="group.label">
+    <header class="workbench-rail-group__head">
+      <span class="workbench-rail-group__title">工作台</span>
+      <span class="workbench-rail-group__badge">{{ group.label }}</span>
+    </header>
     <nav class="workbench-rail-group__list">
       <RouterLink
         v-for="item in group.items"
@@ -31,7 +35,8 @@ const emit = defineEmits<{
         :aria-current="isItemActive(item) ? 'page' : undefined"
         @click="emit('navigate')"
       >
-        <span>{{ item.label }}</span>
+        <span class="workbench-rail-group__label">{{ item.label }}</span>
+        <small class="workbench-rail-group__desc">{{ item.description }}</small>
       </RouterLink>
     </nav>
   </section>

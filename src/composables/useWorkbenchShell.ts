@@ -123,6 +123,9 @@ export function useWorkbenchShell() {
     // 图标栏的分组（中栏列表 + 右栏内容）
     activeRailGroup,
     isRailGroupItemActive: railGroups.isItemActive,
+    // 侧边导航树（基准稿）：条目 / 分组高亮
+    isMenuItemActive: menu.isMenuItemActive,
+    isGroupActive: menu.isGroupActive,
     // 会话与角标
     conversations: conversations.visibleConversations,
     conversationLoading: conversations.conversationLoading,
@@ -134,6 +137,7 @@ export function useWorkbenchShell() {
     // 外壳自身
     auth,
     currentTitle,
+    activeMenuItem: menu.findActiveItem,
     logout,
   }
 }

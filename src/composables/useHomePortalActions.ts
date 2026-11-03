@@ -68,6 +68,10 @@ export function useHomePortalActions(options: HomePortalActionsOptions) {
     void router.push({ name: 'resources', query: { sale: 'free' } })
   }
 
+  function openCommunity() {
+    void router.push({ name: 'community' })
+  }
+
   async function openDevWorkbench() {
     if (options.isDeveloperAccount.value) {
       void router.push({ name: 'dev-requirement-hall' })
@@ -217,6 +221,7 @@ export function useHomePortalActions(options: HomePortalActionsOptions) {
     openDeveloperProfile,
     openTeamProfile,
     openFreeResources,
+    openCommunity,
     openDevWorkbench,
     openResourceInit,
     openQuickPanel,

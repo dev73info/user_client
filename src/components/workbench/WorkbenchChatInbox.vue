@@ -1,10 +1,11 @@
 <script setup lang="ts">
-import { onBeforeUnmount, onMounted, ref } from 'vue'
-import { Plus, Search, TIcon } from 'ui_73info'
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import { Plus, Search, TIcon, TInput } from 'ui_73info'
 
 import type { MessageThread } from '@/shared/messagesThreads'
+import { toneBadgeClass } from '@/shared/messagesThreads'
 
-defineProps<{
+const props = defineProps<{
   threads: MessageThread[]
   selectedRequirementId: string
   loading: boolean
@@ -18,6 +19,38 @@ const emit = defineEmits<{
   pin: [thread: MessageThread, pinned: boolean]
   remove: [thread: MessageThread]
 }>()
+
+/* 会话筛选页签：只按真实的会话状态分档（进行中 / 已完成），不造系统消息这类没有数据源的档位。 */
+type InboxFilter = 'all' | 'active' | 'done'
+const INBOX_FILTERS: Array<{ value: InboxFilter; label: string }> = [
+  { value: 'all', label: '全部会话' },
+  { value: 'active', label: '进行中' },
+  { value: 'done', label: '已完成' },
+]
+const filter = ref<InboxFilter>('all')
+
+const visibleRows = computed(() => {
+  if (filter.value === 'all') {
+    return props.threads
+  }
+  if (filter.value === 'active') {
+    return props.threads.filter((thread) => thread.tone === 'active' || thread.tone === 'attention')
+  }
+  return props.threads.filter((thread) => thread.tone === 'done')
+})
+
+const emptyText = computed(() => {
+  if (keyword.value.trim()) {
+    return '没有匹配的会话'
+  }
+  if (filter.value === 'active') {
+    return '没有进行中的会话'
+  }
+  if (filter.value === 'done') {
+    return '没有已完成的会话'
+  }
+  return '暂无会话'
+})
 
 const LONG_PRESS_MS = 500
 const LONG_PRESS_MOVE_PX = 8
@@ -193,39 +226,61 @@ onBeforeUnmount(() => {
 <template>
   <section class="workbench-inbox" aria-label="会话列表">
     <header class="workbench-inbox__header">
-      <label class="workbench-inbox__search">
-        <TIcon :size="18">
-          <Search />
-        </TIcon>
-        <input
-          v-model="keyword"
-          type="search"
-          placeholder="搜索聊天记录、联系人..."
-          aria-label="搜索聊天记录、联系人"
-        />
-      </label>
-      <button
-        class="workbench-inbox__compose"
-        type="button"
-        aria-label="发起会话"
-        title="发起会话"
-        @click="emit('compose')"
+      <div class="workbench-inbox__heading">
+        <h2>消息中心</h2>
+        <span class="workbench-inbox__count">{{ threads.length }}</span>
+        <button
+          class="workbench-inbox__compose"
+          type="button"
+          aria-label="发起会话"
+          title="发起会话"
+          @click="emit('compose')"
+        >
+          <TIcon :size="15">
+            <Plus />
+          </TIcon>
+          <span>新建会话</span>
+        </button>
+      </div>
+      <TInput
+        v-model="keyword"
+        class="workbench-inbox__search"
+        clearable
+        placeholder="搜索聊天记录、联系人..."
+        aria-label="搜索聊天记录、联系人"
       >
-        <TIcon :size="21">
-          <Plus />
-        </TIcon>
-      </button>
+        <template #prefix>
+          <TIcon>
+            <Search />
+          </TIcon>
+        </template>
+      </TInput>
     </header>
+
+    <div class="workbench-inbox__tabs" role="tablist" aria-label="会话筛选">
+      <button
+        v-for="tab in INBOX_FILTERS"
+        :key="tab.value"
+        class="workbench-inbox__tab"
+        :class="{ 'is-active': filter === tab.value }"
+        type="button"
+        role="tab"
+        :aria-selected="filter === tab.value"
+        @click="filter = tab.value"
+      >
+        {{ tab.label }}
+      </button>
+    </div>
 
     <div class="workbench-inbox__list" @scroll.passive="closeThreadMenu">
       <p v-if="loading && threads.length === 0" class="workbench-inbox__state">消息加载中...</p>
-      <p v-else-if="threads.length === 0" class="workbench-inbox__state">
-        {{ keyword.trim() ? '没有匹配的会话' : '暂无会话' }}
+      <p v-else-if="visibleRows.length === 0" class="workbench-inbox__state">
+        {{ emptyText }}
       </p>
 
       <template v-else>
         <button
-          v-for="thread in threads"
+          v-for="thread in visibleRows"
           :key="thread.key"
           class="workbench-inbox__row"
           :class="{
@@ -250,14 +305,19 @@ onBeforeUnmount(() => {
 
           <span class="workbench-inbox__body">
             <span class="workbench-inbox__title-row">
-              <strong>{{ thread.title }}</strong>
+              <strong :title="thread.title">{{ thread.title }}</strong>
               <time>{{ formatTime(thread) }}</time>
             </span>
             <!-- 只有真会话才报对方是谁；「会话待开启」那一行的状态已经写在状态胶囊里，不再重复一行 -->
             <span v-if="thread.kind === 'conversation'" class="workbench-inbox__meta">
               {{ thread.partnerLabel }}
             </span>
-            <span class="workbench-inbox__preview">{{ thread.description }}</span>
+            <span class="workbench-inbox__preview" :title="thread.description">{{
+              thread.description
+            }}</span>
+            <span class="workbench-inbox__tag" :class="toneBadgeClass(thread.tone)">{{
+              thread.statusLabel
+            }}</span>
           </span>
 
           <em v-if="thread.unreadCount > 0" class="workbench-inbox__unread">

@@ -1,4 +1,4 @@
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, onMounted, ref, watch, type UnwrapNestedRefs } from 'vue'
 import { useRoute } from 'vue-router'
 
 import {
@@ -97,13 +97,6 @@ export function useCommunityList() {
     void load()
   }
 
-  function resetFilters() {
-    keyword.value = ''
-    tag.value = ''
-    status.value = ''
-    applyFilters()
-  }
-
   function previousPage() {
     if (!hasPrevious.value || loading.value) return
     page.value -= 1
@@ -149,8 +142,11 @@ export function useCommunityList() {
     loadTags,
     setMode,
     applyFilters,
-    resetFilters,
     previousPage,
     nextPage,
   }
 }
+
+/** 列表状态：分栏页把工具栏提到页面顶部后，列表状态由视图持有、面板与工具栏共用这一份。
+ *  形状是 `reactive(useCommunityList())` 解包后的那份（ref 已展开）。 */
+export type CommunityListState = UnwrapNestedRefs<ReturnType<typeof useCommunityList>>

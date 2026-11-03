@@ -90,9 +90,11 @@ const selectedState = defineModel<RequirementFilterKey>('selectedState', { requi
 </template>
 
 <style scoped>
-/* 档位名只有三个字，状态下拉收窄；写 flex 基宽而非 width——TSelect 自带 width: 100% 会顶掉它（详见 portal-workbench.css）。 */
+/* 档位只有两三字，状态下拉按当前文字收宽（TSelect 自带 width: 100%，用 fit-content 顶回来）；
+   不再固定 140px 留一截空白。 */
 .wb-toolbar__field--requirement-state {
-  flex: 0 1 140px;
+  flex: 0 0 auto;
+  width: fit-content;
 }
 
 /* 「发布新需求」和筛选、搜索同处一行：桌面显示整字按钮，手机档收进搜索栏右端的小号胶囊 */

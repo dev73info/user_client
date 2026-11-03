@@ -47,7 +47,7 @@ describe('my signatures list', () => {
     expect(mocks.list).toHaveBeenCalledWith('test-token')
     expect(wrapper.findAll('.wb-item')).toHaveLength(2)
     expect(wrapper.find('.requirement-title strong').text()).toBe('网站服务合同')
-    expect(wrapper.find('.requirement-actions').text()).toContain('去签署')
+    expect(wrapper.find('.requirement-summary').text()).toContain('去签署')
     await wrapper.find('.wb-item').trigger('click')
     await flushPromises()
     expect(router.currentRoute.value.name).toBe('workbench-signature-detail')

@@ -74,7 +74,12 @@ export function formatRequirementTime(value: string) {
 }
 
 export function formatBudget(value?: number | null) {
-  return value == null ? '待议价' : `¥${value.toFixed(2)}`
+  if (value == null) return '待议价'
+  const amount = value.toLocaleString('zh-CN', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })
+  return `¥${amount}`
 }
 
 const IN_PROGRESS_STATUSES: RequirementItem['status'][] = [
@@ -95,7 +100,7 @@ export function statusBadgeClass(item: RequirementItem, facts: Facts) {
 /** 担保模式的「待付定金」一档其实叠了三件事（等接单 / 等签约 / 等付款），按当前事实拆开说。 */
 export function formatRequirementDisplayStatus(item: RequirementItem, facts: Facts) {
   if (!isSelfManagedRequirement(item) && item.status === 'pending_deposit') {
-    if (!hasBoundResource(item)) return '待开发者接单'
+    if (!hasBoundResource(item)) return '待接单'
     return isRequirementContractSigned(facts) ? '待付定金' : '待签合同'
   }
   if (isWaitingContractSign(item, facts)) return '待签合同'

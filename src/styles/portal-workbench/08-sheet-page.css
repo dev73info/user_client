@@ -19,30 +19,31 @@
 /* 纸内各段的间距改由分隔线与内边距承担：页根不再留 16px 的栅格间距
    （那条栅格规则在工作台外壳里，`gap: 0` 与它一起写在 user-workbench-shell.css）。 */
 
+/* 基准稿（积分中心）：读数条与面板都是一张白卡片，圆角 12、细描边、极轻投影 */
 .wb-sheet > .wb-strip {
   flex: 0 0 auto;
   margin: 0;
-  padding: 14px 24px;
-  border: 0;
-  border-bottom: 1px solid color-mix(in srgb, var(--73-accent-soft) 92%, transparent);
-  border-radius: 0;
-  background: color-mix(in srgb, var(--73-accent-soft) 24%, transparent);
-  box-shadow: none;
+  padding: 14px 20px;
+  border: 1px solid var(--73-border);
+  border-radius: 12px;
+  background: var(--73-surface);
+  box-shadow: 0 1px 2px color-mix(in srgb, var(--73-ink) 5%, transparent);
 }
 
 .wb-sheet > .wallet-section {
   margin-top: 0;
-  padding: 22px 24px 24px;
-  border: 0;
-  border-radius: 0;
-  background: transparent;
-  box-shadow: none;
+  padding: 20px;
+  border: 1px solid var(--73-border);
+  border-radius: 12px;
+  background: var(--73-surface);
+  box-shadow: 0 1px 2px color-mix(in srgb, var(--73-ink) 5%, transparent);
 }
 
 /* 同一页有多块面板时（勋章墙 + 邀请记录，账户优惠券的分块），用一条分隔线代替两张卡 */
 .wb-sheet > .wallet-section + .wallet-section {
-  padding-top: 22px;
-  border-top: 1px solid color-mix(in srgb, var(--73-accent-soft) 92%, transparent);
+  margin-top: 16px;
+  padding-top: 20px;
+  border-top: 1px solid var(--73-border-soft);
 }
 
 /* 中栏已经用高亮项写着这一页的名字（「订单与合同 → 我的发票」），纸上再挂一遍同名卡头就是第三遍同样的字。

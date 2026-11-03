@@ -20,6 +20,9 @@ const pageSize = defineModel<number>('pageSize', { required: true })
 <template>
   <div class="wb-pager">
     <div class="wb-pager__count">
+      <span class="my-requirements-pager__total"
+        >共 <strong>{{ total }}</strong> 条需求记录</span
+      >
       <TSelect v-model="pageSize" class="wb-pager__size" aria-label="每页需求单数">
         <TOption
           v-for="size in LIST_PAGE_SIZES"
@@ -34,6 +37,7 @@ const pageSize = defineModel<number>('pageSize', { required: true })
       :page-size="pageSize"
       :total="total"
       :pager-count="5"
+      :show-total="false"
       background
       aria-label="需求单分页"
     />

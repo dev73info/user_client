@@ -34,7 +34,7 @@
   gap: 8px;
   margin: 16px 0;
 }
-.ticket-filters input,
+/* 工单搜索框走 TInput（统一高 / 圆角 / 描边），这里只保留下拉与表单输入的原生样式 */
 .ticket-filters select,
 .ticket-compose input,
 .ticket-compose select,

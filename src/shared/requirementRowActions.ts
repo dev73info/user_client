@@ -126,14 +126,11 @@ export function moreRowActions(
   if (canComment(item.status) && item.comment_rating != null && !canCancel(item)) {
     entries.push({ key: 'comment', label: '修改评价' })
   }
-  // 开不出票时不留一个点了才报错的入口：置灰并把原因挂在 title 上（灰项不可点，原因只能靠悬浮）。
-  const invoiceEntry = { key: 'invoice' as const, label: '获取发票' }
-  const invoiceState = invoiceEntryState(item.payment_mode, facts.invoiceSummary)
-  entries.push(
-    invoiceState.enabled
-      ? invoiceEntry
-      : { ...invoiceEntry, disabled: true, title: invoiceState.reason },
-  )
+  // 开不出票时整项不出现：灰项既不能点，又把「当前：待付定金」这类状态文案塞进悬浮提示，
+  // 与行上的状态徽标对不上；等它真的能开了再出现。
+  if (invoiceEntryState(item.payment_mode, facts.invoiceSummary).enabled) {
+    entries.push({ key: 'invoice', label: '获取发票' })
+  }
   // 「解除合作」是唯一的退出入口（2026-10-06 起两套旧出口合并）：进去先协商，对方不同意再申请平台介入。
   if (canReportBreach(item, facts)) entries.push({ key: 'breach', label: '解除合作', danger: true })
   if (canCancel(item)) entries.push({ key: 'cancel', label: '取消需求', danger: true })

@@ -8,7 +8,16 @@
  * 关键词是本地过滤，用 `v-model:keyword` 直接回写；担保方式是服务端筛选，
  * 换值要回到第一页重新拉取，所以只把选中的值抛上去，由页面里的 `onGuaranteeFilterChange` 处理。
  */
-import { Close, Plus, Refresh, TButton, TIcon, TSelect, type SelectModelValue } from 'ui_73info'
+import {
+  Plus,
+  Refresh,
+  Search,
+  TButton,
+  TIcon,
+  TInput,
+  TSelect,
+  type SelectModelValue,
+} from 'ui_73info'
 
 import type { RequirementGuaranteeFilter } from '@/shared/requirementDisplay'
 
@@ -35,6 +44,22 @@ const keyword = defineModel<string>('keyword', { required: true })
 
 <template>
   <div class="requirement-hall__toolbar">
+    <TInput
+      v-model="keyword"
+      class="requirement-hall__search"
+      clearable
+      placeholder="搜索标题、编号"
+      aria-label="搜索需求标题或编号"
+      title="可按需求标题、编号、说明、担保方式与状态搜索"
+      @clear="emit('clear-keyword')"
+    >
+      <template #prefix>
+        <TIcon>
+          <Search />
+        </TIcon>
+      </template>
+    </TInput>
+
     <TSelect
       class="requirement-hall__guarantee-select"
       :model-value="guaranteeFilter"
@@ -42,26 +67,6 @@ const keyword = defineModel<string>('keyword', { required: true })
       aria-label="按担保方式筛选需求"
       @update:model-value="emit('guarantee-change', $event)"
     />
-
-    <div class="requirement-hall__search">
-      <input
-        v-model="keyword"
-        type="search"
-        placeholder="搜索标题、编号"
-        title="可按需求标题、编号、说明、担保方式与状态搜索"
-      />
-      <button
-        v-if="keyword.trim()"
-        class="requirement-hall__search-clear"
-        type="button"
-        aria-label="清空搜索"
-        @click="emit('clear-keyword')"
-      >
-        <TIcon>
-          <Close />
-        </TIcon>
-      </button>
-    </div>
 
     <div class="portal-page__header-actions requirement-hall__header-actions">
       <button class="requirement-hall__publish-btn" type="button" @click="emit('publish')">
@@ -148,62 +153,10 @@ const keyword = defineModel<string>('keyword', { required: true })
   width: 132px;
 }
 
-.requirement-hall__search {
-  position: relative;
-  display: flex;
+/* 搜索框走 TInput（与工作台各列表页同一套高 / 圆角 / 描边），这里只给弹性宽度 */
+.requirement-hall__toolbar :deep(.requirement-hall__search) {
   flex: 1 1 200px;
   min-width: 0;
-  align-items: center;
-}
-
-.requirement-hall__toolbar input {
-  width: 100%;
-  min-height: 42px;
-  border: 1px solid color-mix(in srgb, var(--73-accent) 86%, transparent);
-  border-radius: 14px;
-  background: var(--73-surface-strong);
-  color: var(--73-ink);
-  padding: 0 40px 0 14px;
-  outline: none;
-  transition:
-    border-color 180ms ease,
-    box-shadow 180ms ease,
-    background-color 180ms ease;
-}
-
-.requirement-hall__toolbar input::-webkit-search-cancel-button,
-.requirement-hall__toolbar input::-webkit-search-decoration {
-  display: none;
-  -webkit-appearance: none;
-}
-
-.requirement-hall__search-clear {
-  position: absolute;
-  right: 8px;
-  display: grid;
-  place-items: center;
-  width: 26px;
-  height: 26px;
-  border: 0;
-  border-radius: 999px;
-  background: transparent;
-  color: var(--73-ink-placeholder);
-  font-size: 12px;
-  cursor: pointer;
-  transition:
-    background-color 160ms ease,
-    color 160ms ease;
-}
-
-.requirement-hall__search-clear:hover {
-  background: color-mix(in srgb, var(--73-border) 66%, transparent);
-  color: var(--73-ink-soft);
-}
-
-.requirement-hall__toolbar input:focus {
-  border-color: color-mix(in srgb, var(--73-accent) 58%, transparent);
-  background: var(--73-surface-strong);
-  box-shadow: 0 0 0 4px color-mix(in srgb, var(--73-accent) 10%, transparent);
 }
 
 @media (max-width: 640px) {
@@ -213,7 +166,7 @@ const keyword = defineModel<string>('keyword', { required: true })
   }
 
   .requirement-hall__toolbar :deep(.requirement-hall__guarantee-select),
-  .requirement-hall__search,
+  .requirement-hall__toolbar :deep(.requirement-hall__search),
   .portal-page--nav .requirement-hall__header-actions {
     flex: 1 1 100%;
     width: auto;

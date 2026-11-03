@@ -107,20 +107,21 @@ function onKeydown(event: KeyboardEvent) {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   align-items: center;
-  padding: 4px;
-  border-radius: 999px;
-  border: 1px solid color-mix(in srgb, var(--accent) 16%, var(--card-border));
-  background: color-mix(in srgb, var(--accent) 8%, var(--bg-mid));
+  padding: 3px;
+  border-radius: 8px;
+  border: 1px solid var(--73-border);
+  background: var(--73-bg-soft);
 }
 
 .resource-mode-switch__thumb {
   position: absolute;
-  top: 4px;
-  bottom: 4px;
-  left: 4px;
-  width: calc(50% - 4px);
-  border-radius: 999px;
-  background: var(--accent);
+  top: 3px;
+  bottom: 3px;
+  left: 3px;
+  width: calc(50% - 3px);
+  border-radius: 6px;
+  background: var(--73-surface);
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.06);
   pointer-events: none;
   transition: transform 180ms cubic-bezier(0.22, 1, 0.36, 1);
 }
@@ -136,24 +137,24 @@ function onKeydown(event: KeyboardEvent) {
   align-items: center;
   justify-content: center;
   gap: 6px;
-  min-width: 92px;
-  height: 32px;
-  padding: 0 16px;
+  min-width: 84px;
+  height: 30px;
+  padding: 0 12px;
   border: 0;
-  border-radius: 999px;
+  border-radius: 6px;
   background: transparent;
   color: var(--73-ink-soft);
   font: inherit;
-  font-size: 13px;
-  font-weight: 700;
+  font-size: 12px;
+  font-weight: 500;
   white-space: nowrap;
   cursor: pointer;
   transition: color 180ms ease;
 }
 
 .resource-mode-switch__count {
-  font-size: 12px;
-  font-weight: 700;
+  font-size: 11px;
+  font-weight: 500;
   font-variant-numeric: tabular-nums;
   opacity: 0.85;
 }
@@ -163,20 +164,21 @@ function onKeydown(event: KeyboardEvent) {
 }
 
 .resource-mode-switch__option:hover {
-  color: var(--accent);
+  color: var(--73-ink);
 }
 
 .resource-mode-switch__option:focus-visible {
-  outline: 3px solid color-mix(in srgb, var(--73-accent) 16%, transparent);
-  outline-offset: 2px;
+  outline: none;
+  box-shadow: var(--73-focus-ring);
 }
 
 .resource-mode-switch__option.is-active {
-  color: var(--73-surface-strong);
+  color: var(--73-accent);
+  font-weight: 600;
 }
 
 .resource-mode-switch__option.is-active:hover {
-  color: var(--73-surface-strong);
+  color: var(--73-accent);
 }
 
 @media (max-width: 900px) {

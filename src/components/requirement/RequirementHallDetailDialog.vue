@@ -136,10 +136,10 @@ function openWorkbench(): void {
   width: min(860px, 100%);
   max-height: min(760px, calc(100dvh - 32px));
   overflow-y: auto;
-  border: 1px solid color-mix(in srgb, var(--73-ink-disabled) 82%, transparent);
-  border-radius: 18px;
-  background: var(--73-surface-strong);
-  box-shadow: 0 28px 72px color-mix(in srgb, var(--73-ink) 22%, transparent);
+  border: 1px solid var(--73-border);
+  border-radius: var(--73-radius-card);
+  background: var(--73-surface);
+  box-shadow: var(--73-shadow-dialog);
 }
 
 .requirement-hall-detail__head {
@@ -150,24 +150,26 @@ function openWorkbench(): void {
   align-items: flex-start;
   justify-content: space-between;
   gap: 16px;
-  padding: 20px 22px 16px;
-  border-bottom: 1px solid color-mix(in srgb, var(--73-border) 84%, transparent);
-  background: color-mix(in srgb, var(--73-surface-strong) 96%, transparent);
-  backdrop-filter: blur(12px);
+  padding: 24px 24px 16px;
+  border-bottom: 1px solid var(--73-border-soft);
+  background: var(--73-surface);
 }
 
 .requirement-hall-detail__head h3 {
   margin: 10px 0 6px;
   color: var(--73-ink);
   font-size: 22px;
+  font-weight: 600;
   line-height: 1.3;
+  letter-spacing: -0.01em;
 }
 
 .requirement-hall-detail__head p {
   margin: 0;
   color: var(--73-ink-muted);
-  font-size: 13px;
-  font-weight: 700;
+  font-family: var(--73-font-family-mono);
+  font-size: 12px;
+  font-weight: 400;
 }
 
 .requirement-hall-detail__close {
@@ -175,11 +177,11 @@ function openWorkbench(): void {
   align-items: center;
   justify-content: center;
   flex: 0 0 auto;
-  width: 36px;
-  height: 36px;
-  border: 1px solid color-mix(in srgb, var(--73-ink-disabled) 86%, transparent);
-  border-radius: 10px;
-  background: var(--73-surface-strong);
+  width: 32px;
+  height: 32px;
+  border: 1px solid var(--73-border);
+  border-radius: var(--73-radius-control);
+  background: var(--73-surface);
   color: var(--73-ink-soft);
   cursor: pointer;
 }
@@ -187,20 +189,21 @@ function openWorkbench(): void {
 .requirement-hall-detail__meta {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px 14px;
-  padding: 14px 22px;
-  border-bottom: 1px solid color-mix(in srgb, var(--73-border) 76%, transparent);
-  color: var(--73-ink-soft);
-  font-size: 13px;
-  font-weight: 800;
+  gap: 6px 16px;
+  padding: 12px 24px;
+  border-bottom: 1px solid var(--73-border-soft);
+  color: var(--73-ink-muted);
+  font-family: var(--73-font-family-mono);
+  font-size: 12px;
+  font-weight: 400;
 }
 
 .requirement-hall-detail__actions {
   display: flex;
   justify-content: flex-end;
   gap: 10px;
-  padding: 0 22px 22px;
-  background: color-mix(in srgb, var(--73-surface-strong) 62%, transparent);
+  padding: 0 24px 24px;
+  background: var(--73-surface);
 }
 
 .requirement-hall-detail__bind {
@@ -208,29 +211,23 @@ function openWorkbench(): void {
   align-items: center;
   justify-content: center;
   gap: 6px;
-  min-height: 38px;
+  min-height: var(--73-control-height);
   padding: 0 16px;
-  border: 1px solid color-mix(in srgb, var(--73-accent) 34%, transparent);
-  border-radius: 8px;
+  border: 1px solid var(--73-accent);
+  border-radius: var(--73-radius-control);
   background: var(--73-accent);
-  color: var(--73-surface-strong);
-  font-size: 14px;
-  font-weight: 800;
+  color: var(--73-accent-contrast);
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 500;
   line-height: 1;
   cursor: pointer;
-  box-shadow: 0 8px 18px color-mix(in srgb, var(--73-accent) 16%, transparent);
-  transition:
-    background-color 160ms ease,
-    border-color 160ms ease,
-    box-shadow 160ms ease,
-    transform 160ms ease;
+  box-shadow: none;
+  transition: background-color var(--73-transition);
 }
 
 .requirement-hall-detail__bind:hover {
-  border-color: color-mix(in srgb, var(--73-accent) 42%, transparent);
-  background: var(--73-app-accent-strong);
-  box-shadow: 0 10px 22px color-mix(in srgb, var(--73-accent) 22%, transparent);
-  transform: translateY(-1px);
+  background: color-mix(in srgb, var(--73-accent) 85%, var(--73-ink));
 }
 
 .requirement-hall-detail__bind:focus-visible {
@@ -241,11 +238,11 @@ function openWorkbench(): void {
 .requirement-hall-detail__review-panel {
   display: grid;
   gap: 12px;
-  margin: 16px 22px;
+  margin: 16px 24px;
   padding: 16px;
-  border: 1px solid color-mix(in srgb, var(--73-ink) 8%, transparent);
-  border-radius: 18px;
-  background: var(--73-app-grad-soft-17);
+  border: 1px solid var(--73-border);
+  border-radius: var(--73-radius-inner);
+  background: var(--73-bg);
 }
 
 .requirement-hall-detail__review-grid {
@@ -267,21 +264,22 @@ function openWorkbench(): void {
 
 .requirement-hall-detail__review-label {
   color: var(--73-ink-muted);
-  font-size: 12px;
-  font-weight: 800;
-  letter-spacing: 0.08em;
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.02em;
   line-height: 1.35;
 }
 
 .requirement-hall-detail__review-value {
   min-width: 0;
-  padding: 12px 14px;
-  border-radius: 12px;
-  background: color-mix(in srgb, var(--73-surface-strong) 90%, transparent);
+  padding: 10px 12px;
+  border: 1px solid var(--73-border);
+  border-radius: var(--73-radius-control);
+  background: var(--73-surface);
   color: var(--73-ink);
-  font-weight: 700;
-  line-height: 1.7;
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--73-ink-placeholder) 12%, transparent);
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.6;
 }
 
 .requirement-hall-detail__review-grid .requirement-hall-detail__review-value {
@@ -291,6 +289,10 @@ function openWorkbench(): void {
 .requirement-hall-detail__review-grid div.requirement-hall-detail__review-value {
   display: flex;
   align-items: center;
+  color: var(--73-ink);
+  font-family: var(--73-font-family-mono);
+  font-size: 18px;
+  font-weight: 600;
 }
 
 .requirement-hall-detail__review-value--multiline {
@@ -324,7 +326,7 @@ function openWorkbench(): void {
   .requirement-hall-detail__review-panel {
     margin: 14px 16px;
     padding: 14px;
-    border-radius: 16px;
+    border-radius: var(--73-radius-inner);
   }
 
   .requirement-hall-detail__review-grid {

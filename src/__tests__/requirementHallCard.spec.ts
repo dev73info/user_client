@@ -18,19 +18,21 @@ function requirement(paymentMode: 'platform_guarantee' | 'self_managed') {
 }
 
 describe('RequirementHallCard 发布方式标签', () => {
-  it('电签担保卡只显示发布方式，不拼待付定金', () => {
+  it('电签担保卡把状态与担保方式拆成两枚 chip', () => {
     const wrapper = mount(RequirementHallCard, {
       props: { card: requirement('platform_guarantee') },
     })
-    expect(wrapper.get('.pay-mode-chip').text()).toBe('电签担保')
+    expect(wrapper.get('.requirement-hall__badge--guarantee').text()).toBe('电签担保')
+    expect(wrapper.get('.requirement-hall__badge--info').text()).toBe('待付定金')
     wrapper.unmount()
   })
 
-  it('自管卡只显示发布方式，不拼待开发', () => {
+  it('自管卡的 deposit_paid 按自管口径写成「待开发」', () => {
     const wrapper = mount(RequirementHallCard, {
       props: { card: requirement('self_managed') },
     })
-    expect(wrapper.get('.pay-mode-chip').text()).toBe('无电签约定')
+    expect(wrapper.get('.requirement-hall__badge--guarantee').text()).toBe('无电签约定')
+    expect(wrapper.get('.requirement-hall__badge--info').text()).toBe('待开发')
     wrapper.unmount()
   })
 })

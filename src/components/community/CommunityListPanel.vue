@@ -1,25 +1,30 @@
 <script setup lang="ts">
 import { computed, reactive, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { Plus, Refresh, TButton, TEmpty, TIcon, TLoading } from 'ui_73info'
+import { Plus, Refresh, Search, TButton, TEmpty, TIcon, TInput, TLoading, TSelect } from 'ui_73info'
+import type { SelectModelValue, SelectOptionItem } from 'ui_73info'
 
 import type { CommunityPost, CreateCommunityPostPayload } from '@/api/community'
 import CommunityPagination from '@/components/community/CommunityPagination.vue'
 import CommunityPostCard from '@/components/community/CommunityPostCard.vue'
 import CommunityPostFormDialog from '@/components/community/CommunityPostFormDialog.vue'
 import { useCommunityAccess } from '@/composables/useCommunityAccess'
-import { useCommunityList, type CommunityListMode } from '@/composables/useCommunityList'
+import type { CommunityListMode, CommunityListState } from '@/composables/useCommunityList'
 import { useCommunityPostEditor } from '@/composables/useCommunityPostEditor'
 import { COMMUNITY_STATUS_OPTIONS } from '@/shared/community'
 
 const props = withDefaults(
   defineProps<{
+    /** 列表状态：分栏页由视图持有（顶部工具栏与列表共用同一份），收藏页也在视图里创建。 */
+    list: CommunityListState
     selectable?: boolean
     selectedPostId?: number | null
     /** 工作台收藏页只保留「我的帖子 / 我的收藏」，不提供公共社区的全量流。 */
     hideAllMode?: boolean
+    /** 分栏页的工具栏已经提到页面顶部：面板内不再重复渲染页签 / 搜索 / 筛选 / 发布 */
+    hideChrome?: boolean
   }>(),
-  { selectable: false, selectedPostId: null, hideAllMode: false },
+  { selectable: false, selectedPostId: null, hideAllMode: false, hideChrome: false },
 )
 
 const emit = defineEmits<{
@@ -30,7 +35,7 @@ const emit = defineEmits<{
 
 const router = useRouter()
 const { openRealname } = useCommunityAccess()
-const list = reactive(useCommunityList())
+const list = props.list
 const editor = reactive(useCommunityPostEditor())
 const allModes: Array<{ value: CommunityListMode; label: string }> = [
   { value: 'all', label: '全部帖子' },
@@ -40,6 +45,37 @@ const allModes: Array<{ value: CommunityListMode; label: string }> = [
 const modes = computed(() =>
   props.hideAllMode ? allModes.filter((item) => item.value !== 'all') : allModes,
 )
+
+/** TSelect 把空字符串当成「未选择」，「全部」项改用不会被标签名 / 状态码命中的哨兵值 */
+const ALL_VALUE = '__all__'
+
+const tagOptions = computed<SelectOptionItem[]>(() => [
+  { label: '全部标签', value: ALL_VALUE },
+  ...list.tags.map((item) => ({ label: item.name, value: item.name })),
+])
+
+const tagValue = computed(() => list.tag || ALL_VALUE)
+const statusValue = computed(() => list.status || ALL_VALUE)
+
+const statusOptions: SelectOptionItem[] = [
+  { label: '全部状态', value: ALL_VALUE },
+  ...COMMUNITY_STATUS_OPTIONS.map((item) => ({ label: item.label, value: item.value })),
+]
+
+function changeTag(value: SelectModelValue) {
+  list.tag = value === ALL_VALUE ? '' : String(value)
+}
+
+function changeStatus(value: SelectModelValue) {
+  list.status = value === ALL_VALUE ? '' : String(value)
+}
+
+/** 顶部工具栏的「发布帖子」通过视图调这里打开弹窗（弹窗仍归面板）。 */
+function openCreate() {
+  editor.openCreate()
+}
+
+defineExpose({ openCreate })
 
 watch(
   () => list.posts,
@@ -77,68 +113,80 @@ async function submitPost(payload: CreateCommunityPostPayload) {
     }"
     aria-label="社区帖子列表"
   >
-    <header class="community-page__header">
-      <h1>社区</h1>
-      <div class="community-page__header-actions">
-        <TButton icon-only aria-label="刷新社区帖子" @click="list.load">
-          <TIcon><Refresh /></TIcon>
-        </TButton>
-        <TButton
-          variant="solid"
-          tone="accent"
-          class="community-page__publish"
-          @click="editor.openCreate"
+    <template v-if="!hideChrome">
+      <header class="community-page__header">
+        <h1>{{ hideAllMode ? '我的帖子' : '社区' }}</h1>
+        <div class="community-page__header-actions">
+          <TButton icon-only aria-label="刷新社区帖子" @click="list.load">
+            <TIcon><Refresh /></TIcon>
+          </TButton>
+          <TButton
+            variant="solid"
+            tone="accent"
+            class="community-page__publish"
+            @click="editor.openCreate"
+          >
+            <TIcon><Plus /></TIcon>
+            发布帖子
+          </TButton>
+        </div>
+      </header>
+
+      <div class="community-page__tabs" role="tablist" aria-label="社区帖子范围">
+        <button
+          v-for="item in modes"
+          :key="item.value"
+          type="button"
+          role="tab"
+          :aria-selected="list.mode === item.value"
+          :class="{ active: list.mode === item.value }"
+          @click="list.setMode(item.value)"
         >
-          <TIcon><Plus /></TIcon>
-          发布帖子
-        </TButton>
-      </div>
-    </header>
-
-    <div class="community-page__tabs" role="tablist" aria-label="社区帖子范围">
-      <button
-        v-for="item in modes"
-        :key="item.value"
-        type="button"
-        role="tab"
-        :aria-selected="list.mode === item.value"
-        :class="{ active: list.mode === item.value }"
-        @click="list.setMode(item.value)"
-      >
-        {{ item.label }}
-      </button>
-    </div>
-
-    <form
-      v-if="list.mode !== 'favorites'"
-      class="community-filters"
-      @submit.prevent="list.applyFilters"
-    >
-      <input
-        v-model="list.keyword"
-        class="community-filters__keyword"
-        type="search"
-        maxlength="80"
-        placeholder="搜索标题、作者或标签"
-        aria-label="搜索社区帖子"
-      />
-      <select v-model="list.tag" aria-label="按标签筛选">
-        <option value="">全部标签</option>
-        <option v-for="item in list.tags" :key="item.id" :value="item.name">{{ item.name }}</option>
-      </select>
-      <select v-if="list.mode === 'mine'" v-model="list.status" aria-label="按审核状态筛选">
-        <option value="">全部状态</option>
-        <option v-for="item in COMMUNITY_STATUS_OPTIONS" :key="item.value" :value="item.value">
           {{ item.label }}
-        </option>
-      </select>
-      <TButton variant="solid" tone="accent" type="submit"> 搜索 </TButton>
-      <TButton type="button" @click="list.resetFilters">重置</TButton>
-    </form>
-    <div v-if="list.tagError" class="community-inline-error" role="alert">
-      <span>{{ list.tagError }}</span>
-      <button type="button" @click="list.loadTags">重试</button>
-    </div>
+        </button>
+      </div>
+
+      <form
+        v-if="list.mode !== 'favorites'"
+        class="community-filters"
+        @submit.prevent="list.applyFilters"
+      >
+        <TSelect
+          class="community-filters__select"
+          :model-value="tagValue"
+          :options="tagOptions"
+          aria-label="按标签筛选"
+          @update:model-value="changeTag"
+        />
+        <TSelect
+          v-if="list.mode === 'mine'"
+          class="community-filters__select"
+          :model-value="statusValue"
+          :options="statusOptions"
+          aria-label="按审核状态筛选"
+          @update:model-value="changeStatus"
+        />
+        <TInput
+          v-model="list.keyword"
+          class="community-filters__keyword"
+          clearable
+          :maxlength="80"
+          placeholder="搜索标题、作者或标签"
+          aria-label="搜索社区帖子"
+        >
+          <template #prefix>
+            <TIcon>
+              <Search />
+            </TIcon>
+          </template>
+        </TInput>
+        <TButton variant="solid" tone="accent" type="submit"> 搜索 </TButton>
+      </form>
+      <div v-if="list.tagError" class="community-inline-error" role="alert">
+        <span>{{ list.tagError }}</span>
+        <button type="button" @click="list.loadTags">重试</button>
+      </div>
+    </template>
 
     <section class="community-page__results" :aria-busy="list.loading">
       <TLoading :loading="list.loading" class="community-page__loading">
@@ -236,28 +284,22 @@ async function submitPost(payload: CreateCommunityPostPayload) {
   background: var(--73-accent-soft);
   color: var(--73-accent);
 }
+/* 社区列表的筛选条：下拉定宽排在搜索框左侧，搜索框吃剩余宽度，按钮只占自身宽度。 */
 .community-filters {
   flex-wrap: wrap;
   margin-bottom: 12px;
 }
-.community-filters input,
-.community-filters select {
-  min-height: 36px;
-  border: 1px solid var(--73-border);
-  border-radius: 9px;
-  background: var(--73-surface-strong);
-  color: var(--73-ink);
-  padding: 0 10px;
-  font: inherit;
+/* 搜索框走 TInput（与工作台各列表页同一套高 / 圆角 / 描边），这里只给弹性宽度 */
+.community-filters :deep(.community-filters__keyword) {
+  flex: 1 1 220px;
+  min-width: 0;
+}
+/* TSelect 根节点默认 width: 100%，这里按内容收窄；它关了 attrs 透传，
+   父组件的 scope id 落不到根节点上，只能从面板 :deep() 选。 */
+.community-filters :deep(.community-filters__select) {
+  flex: 0 0 auto;
+  width: 136px;
   font-size: 12px;
-}
-.community-filters__keyword {
-  flex: 1 1 100%;
-  min-width: 0;
-}
-.community-filters select {
-  flex: 1 1 120px;
-  min-width: 0;
 }
 .community-page__loading {
   display: block;
@@ -306,10 +348,10 @@ async function submitPost(payload: CreateCommunityPostPayload) {
   display: grid;
   grid-template-columns: 1fr 1fr;
 }
-.community-list-panel--rail .community-filters__keyword {
+.community-list-panel--rail .community-filters :deep(.community-filters__keyword) {
   grid-column: 1 / -1;
 }
-.community-list-panel--rail .community-filters select {
+.community-list-panel--rail .community-filters :deep(.community-filters__select) {
   width: 100%;
 }
 .community-list-panel--rail .community-filters :deep(button) {
@@ -330,8 +372,8 @@ async function submitPost(payload: CreateCommunityPostPayload) {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
   .community-page__tabs button,
-  .community-filters input,
-  .community-filters select,
+  .community-filters :deep(.community-filters__keyword),
+  .community-filters :deep(.community-filters__select),
   .community-filters :deep(button),
   .community-page__publish {
     min-height: 44px;

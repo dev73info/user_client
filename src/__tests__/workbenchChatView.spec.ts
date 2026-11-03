@@ -191,13 +191,13 @@ describe('工作台聊天首页', () => {
       toJSON: () => ({}),
     })
 
-    const resizer = wrapper.find('.workbench-chat__resizer')
+    const resizer = wrapper.find('.workbench-pane-resizer')
     expect(resizer.attributes('role')).toBe('separator')
     expect(resizer.attributes('aria-valuemin')).toBe('280')
     expect(resizer.attributes('aria-valuemax')).toBe('520')
 
     await resizer.trigger('keydown', { key: 'ArrowRight' })
-    expect(chat.attributes('style')).toContain('--workbench-chat-inbox-width: 376px')
+    expect(chat.attributes('style')).toContain('--uw-pane-width: 376px')
     wrapper.unmount()
   })
 

@@ -117,6 +117,7 @@ export function requirementHallStats(
     { label: '可浏览需求', value: `${hallTotal} 条` },
     { label: '已完成需求', value: `${overview?.total_orders ?? 0} 单` },
     { label: '好评率', value: `${(overview?.positive_rate ?? 0).toFixed(1)}%` },
+    { label: '累计成交', value: formatCny(overview?.total_turnover_cny ?? 0) },
   ]
 }
 

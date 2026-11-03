@@ -53,14 +53,29 @@ const {
 
 <template>
   <main class="portal-page catalog-layout-page">
-    <!-- 面包屑整条移除后，本页在桌面端只剩这一个 h1：视觉隐藏、保留在 DOM 里，
-         供屏幕阅读器与搜索引擎定位当前分区；分区名在右侧分区间页签里仍然可见 -->
-    <h1 v-if="!isMobile" class="catalog-visually-hidden">{{ currentEntryLabel }}</h1>
+    <!-- 桌面页头：标题 / 说明 / 结果统计；移动端保留自己的列表头，不渲染这一块；
+         详情态进入独立页面形态（草稿），页头与工具条都收起，由详情自己的返回行承担出口 -->
+    <header v-if="!isMobile && selectedResourceId === null" class="catalog-hero">
+      <div class="catalog-hero__copy">
+        <div class="catalog-hero__eyebrow">[ RESOURCE CATALOG · 资源项目 ]</div>
+        <h1 class="catalog-hero__title">资源项目</h1>
+        <p class="catalog-hero__subtitle">
+          免费与付费资源，按专区与子分区浏览；支持排序与多维筛选。
+        </p>
+      </div>
+      <span v-if="listingReported" class="catalog-hero__stats">
+        <span class="catalog-hero__dot" aria-hidden="true"></span>
+        共 {{ pageState.totalItems }} 个
+        <template v-if="pageState.total > 1">
+          · 第 {{ pageState.current }}/{{ pageState.total }} 页
+        </template>
+      </span>
+    </header>
 
     <!-- 工具条：第一行「专区下拉 + 子类下划线 Tab …… 分区 segmented（唯一一处）」，
          第二行「已选筛选 chip + 排序下拉 + 统计 / 翻页」 -->
     <CatalogToolbar
-      v-if="!isMobile"
+      v-if="!isMobile && selectedResourceId === null"
       :root-tabs="rootTabs"
       :current-root-name="currentRootName"
       :current-root-slug="currentRootSlug"
@@ -113,6 +128,7 @@ const {
           <ResourceDetailPanel
             :key="selectedResourceId"
             :resource-id="selectedResourceId"
+            :context-label="currentEntryLabel"
             @close="clearSelectedResource"
           />
         </aside>
@@ -151,6 +167,7 @@ const {
           <ResourceDetailPanel
             :key="selectedResourceId"
             :resource-id="selectedResourceId"
+            :context-label="currentEntryLabel"
             @close="clearSelectedResource"
           />
         </aside>

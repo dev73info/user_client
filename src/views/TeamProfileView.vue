@@ -159,7 +159,7 @@ function onAvatarError() {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  background: var(--73-app-grad-accent-17);
+  background: var(--73-accent);
   color: var(--73-surface-strong);
   font-size: 28px;
   font-weight: 700;

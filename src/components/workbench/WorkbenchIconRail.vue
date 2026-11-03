@@ -1,18 +1,19 @@
 <script setup lang="ts">
 import { computed, ref, watch, type Component } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
+import { RouterLink, useRoute, useRouter } from 'vue-router'
 import {
   Bell,
   ChatDotRound,
   Connection,
+  DataAnalysis,
   Document,
   Files,
   Grid,
   OfficeBuilding,
   Promotion,
-  Switch,
+  Suitcase,
   TIcon,
-  UserFilled,
+  User,
   Wallet,
 } from 'ui_73info'
 
@@ -45,6 +46,8 @@ const props = defineProps<{
   teamInvitationCount: number
   /** 「我的合同」要实名通过才进分组，与侧边栏同一口径。 */
   realnameApproved: boolean
+  /** 底部头像的首字母；不传就显示占位符，避免为了一个字去读 store。 */
+  username?: string
 }>()
 
 const emit = defineEmits<{
@@ -53,6 +56,7 @@ const emit = defineEmits<{
 
 const route = useRoute()
 const router = useRouter()
+const avatarInitial = computed(() => (props.username || '?').slice(0, 1).toUpperCase())
 
 const { groups, activeGroup } = useWorkbenchRailGroups({
   realnameApproved: computed(() => props.realnameApproved),
@@ -69,7 +73,7 @@ const devItems: RailItem[] = [
   {
     key: 'home',
     label: '开发者总览',
-    icon: UserFilled,
+    icon: DataAnalysis,
     to: { name: 'dev-home' },
     activeNames: ['dev-home', 'dev-dashboard'],
   },
@@ -173,6 +177,8 @@ const userItems = computed<RailItem[]>(() => [
 
 const items = computed(() => (props.isDevWorkbenchMode ? devItems : userItems.value))
 const switchLabel = computed(() => (props.isDevWorkbenchMode ? '切换到用户' : '切换到开发者'))
+/** 切换按钮画「要去的那一侧」：用户态给开发者的工作包，开发态回用户的个人身份。 */
+const switchIcon = computed(() => (props.isDevWorkbenchMode ? User : Suitcase))
 
 /**
  * 每个分组上一次停在的页面：在组与组之间来回切换时，回到该组原来那一页，
@@ -272,20 +278,13 @@ const {
 
 <template>
   <aside class="workbench-icon-rail" aria-label="工作台快捷导航">
-    <button
-      class="workbench-icon-rail__item workbench-icon-rail__switch"
-      type="button"
-      :aria-label="switchLabel"
-      @click="switchWorkbenchMode"
-      @mouseenter="showTooltip(switchLabel, $event)"
-      @focus="showTooltip(switchLabel, $event)"
-      @mouseleave="hideTooltip"
-      @blur="hideTooltip"
+    <RouterLink
+      class="workbench-icon-rail__brand"
+      :to="{ name: 'workbench' }"
+      aria-label="工作台总览"
     >
-      <TIcon :size="23">
-        <Switch />
-      </TIcon>
-    </button>
+      73
+    </RouterLink>
 
     <nav class="workbench-icon-rail__items">
       <button
@@ -305,7 +304,7 @@ const {
         @mouseleave="hideTooltip"
         @blur="hideTooltip"
       >
-        <TIcon :size="23">
+        <TIcon :size="20">
           <component :is="item.icon" />
         </TIcon>
         <span v-if="badgeFor(item.key) > 0" class="workbench-icon-rail__badge">
@@ -325,7 +324,33 @@ const {
       </span>
     </Teleport>
 
-    <WorkbenchIconRailSettings />
+    <div class="workbench-icon-rail__foot">
+      <button
+        class="workbench-icon-rail__item workbench-icon-rail__switch"
+        type="button"
+        :aria-label="switchLabel"
+        @click="switchWorkbenchMode"
+        @mouseenter="showTooltip(switchLabel, $event)"
+        @focus="showTooltip(switchLabel, $event)"
+        @mouseleave="hideTooltip"
+        @blur="hideTooltip"
+      >
+        <TIcon :size="20">
+          <component :is="switchIcon" />
+        </TIcon>
+      </button>
+
+      <WorkbenchIconRailSettings />
+
+      <RouterLink
+        class="workbench-icon-rail__avatar"
+        :to="{ name: 'workbench', query: { view: 'profile' } }"
+        :title="props.username"
+        :aria-label="`${props.username || '个人'}账户`"
+      >
+        {{ avatarInitial }}
+      </RouterLink>
+    </div>
   </aside>
 </template>
 

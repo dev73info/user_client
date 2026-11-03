@@ -1,0 +1,220 @@
+/* ============================================================================
+   工作台 · 收敛版（去噪）
+   ============================================================================
+
+   目标：把“什么都在抢注意力”收成“一个页面一个重心”。
+   - 蓝色只留给：当前选中、主行动、可点链接；不再给标签、计数、图标铺底色。
+   - 标签 / 状态 / 计数一律改为纯文字（需要时用颜色），去掉底色、描边与胶囊。
+   - 卡片只保留一条极浅描边，不再叠加投影；次级按钮改为文字按钮。
+   - 等宽字体只留给金额、编号与时间，正文回到常规字体。
+   ============================================================================ */
+
+/* --- 标签、状态、计数：从“彩色小盒子”降为纯文字 --- */
+.user-workbench .user-workbench__content .wb-badge,
+.user-workbench .user-workbench__content .requirement-hall__badge,
+.user-workbench .user-workbench__content .pay-mode-chip,
+.user-workbench .user-workbench__content .points-pill,
+.user-workbench .user-workbench__content .workbench-inbox__tag {
+  height: auto;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: var(--73-ink-muted);
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.5;
+}
+
+.user-workbench .user-workbench__content .wb-badge--success,
+.user-workbench .user-workbench__content .points-pill.is-success,
+.user-workbench .user-workbench__content .requirement-hall__badge--success {
+  color: var(--73-success-text);
+}
+
+.user-workbench .user-workbench__content .wb-badge--warning,
+.user-workbench .user-workbench__content .points-pill.is-warning,
+.user-workbench .user-workbench__content .requirement-hall__badge--warning {
+  color: var(--73-warning-text);
+}
+
+.user-workbench .user-workbench__content .wb-badge--danger,
+.user-workbench .user-workbench__content .points-pill.is-danger,
+.user-workbench .user-workbench__content .requirement-hall__badge--danger {
+  color: var(--73-danger);
+}
+
+.user-workbench .user-workbench__content .wb-badge--accent,
+.user-workbench .user-workbench__content .requirement-hall__badge--info {
+  color: var(--73-ink-soft);
+}
+
+/* 发布方式：只保留文字，担保方式用墨色、自管用灰色 */
+.user-workbench .user-workbench__content .pay-mode-chip--platform_guarantee {
+  color: var(--73-ink-soft);
+}
+
+.user-workbench .user-workbench__content .pay-mode-chip--self_managed {
+  color: var(--73-ink-muted);
+}
+
+/* 卡片里的编号：取消灰底小胶囊，回到等宽文字 */
+.user-workbench .user-workbench__content .requirement-title span {
+  padding: 0;
+  border-radius: 0;
+  background: transparent;
+  color: var(--73-ink-placeholder);
+  font-size: 12px;
+}
+
+/* 状态点保留，但去掉整颗胶囊的底色（摘要列） */
+.user-workbench .user-workbench__content .requirement-summary > .wb-badge {
+  gap: 6px;
+}
+
+/* --- 卡片：单层极浅描边，不再叠投影 --- */
+.user-workbench .user-workbench__content .wb-sheet > .wb-strip,
+.user-workbench .user-workbench__content .wb-sheet > .wallet-section,
+.user-workbench .user-workbench__content .points-page .points-metric,
+.user-workbench .user-workbench__content .points-page .points-records,
+.user-workbench .user-workbench__content .points-page .points-reward,
+.user-workbench .user-workbench__content .profile-page .requirement-row,
+.user-workbench .user-workbench__content .workbench-chat__pane {
+  border-color: var(--73-border-soft);
+  box-shadow: none;
+}
+
+.user-workbench .user-workbench__content .wb-item {
+  border-color: var(--73-border-soft);
+  box-shadow: none;
+}
+
+/* --- 次级按钮：文字按钮；只有主行动保留实底蓝 --- */
+.user-workbench .user-workbench__content .requirement-actions button.ghost {
+  height: 32px;
+  min-height: 32px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--73-ink-soft);
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.user-workbench .user-workbench__content .requirement-actions button.ghost:hover:not(:disabled) {
+  border: 0;
+  background: color-mix(in srgb, var(--73-ink) 5%, transparent);
+  color: var(--73-ink);
+}
+
+.user-workbench .user-workbench__content .requirement-actions button.ghost.action-primary,
+.user-workbench .user-workbench__content .requirement-actions button.ghost.action-review {
+  border: 0;
+  background: var(--73-accent);
+  color: var(--73-accent-contrast);
+}
+
+.user-workbench .user-workbench__content .requirement-actions button.ghost.action-primary:hover:not(:disabled),
+.user-workbench .user-workbench__content .requirement-actions button.ghost.action-review:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--73-accent) 85%, var(--73-ink));
+  color: var(--73-accent-contrast);
+}
+
+.user-workbench .user-workbench__content .requirement-actions button.ghost.is-danger,
+.user-workbench .user-workbench__content .requirement-actions button.ghost.is-danger:hover:not(:disabled) {
+  border: 0;
+  background: transparent;
+  color: var(--73-danger);
+}
+
+/* 订阅 / 公开开关：去掉轨道，只留文字状态 */
+.user-workbench .user-workbench__content .requirement-toggle {
+  height: 28px;
+  padding: 0 8px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--73-ink-placeholder);
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.user-workbench .user-workbench__content .requirement-toggle:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--73-ink) 5%, transparent);
+  color: var(--73-ink-soft);
+}
+
+.user-workbench .user-workbench__content .requirement-toggle[aria-pressed='true'] {
+  border: 0;
+  background: transparent;
+  color: var(--73-accent);
+}
+
+.user-workbench .user-workbench__content .requirement-toggle__track {
+  display: none;
+}
+
+/* 库里的描边按钮在工作台内降低对比 */
+.user-workbench .t73-button--outline {
+  border-color: var(--73-border-soft);
+  color: var(--73-ink-soft);
+}
+
+.user-workbench .t73-button--outline:hover:not(:disabled) {
+  border-color: var(--73-border);
+  color: var(--73-ink);
+}
+
+/* --- 点数与计数标签：去掉小胶囊 --- */
+.user-workbench .user-workbench__content .points-tabs__count,
+.user-workbench .user-workbench__content .points-metric__tag,
+.user-workbench .user-workbench__content .my-requirements-tabs__count,
+.user-workbench .user-workbench__content .workbench-tree__version {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--73-ink-placeholder);
+  font-weight: 500;
+}
+
+.user-workbench .user-workbench__content .points-tabs__tab.is-active .points-tabs__count {
+  background: transparent;
+  color: var(--73-accent);
+}
+
+/* 指标卡上的彩色小图标收成中性色 */
+.user-workbench .user-workbench__content .points-metric__tag--accent,
+.user-workbench .user-workbench__content .points-metric__tag--warning {
+  border: 0;
+  background: transparent;
+  color: var(--73-ink-placeholder);
+}
+
+/* 表格：表头不再铺底色，只留一条分隔线 */
+.user-workbench .user-workbench__content .points-table th {
+  background: transparent;
+  border-bottom-color: var(--73-border-soft);
+}
+
+.user-workbench .user-workbench__content .points-table td {
+  border-bottom-color: color-mix(in srgb, var(--73-border-soft) 70%, transparent);
+}
+
+.user-workbench .user-workbench__content .points-table tbody tr:hover {
+  background: transparent;
+}
+
+/* 分页：非当前页按钮不再有描边和底色 */
+.user-workbench .user-workbench__content .t73-pagination__button {
+  border-color: transparent;
+}
+
+/* 页头：标题不再用 700，副标题更轻 */
+.user-workbench .workbench-page-header__main h1 {
+  font-weight: 600;
+}
+
+.user-workbench .workbench-page-header__main h1 + p {
+  color: var(--73-ink-placeholder);
+}

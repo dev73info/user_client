@@ -2,15 +2,19 @@
 /**
  * 需求大厅的一张需求卡（卡格里的 `<article>`）。
  *
- * 从 `views/RequirementHallView.vue` 抽出来：模板、文案、可访问性属性（`role="button"` /
- * 键盘 Enter / 空格）与样式逐段照搬。组件只上报「要开详情」，取数与详情弹窗由页面处理。
+ * 结构对齐 Stitch 源码「需求大厅（精密工程轻色工作台）」：
+ * 顶部「状态 + 担保方式」两枚 chip 与右侧需求编号，下面标题、三行描述，
+ * 底部是更新时间与「预算估算 + 查看详情」。
  */
+import { computed } from 'vue'
+
 import type { PublicRequirementSpotlightItem } from '@/api/requirements'
-import PaymentModeChip from '@/components/PaymentModeChip.vue'
 import {
   formatCnDateTime as formatTimeLabel,
   formatCny as formatMoney,
+  requirementPaymentModeLabel,
 } from '@/shared/requirementDisplay'
+import { requirementStatusLabel } from '@/shared/requirementStatus'
 import { requirementRichTextPreview } from '@/utils/requirementRichText'
 
 const props = defineProps<{
@@ -20,6 +24,21 @@ const props = defineProps<{
 const emit = defineEmits<{
   (e: 'open', card: PublicRequirementSpotlightItem): void
 }>()
+
+const statusLabel = computed(() =>
+  requirementStatusLabel(props.card.status, props.card.payment_mode),
+)
+
+/** 状态 chip 的语义色：待审核琥珀、已完成绿、终止态中性、其余在途蓝。 */
+const statusTone = computed(() => {
+  const status = props.card.status
+  if (status === 'completed') return 'success'
+  if (status === 'pending_review') return 'warning'
+  if (status === 'rejected' || status === 'cancelled') return 'muted'
+  return 'info'
+})
+
+const guaranteeLabel = computed(() => requirementPaymentModeLabel(props.card.payment_mode))
 
 function open(): void {
   emit('open', props.card)
@@ -35,19 +54,46 @@ function open(): void {
     @keydown.enter="open"
     @keydown.space.prevent="open"
   >
-    <div class="portal-page__card-topline">
-      <PaymentModeChip :mode="card.payment_mode" />
+    <div class="requirement-hall__card-main">
+      <div class="requirement-hall__badges">
+        <span class="requirement-hall__badge" :class="`requirement-hall__badge--${statusTone}`">
+          {{ statusLabel }}
+        </span>
+        <span class="requirement-hall__badge requirement-hall__badge--guarantee">
+          {{ guaranteeLabel }}
+        </span>
+        <span class="requirement-hall__id">{{ props.card.requirement_id }}</span>
+      </div>
+
+      <h2>{{ props.card.title }}</h2>
+      <p>{{ requirementRichTextPreview(props.card.description, '当前需求暂未补充详细描述。') }}</p>
     </div>
-    <h2>{{ card.title }}</h2>
-    <p>{{ requirementRichTextPreview(card.description, '当前需求暂未补充详细描述。') }}</p>
-    <div class="requirement-hall__meta-row">
-      <span>{{ card.requirement_id }}</span>
-      <span>更新于 {{ formatTimeLabel(card.updated_at) }}</span>
-    </div>
-    <div class="portal-page__card-footer">
-      <strong>{{ formatMoney(card.budget) }}</strong>
-      <div class="requirement-hall__card-actions">
-        <span>查看详情</span>
+
+    <div class="requirement-hall__card-bottom">
+      <div class="requirement-hall__meta-row">
+        <svg
+          viewBox="0 0 24 24"
+          width="13"
+          height="13"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          aria-hidden="true"
+        >
+          <circle cx="12" cy="12" r="9" />
+          <path d="M12 7v5l3 2" />
+        </svg>
+        <span>更新于 {{ formatTimeLabel(props.card.updated_at) }}</span>
+      </div>
+
+      <div class="portal-page__card-footer">
+        <div class="requirement-hall__budget">
+          <span>预算估算</span>
+          <strong>{{ formatMoney(props.card.budget) }}</strong>
+        </div>
+        <span class="requirement-hall__view">查看详情 <span aria-hidden="true">→</span></span>
       </div>
     </div>
   </article>
@@ -56,61 +102,160 @@ function open(): void {
 <style scoped>
 .requirement-hall__card {
   height: 100%;
-  min-height: 188px;
+  min-height: 200px;
   cursor: pointer;
   transition:
-    transform 180ms ease,
-    border-color 180ms ease,
-    box-shadow 180ms ease;
-}
-
-.requirement-hall__card .requirement-hall__meta-row {
-  margin-top: auto;
-}
-
-.requirement-hall__card .portal-page__card-footer {
-  margin-top: 0;
+    border-color var(--73-transition),
+    box-shadow var(--73-transition);
 }
 
 .requirement-hall__card:hover {
-  border-color: color-mix(in srgb, var(--73-accent) 32%, transparent);
-  transform: translateY(-1px);
-  box-shadow: 0 16px 30px color-mix(in srgb, var(--73-accent) 14%, transparent);
+  border-color: var(--73-border-hover);
+  box-shadow: var(--73-shadow-card-hover);
 }
 
 .requirement-hall__card:focus-visible {
-  border-color: color-mix(in srgb, var(--73-accent) 52%, transparent);
   outline: none;
-  box-shadow: 0 0 0 4px color-mix(in srgb, var(--73-accent) 12%, transparent);
+  box-shadow: var(--73-focus-ring);
+}
+
+.requirement-hall__card-main {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.requirement-hall__badges {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 2px;
+}
+
+.requirement-hall__badge {
+  display: inline-flex;
+  align-items: center;
+  height: 20px;
+  padding: 0 8px;
+  border: 1px solid var(--73-border);
+  border-radius: 4px;
+  background: var(--73-inset);
+  color: var(--73-ink-muted);
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1;
+}
+
+.requirement-hall__badge--warning {
+  border-color: var(--73-warning-line);
+  background: var(--73-warning-soft);
+  color: var(--73-warning-text);
+}
+
+.requirement-hall__badge--success {
+  border-color: var(--73-success-line);
+  background: var(--73-success-soft);
+  color: var(--73-success-text);
+}
+
+.requirement-hall__badge--info {
+  border-color: var(--73-accent-line);
+  background: var(--73-accent-soft);
+  color: var(--73-accent);
+}
+
+.requirement-hall__badge--muted {
+  border-color: var(--73-border);
+  background: var(--73-inset);
+  color: var(--73-ink-muted);
+}
+
+.requirement-hall__id {
+  margin-left: auto;
+  color: var(--73-ink-muted);
+  font-family: var(--73-font-family-mono);
+  font-size: 11px;
+}
+
+.requirement-hall__card h2 {
+  margin: 0;
+  color: var(--73-ink);
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.4;
 }
 
 .requirement-hall__card p {
-  min-height: 48px;
   display: -webkit-box;
+  margin: 0;
   overflow: hidden;
+  color: var(--73-ink-soft);
+  font-size: 12px;
+  line-height: 1.6;
   -webkit-box-orient: vertical;
-  line-clamp: 3;
   -webkit-line-clamp: 3;
+  line-clamp: 3;
 }
 
-.requirement-hall__card .portal-page__card-footer span {
-  color: var(--73-accent);
-  font-size: 13px;
-  font-weight: 800;
-}
-
-.requirement-hall__card-actions {
+.requirement-hall__card-bottom {
   display: flex;
-  align-items: center;
-  gap: 8px;
+  flex-direction: column;
+  margin-top: auto;
 }
 
 .requirement-hall__meta-row {
   display: flex;
-  flex-wrap: wrap;
-  gap: 8px 12px;
+  align-items: center;
+  gap: 4px;
+  padding: 8px 0;
+  border-top: 1px solid var(--73-border-soft);
   color: var(--73-ink-muted);
+  font-size: 11px;
+}
+
+.requirement-hall__meta-row svg {
+  flex: 0 0 auto;
+}
+
+.requirement-hall__budget {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.requirement-hall__budget span {
+  color: var(--73-ink-muted);
+  font-size: 11px;
+}
+
+.requirement-hall__budget strong {
+  color: var(--73-ink);
+  font-family: var(--73-font-family-mono);
+  font-size: 18px;
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+.requirement-hall__view {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 32px;
+  padding: 0 12px;
+  border: 1px solid var(--73-border);
+  border-radius: var(--73-radius-control);
+  background: var(--73-surface);
+  color: var(--73-accent);
   font-size: 12px;
-  font-weight: 700;
+  font-weight: 500;
+  transition:
+    background-color var(--73-transition),
+    border-color var(--73-transition);
+}
+
+.requirement-hall__card:hover .requirement-hall__view {
+  border-color: var(--73-border-hover);
+  background: var(--73-bg-soft);
 }
 </style>

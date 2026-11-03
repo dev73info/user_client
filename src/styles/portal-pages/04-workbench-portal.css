@@ -1,0 +1,875 @@
+/* ============================================================================
+   门户二级页 · Workbench 亮色覆盖层（桌面端）
+   ============================================================================
+
+   覆盖共享的 `.portal-page` 体系（需求大厅、积分商城以及后续沿用同一骨架的门户页），
+   以及需求大厅 / 积分商城的页面级块。只作用于 ≥901px；窄屏继续走原响应式分片。
+   选择器带 `.portal-page.portal-page--nav` / `.portal-page.mall-page` 提高特异性，
+   压过各组件自己的 scoped 样式。颜色一律走 `--73-*` 令牌。
+   ============================================================================ */
+
+@media (min-width: 901px) {
+  /* --- 页面外壳：通栏浅灰画布 + 1280 内容列 --- */
+  .portal-page.portal-page--nav {
+    width: 100%;
+    max-width: none;
+    margin: 0;
+    padding: 24px max(24px, calc((100% - 1280px) / 2)) 24px;
+    background: var(--73-bg);
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+  }
+
+  /* --- 页头条（需求大厅 / 积分商城共用） --- */
+  .portal-hero-strip,
+  .mall-hero {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 24px;
+    flex-wrap: wrap;
+  }
+
+  .portal-hero-strip__eyebrow,
+  .mall-hero__eyebrow {
+    margin-bottom: 8px;
+    color: var(--73-accent);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+
+  .portal-hero-strip h1,
+  .mall-hero h1 {
+    margin: 0;
+    color: var(--73-ink);
+    font-size: 24px;
+    font-weight: 600;
+    line-height: 1.25;
+    letter-spacing: -0.02em;
+  }
+
+  .portal-hero-strip p,
+  .mall-hero p {
+    margin: 4px 0 0;
+    color: var(--73-ink-soft);
+    font-size: 13px;
+  }
+
+  .portal-hero-strip__stats {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 12px;
+    border: 1px solid var(--73-border);
+    border-radius: var(--73-radius-control);
+    background: var(--73-surface);
+    color: var(--73-ink-soft);
+    font-family: var(--73-font-family-mono);
+    font-size: 12px;
+    box-shadow: var(--73-shadow-card);
+  }
+
+  .portal-hero-strip__dot {
+    width: 6px;
+    height: 6px;
+    border-radius: var(--73-radius-pill);
+    background: var(--73-success);
+  }
+
+  .mall-hero__balance {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 10px;
+    padding: 8px 16px;
+    border: 1px solid var(--73-border);
+    border-radius: var(--73-radius-control);
+    background: var(--73-surface);
+    box-shadow: var(--73-shadow-card);
+  }
+
+  .mall-hero__balance span {
+    color: var(--73-ink-muted);
+    font-size: 12px;
+  }
+
+  .mall-hero__balance strong {
+    color: var(--73-accent);
+    font-family: var(--73-font-family-mono);
+    font-size: 22px;
+    font-weight: 600;
+  }
+
+  /* --- 两栏骨架 --- */
+  .portal-page--nav .portal-page__content {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(300px, 380px);
+    align-items: start;
+    gap: 20px;
+  }
+
+  .portal-page--nav .portal-page__panel {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+  }
+
+  .portal-page--nav .portal-page__aside {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  /* --- 需求大厅工具条 --- */
+  .portal-page.portal-page--nav .requirement-hall__toolbar {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 12px;
+    padding: 14px;
+    border: 1px solid var(--73-border);
+    border-radius: var(--73-radius-inner);
+    background: var(--73-surface);
+    box-shadow: var(--73-shadow-card);
+  }
+
+  .portal-page.portal-page--nav .requirement-hall__toolbar .requirement-hall__guarantee-select {
+    width: 160px;
+    flex: 0 0 auto;
+  }
+
+  .portal-page.portal-page--nav .requirement-hall__toolbar .requirement-hall__search {
+    flex: 0 1 280px;
+    min-width: 240px;
+  }
+
+  .portal-page.portal-page--nav .requirement-hall__header-actions {
+    margin-left: auto;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .portal-page.portal-page--nav .requirement-hall__publish-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    height: var(--73-control-height);
+    padding: 0 14px;
+    border: 1px solid var(--73-accent);
+    border-radius: var(--73-radius-control);
+    background: var(--73-accent);
+    color: var(--73-accent-contrast);
+    font-family: inherit;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background-color var(--73-transition);
+  }
+
+  .portal-page.portal-page--nav .requirement-hall__publish-btn:hover {
+    background: color-mix(in srgb, var(--73-accent) 85%, var(--73-ink));
+  }
+
+  /* --- 需求卡 --- */
+  .portal-page--nav .portal-page__card-grid,
+  .portal-page--nav .portal-page__resource-grid,
+  .portal-page--nav .portal-page__collection-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 16px;
+  }
+
+  .portal-page.portal-page--nav .portal-page__card,
+  .portal-page.portal-page--nav .portal-page__collection-card {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 16px;
+    border: 1px solid var(--73-border);
+    border-radius: var(--73-radius-inner);
+    background: var(--73-surface);
+    box-shadow: var(--73-shadow-card);
+  }
+
+  .portal-page.portal-page--nav .portal-page__card:hover {
+    border-color: var(--73-border-hover);
+    box-shadow: var(--73-shadow-card-hover);
+  }
+
+  .portal-page.portal-page--nav .portal-page__card h2,
+  .portal-page.portal-page--nav .portal-page__card h3 {
+    margin: 0;
+    color: var(--73-ink);
+    font-size: 16px;
+    font-weight: 600;
+    line-height: 1.4;
+  }
+
+  .portal-page.portal-page--nav .portal-page__card p {
+    margin: 0;
+    color: var(--73-ink-soft);
+    font-size: 12px;
+    line-height: 1.6;
+  }
+
+  .portal-page.portal-page--nav .portal-page__card-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-top: auto;
+    padding-top: 12px;
+    border-top: 1px solid var(--73-border-soft);
+  }
+
+  .portal-page.portal-page--nav .portal-page__card-footer strong {
+    color: var(--73-ink);
+    font-size: 20px;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .portal-page.portal-page--nav .requirement-hall__card {
+    min-height: 180px;
+  }
+
+  .portal-page.portal-page--nav .requirement-hall__card h2 {
+    font-size: 14px;
+    line-height: 1.45;
+    transition: color var(--73-transition);
+  }
+
+  .portal-page.portal-page--nav .requirement-hall__card:hover h2 {
+    color: var(--73-accent);
+  }
+
+  .portal-page.portal-page--nav .requirement-hall__card p {
+    color: var(--73-ink-soft);
+    font-size: 13px;
+    line-height: 1.55;
+  }
+
+  .portal-page.portal-page--nav .requirement-hall__badge--guarantee {
+    border-color: var(--73-accent-line);
+    background: var(--73-accent-soft);
+    color: var(--73-accent);
+  }
+
+  .portal-page.portal-page--nav .requirement-hall__budget strong {
+    font-size: 18px;
+    font-weight: 700;
+  }
+
+  .portal-page.portal-page--nav .requirement-hall__view span {
+    transition: transform var(--73-transition);
+  }
+
+  .portal-page.portal-page--nav .requirement-hall__view:hover span {
+    transform: translateX(2px);
+  }
+
+  .portal-page.portal-page--nav .requirement-hall__meta-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px 12px;
+    padding: 10px 0 12px;
+    color: var(--73-ink-muted);
+    font-family: inherit;
+    font-size: 12px;
+    font-weight: 400;
+  }
+
+  .portal-page.portal-page--nav .requirement-hall__card-actions span {
+    color: var(--73-accent);
+    font-size: 12px;
+    font-weight: 500;
+  }
+
+  .portal-page--nav .portal-page__card-topline .portal-page__chip {
+    border: 1px solid var(--73-border);
+    border-radius: 4px;
+    background: var(--73-inset);
+    color: var(--73-ink-muted);
+    font-size: 10px;
+    font-weight: 500;
+    padding: 2px 6px;
+  }
+
+  .portal-page--nav .portal-page__empty {
+    padding: 32px;
+    border: 1px dashed var(--73-border);
+    border-radius: var(--73-radius-inner);
+    color: var(--73-ink-muted);
+    text-align: center;
+  }
+
+  /* --- 需求大厅右侧栏 --- */
+  .portal-page.portal-page--nav .portal-page__aside-card {
+    padding: 16px;
+    border: 1px solid var(--73-border);
+    border-radius: var(--73-radius-inner);
+    background: var(--73-surface);
+    box-shadow: var(--73-shadow-card);
+  }
+
+  .portal-page--nav .portal-page__aside-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin-bottom: 12px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--73-border-soft);
+  }
+
+  .portal-page--nav .portal-page__aside-head h3 {
+    margin: 0;
+    color: var(--73-ink);
+    font-size: 14px;
+    font-weight: 600;
+  }
+
+  .portal-page--nav .portal-page__timeline {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .portal-page--nav .portal-page__timeline-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 6px 0;
+    border-top: 1px solid var(--73-border-soft);
+  }
+
+  .portal-page--nav .portal-page__timeline-item:first-child {
+    border-top: 0;
+  }
+
+  .portal-page--nav .requirement-hall__stat-main {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+  }
+
+  .portal-page--nav .requirement-hall__stat-main strong {
+    color: var(--73-ink);
+    font-family: var(--73-font-family-mono);
+    font-size: 14px;
+    font-weight: 600;
+  }
+
+  .portal-page--nav .requirement-hall__stat-main span {
+    color: var(--73-ink-muted);
+    font-size: 12px;
+  }
+
+  .portal-page--nav .requirement-hall__deal-item {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding: 12px 0;
+    border-top: 1px solid var(--73-border-soft);
+  }
+
+  .portal-page--nav .requirement-hall__deal-item:first-child {
+    border-top: 0;
+  }
+
+  .portal-page--nav .requirement-hall__deal-title {
+    color: var(--73-ink);
+    font-size: 13px;
+    font-weight: 500;
+  }
+
+  .portal-page--nav .requirement-hall__deal-foot {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    color: var(--73-ink-muted);
+    font-size: 11px;
+  }
+
+  .portal-page--nav .requirement-hall__deal-rating {
+    color: var(--73-warning-text);
+    font-size: 11px;
+  }
+
+  /* 概览指标值按设计稿着色：可浏览蓝 / 已完成绿 / 好评率琥珀 / 累计成交墨色 */
+  .portal-page.portal-page--nav .requirement-hall__stat-tile strong {
+    font-size: 20px;
+    font-weight: 700;
+    line-height: 1.05;
+  }
+
+  .portal-page.portal-page--nav .requirement-hall__stat-tile--accent strong {
+    color: var(--73-accent);
+  }
+
+  .portal-page.portal-page--nav .requirement-hall__stat-tile--success strong {
+    color: var(--73-success-text);
+  }
+
+  .portal-page.portal-page--nav .requirement-hall__stat-tile--warning strong {
+    color: var(--73-warning-text);
+  }
+
+  .portal-page.portal-page--nav .requirement-hall__stat-tile--ink strong {
+    color: var(--73-ink);
+    font-size: 15px;
+  }
+
+  .portal-page--nav .requirement-hall__deal-stars {
+    color: var(--73-warning);
+  }
+
+  /* --- 积分商城 --- */
+  .portal-page.mall-page {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    background: var(--73-bg);
+  }
+
+  .portal-page.mall-page .mall-products,
+  .portal-page.mall-page .mall-orders {
+    padding: 16px;
+    border: 1px solid var(--73-border);
+    border-radius: var(--73-radius-inner);
+    background: var(--73-surface);
+    box-shadow: var(--73-shadow-card);
+  }
+
+  .portal-page.mall-page .mall-products h3,
+  .portal-page.mall-page .mall-orders h3 {
+    margin: 0 0 12px;
+    color: var(--73-ink);
+    font-size: 16px;
+    font-weight: 600;
+  }
+
+  .portal-page.mall-page .mall-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 16px;
+  }
+
+  .portal-page.mall-page .mall-card {
+    height: 100%;
+    border: 1px solid var(--73-border);
+    border-radius: var(--73-radius-inner);
+    background: var(--73-surface);
+  }
+
+  .portal-page.mall-page .mall-card:hover {
+    border-color: var(--73-border-hover);
+  }
+
+  .portal-page.mall-page .mall-card__kind {
+    border: 1px solid var(--73-border);
+    border-radius: 4px;
+    background: var(--73-inset);
+    color: var(--73-ink-muted);
+    font-size: 10px;
+  }
+
+  .portal-page.mall-page .mall-card__cost {
+    font-family: var(--73-font-family-mono);
+    font-size: 13px;
+    color: var(--73-accent);
+  }
+
+  .portal-page.mall-page .mall-card h4 {
+    color: var(--73-ink);
+    font-size: 15px;
+    font-weight: 600;
+  }
+
+  .portal-page.mall-page .mall-card__duration {
+    color: var(--73-ink-muted);
+    font-size: 11px;
+  }
+
+  .portal-page.mall-page .mall-orders + .mall-orders {
+    margin-top: 0;
+  }
+}
+
+
+/* --- 需求大厅：页头 chip / 脉冲状态点 / 分页卡（对齐 Stitch 源码） --- */
+@media (min-width: 901px) {
+  .portal-page.portal-page--nav .requirement-hero {
+    padding-bottom: 14px;
+    border-bottom: 1px solid var(--73-border);
+  }
+
+  .portal-hero-strip__eyebrow-chip {
+    display: inline-flex;
+    align-items: center;
+    margin-bottom: 8px;
+    padding: 2px 8px;
+    border: 1px solid var(--73-accent-line);
+    border-radius: 4px;
+    background: var(--73-accent-soft);
+    color: var(--73-accent);
+    font-family: var(--73-font-family-mono);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+  }
+
+  .requirement-hero__stat {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 14px;
+    border: 1px solid var(--73-border);
+    border-radius: var(--73-radius-pill);
+    background: var(--73-surface);
+    box-shadow: var(--73-shadow-card);
+    color: var(--73-ink-soft);
+    font-size: 12px;
+  }
+
+  .requirement-hero__stat strong {
+    color: var(--73-ink);
+    font-family: var(--73-font-family-mono);
+    font-size: 13px;
+    font-weight: 600;
+  }
+
+  .requirement-hero__stat .requirement-hero__done strong {
+    color: var(--73-accent);
+  }
+
+  .requirement-hero__pulse {
+    position: relative;
+    width: 8px;
+    height: 8px;
+    border-radius: var(--73-radius-pill);
+    background: var(--73-success);
+  }
+
+  .requirement-hero__pulse::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: var(--73-radius-pill);
+    background: var(--73-success);
+    opacity: 0.45;
+    animation: requirement-hero-pulse 1.8s ease-out infinite;
+  }
+
+  @keyframes requirement-hero-pulse {
+    0% {
+      transform: scale(1);
+      opacity: 0.45;
+    }
+    70%,
+    100% {
+      transform: scale(2.4);
+      opacity: 0;
+    }
+  }
+
+  .requirement-hall__pager-card {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 10px 16px;
+    border: 1px solid var(--73-border);
+    border-radius: var(--73-radius-inner);
+    background: var(--73-surface);
+    box-shadow: var(--73-shadow-card);
+  }
+
+  .requirement-hall__pager-range {
+    color: var(--73-ink-muted);
+    font-size: 12px;
+    white-space: nowrap;
+  }
+
+  .requirement-hall__pager-range strong {
+    margin: 0 2px;
+    color: var(--73-ink);
+    font-family: var(--73-font-family-mono);
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .portal-page--nav .requirement-hall__pager-card .requirement-hall__pager {
+    width: auto;
+    margin: 0 0 0 auto;
+    justify-content: flex-end;
+  }
+
+  /* 页码按钮改 32px 方块 + 描边、选中页实底蓝；组件样式带 scope 属性，这里加两级前缀压过 */
+  .portal-page--nav .requirement-hall__pager-card .t73-pagination__pages {
+    gap: 4px;
+  }
+
+  .portal-page--nav .requirement-hall__pager-card .t73-pagination__button {
+    min-width: 32px;
+    height: 32px;
+    padding: 0 8px;
+    border: 1px solid var(--73-border);
+    background: var(--73-surface);
+    color: var(--73-ink-soft);
+    font-size: 12px;
+  }
+
+  .portal-page--nav .requirement-hall__pager-card .t73-pagination__button:hover:not(:disabled) {
+    border-color: var(--73-border-hover);
+    color: var(--73-accent);
+  }
+
+  .portal-page--nav .requirement-hall__pager-card .t73-pagination__button:disabled {
+    opacity: 0.4;
+  }
+
+  .portal-page--nav .requirement-hall__pager-card .t73-pagination__page--active {
+    border-color: var(--73-accent);
+    background: var(--73-accent);
+    color: var(--73-accent-contrast);
+    font-weight: 600;
+  }
+
+  .portal-page--nav .requirement-hall__pager-card .t73-pagination__gap {
+    min-width: 20px;
+    height: 32px;
+  }
+}
+/* --- 积分商城：页头卡 / 可兑换区 / 商品卡 / 双栏表格（对齐 Stitch 源码） --- */
+@media (min-width: 901px) {
+  .portal-page.mall-page .mall-hero {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 16px;
+    padding: 20px;
+    border: 1px solid var(--73-border);
+    border-radius: var(--73-radius-inner);
+    background: var(--73-surface);
+    box-shadow: var(--73-shadow-card);
+  }
+
+  .portal-page.mall-page .mall-hero__eyebrow {
+    display: inline-flex;
+    align-items: center;
+    margin-bottom: 8px;
+    padding: 2px 8px;
+    border: 1px solid var(--73-accent-line);
+    border-radius: 4px;
+    background: var(--73-accent-soft);
+    color: var(--73-accent);
+    font-family: var(--73-font-family-mono);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+  }
+
+  .portal-page.mall-page .mall-hero h1 {
+    font-size: 24px;
+  }
+
+  .portal-page.mall-page .mall-hero__balance {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 12px 16px;
+    border: 1px solid var(--73-border);
+    border-radius: var(--73-radius-control);
+    background: var(--73-bg);
+    box-shadow: none;
+  }
+
+  .portal-page.mall-page .mall-hero__balance-main {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .portal-page.mall-page .mall-hero__balance-main span {
+    color: var(--73-ink-muted);
+    font-size: 11px;
+  }
+
+  .portal-page.mall-page .mall-hero__balance-main strong {
+    color: var(--73-accent);
+    font-family: var(--73-font-family-mono);
+    font-size: 24px;
+    font-weight: 600;
+    line-height: 1.1;
+  }
+
+  .portal-page.mall-page .mall-hero__balance-main small {
+    color: color-mix(in srgb, var(--73-accent) 75%, var(--73-ink-muted));
+    font-size: 11px;
+    font-weight: 400;
+  }
+
+  .portal-page.mall-page .mall-hero__ledger {
+    padding-left: 16px;
+    border-left: 1px solid var(--73-border);
+    color: var(--73-accent);
+    font-size: 12px;
+    font-weight: 500;
+    text-decoration: none;
+  }
+
+  .portal-page.mall-page .mall-hero__ledger:hover {
+    text-decoration: underline;
+  }
+
+  .portal-page.mall-page .mall-section-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-bottom: 12px;
+  }
+
+  .portal-page.mall-page .mall-section-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .portal-page.mall-page .mall-section-bar {
+    width: 6px;
+    height: 16px;
+    border-radius: var(--73-radius-pill);
+    background: var(--73-accent);
+  }
+
+  .portal-page.mall-page .mall-section-title h3 {
+    margin: 0;
+    color: var(--73-ink);
+    font-size: 16px;
+    font-weight: 600;
+  }
+
+  .portal-page.mall-page .mall-section-count {
+    padding: 2px 8px;
+    border: 1px solid var(--73-accent-line);
+    border-radius: var(--73-radius-pill);
+    background: var(--73-accent-soft);
+    color: var(--73-accent);
+    font-family: var(--73-font-family-mono);
+    font-size: 11px;
+  }
+
+  .portal-page.mall-page .mall-section-hint {
+    color: var(--73-ink-muted);
+    font-size: 12px;
+  }
+
+  .portal-page.mall-page .mall-grid {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 14px;
+  }
+
+  .portal-page.mall-page .mall-card__body {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    height: 100%;
+    padding: 16px;
+  }
+
+  .portal-page.mall-page .mall-card__kind--perk {
+    border: 1px solid var(--73-accent-line);
+    background: var(--73-accent-soft);
+    color: var(--73-accent);
+  }
+
+  .portal-page.mall-page .mall-card__kind--consumable {
+    border: 1px solid var(--73-warning-line);
+    background: var(--73-warning-soft);
+    color: var(--73-warning-text);
+  }
+
+  .portal-page.mall-page .mall-card__icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    border-radius: 8px;
+    font-size: 20px;
+  }
+
+  .portal-page.mall-page .mall-card__icon--perk {
+    border: 1px solid var(--73-accent-line);
+    background: var(--73-accent-soft);
+    color: var(--73-accent);
+  }
+
+  .portal-page.mall-page .mall-card__icon--consumable {
+    border: 1px solid var(--73-warning-line);
+    background: var(--73-warning-soft);
+    color: var(--73-warning-text);
+  }
+
+  .portal-page.mall-page .mall-card__cost {
+    color: var(--73-accent);
+    font-family: var(--73-font-family-mono);
+    font-size: 13px;
+    font-weight: 600;
+  }
+
+  .portal-page.mall-page .mall-card__cost small {
+    color: var(--73-ink-muted);
+    font-size: 10px;
+    font-weight: 400;
+  }
+
+  .portal-page.mall-page .mall-card h4 {
+    margin: 0;
+  }
+
+  .portal-page.mall-page .mall-card__duration {
+    display: flex;
+    justify-content: space-between;
+    margin: 0;
+    padding-top: 8px;
+    border-top: 1px solid var(--73-border-soft);
+    color: var(--73-ink-muted);
+    font-family: var(--73-font-family-mono);
+    font-size: 10px;
+  }
+
+  .portal-page.mall-page .mall-card__body > .t73-button {
+    margin-top: auto;
+  }
+
+  .portal-page.mall-page .mall-orders-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: start;
+    gap: 16px;
+  }
+
+  .portal-page.mall-page .mall-orders-grid .mall-orders {
+    margin-top: 0;
+  }
+}

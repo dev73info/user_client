@@ -86,7 +86,7 @@
 .mobile-chip--active {
   border-color: transparent;
   color: var(--73-surface-strong);
-  background: var(--73-accent-gradient);
+  background: var(--73-accent);
 }
 
 .mobile-menu-foot {
@@ -114,6 +114,6 @@
 
 .mobile-foot-btn--primary {
   border: 0;
-  background: var(--73-accent-gradient);
+  background: var(--73-accent);
   color: var(--73-surface-strong);
 }

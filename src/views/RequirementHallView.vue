@@ -11,6 +11,7 @@
  * - 详情浮层 → `RequirementHallDetailDialog`（富文本排版在 `RequirementHallRichText`）；
  * - 状态 / 发布方式 / 金额与时间格式、筛选与统计口径 → `@/shared/requirementDisplay`。
  */
+import { computed } from 'vue'
 import { TPagination } from 'ui_73info'
 
 import PublishModal from '@/components/PublishModal.vue'
@@ -74,10 +75,31 @@ const {
   submitPublishRequirement,
   notify,
 } = useRequirementHallPublish({ reloadHall: loadHallData })
+
+/** 分页卡左侧的区间文案，口径对齐设计稿的「显示 1 - 20 条，共 N 项」。 */
+const hallPageRange = computed(() => ({
+  start: hallTotal.value === 0 ? 0 : (hallPage.value - 1) * HALL_PAGE_SIZE + 1,
+  end: Math.min(hallPage.value * HALL_PAGE_SIZE, hallTotal.value),
+}))
 </script>
 
 <template>
   <main class="portal-page portal-page--nav">
+    <header class="portal-hero-strip requirement-hero">
+      <div class="portal-hero-strip__copy">
+        <div class="portal-hero-strip__eyebrow-chip">[ REQUIREMENT HALL · 需求大厅 ]</div>
+        <h1>需求大厅</h1>
+        <p>浏览真实需求与开发进度，找到合适的协作与接单机会。</p>
+      </div>
+      <span v-if="!loading" class="requirement-hero__stat">
+        <span class="requirement-hero__pulse" aria-hidden="true"></span>
+        共 <strong>{{ hallTotal }}</strong> 个需求
+        <span class="requirement-hero__done">
+          · 已完成 <strong>{{ hallStats[1]?.value ?? '0 单' }}</strong>
+        </span>
+      </span>
+    </header>
+
     <section class="portal-page__content">
       <!-- 面板不再整块遮罩：首次加载由骨架屏顶上，后续刷新只压暗结果区就地替换。
            `aria-busy` 保留原有的无障碍语义。 -->
@@ -138,14 +160,20 @@ const {
           </button>
         </div>
 
-        <TPagination
-          v-if="filteredRequirements.length"
-          class="requirement-hall__pager"
-          :current-page="hallPage"
-          :page-size="HALL_PAGE_SIZE"
-          :total="hallTotal"
-          @current-change="loadHallData"
-        />
+        <div v-if="filteredRequirements.length" class="requirement-hall__pager-card">
+          <span class="requirement-hall__pager-range">
+            显示 <strong>{{ hallPageRange.start }} - {{ hallPageRange.end }}</strong> 条，共
+            <strong>{{ hallTotal }}</strong> 项
+          </span>
+          <TPagination
+            class="requirement-hall__pager"
+            :show-total="false"
+            :current-page="hallPage"
+            :page-size="HALL_PAGE_SIZE"
+            :total="hallTotal"
+            @current-change="loadHallData"
+          />
+        </div>
       </section>
 
       <aside class="portal-page__aside">
@@ -206,8 +234,9 @@ const {
 
 .requirement-hall__pager {
   display: flex;
-  justify-content: center;
-  margin-top: 16px;
+  justify-content: flex-end;
+  width: 100%;
+  margin: 0;
 }
 
 .portal-page__secondary:disabled {

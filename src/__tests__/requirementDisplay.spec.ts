@@ -134,16 +134,18 @@ describe('大厅读数、空态与最近交付', () => {
     recent_deals: [],
   } as unknown as RequirementOverviewResp
 
-  it('三格读数：可浏览需求取后端 total，概览缺失时其余两格归零', () => {
+  it('四格读数：可浏览需求取后端 total，概览缺失时其余三格归零', () => {
     expect(requirementHallStats(25, overview)).toEqual([
       { label: '可浏览需求', value: '25 条' },
       { label: '已完成需求', value: '12 单' },
       { label: '好评率', value: '98.3%' },
+      { label: '累计成交', value: '¥0' },
     ])
     expect(requirementHallStats(0, null)).toEqual([
       { label: '可浏览需求', value: '0 条' },
       { label: '已完成需求', value: '0 单' },
       { label: '好评率', value: '0.0%' },
+      { label: '累计成交', value: '¥0' },
     ])
   })
 

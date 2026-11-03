@@ -69,17 +69,18 @@ const emit = defineEmits<{
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  min-height: 38px;
+  height: var(--73-control-height);
   max-width: 320px;
-  padding: 5px 12px 5px 5px;
-  border-radius: 999px;
-  background: var(--ptn-accent-wash-faint);
-  color: var(--ptn-accent-ink);
-  font-weight: 700;
-  font-size: 13px;
+  padding: 4px 10px 4px 4px;
+  border: 1px solid var(--73-border);
+  border-radius: var(--73-radius-control);
+  background: var(--73-surface);
+  color: var(--73-ink);
+  font-weight: 500;
+  font-size: 12px;
   transition:
     background-color 160ms ease,
-    box-shadow 160ms ease,
+    border-color 160ms ease,
     color 160ms ease;
 }
 
@@ -133,8 +134,8 @@ const emit = defineEmits<{
 
 .portal-user__trigger:hover,
 .portal-user__trigger.is-open {
-  background: var(--ptn-accent-tint-strong);
-  box-shadow: inset 0 0 0 1px var(--ptn-line-hover-soft);
+  border-color: var(--73-border-hover);
+  background: var(--73-bg-soft);
 }
 
 .portal-user__trigger:hover .portal-user__caret,
@@ -147,8 +148,8 @@ const emit = defineEmits<{
 }
 
 .portal-user__trigger:focus-visible {
-  outline: 3px solid var(--ptn-focus-halo);
-  outline-offset: 2px;
+  outline: none;
+  box-shadow: var(--73-focus-ring);
 }
 
 .portal-user__menu {
@@ -160,10 +161,10 @@ const emit = defineEmits<{
   gap: 4px;
   min-width: 140px;
   padding: 10px;
-  border-radius: 18px;
-  border: 1px solid var(--ptn-line-menu);
-  background: var(--ptn-surface-soft);
-  box-shadow: 0 18px 40px var(--ptn-shadow-strong);
+  border-radius: var(--73-radius-inner);
+  border: 1px solid var(--73-border);
+  background: var(--73-surface);
+  box-shadow: var(--73-shadow-panel);
 }
 
 .portal-user-menu-enter-active,
@@ -203,14 +204,14 @@ const emit = defineEmits<{
   border: 0;
   background: transparent;
   text-align: left;
-  padding: 10px 12px;
-  border-radius: 12px;
+  padding: 8px 10px;
+  border-radius: var(--73-radius-control);
   cursor: pointer;
   color: var(--ptn-ink-strong);
 }
 
 .portal-user__menu button:hover {
-  background: var(--ptn-surface-muted-strong);
+  background: var(--73-bg-soft);
 }
 
 .portal-user__menu .danger {

@@ -1,0 +1,400 @@
+/* ============================================================================
+   用户工作台 ·「我的需求」页面（对齐 Stitch「清爽品牌蓝标准版」）
+   ============================================================================
+
+   设计稿把这一页收成「浅灰画布 + 白色卡片」：
+   状态页签卡 → 筛选行 → 需求卡片 → 分页卡，全部落在 24px 内边距、16px 间距的画布上。
+   页面根仍是工作台的 .page-shell.profile-page.wb-sheet，这里用 .user-workbench 前缀
+   压过外壳与 .wb-sheet 的收口规则（它们的选择器也带三层，靠更高一层取胜）。
+   ============================================================================ */
+
+/* --- 页面画布 --- */
+.user-workbench .profile-page.my-requirements-page.wb-sheet {
+  width: 100%;
+  max-width: 1440px;
+  min-height: 0;
+  margin: 0 auto;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  background: var(--73-bg);
+}
+
+/* 单纸页那套「读数带 + 透明面板」在这里改回卡片式版式 */
+.profile-page.my-requirements-page > .wallet-section {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+
+/* 卡片之间 16px，与设计稿 space-y-4 一致 */
+.profile-page.my-requirements-page .requirement-list {
+  gap: 16px;
+}
+
+/* --- 筛选行 --- */
+.profile-page.my-requirements-page .wb-toolbar {
+  margin-bottom: 0;
+  gap: 12px;
+}
+
+.profile-page.my-requirements-page .wb-toolbar__field--requirement-state {
+  flex: 0 0 144px;
+}
+
+.profile-page.my-requirements-page .wb-toolbar__search {
+  flex: 1 1 auto;
+  max-width: none;
+}
+
+.profile-page.my-requirements-page .wb-toolbar__actions {
+  gap: 8px;
+}
+
+.profile-page.my-requirements-page .wb-toolbar__hint {
+  color: var(--73-ink-muted);
+  font-size: 12px;
+}
+
+/* --- 需求卡片 --- */
+.profile-page.my-requirements-page .requirement-row {
+  padding: 20px;
+  border: 1px solid color-mix(in srgb, var(--73-accent) 10%, transparent);
+  border-radius: 16px;
+  background: var(--73-surface);
+  box-shadow: 0 10px 30px color-mix(in srgb, var(--73-accent) 6%, transparent);
+  transition:
+    border-color var(--73-transition),
+    box-shadow var(--73-transition);
+}
+
+.profile-page.my-requirements-page .requirement-row:hover {
+  border-color: color-mix(in srgb, var(--73-accent) 30%, transparent);
+}
+
+.profile-page.my-requirements-page .requirement-row.expanded {
+  border-color: color-mix(in srgb, var(--73-accent) 95%, transparent);
+  background: var(--73-accent-soft);
+}
+
+/* 标题 16px + 编号做成 mono 小胶囊 */
+.my-requirements-page .requirement-title {
+  align-items: center;
+  gap: 8px;
+}
+
+.my-requirements-page .requirement-title strong {
+  color: var(--73-ink);
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1.4;
+  transition: color var(--73-transition);
+}
+
+.my-requirements-page .requirement-row:hover .requirement-title strong {
+  color: var(--73-accent);
+}
+
+.my-requirements-page .requirement-title span {
+  padding: 2px 8px;
+  border-radius: 4px;
+  background: var(--73-inset);
+  color: var(--73-ink-muted);
+  font-family: var(--73-font-family-mono);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+/* 标签行：12px 小标签，设计稿里是直角小胶囊 */
+.my-requirements-page .requirement-details {
+  gap: 8px;
+}
+
+.my-requirements-page .requirement-details .pay-mode-chip,
+.my-requirements-page .requirement-details .wb-badge {
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 1.4;
+}
+
+/* 右侧摘要列：左描边、右对齐，状态 → 金额 → 发布时间 */
+.profile-page.my-requirements-page .requirement-card-body {
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 24px;
+  align-items: start;
+}
+
+.profile-page.my-requirements-page .requirement-summary {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
+  min-width: 208px;
+  padding: 2px 0 2px 24px;
+  border-left: 1px solid var(--73-border-soft);
+}
+
+.my-requirements-page .requirement-summary > .wb-badge {
+  display: inline-flex;
+  align-items: center;
+  height: 24px;
+  padding: 0 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.my-requirements-page .requirement-summary > .wb-badge::before {
+  content: '';
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  margin-right: 6px;
+  border-radius: 999px;
+  background: currentColor;
+}
+
+/* 在途状态（开发中 / 已付定金）用脉冲点，与设计稿的 animate-pulse 一致 */
+.my-requirements-page .requirement-summary > .wb-badge--accent::before {
+  animation: my-requirement-status-pulse 1.6s ease-in-out infinite;
+}
+
+@keyframes my-requirement-status-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.35;
+  }
+}
+
+.my-requirements-page .requirement-budget {
+  display: block;
+}
+
+.my-requirements-page .requirement-budget small {
+  display: none;
+}
+
+.my-requirements-page .requirement-budget strong {
+  color: var(--73-ink);
+  font-size: 20px;
+  font-weight: 700;
+  line-height: 1.2;
+  letter-spacing: -0.01em;
+}
+
+.my-requirements-page .requirement-summary time {
+  display: flex;
+  align-items: baseline;
+  gap: 2px;
+  color: var(--73-ink-muted);
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.my-requirements-page .requirement-summary time small {
+  color: var(--73-ink-muted);
+  font-size: 12px;
+}
+
+.my-requirements-page .requirement-summary time small::after {
+  content: '：';
+}
+
+/* 操作条：36px 高、10px 圆角，与设计稿的按钮档一致 */
+.profile-page.my-requirements-page .requirement-actions {
+  padding-top: 14px;
+  border-top: 1px solid var(--73-border-soft);
+}
+
+.profile-page.my-requirements-page .requirement-actions button.ghost {
+  min-height: 36px;
+  height: 36px;
+  padding: 0 12px;
+  border: 1px solid var(--73-border);
+  border-radius: 10px;
+  background: var(--73-surface);
+  color: var(--73-ink-soft);
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.profile-page.my-requirements-page .requirement-actions button.ghost:hover:not(:disabled) {
+  border-color: var(--73-border-hover);
+  background: var(--73-bg-soft);
+  color: var(--73-ink);
+}
+
+.profile-page.my-requirements-page .requirement-actions button.ghost.action-quiet {
+  border-color: var(--73-border);
+  background: var(--73-surface);
+  color: var(--73-ink-soft);
+  padding: 0 12px;
+}
+
+.profile-page.my-requirements-page .requirement-actions button.ghost.action-quiet:hover:not(:disabled) {
+  border-color: var(--73-border-hover);
+  background: var(--73-bg-soft);
+  color: var(--73-ink);
+}
+
+.profile-page.my-requirements-page .requirement-actions button.ghost.action-emphasis {
+  border-color: var(--73-border);
+  background: var(--73-surface);
+  color: var(--73-ink-soft);
+}
+
+.profile-page.my-requirements-page .requirement-actions button.ghost.action-emphasis:hover:not(:disabled) {
+  border-color: var(--73-border-hover);
+  background: var(--73-bg-soft);
+  color: var(--73-ink);
+}
+
+/* 版本删除审核是这一行的「当前该做的事」，按设计稿给实底蓝 */
+.profile-page.my-requirements-page .requirement-actions button.ghost.action-review {
+  border-color: var(--73-accent);
+  background: var(--73-accent);
+  color: var(--73-accent-contrast);
+  box-shadow: none;
+}
+
+.profile-page.my-requirements-page .requirement-actions button.ghost.action-review:hover:not(:disabled) {
+  border-color: var(--73-accent);
+  background: color-mix(in srgb, var(--73-accent) 85%, var(--73-ink));
+  color: var(--73-accent-contrast);
+}
+
+.profile-page.my-requirements-page .requirement-actions button.ghost.action-primary,
+.profile-page.my-requirements-page .requirement-actions button.ghost.action-primary:hover:not(:disabled) {
+  border-color: var(--73-accent);
+  background: var(--73-accent);
+  color: var(--73-accent-contrast);
+  box-shadow: none;
+}
+
+.profile-page.my-requirements-page .requirement-actions button.ghost.action-primary:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--73-accent) 85%, var(--73-ink));
+}
+
+.profile-page.my-requirements-page .requirement-actions button.ghost.is-danger {
+  border-color: color-mix(in srgb, var(--73-danger) 32%, transparent);
+  background: var(--73-surface);
+  color: var(--73-danger);
+}
+
+.profile-page.my-requirements-page .requirement-actions button.ghost.is-danger:hover:not(:disabled) {
+  border-color: color-mix(in srgb, var(--73-danger) 50%, transparent);
+  background: color-mix(in srgb, var(--73-danger) 6%, var(--73-surface));
+  color: var(--73-danger);
+}
+
+/* 开关芯片维持 28px 的小胶囊，不抢动作按钮的层级 */
+.profile-page.my-requirements-page .requirement-toggle {
+  height: 28px;
+}
+
+/* --- 分页卡 --- */
+.profile-page.my-requirements-page .wb-pager {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin: 0;
+  padding: 12px 16px;
+  border: 1px solid var(--73-border);
+  border-radius: 12px;
+  background: var(--73-surface);
+  box-shadow: 0 10px 30px color-mix(in srgb, var(--73-accent) 6%, transparent);
+}
+
+.profile-page.my-requirements-page .wb-pager__count {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.my-requirements-pager__total {
+  color: var(--73-ink-muted);
+  font-size: 13px;
+}
+
+.my-requirements-pager__total strong {
+  color: var(--73-ink);
+  font-family: var(--73-font-family-mono);
+  font-weight: 600;
+}
+
+.profile-page.my-requirements-page .wb-pager__size {
+  width: 104px;
+}
+
+.profile-page.my-requirements-page .t73-pagination__pages {
+  gap: 4px;
+}
+
+.profile-page.my-requirements-page .t73-pagination__button {
+  min-width: 32px;
+  height: 32px;
+  border: 1px solid var(--73-border);
+  background: var(--73-surface);
+  color: var(--73-ink-soft);
+  font-size: 12px;
+}
+
+.profile-page.my-requirements-page .t73-pagination__button:hover:not(:disabled) {
+  border-color: var(--73-border-hover);
+  color: var(--73-accent);
+}
+
+.profile-page.my-requirements-page .t73-pagination__button:disabled {
+  opacity: 0.4;
+}
+
+.profile-page.my-requirements-page .t73-pagination__page--active,
+.profile-page.my-requirements-page .t73-pagination--background .t73-pagination__page--active {
+  border-color: var(--73-accent);
+  background: var(--73-accent);
+  color: var(--73-accent-contrast);
+  font-weight: 600;
+}
+
+.profile-page.my-requirements-page .t73-pagination__gap {
+  min-width: 20px;
+  height: 32px;
+}
+
+@media (max-width: 900px) {
+  .user-workbench .profile-page.my-requirements-page.wb-sheet {
+    padding: 16px;
+  }
+
+  .profile-page.my-requirements-page .requirement-card-body {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 12px;
+  }
+
+  .profile-page.my-requirements-page .requirement-summary {
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 8px 14px;
+    min-width: 0;
+    padding: 0;
+    border-left: 0;
+  }
+
+  .profile-page.my-requirements-page .wb-pager {
+    flex-wrap: wrap;
+  }
+}

@@ -72,7 +72,7 @@ function getCommenterInitial(value: string): string {
 <template>
   <article class="resource-detail-page__content-card resource-detail-page__comments-card">
     <header class="resource-detail-page__section-head">
-      <h2>资源评论</h2>
+      <h2>评论</h2>
       <span>{{ countLabel }}</span>
     </header>
 

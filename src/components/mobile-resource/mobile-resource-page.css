@@ -59,7 +59,7 @@
 
 .mobile-filter-bar button.active {
   color: var(--73-surface-strong);
-  background: var(--73-accent-gradient);
+  background: var(--73-accent);
 }
 
 .mobile-card-list {

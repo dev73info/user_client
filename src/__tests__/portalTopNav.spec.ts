@@ -104,7 +104,7 @@ describe('门户顶栏最小挂载烟测', () => {
   it('按登录态铺出导航链接，当前路由那条是 active', async () => {
     const { wrapper } = await render()
 
-    expect(navLabels(wrapper)).toEqual(['首页', '资源项目', '需求大厅', '社区', '积分商城'])
+    expect(navLabels(wrapper)).toEqual(['首页', '资源项目', '需求大厅', '社区中心', '积分商城'])
     expect(wrapper.find('.portal-nav__link.active').text()).toBe('首页')
     // 未登录：只给登录 / 注册两个按钮
     expect(wrapper.find('.portal-text-btn').text()).toBe('登录')
@@ -120,7 +120,7 @@ describe('门户顶栏最小挂载烟测', () => {
       '首页',
       '资源项目',
       '需求大厅',
-      '社区',
+      '社区中心',
       '积分商城',
       '工作台',
     ])

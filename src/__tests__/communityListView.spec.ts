@@ -123,8 +123,10 @@ describe('社区列表', () => {
     expect(wrapper.text()).toContain('作者：alice')
     expect(wrapper.text()).toContain('已发布')
 
-    await wrapper.get('.community-filters__keyword').setValue('路由')
-    await wrapper.get('select[aria-label="按标签筛选"]').setValue('前端')
+    // 搜索框是 TInput（非原生 input）：工具栏里第一个 TInput 就是关键词
+    await wrapper.findAllComponents({ name: 'TInput' })[0]!.setValue('路由')
+    // 标签筛选是 TSelect（非原生 select）：工具栏里第一个下拉就是标签
+    await wrapper.findAllComponents({ name: 'TSelect' })[0]!.setValue('前端')
     await wrapper.get('form.community-filters').trigger('submit')
     await flushPromises()
     expect(mocks.listPosts).toHaveBeenLastCalledWith('', {
@@ -139,7 +141,8 @@ describe('社区列表', () => {
   it('我的帖子带作者和审核状态，收藏只走收藏接口', async () => {
     const { wrapper } = await render({ authed: true })
     await tab(wrapper, '我的帖子')?.trigger('click')
-    await wrapper.get('select[aria-label="按审核状态筛选"]').setValue('pending_review')
+    // 我的帖子：第一个下拉是标签，第二个是审核状态
+    await wrapper.findAllComponents({ name: 'TSelect' })[1]!.setValue('pending_review')
     await wrapper.get('form.community-filters').trigger('submit')
     await flushPromises()
     expect(mocks.listPosts).toHaveBeenLastCalledWith('token', {

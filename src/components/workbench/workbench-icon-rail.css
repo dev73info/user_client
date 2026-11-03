@@ -1,18 +1,34 @@
 .workbench-icon-rail {
-  width: 76px;
+  width: 64px;
   height: 100%;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 14px;
-  padding: 18px 10px 16px;
-  /* 右侧两角跟内容卡片同一档圆角，左侧与内容列左边界对齐；不再和会话卡片的
-     圆角直接咬在一起 */
-  border-radius: 0 14px 14px 0;
-  /* 与会话消息区同一档浅底（--73-bg-soft）：图标栏从整页白底里分出来，
-     又不会比右侧的内容卡片更重 */
-  background: var(--73-bg-soft);
-  color: var(--73-ink-soft);
+  gap: 10px;
+  padding: 12px 12px 16px;
+  border-right: 1px solid var(--73-border);
+  background: var(--73-surface);
+  color: var(--73-ink-muted);
+}
+
+.workbench-icon-rail__brand {
+  width: 40px;
+  height: 40px;
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+  border-radius: 8px;
+  background: var(--73-accent);
+  color: var(--73-accent-contrast);
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  text-decoration: none;
+}
+
+.workbench-icon-rail__brand:focus-visible {
+  outline: 2px solid var(--73-accent);
+  outline-offset: 2px;
 }
 
 .workbench-icon-rail__item {
@@ -28,20 +44,9 @@
   flex: 1 1 auto;
   flex-direction: column;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   overflow-y: auto;
   scrollbar-width: none;
-}
-
-/* 顶部切换工作台入口：和分组 / 消息图标同一颗，只是动作不是跳转 */
-.workbench-icon-rail__switch {
-  flex: 0 0 auto;
-  color: var(--73-accent);
-}
-
-.workbench-icon-rail__switch:hover {
-  color: var(--73-accent);
-  background: transparent;
 }
 
 .workbench-icon-rail__items::-webkit-scrollbar {
@@ -50,49 +55,77 @@
 
 .workbench-icon-rail__item {
   position: relative;
-  width: 48px;
-  height: 48px;
+  width: 40px;
+  height: 40px;
   display: grid;
   place-items: center;
   flex: 0 0 auto;
   border-radius: 8px;
   background: transparent;
-  color: var(--73-ink-placeholder);
-  transition: color 150ms ease;
+  color: var(--73-ink-muted);
+  transition:
+    color 150ms ease,
+    background-color 150ms ease;
 }
 
 .workbench-icon-rail__item:hover {
   color: var(--73-ink);
-  background: transparent;
+  background: var(--73-bg-soft);
 }
 
-/* 选中与未选中都不加底色/描边：只有图标颜色变化，避免导航骨架比内容区更亮 */
+/* 选中态：只有 7% 浅蓝底 + 主色，无描边、无胶囊 */
 .workbench-icon-rail__item.is-active {
+  background: color-mix(in srgb, var(--73-accent) 7%, transparent);
   color: var(--73-accent);
-  background: transparent;
 }
 
 .workbench-icon-rail__item:focus-visible {
   outline: 2px solid var(--73-accent);
-  outline-offset: 3px;
+  outline-offset: 2px;
 }
 
+/* 未读数：纯蓝色数字，无红点、无胶囊底色 */
 .workbench-icon-rail__badge {
   position: absolute;
-  top: 1px;
-  right: 0;
-  min-width: 18px;
-  height: 18px;
-  display: inline-grid;
-  place-items: center;
-  padding: 0 5px;
-  border: 2px solid var(--73-surface-strong);
-  border-radius: 999px;
-  background: var(--73-danger);
-  color: var(--73-surface-strong);
-  font-size: 10px;
+  top: 3px;
+  right: 3px;
+  color: var(--73-accent);
+  font-family: var(--73-font-family-mono);
+  font-size: 11px;
   font-weight: 600;
   line-height: 1;
+}
+
+.workbench-icon-rail__foot {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  flex: 0 0 auto;
+}
+
+.workbench-icon-rail__foot .workbench-icon-rail__settings {
+  margin-top: 0;
+}
+
+.workbench-icon-rail__avatar {
+  width: 32px;
+  height: 32px;
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+  border-radius: 999px;
+  background: var(--73-inset);
+  color: var(--73-ink-soft);
+  font-size: 13px;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.workbench-icon-rail__avatar:hover {
+  background: var(--73-border-soft);
+  color: var(--73-ink);
 }
 
 .workbench-icon-rail__tooltip {
@@ -103,7 +136,7 @@
   padding: 6px 9px;
   border: 1px solid var(--73-border);
   border-radius: 8px;
-  background: var(--73-surface-strong);
+  background: var(--73-surface);
   color: var(--73-ink);
   box-shadow: 0 8px 20px color-mix(in srgb, var(--73-ink) 12%, transparent);
   font-size: 12px;
@@ -124,16 +157,23 @@
   transform: translate(0, -50%);
 }
 
-/**
- * 导航按钮的悬浮提示挂在 body 上（见 WorkbenchIconRail.vue 的 Teleport 注释），
- * 所以它不受上面那条 `overflow` 裁切规则的影响，改用视口坐标定位、常显。
- */
 .workbench-icon-rail__tooltip--floating {
   z-index: 1000;
   position: fixed;
   opacity: 1;
   transform: translate(0, -50%);
   pointer-events: none;
+}
+
+/* 齿轮触发器与导航项同宽 */
+.workbench-icon-rail :deep(.workbench-icon-rail__settings-trigger) {
+  width: 40px;
+  height: 40px;
+}
+
+.workbench-icon-rail :deep(.workbench-icon-rail__settings-trigger svg) {
+  width: 20px;
+  height: 20px;
 }
 
 @media (max-width: 900px) {

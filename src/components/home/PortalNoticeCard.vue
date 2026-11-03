@@ -20,6 +20,7 @@ const emit = defineEmits<{ (e: 'open-notice', notice: PortalNotice): void }>()
         <span class="portal-notice-head__icon" aria-hidden="true">◔</span>
         <h2>平台公告</h2>
       </div>
+      <span class="portal-card__chip portal-card__chip--muted">UPDATE STREAM</span>
     </div>
     <ul class="portal-notice-list">
       <li

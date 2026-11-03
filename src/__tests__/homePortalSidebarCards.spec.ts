@@ -18,7 +18,7 @@ describe('PortalBetaCard', () => {
   it('QQ 群按钮回抛 open-group', async () => {
     const wrapper = mount(PortalBetaCard)
 
-    expect(wrapper.find('.portal-beta-notice__badge').text()).toBe('内测中')
+    expect(wrapper.find('.portal-card__chip').text()).toBe('内测中')
     await wrapper.find('.portal-beta-notice__btn').trigger('click')
     expect(wrapper.emitted('open-group')).toHaveLength(1)
   })

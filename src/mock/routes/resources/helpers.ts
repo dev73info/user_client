@@ -18,6 +18,14 @@ export type MockResourcePurchaseOrder = ResourcePurchaseOrder & {
 
 export const mockPurchases: MockResourcePurchaseOrder[] = []
 
+/** 演示用创作者信用分：首页贡献榜据此展示绿 / 黄两档（真实环境由后端下发） */
+const MOCK_CREATOR_CREDITS: Record<string, number> = {
+  [DEV_USERNAME]: 100,
+  toolsmith_demo: 108,
+  zhang_demo: 92,
+  mochi_dev: 96,
+}
+
 export function nowIso(): string {
   return new Date().toISOString().slice(0, 19).replace('T', ' ')
 }
@@ -76,6 +84,8 @@ export function toPublicResource(resource: McResourcePayload, buyer?: string | n
   const info = mcResourcePortalInfo[resource.id]
   return {
     ...resource,
+    // 创作者信用分：真实环境由后端随公开视图下发；mock 给三档演示值（≥100 绿 / <100 黄）
+    creator_credit_score: MOCK_CREATOR_CREDITS[resource.creator] ?? 100,
     price_fen: resource.price_fen ?? 0,
     price_points: resource.price_points ?? 0,
     copyright_declared: resource.copyright_declared ?? false,

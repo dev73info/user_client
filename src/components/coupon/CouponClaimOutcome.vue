@@ -116,8 +116,8 @@ function openAuth(mode: 'login' | 'register') {
 }
 
 .claim-outcome__primary {
-  background: var(--73-app-grad-accent-03);
-  color: var(--73-ink);
+  background: var(--73-accent);
+  color: var(--73-ink-inverse);
   font-weight: 700;
 }
 

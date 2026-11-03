@@ -11,6 +11,8 @@
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 16px;
+  /* 两张卡各自按内容取高：不再被同一行拉成等高，短卡不背一截空白 */
+  align-items: start;
 }
 
 .wallet-hero__card {
@@ -18,14 +20,19 @@
   flex-direction: column;
 }
 
+/* 「资金明细」的类型筛选按文字收宽：通用档 150px 在这一行只显示 4 个字，右边空出一大截。
+   TSelect 根节点自带 width: 100%，所以宽度要写成 fit-content，flex 基宽同时给 auto */
+.dev-toolbar__field.dev-wallet-page__kind {
+  flex: 0 0 auto;
+  width: fit-content;
+}
+
 .wallet-hero__body {
   flex: 1;
   margin-bottom: 20px;
 }
 
-/* 接单收入卡片：状态标签与 T+1 说明并排一行。
-   标签靠左；说明用 margin-left:auto 贴右边界（与卡片头部「已提现」标签同一条右边界）。
-   两者都允许换行，卡片变窄时说明折到下一行仍保持右对齐。 */
+/* 接单收入卡的状态标签行：只放在途状态（提现处理中）；允许换行 */
 .wallet-hero__meta {
   display: flex;
   flex-wrap: wrap;
@@ -33,13 +40,12 @@
   gap: 6px 12px;
 }
 
-/* T+1 到账与免手续费的说明：与状态标签同一行，右对齐 */
+/* 保证金卡的提示（未开通 / 读取出错）：跟在标签行下面，整段左对齐 */
 .wallet-hero__note {
-  margin: 0 0 0 auto;
+  margin: 8px 0 0;
   font-size: 12px;
   line-height: 1.7;
   color: var(--dev-muted);
-  text-align: right;
 }
 
 .wallet-hero__main {
@@ -63,10 +69,20 @@
 .wallet-hero__footer {
   display: flex;
   align-items: center;
+  /* 与左卡「申请提现」同一条右边界：两张卡的主要动作都贴右下，扫视时不用来回找 */
+  justify-content: flex-end;
   flex-wrap: wrap;
   gap: 12px;
   padding-top: 16px;
   border-top: 1px solid var(--dev-line);
+}
+
+/* 提现 / 充值的图标与文字比库默认的 6px 再松一档：图标不贴着字。
+   用图标外边距而不是按钮 gap —— 库组件的 scoped 样式在运行时装得比本文件晚，
+   同特异性的 gap 会被它盖回去 */
+.wallet-hero__footer .t73-button .t73-icon,
+.wallet-payout__path .t73-button .t73-icon {
+  margin-right: 3px;
 }
 
 /* 卡片里的页面级操作按钮走统一层的 .dev-toolbar__primary / __ghost（36px、10px 圆角、

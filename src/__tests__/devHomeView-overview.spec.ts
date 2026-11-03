@@ -81,11 +81,18 @@ describe('developer workbench overview', () => {
     wrapper.unmount()
   })
 
-  it('四个跳转入口指向契约对应页面，不靠角色判断显隐', async () => {
+  it('四个入口卡片指向契约对应页面，并各带一条关键读数', async () => {
     const { wrapper } = await renderDevHome()
     const entries = wrapper.findAll('.dev-home__entry')
 
-    expect(entries.map((entry) => entry.text())).toEqual(['需求大厅', '我的需求', '钱包', '资源'])
+    expect(entries.map((entry) => entry.find('.dev-home__entry-label').text())).toEqual([
+      '需求大厅',
+      '我的需求',
+      '钱包',
+      '资源',
+    ])
+    expect(entries.every((entry) => entry.find('.dev-home__entry-value').exists())).toBe(true)
+    expect(entries.every((entry) => entry.find('.dev-home__entry-meta').exists())).toBe(true)
     expect(entries.map((entry) => entry.attributes('href'))).toEqual([
       '/dev-requirement-hall',
       '/dev-my-requirements',

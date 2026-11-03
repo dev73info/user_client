@@ -48,9 +48,9 @@ const emit = defineEmits<{ toggle: []; select: [scope: SearchScope] }>()
   display: inline-flex;
   align-items: center;
   flex: 0 0 auto;
-  min-width: 64px;
-  padding-right: 9px;
-  border-right: 1px solid var(--ptn-line-soft);
+  min-width: 56px;
+  padding-right: 8px;
+  border-right: 1px solid var(--73-border);
 }
 
 .portal-search-scope__trigger {
@@ -58,23 +58,22 @@ const emit = defineEmits<{ toggle: []; select: [scope: SearchScope] }>()
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 58px;
-  min-height: 32px;
+  min-width: 50px;
+  min-height: 28px;
   gap: 7px;
-  padding: 0 17px 0 8px;
+  padding: 0 16px 0 6px;
   border: 0;
-  border-radius: 999px;
+  border-radius: 6px;
   background: transparent;
-  color: var(--ptn-accent-brand);
+  color: var(--73-ink-soft);
   font: inherit;
-  font-size: 13px;
-  font-weight: 800;
+  font-size: 12px;
+  font-weight: 500;
   line-height: 1;
   cursor: pointer;
   transition:
     background-color 160ms ease,
-    color 160ms ease,
-    transform 160ms ease;
+    color 160ms ease;
 }
 
 /* 用 0×0 的边框三角画下拉箭头，跟着 currentColor 变 */
@@ -95,8 +94,8 @@ const emit = defineEmits<{ toggle: []; select: [scope: SearchScope] }>()
 }
 
 .portal-search-scope__trigger[aria-expanded='true'] {
-  background: var(--ptn-accent-tint-soft);
-  color: var(--ptn-accent-ink);
+  background: var(--73-inset);
+  color: var(--73-ink);
 }
 
 .portal-search-scope__trigger[aria-expanded='true']::after {
@@ -105,8 +104,8 @@ const emit = defineEmits<{ toggle: []; select: [scope: SearchScope] }>()
 
 .portal-search-scope__trigger:hover,
 .portal-search-scope__trigger:focus-visible {
-  background: var(--ptn-accent-wash);
-  color: var(--ptn-accent-ink);
+  background: var(--73-bg-soft);
+  color: var(--73-ink);
   outline: none;
 }
 
@@ -119,34 +118,30 @@ const emit = defineEmits<{ toggle: []; select: [scope: SearchScope] }>()
   width: 112px;
   gap: 4px;
   padding: 6px;
-  border: 1px solid var(--ptn-line-accent);
-  border-radius: 14px;
-  background: var(--ptn-surface);
-  box-shadow:
-    0 18px 38px var(--ptn-focus-halo),
-    0 4px 12px var(--ptn-shadow-soft);
-  backdrop-filter: blur(14px);
+  border: 1px solid var(--73-border);
+  border-radius: var(--73-radius-control);
+  background: var(--73-surface);
+  box-shadow: var(--73-shadow-panel);
 }
 
 .portal-search-scope__option {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  min-height: 34px;
+  min-height: 32px;
   padding: 0 10px;
   border: 0;
-  border-radius: 10px;
+  border-radius: 6px;
   background: transparent;
   color: var(--ptn-ink-body);
   font: inherit;
-  font-size: 13px;
-  font-weight: 750;
+  font-size: 12px;
+  font-weight: 500;
   text-align: left;
   cursor: pointer;
   transition:
     background-color 140ms ease,
-    color 140ms ease,
-    transform 140ms ease;
+    color 140ms ease;
 }
 
 /* 选中项右侧的小圆点：平时透明占位，选中时用 currentColor 填上 */
@@ -160,15 +155,15 @@ const emit = defineEmits<{ toggle: []; select: [scope: SearchScope] }>()
 
 .portal-search-scope__option:hover,
 .portal-search-scope__option:focus-visible {
-  background: var(--ptn-accent-wash);
-  color: var(--ptn-accent-ink);
+  background: var(--73-bg-soft);
+  color: var(--73-ink);
   outline: none;
 }
 
 .portal-search-scope__option.active {
-  background: var(--ptn-accent-gradient);
+  background: var(--73-accent);
   color: var(--ptn-inverse);
-  box-shadow: 0 8px 18px var(--ptn-accent-glow-18);
+  box-shadow: none;
 }
 
 .portal-search-scope__option.active::after {

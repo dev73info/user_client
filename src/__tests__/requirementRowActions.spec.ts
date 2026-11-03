@@ -144,7 +144,7 @@ describe('主操作优先级', () => {
 })
 
 describe('「更多」菜单项集合', () => {
-  it('合同已签给「查看合同」，绑定资源给「资源主页」，发票恒有一项', () => {
+  it('合同已签给「查看合同」，绑定资源给「资源主页」，可开票给「获取发票」', () => {
     const item = requirement({ status: 'in_development' })
     const keys = moreRowActions(item, facts({ contract: SIGNED })).map((entry) => entry.key)
     // 开发中还能申报解除合作（唯一的退出入口），结单后才换成「解除合作」按钮
@@ -158,15 +158,11 @@ describe('「更多」菜单项集合', () => {
     expect(moreRowActions(unrated, facts()).map((entry) => entry.key)).not.toContain('comment')
   })
 
-  it('开不出票时置灰并带原因，可点时不带 disabled', () => {
+  it('开不出票时整项不出现，可点时才给「获取发票」', () => {
     const selfManaged = requirement({ payment_mode: 'self_managed' })
-    const disabled = moreRowActions(selfManaged, facts()).find((entry) => entry.key === 'invoice')
-    expect(disabled).toEqual({
-      key: 'invoice',
-      label: '获取发票',
-      disabled: true,
-      title: '无担保模式不涉及付款与开票',
-    })
+    expect(moreRowActions(selfManaged, facts()).some((entry) => entry.key === 'invoice')).toBe(
+      false,
+    )
     const enabled = moreRowActions(requirement(), facts()).find((entry) => entry.key === 'invoice')
     expect(enabled).toEqual({ key: 'invoice', label: '获取发票' })
   })

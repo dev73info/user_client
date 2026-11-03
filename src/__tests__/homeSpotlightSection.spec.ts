@@ -86,7 +86,7 @@ describe('SpotlightResourceSection 精选资源区', () => {
     expect(wrapper.emitted('more')).toHaveLength(1)
   })
 
-  it('精选角标只显示星标，普通资源也进入同一列表', () => {
+  it('精选角标是金星 + 「精选」文字，普通资源也进入同一列表', () => {
     const wrapper = renderSection([
       resourceFixture({ id: 1, title: '普通资源', is_featured: false }),
       resourceFixture({ id: 2, title: '精选资源', is_featured: true }),
@@ -95,7 +95,7 @@ describe('SpotlightResourceSection 精选资源区', () => {
     expect(wrapper.get('.portal-section h2').text()).toBe('免费资源')
     expect(wrapper.findAll('.portal-spotlight-card')).toHaveLength(2)
     const mark = wrapper.get('.portal-spotlight-card__mark')
-    expect(mark.text()).toBe('')
+    expect(mark.text()).toBe('精选')
     expect(mark.attributes('aria-label')).toBe('精选')
     expect(mark.find('svg').exists()).toBe(true)
   })

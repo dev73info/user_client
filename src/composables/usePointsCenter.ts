@@ -11,7 +11,7 @@ export function usePointsCenter() {
   const router = useRouter()
   const auth = useAuthStore()
   const refreshing = ref(false)
-  const activeRecordTab = ref<PointsRecordTab>('transfers')
+  const activeRecordTab = ref<PointsRecordTab>('logs')
   const ledger = usePointsLedger()
   const checkin = useHomeCheckin(false)
   const transfer = usePointsTransfer({

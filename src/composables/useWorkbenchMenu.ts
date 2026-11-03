@@ -37,7 +37,11 @@ export function useWorkbenchMenu(options: {
 
   /** 实名通过后「我的合同」才出现在账户服务里。 */
   const realnameApproved = ref(false)
-  const openGroupKeys = ref<string[]>([])
+  // 菜单修正稿：用户侧默认展开「订单与合同 / 资产与权益」，账户组收起；
+  // 开发者侧两组合并成财务中心与团队服务，也默认展开。
+  const openGroupKeys = ref<string[]>(
+    options.isDevWorkbenchMode.value ? ['finance', 'team'] : ['orders', 'assets'],
+  )
 
   const menuGroups = computed<WorkbenchMenuGroup[]>(() => buildMenuGroups(realnameApproved.value))
 
@@ -172,5 +176,8 @@ export function useWorkbenchMenu(options: {
     openMessageCenter,
     // 外壳算标题要用：当前页命中的那一条
     findActiveItem,
+    // 侧边导航树要用：条目高亮与分组高亮
+    isMenuItemActive,
+    isGroupActive,
   }
 }

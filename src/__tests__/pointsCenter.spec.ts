@@ -19,7 +19,10 @@ const mocks = vi.hoisted(() => ({
 const auth = reactive({ token: 'user-token', username: 'tester', isAuthed: true, hydrate: vi.fn() })
 
 vi.mock('@/stores/auth', () => ({ useAuthStore: () => auth }))
-vi.mock('vue-router', () => ({ useRouter: () => ({ push: mocks.push }) }))
+vi.mock('vue-router', () => ({
+  useRouter: () => ({ push: mocks.push }),
+  RouterLink: { props: ['to'], template: '<a><slot /></a>' },
+}))
 vi.mock('@/api/points', () => ({
   getMyPoints: mocks.me,
   doCheckin: mocks.checkin,
@@ -151,11 +154,11 @@ describe('积分中心', () => {
       global: { stubs: { WorkbenchBarSlot: { template: '<div><slot /></div>' } } },
     })
     await flushPromises()
-    await button('积分打赏').trigger('click')
+    await button('发起积分打赏').trigger('click')
     await wrapper.get('[aria-label="接收方用户名"]').setValue('receiver')
     await wrapper.get('[aria-label="打赏金额"]').setValue(10)
     await wrapper.get('[aria-label="打赏附言"]').setValue('感谢')
-    await button('打赏').trigger('click')
+    await button('确认打赏').trigger('click')
     await flushPromises()
     expect(mocks.transfer).toHaveBeenCalledWith('user-token', {
       to_username: 'receiver',

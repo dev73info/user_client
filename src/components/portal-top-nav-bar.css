@@ -1,7 +1,6 @@
-/* 顶栏全站统一为「浮动圆角卡片」：顶部内缩 10px、左右收在内容列宽度内（min(1280px, 100% - 24px)）并居中，
-   白底半透明 + 细描边 + 投影 + 背景模糊。这是所有页面形态的基线样式，首页不再单独写一份。
-   滚动时顶栏是一层带底色的浮层，正文从卡片底下穿过去，不会与顶栏文字视觉打架。
-   移动端（≤900px）由 styles/unified-top-card.css 的 !important 规则压成白色通栏，不走这套卡片。 */
+/* 顶栏全站统一为「工作台通栏」：56px 高、白底、底部 1px 描边，左右 24px 内边距；
+   与首页的 Workbench 亮色设计一致（Stitch 首页稿的导航条）。
+   移动端（≤900px）由 styles/unified-top-card.css 的 !important 规则做同样的通栏处理。 */
 .portal-header {
   /* 顶栏自用色板：拆出去的三个子组件（导航 / 搜索 / 用户菜单）从这里继承 —— CSS 自定义
      属性顺着 DOM 往下传，子组件的 scoped 样式直接 var() 取值，裸色值就只在本文件出现一次。
@@ -17,7 +16,7 @@
   --ptn-accent-ink: var(--73-accent);
   --ptn-danger-ink: var(--73-danger);
   --ptn-inverse: var(--73-surface-strong);
-  --ptn-accent-gradient: var(--73-accent-gradient);
+  --ptn-accent-gradient: var(--73-accent);
   --ptn-line: color-mix(in srgb, var(--73-ink-disabled) 86%, transparent);
   --ptn-line-soft: color-mix(in srgb, var(--73-ink-disabled) 82%, transparent);
   --ptn-line-menu: color-mix(in srgb, var(--73-ink-disabled) 92%, transparent);
@@ -42,49 +41,66 @@
   --ptn-shadow-strong: color-mix(in srgb, var(--73-ink) 12%, transparent);
   --portal-nav-motion: cubic-bezier(0.22, 1, 0.36, 1);
   position: sticky;
-  top: 10px;
+  top: 0;
   z-index: 40;
   display: grid;
-  grid-template-columns: auto minmax(max-content, 1fr) auto;
+  grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: center;
-  gap: 20px;
-  width: min(1280px, calc(100% - 24px));
-  margin: 10px auto 14px;
-  padding: 12px 16px;
-  border: 1px solid color-mix(in srgb, var(--73-accent-soft) 96%, transparent);
-  border-radius: 18px;
-  background: var(--ptn-surface-soft);
-  box-shadow: 0 12px 30px color-mix(in srgb, var(--73-accent) 8%, transparent);
-  backdrop-filter: blur(12px);
+  gap: 24px;
+  width: 100%;
+  height: 56px;
+  margin: 0;
+  padding: 0 24px;
+  border: 0;
+  border-bottom: 1px solid var(--73-border);
+  border-radius: 0;
+  background: var(--73-surface);
+  box-shadow: none;
+  backdrop-filter: none;
 }
 
 .portal-brand {
   display: inline-flex;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
   color: inherit;
   text-decoration: none;
 }
 
 .portal-brand__mark {
   display: block;
-  width: 38px;
-  height: 38px;
-  border-radius: 12px;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
   object-fit: cover;
 }
 
 .portal-brand__copy {
   display: flex;
-  flex-direction: column;
-  gap: 2px;
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
 }
 
 .portal-brand__copy strong {
   display: block;
-  font-size: 16px;
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
   line-height: 1.1;
   color: var(--ptn-ink-strong);
+}
+
+.portal-brand__badge {
+  padding: 2px 6px;
+  border: 1px solid var(--73-border);
+  border-radius: 4px;
+  background: var(--73-inset);
+  color: var(--73-accent);
+  font-size: 10px;
+  font-weight: 500;
+  line-height: 1.4;
+  white-space: nowrap;
 }
 
 .portal-header__tools {
@@ -116,12 +132,12 @@
 .portal-icon-btn {
   display: inline-grid;
   place-items: center;
-  width: 38px;
-  height: 38px;
-  border-radius: 50%;
+  width: 32px;
+  height: 32px;
+  border-radius: var(--73-radius-control);
   color: var(--ptn-ink-body);
-  background: var(--ptn-surface-soft);
-  border: 1px solid color-mix(in srgb, var(--73-border) 96%, transparent);
+  background: var(--73-surface);
+  border: 1px solid var(--73-border);
   transition: 160ms ease;
 }
 
@@ -134,16 +150,16 @@
 
 .portal-icon-btn--subscription:hover:not(:disabled) {
   color: var(--ptn-accent-ink);
-  border-color: color-mix(in srgb, var(--73-accent) 28%, transparent);
-  background: var(--ptn-accent-wash);
+  border-color: var(--73-border-hover);
+  background: var(--73-bg-soft);
 }
 
 .portal-icon-btn--subscription.is-active,
 .portal-icon-btn--subscription.is-active:hover:not(:disabled) {
   color: var(--ptn-inverse);
-  border-color: color-mix(in srgb, var(--73-accent) 50%, transparent);
-  background: var(--ptn-accent-gradient);
-  box-shadow: 0 10px 22px color-mix(in srgb, var(--73-accent) 26%, transparent);
+  border-color: var(--73-accent);
+  background: var(--73-accent);
+  box-shadow: none;
 }
 
 .portal-icon-btn--subscription.is-loading {
@@ -163,11 +179,10 @@
   gap: 6px;
   width: 260px;
   padding: 10px;
-  border-radius: 18px;
-  border: 1px solid var(--ptn-line-menu);
-  background: color-mix(in srgb, var(--73-surface-strong) 96%, transparent);
-  box-shadow: 0 18px 40px color-mix(in srgb, var(--73-ink) 14%, transparent);
-  backdrop-filter: blur(12px);
+  border-radius: var(--73-radius-inner);
+  border: 1px solid var(--73-border);
+  background: var(--73-surface);
+  box-shadow: var(--73-shadow-panel);
 }
 
 .portal-subscription-menu__head {
@@ -190,9 +205,9 @@
   gap: 12px;
   width: 100%;
   padding: 10px 10px 10px 12px;
-  border: 1px solid color-mix(in srgb, var(--73-border) 94%, transparent);
-  border-radius: 14px;
-  background: color-mix(in srgb, var(--73-surface-strong) 86%, transparent);
+  border: 1px solid var(--73-border);
+  border-radius: var(--73-radius-control);
+  background: var(--73-surface);
   color: var(--ptn-ink-strong);
   cursor: pointer;
   text-align: left;
@@ -201,13 +216,13 @@
 }
 
 .portal-subscription-item:hover:not(:disabled) {
-  border-color: color-mix(in srgb, var(--73-accent) 22%, transparent);
-  background: color-mix(in srgb, var(--73-accent-soft) 94%, transparent);
+  border-color: var(--73-border-hover);
+  background: var(--73-bg-soft);
 }
 
 .portal-subscription-item.active {
-  border-color: color-mix(in srgb, var(--73-accent) 30%, transparent);
-  background: var(--ptn-accent-wash);
+  border-color: var(--73-accent-line);
+  background: var(--73-accent-soft);
 }
 
 .portal-subscription-item:disabled {
@@ -251,7 +266,31 @@
 }
 
 .portal-subscription-item.active .portal-subscription-item__state {
-  background: var(--ptn-accent-gradient);
+  background: var(--73-accent);
   color: var(--ptn-inverse);
-  box-shadow: 0 8px 18px color-mix(in srgb, var(--73-accent) 22%, transparent);
+  box-shadow: none;
+}
+
+
+/* --- Workbench 通栏的响应式（放在文件末尾，覆盖上面旧的浮动卡片档位） --- */
+@media (max-width: 1180px) {
+  .portal-header {
+    gap: 12px;
+    padding: 0 16px;
+  }
+}
+
+@media (max-width: 900px) {
+  .portal-header {
+    height: auto;
+    min-height: 56px;
+    padding: 8px 16px;
+  }
+}
+
+@media (max-width: 640px) {
+  .portal-header {
+    margin: 0;
+    padding: 8px 12px;
+  }
 }

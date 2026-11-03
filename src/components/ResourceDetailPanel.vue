@@ -48,6 +48,8 @@ import { TButton, TLoading, TMessage } from 'ui_73info'
 const props = defineProps<{
   /** 要展示的资源编号（列表页传选中项） */
   resourceId: number
+  /** 面包屑里的当前分区名（如「自由工具」）；缺省显示「资源列表」 */
+  contextLabel?: string
 }>()
 
 /**
@@ -254,7 +256,8 @@ async function loadResource() {
       listPublicMcResourceVersions(resourceId, token),
     ])
     resource.value = resourceDetail
-    versions.value = resourceVersions
+    // 列表按时间倒序：`latestVersion` 取 `versions[0]`，页面展示也与设计稿一致（新版本在上）
+    versions.value = [...resourceVersions].sort((a, b) => b.created_at.localeCompare(a.created_at))
   } catch (error) {
     // 就地报错，不把整个列表页带回首页
     resource.value = null
@@ -300,6 +303,26 @@ watch(
       <!-- 窄屏（≤900px）详情面板里的唯一退出口：桌面工具条的「返回」只在 ≥900px 渲染，
            面板内原来的「收起详情」已删除，移动端因此需要一个可见的返回控件。
            桌面端（>900px）由下面的媒体查询隐藏，保证不出现第二个返回入口。 -->
+      <!-- 桌面（>900px）详情页的返回行：返回按钮 + 面包屑（草稿形态）；窄屏仍用下面的面板内返回 -->
+      <div class="resource-detail-page__backbar">
+        <button
+          class="resource-detail-page__back-btn"
+          type="button"
+          aria-label="返回资源列表"
+          @click="emit('close')"
+        >
+          <span aria-hidden="true">←</span>
+          <span>返回资源列表</span>
+        </button>
+        <nav class="resource-detail-page__breadcrumb" aria-label="面包屑">
+          <span>资源项目</span>
+          <span aria-hidden="true">/</span>
+          <span>{{ props.contextLabel || '资源列表' }}</span>
+          <span aria-hidden="true">/</span>
+          <strong>{{ resource?.title || '资源详情' }}</strong>
+        </nav>
+      </div>
+
       <button
         class="resource-detail-page__panel-back"
         type="button"
@@ -383,3 +406,6 @@ watch(
 <style src="./resource-detail/resource-detail-shared.css"></style>
 
 <style src="./resource-detail/resource-purchase-palette.css"></style>
+
+<!-- Workbench 亮色详情稿（桌面端覆盖层，放在最后压过子组件的 scoped 样式） -->
+<style src="./resource-detail/resource-detail-workbench.css"></style>

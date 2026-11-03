@@ -2,8 +2,8 @@ import type { PointsTransfer, UserPointsLog } from '@/api/points'
 
 export type PointsRecordTab = 'transfers' | 'logs'
 export const POINTS_RECORD_TABS: ReadonlyArray<{ key: PointsRecordTab; label: string }> = [
-  { key: 'transfers', label: '打赏记录' },
   { key: 'logs', label: '积分明细' },
+  { key: 'transfers', label: '打赏记录' },
 ]
 
 export type TransferScope = 'all' | 'sent' | 'received'

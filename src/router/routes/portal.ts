@@ -111,7 +111,6 @@ export const portalRoutes: RouteRecordRaw[] = [
     component: () => import('@/views/PrepaidWechatPayView.vue'),
     meta: {
       title: '保证金充值',
-      hideSiteFooter: true,
     },
   },
   {
@@ -121,7 +120,6 @@ export const portalRoutes: RouteRecordRaw[] = [
     component: () => import('@/views/ApiResourceCheckoutView.vue'),
     meta: {
       title: '收银台',
-      hideSiteFooter: true,
     },
   },
   {
@@ -131,7 +129,6 @@ export const portalRoutes: RouteRecordRaw[] = [
     component: () => import('@/views/OAuthAuthorizeView.vue'),
     meta: {
       title: '授权登录',
-      hideSiteFooter: true,
     },
   },
   {

@@ -13,32 +13,72 @@
 }
 
 /* 四个跳转入口：读数只报数，明细在各自菜单页，这里给一条最省的竖向空间 */
+/* 四个入口按卡片均分：一行四列，窄屏两列 / 单列，不再用一排胶囊按钮 */
 .dev-home__entries {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
 }
 
 .dev-home__entry {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 36px;
-  padding: 0 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: flex-start;
+  gap: 2px;
+  min-height: 92px;
+  padding: 14px 16px;
   border: 1px solid var(--dev-line);
-  border-radius: 999px;
+  border-radius: var(--dev-radius-card);
   background: var(--dev-surface-strong);
+  box-shadow: var(--dev-shadow);
   color: var(--dev-ink);
-  font-size: 13px;
-  font-weight: 700;
   text-decoration: none;
   transition:
     border-color 160ms ease,
-    color 160ms ease;
+    box-shadow 160ms ease,
+    transform 160ms ease;
+}
+
+.dev-home__entry-label {
+  color: var(--dev-ink-soft);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.dev-home__entry-value {
+  margin-top: 6px;
+  color: var(--dev-ink);
+  font-size: 20px;
+  font-weight: 600;
+  line-height: 1.2;
+  font-variant-numeric: tabular-nums;
+}
+
+.dev-home__entry-meta {
+  color: var(--dev-muted);
+  font-size: 12px;
+}
+
+@media (max-width: 900px) {
+  .dev-home__entries {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 640px) {
+  .dev-home__entries {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }
 
 .dev-home__entry:hover {
   border-color: var(--wb-accent-line);
+  box-shadow: 0 8px 18px color-mix(in srgb, var(--dev-blue) 8%, transparent);
+  transform: translateY(-1px);
+}
+
+.dev-home__entry:hover .dev-home__entry-label {
   color: var(--dev-blue);
 }
 

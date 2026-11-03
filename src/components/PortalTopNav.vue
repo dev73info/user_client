@@ -80,6 +80,7 @@ function logoutFromMenu() {
       <img class="portal-brand__mark" src="/icons/home-icon.svg" alt="73info 首页" />
       <div class="portal-brand__copy">
         <strong>73info.cn</strong>
+        <span class="portal-brand__badge">开发者与协作网</span>
       </div>
     </RouterLink>
 

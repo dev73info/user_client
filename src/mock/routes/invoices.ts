@@ -6,7 +6,7 @@
  * 两张票加起来等于合同总价，页面上「可开票金额」不会与需求金额打架。
  */
 
-import type { InvoiceRecord, InvoiceableSummary } from '@/api/invoices'
+import type { components } from '@/api/generated/schema'
 
 import {
   CLIENT_NICKNAME,
@@ -21,6 +21,9 @@ import {
 import { defineRouteTable, type MockRoute } from '../router'
 import { jsonResponse, readString, textResponse } from '../response'
 
+type InvoiceResponse = components['schemas']['InvoiceResponse']
+type InvoiceableSummaryResponse = components['schemas']['InvoiceableSummaryResponse']
+
 function nowText(): string {
   return new Date().toISOString().slice(0, 19).replace('T', ' ')
 }
@@ -31,50 +34,58 @@ function fenOf(cny: number): number {
 
 const MOCK_ISSUER = '柒参信息科技有限公司'
 
+/**
+ * 造一张票。**字段名必须是契约里的 snake_case**：前端 `mapInvoice` 按 `invoice_role` /
+ * `developer_username` 这类名字读，早先这里回的是 camelCase，映射后全是 undefined，
+ * 于是「我的发票」永远空表。
+ */
 function buildInvoice(
   id: number,
   requirementId: string,
-  role: InvoiceRecord['invoiceRole'],
+  role: InvoiceResponse['invoice_role'],
   amountCny: number,
-): InvoiceRecord {
+  status: InvoiceResponse['status'] = 'approved',
+): InvoiceResponse {
   const requirement = findRequirement(requirementId)
   const contractId = 100 + (requirement?.id ?? 0)
   const applicant = role === 'platform' ? CLIENT_USERNAME : DEV_USERNAME
 
   return {
     id,
-    invoiceNo: `INV-MOCK-${String(id).padStart(4, '0')}`,
-    contractId,
-    requirementId,
-    invoiceRole: role,
-    applicantUsername: applicant,
-    customerUsername: CLIENT_USERNAME,
-    developerUsername: DEV_USERNAME,
-    issuerName: role === 'platform' ? MOCK_ISSUER : MOCK_ISSUER,
-    developerType: 'individual',
-    titleType: 'personal',
-    invoiceTitle: `${CLIENT_NICKNAME}（演示）`,
-    taxNumber: '',
-    recipientEmail: 'client@example.com',
-    invoiceKind: 'ordinary',
-    buyerAddress: '',
-    buyerPhone: '',
-    buyerBankName: '',
-    buyerBankAccount: '',
-    amountFen: fenOf(amountCny),
-    amountCny: amountCny.toFixed(2),
-    documentUrl: `/uploads/mock-invoice-${id}.pdf`,
-    status: 'approved',
-    reviewNote: null,
-    reviewedBy: 'admin_demo',
-    reviewedAt: nowText(),
-    createdAt: nowText(),
-    updatedAt: nowText(),
-    documentKind: 'blue',
-    reversalOfId: null,
-    reversalReason: null,
-    reversedAt: null,
-    reversedBy: null,
+    invoice_no: `INV-MOCK-${String(id).padStart(4, '0')}`,
+    contract_id: contractId,
+    requirement_id: requirementId,
+    invoice_role: role,
+    applicant_username: applicant,
+    customer_username: CLIENT_USERNAME,
+    developer_username: DEV_USERNAME,
+    issuer_name: MOCK_ISSUER,
+    developer_type: 'individual',
+    title_type: 'personal',
+    invoice_title: `${role === 'developer' ? DEV_NICKNAME : CLIENT_NICKNAME}（演示）`,
+    tax_number: '',
+    recipient_email: 'client@example.com',
+    invoice_kind: 'ordinary',
+    buyer_address: '',
+    buyer_phone: '',
+    buyer_bank_name: '',
+    buyer_bank_account: '',
+    amount_fen: fenOf(amountCny),
+    amount_cny: amountCny.toFixed(2),
+    document_url: status === 'approved' ? `/uploads/mock-invoice-${id}.pdf` : null,
+    document_name: status === 'approved' ? `invoice-${id}.pdf` : null,
+    document_mime: status === 'approved' ? 'application/pdf' : null,
+    status,
+    review_note: null,
+    reviewed_by: 'admin_demo',
+    reviewed_at: nowText(),
+    created_at: nowText(),
+    updated_at: nowText(),
+    document_kind: 'blue',
+    reversal_of_id: null,
+    reversal_reason: null,
+    reversed_at: null,
+    reversed_by: null,
   }
 }
 
@@ -82,10 +93,10 @@ function buildInvoice(
  * 只给已结单的担保需求造两张票；无担保模式没有分账、也没有平台服务费票，
  * 只留开发者收入票（金额就是合同总价）。
  */
-const invoices: InvoiceRecord[] = requirements
+const invoices: InvoiceResponse[] = requirements
   .filter((item) => item.status === 'completed')
   .flatMap((item, index) => {
-    const list: InvoiceRecord[] = []
+    const list: InvoiceResponse[] = []
 
     if (item.payment_mode === 'platform_guarantee') {
       list.push(buildInvoice(index * 2 + 1, item.requirement_id, 'platform', depositAmountOf(item)))
@@ -97,6 +108,8 @@ const invoices: InvoiceRecord[] = requirements
         item.requirement_id,
         'developer',
         item.payment_mode === 'platform_guarantee' ? finalAmountOf(item) : (item.budget ?? 0),
+        // 最新一张开发者票留成「待开具」，演示未上传文件的状态；更早的都是已开具
+        index === 0 ? 'requested' : 'approved',
       ),
     )
 
@@ -105,15 +118,15 @@ const invoices: InvoiceRecord[] = requirements
 
 function invoiceFor(
   requirementId: string,
-  role: InvoiceRecord['invoiceRole'],
-): InvoiceRecord | null {
+  role: InvoiceResponse['invoice_role'],
+): InvoiceResponse | null {
   return (
-    invoices.find((item) => item.requirementId === requirementId && item.invoiceRole === role) ??
+    invoices.find((item) => item.requirement_id === requirementId && item.invoice_role === role) ??
     null
   )
 }
 
-function buildSummary(requirementId: string): InvoiceableSummary | null {
+function buildSummary(requirementId: string): InvoiceableSummaryResponse | null {
   const requirement = findRequirement(requirementId)
   if (!requirement) {
     return null
@@ -133,34 +146,34 @@ function buildSummary(requirementId: string): InvoiceableSummary | null {
   const pendingTotal = invoiceAvailable ? pendingPlatform + pendingDeveloper : 0
 
   return {
-    requirementId,
+    requirement_id: requirementId,
     customer: CLIENT_USERNAME,
     developer: DEV_USERNAME,
     buyer: {
       username: CLIENT_USERNAME,
-      authType: 'IDENTITY_CARD',
-      realnameStatus: 'approved',
-      isOrganization: false,
+      auth_type: 'IDENTITY_CARD',
+      realname_status: 'approved',
+      is_organization: false,
       title: CLIENT_NICKNAME,
-      taxNumber: '',
+      tax_number: '',
       email: 'client@example.com',
     },
-    settledAmountFen: fenOf(platformFee + developerGross),
-    settledAmountCny: (platformFee + developerGross).toFixed(2),
-    platformFeeFen: fenOf(platformFee),
-    platformFeeCny: platformFee.toFixed(2),
-    developerGrossAmountFen: fenOf(developerGross),
-    developerGrossAmountCny: developerGross.toFixed(2),
-    refundedFen: 0,
-    refundedCny: '0.00',
-    developerInvoiceFen: fenOf(developerGross),
-    developerInvoiceCny: developerGross.toFixed(2),
-    invoiceableTotalFen: fenOf(pendingTotal),
-    invoiceableTotalCny: pendingTotal.toFixed(2),
-    invoiceAvailable,
-    requirementStatus: requirement.status,
-    platformInvoice: platformInvoice ?? null,
-    developerInvoice: developerInvoice ?? null,
+    paid_fen: fenOf(platformFee + developerGross),
+    paid_cny: (platformFee + developerGross).toFixed(2),
+    platform_fee_fen: fenOf(platformFee),
+    platform_fee_cny: platformFee.toFixed(2),
+    developer_gross_fen: fenOf(developerGross),
+    developer_gross_cny: developerGross.toFixed(2),
+    refunded_fen: 0,
+    refunded_cny: '0.00',
+    developer_invoice_fen: fenOf(developerGross),
+    developer_invoice_cny: developerGross.toFixed(2),
+    invoiceable_total_fen: fenOf(pendingTotal),
+    invoiceable_total_cny: pendingTotal.toFixed(2),
+    invoice_available: invoiceAvailable,
+    requirement_status: requirement.status,
+    platform_invoice: platformInvoice ?? null,
+    developer_invoice: developerInvoice ?? null,
   }
 }
 
@@ -201,7 +214,7 @@ const routes: MockRoute[] = [
         return textResponse('需求结单后才能申请开票', 409)
       }
 
-      const created: InvoiceRecord[] = []
+      const created: InvoiceResponse[] = []
 
       if (
         requirement.payment_mode === 'platform_guarantee' &&
@@ -245,8 +258,8 @@ const routes: MockRoute[] = [
         return textResponse('发票不存在', 404)
       }
 
-      record.documentUrl = `/uploads/mock-invoice-${record.id}.pdf`
-      record.updatedAt = nowText()
+      record.document_url = `/uploads/mock-invoice-${record.id}.pdf`
+      record.updated_at = nowText()
 
       return jsonResponse(record)
     },

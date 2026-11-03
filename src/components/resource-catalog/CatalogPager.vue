@@ -1,6 +1,6 @@
 <script setup lang="ts">
 /**
- * 资源目录的页码胶囊（工具条内，仅多页时出现）。
+ * 资源目录的页码胶囊（工具条统计行右端；单页时前后页置灰、不出页码）。
  *
  * 页码数字由 `@/shared/resourceCatalogDisplay` 的 `buildCatalogPageNumbers` 收口，
  * 这里只负责排版与翻页事件；翻页动作由父级转给列表实例。

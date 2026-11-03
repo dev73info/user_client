@@ -97,7 +97,7 @@ describe('workbench mode switch', () => {
       )!
       .findAll('.user-workbench__submenu-link')
     expect(assetsLinks.map((link) => link.text())).toEqual([
-      '我的收藏',
+      '我的帖子',
       '优惠券中心',
       '积分中心',
       '我的权益',

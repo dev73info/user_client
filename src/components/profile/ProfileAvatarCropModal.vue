@@ -292,7 +292,7 @@ const emit = defineEmits<{
 .modal-wrap--avatar-crop .profile-avatar-crop-action--primary.ghost {
   min-width: 116px;
   border-color: color-mix(in srgb, var(--73-accent) 95%, transparent);
-  background: var(--73-app-grad-accent-06);
+  background: var(--73-accent);
   color: var(--73-surface-strong);
   box-shadow: 0 12px 24px color-mix(in srgb, var(--73-accent) 22%, transparent);
 }
@@ -312,7 +312,7 @@ const emit = defineEmits<{
 
 .modal-wrap--avatar-crop .profile-avatar-crop-action--primary.ghost:hover:not(:disabled) {
   border-color: color-mix(in srgb, var(--73-accent) 98%, transparent);
-  background: var(--73-app-grad-accent-05);
+  background: var(--73-app-accent-strong);
   box-shadow: 0 16px 30px color-mix(in srgb, var(--73-accent) 28%, transparent);
 }
 

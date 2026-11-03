@@ -14,7 +14,7 @@ describe('需求状态文案', () => {
   it('deposit_paid 按支付模式给不同文案', () => {
     // 电签担保：定金已进平台托管、合同还在签署中，是过渡态。
     expect(requirementStatusLabel('deposit_paid', 'platform_guarantee')).toBe('已付定金')
-    // 无电签约定：没有合同也没有定金，审核通过即待开发者接单，是正式态。
+    // 无电签约定：没有合同也没有定金，审核通过即待接单，是正式态。
     expect(requirementStatusLabel('deposit_paid', 'self_managed')).toBe('待开发')
   })
 

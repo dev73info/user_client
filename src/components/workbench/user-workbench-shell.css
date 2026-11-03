@@ -37,9 +37,10 @@
   height: 100%;
   min-height: 0;
   display: block;
-  /* 顶部不再额外留 10px：与门户页同一条「顶栏下方 14px」的间距；
-     左侧 10px 给图标栏与内容卡片之间留出缝隙 */
-  padding: 0 10px 10px 10px;
+  /* 基准稿：图标栏 + 内容区之间不再留白，白色内容直接铺满 */
+  padding: 0;
+  background: var(--73-bg);
+  border-radius: 0;
 }
 
 .user-workbench__content--chat {
@@ -52,10 +53,10 @@
   height: 100%;
   min-height: 0;
   overflow-y: auto;
-  padding: 18px;
-  border: 1px solid var(--73-border-soft);
-  border-radius: 14px;
-  background: var(--73-surface-strong);
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: var(--73-bg);
   overscroll-behavior: contain;
 }
 
@@ -131,13 +132,29 @@
   flex: 1 1 auto;
 }
 
+/* 「我的需求」：设计稿是整块浅灰画布。去掉工作区白纸的描边、圆角与内边距，
+   让页面自己铺满并根据需要滚动；其余菜单页仍走原来的白纸版式。 */
+.user-workbench__main--icon-shell.user-workbench__main--gray-canvas {
+  padding: 0;
+  border-radius: 0;
+  background: var(--73-bg);
+}
+
+.user-workbench__content--workspace.user-workbench__content--gray-canvas {
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: var(--73-bg);
+}
+
 .user-workbench__content :deep(.page-shell) {
   width: 100%;
+  max-width: 1200px;
   min-height: 0;
   align-content: start;
-  margin: 0;
-  gap: 16px;
-  padding: 0;
+  margin: 0 auto;
+  gap: 20px;
+  padding: 24px;
 }
 
 .user-workbench__content :deep(.portal-page) {
@@ -196,6 +213,23 @@
   padding: 0;
 }
 
+/* 基准稿的内容区：浅灰画布、最大 1200px、24px 内边距；页面根不再自带白纸 */
+/* 统一页头：与内容同宽居中，随内容一起滚动 */
+.user-workbench__shell-head {
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 24px 24px 0;
+}
+
+.user-workbench__content--workspace :deep(.page-shell.wb-sheet),
+.user-workbench__content--workspace :deep(.page-shell.profile-page) {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 24px;
+  background: transparent;
+}
+
 /* 纸内各段靠自己的分隔线与内边距排布，页根那 16px 栅格间距会把纸头与纸身裂开一道缝 */
 .user-workbench__content--workspace :deep(.page-shell.wb-sheet) {
   gap: 0;
@@ -247,6 +281,7 @@
   .user-workbench__main--icon-shell {
     height: 100%;
     padding: 0;
+    border-radius: 0;
   }
 
   .user-workbench__content--chat,

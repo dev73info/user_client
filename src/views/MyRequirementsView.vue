@@ -84,6 +84,7 @@ const {
 <template>
   <main class="page-shell custom-page-shell profile-page my-requirements-page wb-sheet">
     <RequirementStrip
+      v-model:selected-state="selectedState"
       :stats="requirementStats"
       :loading="requirementLoading || conversationLoading"
       @refresh="handleRefresh"
