@@ -2,9 +2,12 @@
 <html lang="zh-CN">
   <head>
     <meta charset="UTF-8" />
+    <!-- Turnstile 的验证控件会从 blob: 起 worker。CSP 没有声明 worker-src 时按 script-src
+         回落，blob: 被拦掉，开发环境就拿不到人机验证 token（登录与自动登录都会卡住）。
+         这里只补开发页面的放行；生产由 .htaccess 的响应头再施加一层更严的 CSP。 -->
     <meta
       http-equiv="Content-Security-Policy"
-      content="default-src 'self'; base-uri 'self'; object-src 'none'; form-action 'self'; frame-src 'self' https://openapi.alipay.com https://excashier.alipay.com https://unitradeprod.alipay.com https://challenges.cloudflare.com; media-src 'self' blob:; img-src 'self' https: data: blob:; font-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self' 'wasm-unsafe-eval' https://challenges.cloudflare.com; connect-src 'self' https://api.73info.cn https://dev.73info.cn http://127.0.0.1:8080 http://localhost:8080 ws://127.0.0.1:* ws://localhost:* https://challenges.cloudflare.com"
+      content="default-src 'self'; base-uri 'self'; object-src 'none'; form-action 'self'; frame-src 'self' https://openapi.alipay.com https://excashier.alipay.com https://unitradeprod.alipay.com https://challenges.cloudflare.com; media-src 'self' blob:; img-src 'self' https: data: blob:; font-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self' 'wasm-unsafe-eval' https://challenges.cloudflare.com; worker-src 'self' blob:; connect-src 'self' https://api.73info.cn https://dev.73info.cn http://127.0.0.1:8080 http://localhost:8080 ws://127.0.0.1:* ws://localhost:* https://challenges.cloudflare.com"
     />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#1a237e" />
