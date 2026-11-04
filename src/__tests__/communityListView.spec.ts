@@ -221,8 +221,27 @@ describe('社区列表', () => {
       .find((item) => item.attributes('aria-label') === '下一页')
     await next?.trigger('click')
     await flushPromises()
-    expect(mocks.listPosts).toHaveBeenLastCalledWith('', expect.objectContaining({ offset: 10 }))
+    expect(mocks.listPosts).toHaveBeenCalledWith(
+      '',
+      expect.objectContaining({ limit: 10, offset: 10 }),
+    )
     expect(wrapper.text()).toContain('第 2 页')
+    wrapper.unmount()
+  })
+
+  it('下一页取不到帖子时不再显示下一页', async () => {
+    mocks.listPosts.mockImplementation(async (_token: string, query: { offset?: number }) =>
+      (query.offset ?? 0) === 0
+        ? Array.from({ length: 10 }, (_, index) => makeCommunityPost({ id: index + 1 }))
+        : [],
+    )
+    const { wrapper } = await render()
+    await flushPromises()
+    expect(wrapper.text()).toContain('第 1 页')
+    const next = wrapper
+      .findAll('button')
+      .find((item) => item.attributes('aria-label') === '下一页')
+    expect(next?.attributes('disabled')).toBeDefined()
     wrapper.unmount()
   })
 
