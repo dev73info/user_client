@@ -9,6 +9,7 @@ const mocks = vi.hoisted(() => ({
   showToast: vi.fn(),
   getUrl: vi.fn(),
   getStatus: vi.fn(),
+  getLoginUrl: vi.fn(),
 }))
 
 vi.mock('@/stores/auth', () => ({ useAuthStore: () => mocks.auth }))
@@ -34,6 +35,7 @@ vi.mock('@/api/auth', () => ({
   getOauthStatus: vi.fn().mockResolvedValue({ qq: true }),
   getQqLoginQrUrl: mocks.getUrl,
   getQqLoginQrStatus: mocks.getStatus,
+  getQqLoginUrl: mocks.getLoginUrl,
   getGiteeAuthorizeUrl: vi.fn(),
   getGithubAuthorizeUrl: vi.fn(),
   getWechatLoginQrUrl: vi.fn(),
@@ -57,6 +59,9 @@ describe('QQ direct authorization', () => {
       poll_secret: 'test-secret',
     })
     mocks.getStatus.mockResolvedValue({ token: null })
+    mocks.getLoginUrl.mockResolvedValue({
+      url: 'https://graph.qq.com/oauth2.0/show?state=in-app',
+    })
     wrapper = mount(
       defineComponent({
         setup() {
@@ -80,6 +85,18 @@ describe('QQ direct authorization', () => {
     await login
     expect(popup.location.href).toBe('https://graph.qq.com/oauth2.0/show?state=test')
     expect(mocks.getUrl).toHaveBeenCalledWith(`${window.location.origin}/`)
+  })
+
+  it('端内（QQ 浏览器）先取授权地址再整页跳转，不把 JSON 接口当落地页', async () => {
+    vi.spyOn(window.navigator, 'userAgent', 'get').mockReturnValue(
+      'Mozilla/5.0 (Linux; Android 13) AppleWebKit/537.36 MQQBrowser/13.0 QQ/9.0.0',
+    )
+    form.acceptTerms.value = true
+    await form.loginWithQq()
+    // 接口返回的是 `{ url }`，必须取出来再跳；直接跳接口地址只会显示一串 JSON。
+    expect(mocks.getLoginUrl).toHaveBeenCalledWith(`${window.location.origin}/`)
+    expect(window.open).not.toHaveBeenCalled()
+    expect(mocks.getUrl).not.toHaveBeenCalled()
   })
 
   it('requires agreement before opening a window', async () => {

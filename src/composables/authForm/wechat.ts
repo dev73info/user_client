@@ -2,8 +2,7 @@ import type { Ref } from 'vue'
 import { onBeforeUnmount, reactive, ref } from 'vue'
 import type { Router } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
-import { apiUrl } from '@/api/http'
-import { getWechatMpLoginQrUrl } from '@/api/auth'
+import { getWechatLoginUrl, getWechatMpLoginQrUrl } from '@/api/auth'
 import { isWechatBrowser } from '@/shared/auth/browser'
 import { TMessage } from 'ui_73info'
 
@@ -71,12 +70,20 @@ export function useWechatLogin({
     wechatLoginLoading.value = true
     const redirectTarget = wechatQrRedirectTarget()
 
-    // 微信内（移动端）：点击跳转服务号网页授权；PC 端：展示二维码扫码登录。
+    // 微信内（移动端）：先取授权地址，再整页跳到微信；PC 端：展示二维码扫码登录。
+    // 不能直接把接口地址赋给 location——那是一条返回 JSON 的接口，
+    // 用户会看到一串 `{"url":"https://open.weixin.qq.com/..."}`。
     if (isWechatBrowser()) {
-      const loginUrl = apiUrl(
-        `/auth/wechat/login/url?redirect_to=${encodeURIComponent(redirectTarget)}`,
-      )
-      window.location.href = loginUrl
+      try {
+        const resp = await getWechatLoginUrl(redirectTarget)
+        if (!resp.url.trim()) {
+          throw new Error('微信授权地址为空')
+        }
+        window.location.href = resp.url
+      } catch (err) {
+        TMessage.error(err instanceof Error ? err.message : '微信登录失败')
+        wechatLoginLoading.value = false
+      }
       return
     }
 

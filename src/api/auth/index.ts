@@ -43,11 +43,12 @@ export {
   getWechatBindQrUrl,
   getWechatLoginQrStatus,
   getWechatLoginQrUrl,
+  getWechatLoginUrl,
   getWechatMpLoginQrStatus,
   getWechatMpLoginQrUrl,
 } from './wechat'
 
-export { getQqLoginQrStatus, getQqLoginQrUrl } from './thirdPartyLogin'
+export { getQqLoginQrStatus, getQqLoginQrUrl, getQqLoginUrl } from './thirdPartyLogin'
 
 export { fetchAgreementContent, fetchUserServiceAgreement } from './agreements'
 export { getDevAccessStatus, getPrivileges, requestDevRole } from './devAccess'

@@ -2,8 +2,7 @@ import type { Ref } from 'vue'
 import { onBeforeUnmount, ref } from 'vue'
 import type { Router } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
-import { apiUrl } from '@/api/http'
-import { getQqLoginQrStatus, getQqLoginQrUrl } from '@/api/auth'
+import { getQqLoginQrStatus, getQqLoginQrUrl, getQqLoginUrl } from '@/api/auth'
 import { isQqBrowser } from '@/shared/auth/browser'
 import { qrPollDelayMs } from '@/utils/qrPollBackoff'
 import { TMessage } from 'ui_73info'
@@ -78,11 +77,20 @@ export function useQqLogin({
     const homeHref = router.resolve({ name: 'home' }).href
     const redirectTarget = `${window.location.origin}${homeHref}`
 
+    // 端内（QQ 内置浏览器）：先取授权地址，再整页跳到 QQ。
+    // 不能直接把接口地址赋给 location——那是一条返回 JSON 的接口，
+    // 用户会看到一串 `{"url":"https://graph.qq.com/oauth2.0/..."}`。
     if (isQqBrowser()) {
-      const loginUrl = apiUrl(
-        `/auth/qq/login/url?redirect_to=${encodeURIComponent(redirectTarget)}`,
-      )
-      window.location.href = loginUrl
+      try {
+        const resp = await getQqLoginUrl(redirectTarget)
+        if (!resp.url.trim()) {
+          throw new Error('QQ授权地址为空')
+        }
+        window.location.href = resp.url
+      } catch (err) {
+        TMessage.error(err instanceof Error ? err.message : 'QQ登录失败')
+        qqLoginLoading.value = false
+      }
       return
     }
 

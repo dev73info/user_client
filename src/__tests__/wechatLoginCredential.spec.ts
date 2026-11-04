@@ -120,6 +120,29 @@ describe('WeChat browser-only polling credential', () => {
     expect(form.wechatQrLogin.visible).toBe(false)
   })
 
+  it('微信内置浏览器先取授权地址再整页跳转，不把 JSON 接口当落地页', async () => {
+    vi.spyOn(window.navigator, 'userAgent', 'get').mockReturnValue(
+      'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) MicroMessenger/8.0.40',
+    )
+    mocks.fetch.mockImplementation(async (url: string) => {
+      const target = String(url)
+      const body = target.includes('/oauth-status')
+        ? { wechat: true }
+        : target.includes('/auth/wechat/login/url?')
+          ? { url: 'https://open.weixin.qq.com/connect/oauth2/authorize?appid=test' }
+          : qr
+      return new Response(JSON.stringify(body), {
+        headers: { 'Content-Type': 'application/json' },
+      })
+    })
+    form.acceptTerms.value = true
+    await form.loginWithWechat()
+    const urls = mocks.fetch.mock.calls.map(([url]) => String(url))
+    // 端内走的是网页授权地址接口；二维码那条是 PC 端的，不该被调用。
+    expect(urls.some((url) => url.includes('/auth/wechat/login/url?'))).toBe(true)
+    expect(urls.some((url) => url.includes('/auth/wechat/login/qr/url'))).toBe(false)
+  })
+
   it('rejects legacy QR responses without a polling credential', async () => {
     mocks.fetch.mockResolvedValueOnce(
       new Response(JSON.stringify({ url: qr.url, state: qr.state }), {

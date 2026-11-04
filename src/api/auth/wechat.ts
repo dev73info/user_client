@@ -1,12 +1,29 @@
 import { authHeaders, requestJson } from '@/api/http'
 
 import type {
+  AuthorizeUrlResp,
   WechatBindQrStatusResp,
   WechatBindQrUrlResp,
   WechatLoginQrStatusResp,
   WechatLoginQrUrlResp,
   WechatMpLoginQrUrlResp,
 } from './types'
+
+/**
+ * 取微信网页授权地址（`GET /auth/wechat/login/url`，免登录）。
+ *
+ * 给微信内置浏览器用：端内直接整页跳到授权页，由微信静默 / 显式授权后回调。
+ * 这条返回的是 JSON，**必须把 `url` 取出来再跳**，不能拿接口地址当落地页——
+ * 那样页面只会显示一串 `{"url":"https://open.weixin.qq.com/..."}`。
+ */
+export async function getWechatLoginUrl(redirectTo: string): Promise<AuthorizeUrlResp> {
+  const query = new URLSearchParams({ redirect_to: redirectTo })
+  return requestJson<AuthorizeUrlResp>(
+    `/auth/wechat/login/url?${query.toString()}`,
+    { headers: {} },
+    '微信登录暂不可用',
+  )
+}
 
 /**
  * 取服务号「扫码关注即登录」的二维码（`GET /auth/wechat/mp/login/qr/url`，免登录）。
