@@ -1,6 +1,6 @@
 import { apiUrl } from '@/api/http'
 import type { PublicMcResourceItem } from '@/api/resources'
-import type { PublicRequirementSpotlightItem, RequirementItem } from '@/api/requirements'
+import type { PublicRequirementSpotlightItem, RequirementHallItem } from '@/api/requirements'
 import { normalizeTagName } from '@/api/resourceTags'
 import { requirementPaymentModeLabel } from '@/shared/requirementDisplay'
 import { requirementStatusLabel } from '@/shared/requirementStatus'
@@ -110,7 +110,7 @@ export function requirementStatusText(status: string, paymentMode?: string): str
  */
 export function mergeRequirementDetail(
   current: PublicRequirementSpotlightItem,
-  detail: RequirementItem,
+  detail: RequirementHallItem,
 ): PublicRequirementSpotlightItem {
   return {
     ...current,

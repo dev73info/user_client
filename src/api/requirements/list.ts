@@ -1,6 +1,6 @@
 import { authHeader, requestJson } from '@/api/http'
 
-import type { RequirementItem } from './types'
+import type { RequirementHallItem, RequirementItem } from './types'
 
 export async function listRequirements(token: string): Promise<RequirementItem[]> {
   return requestJson<RequirementItem[]>(
@@ -37,9 +37,9 @@ export async function fetchRequirementDetail(
 export async function getWorkbenchRequirementHallItem(
   token: string,
   requirementId: string,
-): Promise<RequirementItem> {
+): Promise<RequirementHallItem> {
   const normalizedRequirementId = requirementId.trim()
-  const payload = await requestJson<RequirementItem[]>(
+  const payload = await requestJson<RequirementHallItem[]>(
     '/dev/requirements/hall/query',
     {
       headers: {

@@ -28,6 +28,20 @@ export type PublicRequirementSpotlightItem = Schemas['PublicRequirementResponse'
 
 export type PublicRequirementSpotlightPage = Schemas['PublicSpotlightResponse']
 
+/**
+ * 需求大厅的一条：契约 `RequirementHallItemResponse`。
+ *
+ * 大厅是「陌生人看你的单」，后端只回挑单需要的公开字段：没有内部主键、审核流水、
+ * 订阅设置与交付绑定。别把它当 `RequirementItem` 用——详情 / 我的需求等端点仍回完整结构。
+ */
+export type RequirementHallItem = Omit<
+  Schemas['RequirementHallItemResponse'],
+  'status' | 'payment_mode'
+> & {
+  status: RequirementStatus
+  payment_mode: RequirementPaymentMode
+}
+
 export type RequirementPendingResourceVersionDeleteRequest = {
   version_id: number
   version: string

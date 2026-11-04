@@ -1,6 +1,6 @@
 import { computed, ref } from 'vue'
 import { useRoute } from 'vue-router'
-import { getRequirementHallItem, type RequirementItem } from '@/api/devRequirements'
+import { getRequirementHallItem, type RequirementHallItem } from '@/api/devRequirements'
 import { useAuthStore } from '@/stores/auth'
 
 /**
@@ -15,7 +15,7 @@ export function useDevRequirementDetail() {
   const auth = useAuthStore()
 
   const loading = ref(false)
-  const requirement = ref<RequirementItem | null>(null)
+  const requirement = ref<RequirementHallItem | null>(null)
 
   /** 路由参数 `requirementId`：数组形态取首项，统一 trim，空串表示编号无效。 */
   const requirementId = computed(() => {
@@ -27,7 +27,7 @@ export function useDevRequirementDetail() {
     return typeof value === 'string' ? value.trim() : ''
   })
 
-  async function loadRequirement(): Promise<RequirementItem> {
+  async function loadRequirement(): Promise<RequirementHallItem> {
     return getRequirementHallItem(auth.token, requirementId.value)
   }
 
