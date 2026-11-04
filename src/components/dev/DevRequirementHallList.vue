@@ -2,7 +2,7 @@
 import { TButton, TIcon, TTable, TTableColumn, Tickets } from 'ui_73info'
 
 import PaymentModeChip from '@/components/PaymentModeChip.vue'
-import type { RequirementItem } from '@/api/devRequirements'
+import type { RequirementHallItem } from '@/api/devRequirements'
 import {
   bindButtonLabel,
   formatRequirementBudget,
@@ -19,7 +19,7 @@ import { formatCnDateTime } from '@/shared/requirementDisplay'
  * 判定在 `@/shared/devRequirementHall` 的 `bindButtonLabel` 里；保证金由后端在接单时判。
  */
 const props = defineProps<{
-  rows: RequirementItem[]
+  rows: RequirementHallItem[]
   /** 列表刷新中（表格遮罩 + 卡片流的 aria-busy） */
   loading: boolean
   /** 空态文案（加载中与真的没单是两句不同的话） */
@@ -30,13 +30,13 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   /** 点某一行的「接单」 */
-  open: [requirement: RequirementItem]
+  open: [requirement: RequirementHallItem]
   /** 空态里去签《开发者入驻协议》 */
   sign: []
 }>()
 
 /** 某一行的按钮文案。 */
-function rowButtonLabel(row: RequirementItem): string {
+function rowButtonLabel(row: RequirementHallItem): string {
   return bindButtonLabel(row, props.gate)
 }
 </script>

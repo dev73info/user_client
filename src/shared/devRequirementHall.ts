@@ -4,7 +4,7 @@
  * 「接单」按钮上的状态文案。取值、文案与判定顺序一字未改——这里不碰响应式状态，
  * 单测直接喂参数，视图与组件只负责排版。
  */
-import type { RequirementItem } from '@/api/devRequirements'
+import type { RequirementHallItem } from '@/api/devRequirements'
 import { requirementRichTextPreview } from '@/utils/requirementRichText'
 
 /** 表格与窄屏卡片里需求描述的预览长度：超出截断并补省略号。 */
@@ -35,13 +35,15 @@ export function formatRequirementBudget(value?: number | null): string {
 
 /** 无电签（自管）需求：不走保证金闸门。 */
 export function isSelfManagedRequirement(
-  requirement: Pick<RequirementItem, 'payment_mode'>,
+  requirement: Pick<RequirementHallItem, 'payment_mode'>,
 ): boolean {
   return requirement.payment_mode === 'self_managed'
 }
 
 /** 要不要过入驻协议闸门：平台担保的需求才要，自管需求直接接。 */
-export function requiresAgreementGate(requirement: Pick<RequirementItem, 'payment_mode'>): boolean {
+export function requiresAgreementGate(
+  requirement: Pick<RequirementHallItem, 'payment_mode'>,
+): boolean {
   return !isSelfManagedRequirement(requirement)
 }
 
@@ -59,7 +61,7 @@ export type RequirementBindGate = {
  * 前端不预判——预判只能靠编数，编出来的「可接单」比不显示更糟。
  */
 export function bindButtonLabel(
-  requirement: Pick<RequirementItem, 'payment_mode'>,
+  requirement: Pick<RequirementHallItem, 'payment_mode'>,
   gate: RequirementBindGate,
 ): string {
   if (!requiresAgreementGate(requirement)) {
@@ -89,7 +91,7 @@ export function requirementPreviewText(
 }
 
 /** 顶条读数：自管 / 担保两种发布方式各多少条（本页只统计当前页这几行）。 */
-export function countRequirementPaymentModes(rows: RequirementItem[]): {
+export function countRequirementPaymentModes(rows: RequirementHallItem[]): {
   selfManaged: number
   guarantee: number
 } {

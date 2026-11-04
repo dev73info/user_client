@@ -19566,7 +19566,7 @@
           "requirement"
         ],
         "summary": "需求大厅（开发者挑单）",
-        "description": "登录态的「需求大厅」，需要 `requirement.dev_hall_query.get`。口径同 legacy：状态在 `pending_deposit` / `deposit_paid` 两档（都还是待接单）、**不是自己发布的**、且尚未绑定交付资源——已经交付了资源的需求不该继续挂在大厅里等人接。最近 200 条，不分页。访客用的公开列表是 `GET /api/requirement/public-spotlight`。",
+        "description": "登录态的「需求大厅」，需要 `requirement.dev_hall_query.get`。口径同 legacy：状态在 `pending_deposit` / `deposit_paid` 两档（都还是待接单）、**不是自己发布的**、且尚未绑定交付资源——已经交付了资源的需求不该继续挂在大厅里等人接。最近 200 条，不分页。访客用的公开列表是 `GET /api/requirement/public-spotlight`。响应只含挑单需要的公开字段，**不含**审核流水、内部主键、订阅设置与交付绑定信息。",
         "operationId": "requirement_list_hall",
         "responses": {
           "200": {
@@ -19576,7 +19576,7 @@
                 "schema": {
                   "type": "array",
                   "items": {
-                    "$ref": "#/components/schemas/RequirementResponse"
+                    "$ref": "#/components/schemas/RequirementHallItemResponse"
                   }
                 }
               }
@@ -19802,7 +19802,7 @@
           "requirement"
         ],
         "summary": "需求详情",
-        "description": "按需求编号读一条需求，需要 `requirement.detail.get`。谁能看：需求方本人、已接单的开发者、仍在大厅招募的需求（任何登录用户）、以及已到终态的需求；**其余一律按「不存在」处理（404）**，不区分「没这条需求」与「不是你的需求」，免得被拿来探测编号。读这一条会顺带按需判定一次期限到期（平台没有后台扫描任务，到期后果只挂在「有人读」上），所以一次读可能就触发了「定金逾期作废」或「视为验收通过」，返回的状态是收口之后的。",
+        "description": "按需求编号读一条需求，需要 `requirement.detail.get`。谁能看：需求方本人、已接单的开发者、仍在大厅招募的需求（任何登录用户）、以及已到终态的需求；**其余一律按「不存在」处理（404）**，不区分「没这条需求」与「不是你的需求」，免得被拿来探测编号。审核流水（`review_note` / `reviewed_by` / `reviewed_at`）只回给需求方本人、已接单开发者与管理端；大厅里的单子任何登录用户都能读，但这些字段对非当事方一律为 `null`。读这一条会顺带按需判定一次期限到期（平台没有后台扫描任务，到期后果只挂在「有人读」上），所以一次读可能就触发了「定金逾期作废」或「视为验收通过」，返回的状态是收口之后的。",
         "operationId": "requirement_detail",
         "parameters": [
           {
@@ -51827,6 +51827,74 @@
           "payout_channel_ready": {
             "type": "boolean",
             "description": "出款条件是否就绪（渠道已装配 + 收款账户可用）。"
+          }
+        }
+      },
+      "RequirementHallItemResponse": {
+        "type": "object",
+        "description": "需求大厅的一条：只含陌生开发者挑单需要的字段。\n\n大厅是「别人看你的单」，不能复用 [`RequirementResponse`]：那个结构带着审核流水\n（`review_note` / `reviewed_by` / `reviewed_at`）、内部主键、订阅设置与交付绑定信息，\n这些都不该给接单方看。字段与前端大厅卡片 / 接单页逐项对应，**加字段前先确认它真的该给陌生人看**。",
+        "required": [
+          "requirement_id",
+          "created_time",
+          "creator",
+          "title",
+          "payment_mode",
+          "status"
+        ],
+        "properties": {
+          "acceptance_criteria": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "验收标准。"
+          },
+          "budget": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "format": "double",
+            "description": "预算（元）。"
+          },
+          "created_time": {
+            "type": "string",
+            "description": "创建时间。"
+          },
+          "creator": {
+            "type": "string",
+            "description": "发布者。"
+          },
+          "description": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "描述。"
+          },
+          "development_cycle_days": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32",
+            "description": "开发周期（天）。"
+          },
+          "payment_mode": {
+            "type": "string",
+            "description": "结算方式。"
+          },
+          "requirement_id": {
+            "type": "string",
+            "description": "业务编号。"
+          },
+          "status": {
+            "type": "string",
+            "description": "状态。"
+          },
+          "title": {
+            "type": "string",
+            "description": "标题。"
           }
         }
       }

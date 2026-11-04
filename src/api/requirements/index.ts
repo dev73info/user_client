@@ -12,6 +12,7 @@ export type {
   PublicRequirementSpotlightItem,
   PublicRequirementSpotlightPage,
   RecentDeal,
+  RequirementHallItem,
   RequirementItem,
   RequirementOverviewResp,
   RequirementPaymentMode,

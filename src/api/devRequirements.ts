@@ -1,8 +1,13 @@
 import { authHeader, requestJson } from '@/api/http'
 
-import type { RequirementItem } from './requirements'
+import type { RequirementHallItem, RequirementItem } from './requirements'
 
-export type { RequirementItem, RequirementPaymentMode, RequirementStatus } from './requirements'
+export type {
+  RequirementHallItem,
+  RequirementItem,
+  RequirementPaymentMode,
+  RequirementStatus,
+} from './requirements'
 
 /**
  * 需求大厅的候选单（契约 `GET /api/requirement/hall/query`）。
@@ -11,8 +16,8 @@ export type { RequirementItem, RequirementPaymentMode, RequirementStatus } from 
  * `composables/useDevRequirementHall.ts`）。别照搬管理端那套 `page / page_size / keyword`
  * 往这里塞——参数会被忽略，前端若还按「服务端已过滤」去渲染就会露馅。
  */
-export async function listRequirementHall(token: string): Promise<RequirementItem[]> {
-  return requestJson<RequirementItem[]>(
+export async function listRequirementHall(token: string): Promise<RequirementHallItem[]> {
+  return requestJson<RequirementHallItem[]>(
     '/dev/requirements/hall/query',
     {
       headers: {
@@ -26,7 +31,7 @@ export async function listRequirementHall(token: string): Promise<RequirementIte
 export async function getRequirementHallItem(
   token: string,
   requirementId: string,
-): Promise<RequirementItem> {
+): Promise<RequirementHallItem> {
   const normalizedRequirementId = requirementId.trim()
   const payload = await listRequirementHall(token)
   const item = payload.find((requirement) => requirement.requirement_id === normalizedRequirementId)

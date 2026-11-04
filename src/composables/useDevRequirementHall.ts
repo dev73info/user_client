@@ -3,7 +3,7 @@ import { useRoute } from 'vue-router'
 
 import { TMessage } from 'ui_73info'
 
-import { listRequirementHall, type RequirementItem } from '@/api/devRequirements'
+import { listRequirementHall, type RequirementHallItem } from '@/api/devRequirements'
 import { describeBackendError } from '@/shared/backendErrorText'
 import {
   REQUIREMENT_HALL_SORT_OPTIONS,
@@ -24,7 +24,7 @@ export function useDevRequirementHall() {
   const route = useRoute()
 
   const loading = ref(false)
-  const rows = ref<RequirementItem[]>([])
+  const rows = ref<RequirementHallItem[]>([])
   const total = ref(0)
   const page = ref(1)
   const pageSize = ref(10)

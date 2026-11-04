@@ -1,7 +1,7 @@
 import { computed, reactive, ref, type Ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { TMessage } from 'ui_73info'
-import { bindRequirementProject, type RequirementItem } from '@/api/devRequirements'
+import { bindRequirementProject, type RequirementHallItem } from '@/api/devRequirements'
 import { createMcResource, listMcResources, type McResourcePayload } from '@/api/mcResources'
 import { useDevResourceInitForm } from '@/composables/useDevResourceInitForm'
 import { describeBackendError } from '@/shared/backendErrorText'
@@ -36,7 +36,7 @@ export type BindingCapacityInput = {
  */
 export function useDevRequirementBinding(options: {
   requirementId: Ref<string>
-  requirement: Ref<RequirementItem | null>
+  requirement: Ref<RequirementHallItem | null>
   capacity: BindingCapacityInput
 }) {
   const auth = useAuthStore()
