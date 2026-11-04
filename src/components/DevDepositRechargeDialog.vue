@@ -257,7 +257,6 @@ defineExpose({ open })
           :step="0.01"
         />
         <div class="dev-recharge-dialog__notes">
-          <div class="dev-wallet-withdraw__note">充值后保证金余额增加，可用于解锁接单资格。</div>
           <div
             v-if="creditInfo && creditInfo.enforce_deposit_limit"
             class="dev-wallet-withdraw__note"
