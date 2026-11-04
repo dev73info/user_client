@@ -4,6 +4,7 @@ import { getDevCreditSelf, type DevCreditSelf } from '@/api/devCredit'
 import {
   createPrepaidWithdrawal,
   getPrepaidAccountStatement,
+  syncInflightRecharges,
   type PrepaidAccountStatement,
   type PrepaidLedgerEntry,
   type PrepaidWithdrawal,
@@ -75,6 +76,9 @@ export function useDevWalletDeposit() {
     }
     loading.value = true
     error.value = ''
+    // 回调可能丢件：先把「本地挂起、渠道已支付」的充值单补记一笔，再读余额。
+    // 失败不阻塞页面（渠道不可用时仍展示本地账）。
+    await syncInflightRecharges(auth.token)
     // 信用额度与保证金读数互不依赖：额度拿不到不该让整张卡进错误态，所以单独 catch。
     const creditTask = getDevCreditSelf(auth.token)
       .then((value) => {

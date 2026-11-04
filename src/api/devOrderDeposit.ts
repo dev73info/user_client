@@ -38,6 +38,7 @@ export {
   createPrepaidRecharge,
   createPrepaidWithdrawal,
   getMyPrepaidOrder,
+  syncInflightRecharges,
   getPrepaidAccountStatement,
   getPrepaidWechatAuthUrl,
   getPrepaidWechatStatus,

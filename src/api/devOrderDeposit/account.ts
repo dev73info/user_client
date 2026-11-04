@@ -1,4 +1,5 @@
 import { authHeaders, requestJson } from '@/api/http'
+import { listPaymentOrders, refreshPaymentOrder } from '@/api/payments'
 
 import { queryString } from './query'
 import type {
@@ -125,6 +126,32 @@ export async function getPrepaidWechatStatus(
     { method: 'GET' },
     '查询充值单失败',
   )
+}
+
+/**
+ * 把「本地挂起、渠道其实已支付」的充值单补记入账。
+ *
+ * 渠道回调打在公网 `notify_url` 上，本地开发时进不来：用户扫完码付了钱，库里还停在
+ * `pending`，刷新页面也看不到余额。这里列出本人挂起的充值单，逐单走
+ * `POST /api/payment/orders/{order_no}/refresh` 向渠道核对一次——只有渠道明确回「已支付」
+ * 才入账，未支付回 409，由调用方忽略。
+ *
+ * 单张失败不影响其它单；整步失败也不该阻断页面（返回 `false` 让调用方决定要不要提示）。
+ */
+export async function syncInflightRecharges(token: string): Promise<boolean> {
+  try {
+    const page = await listPaymentOrders(token, {
+      status: 'pending',
+      biz_type: 'developer_deposit_recharge',
+      page_size: 20,
+    })
+    for (const order of page.items) {
+      await refreshPaymentOrder(token, order.order_no).catch(() => undefined)
+    }
+    return true
+  } catch {
+    return false
+  }
 }
 
 /** 我的保证金提现单（`GET /api/payment/developer-order-deposit/withdrawals`）。 */

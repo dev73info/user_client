@@ -22,6 +22,7 @@ import {
   getPrepaidWechatAuthUrl,
   getPrepaidWechatStatus,
 } from '@/api/devOrderDeposit'
+import { refreshPaymentOrder } from '@/api/payments'
 import { toFen } from '@/composables/useDevWalletDeposit'
 import { useAuthStore } from '@/stores/auth'
 
@@ -133,6 +134,31 @@ function startPolling(orderNo: string): void {
   pollTimer = window.setTimeout(tick, 3000)
 }
 
+/**
+ * 支付宝出码后盯到账：回调进不来时，只有主动向渠道查单才能把「已支付」补回本地。
+ * 已支付就关弹窗并回刷余额；未支付（409）或查询失败就等下一轮，不打扰用户。
+ */
+function startAlipayPolling(orderNo: string): void {
+  stopPolling()
+  const tick = async () => {
+    pollTimer = null
+    try {
+      const order = await refreshPaymentOrder(auth.token, orderNo)
+      if (order.status === 'paid') {
+        TMessage.success('充值成功，保证金余额已到账')
+        visible.value = false
+        backToForm()
+        emit('succeeded')
+        return
+      }
+    } catch {
+      /* 渠道还没确认已支付，下一轮继续 */
+    }
+    pollTimer = window.setTimeout(tick, 3000)
+  }
+  pollTimer = window.setTimeout(tick, 3000)
+}
+
 async function submit(): Promise<void> {
   if (submitting.value) {
     return
@@ -190,7 +216,8 @@ async function submit(): Promise<void> {
     })
     qrChannel.value = 'alipay'
     pendingOrderNo.value = order.order_no
-    // 停在当前弹窗展示二维码，用户扫完由父级回刷余额。
+    // 停在当前弹窗展示二维码，同时轮询渠道到账。
+    startAlipayPolling(order.order_no)
   } catch (err) {
     TMessage.error(err instanceof Error ? err.message : '创建充值订单失败')
   } finally {
@@ -205,10 +232,14 @@ function backToForm() {
   pendingOrderNo.value = ''
 }
 
-/** 用户点「我已支付」：关掉弹窗并通知父级回刷余额。 */
-function closeAfterPay() {
+/** 用户点「我已支付」：先向渠道核对一次，关掉弹窗并通知父级回刷余额。 */
+async function closeAfterPay() {
+  const orderNo = pendingOrderNo.value
   visible.value = false
   backToForm()
+  if (orderNo) {
+    await refreshPaymentOrder(auth.token, orderNo).catch(() => undefined)
+  }
   emit('succeeded')
 }
 
