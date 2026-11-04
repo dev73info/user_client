@@ -25,6 +25,8 @@ const props = withDefaults(
     hideChrome?: boolean
     /** 页头（标题 / 刷新 / 发布）已经由外壳的读数条承担：只留页签与筛选 */
     hideHeader?: boolean
+    /** 分栏页用来补满左栏空档的后续帖子（不属于当前页，仅作展示与选中） */
+    fillPosts?: CommunityPost[]
   }>(),
   {
     selectable: false,
@@ -32,6 +34,7 @@ const props = withDefaults(
     hideAllMode: false,
     hideChrome: false,
     hideHeader: false,
+    fillPosts: () => [],
   },
 )
 
@@ -212,6 +215,14 @@ async function submitPost(payload: CreateCommunityPostPayload) {
           <CommunityPostCard
             v-for="post in list.posts"
             :key="post.id"
+            :post="post"
+            :selectable="selectable"
+            :active="selectedPostId === post.id"
+            @select="emit('select-post', $event)"
+          />
+          <CommunityPostCard
+            v-for="post in fillPosts"
+            :key="`fill-${post.id}`"
             :post="post"
             :selectable="selectable"
             :active="selectedPostId === post.id"

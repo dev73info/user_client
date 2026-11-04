@@ -47,18 +47,12 @@ export function useCommunityList() {
     }
   }
 
-  async function load() {
-    const requestId = ++listRequest
-    if (mode.value !== 'all' && !auth.token.trim()) {
-      posts.value = []
-      loading.value = false
-      return
-    }
-    loading.value = true
-    error.value = ''
+  /** 按当前模式 / 筛选条件取某一页；列表页与左栏「补空档」共用同一套查询口径。 */
+  async function fetchPage(targetPage: number): Promise<CommunityPost[]> {
+    if (mode.value !== 'all' && !auth.token.trim()) return []
     const query: CommunityPostListQuery = {
       limit: pageSize.value,
-      offset: (page.value - 1) * pageSize.value,
+      offset: (targetPage - 1) * pageSize.value,
     }
     if (mode.value !== 'favorites') {
       query.keyword = keyword.value.trim() || undefined
@@ -68,13 +62,26 @@ export function useCommunityList() {
       query.author = auth.username
       query.status = status.value || undefined
     }
+    const result =
+      mode.value === 'favorites'
+        ? await listFavoriteCommunityPosts(auth.token, query)
+        : await listCommunityPosts(auth.token, query)
+    return prioritizePendingCommunityPosts(result)
+  }
+
+  async function load() {
+    const requestId = ++listRequest
+    if (mode.value !== 'all' && !auth.token.trim()) {
+      posts.value = []
+      loading.value = false
+      return
+    }
+    loading.value = true
+    error.value = ''
     try {
-      const result =
-        mode.value === 'favorites'
-          ? await listFavoriteCommunityPosts(auth.token, query)
-          : await listCommunityPosts(auth.token, query)
+      const result = await fetchPage(page.value)
       if (requestId !== listRequest) return
-      posts.value = prioritizePendingCommunityPosts(result)
+      posts.value = result
     } catch (cause) {
       if (requestId !== listRequest) return
       posts.value = []
@@ -147,6 +154,7 @@ export function useCommunityList() {
     hasNext,
     emptyText,
     load,
+    fetchPage,
     loadTags,
     setMode,
     applyFilters,

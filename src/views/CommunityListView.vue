@@ -13,16 +13,12 @@ import { useCommunityList, type CommunityListMode } from '@/composables/useCommu
 const route = useRoute()
 const router = useRouter()
 const detailColumnRef = ref<HTMLElement | null>(null)
+const listColumnRef = ref<HTMLElement | null>(null)
 const panelRef = ref<InstanceType<typeof CommunityListPanel> | null>(null)
 const isCommunityPage = computed(() => route.name === 'community')
 const isWorkbenchFavorites = computed(() => route.name === 'workbench-favorites')
-/** 分栏页左栏与右侧内容区等高，分页器因此能和右栏底部对齐。 */
-const splitColumnHeight = ref(0)
-const splitColumnStyle = computed(() =>
-  isCommunityPage.value && splitColumnHeight.value > 0
-    ? { minHeight: `${splitColumnHeight.value}px` }
-    : undefined,
-)
+/** 右栏比左栏高时按序补齐的后续帖子：只作展示，不改变当前页的页码与页大小。 */
+const fillPosts = ref<CommunityPost[]>([])
 const selectedPostId = computed(() => {
   const value = Number(route.query.post)
   return Number.isSafeInteger(value) && value > 0 ? value : null
@@ -33,17 +29,62 @@ const list = reactive(useCommunityList())
 
 let detailObserver: ResizeObserver | null = null
 let layoutTimer: number | null = null
+let railFilling = false
+
+const MIN_FILL_SHORTFALL = 96
+const MAX_FILL_CARDS = 60
+
+/** 左栏当前渲染出来的高度（帖子卡 + 分页）。 */
+function railHeight(): number {
+  return listColumnRef.value?.scrollHeight ?? 0
+}
+
+/** 右栏变高时补卡、变矮时撤卡，让左栏用后续帖子填满右栏那一列，不留大片空白。 */
+async function syncRailFill(): Promise<void> {
+  const detail = detailColumnRef.value
+  if (!detail || !isCommunityPage.value || window.innerWidth <= 900) return
+  if (railFilling) return
+  railFilling = true
+  try {
+    const detailHeight = detail.offsetHeight
+    if (detailHeight < 200) return
+    while (fillPosts.value.length > 0 && railHeight() - detailHeight > MIN_FILL_SHORTFALL) {
+      fillPosts.value.pop()
+      await nextTick()
+    }
+    if (!list.hasNext && fillPosts.value.length === 0) return
+    let nextPage = list.page + 1
+    let buffer: CommunityPost[] = []
+    let appended = 0
+    while (appended < MAX_FILL_CARDS && detailHeight - railHeight() >= MIN_FILL_SHORTFALL) {
+      if (buffer.length === 0) {
+        buffer = await list.fetchPage(nextPage)
+        nextPage += 1
+        if (buffer.length === 0) break
+      }
+      const next = buffer.shift()
+      if (!next) break
+      if (list.posts.some((post) => post.id === next.id)) continue
+      if (fillPosts.value.some((post) => post.id === next.id)) continue
+      fillPosts.value.push(next)
+      appended += 1
+      await nextTick()
+    }
+  } finally {
+    railFilling = false
+  }
+}
 
 /** 右栏内容变高/变矮时同步左栏高度；每页条数固定 10 条，不随视口重算。 */
 function syncSplitLayout() {
   layoutTimer = null
   if (!isCommunityPage.value || window.innerWidth <= 900) {
-    splitColumnHeight.value = 0
+    fillPosts.value = []
     return
   }
   const detailHeight = detailColumnRef.value?.offsetHeight ?? 0
   if (detailHeight < 200) return
-  splitColumnHeight.value = detailHeight
+  void syncRailFill()
 }
 
 function scheduleSplitLayout() {
@@ -98,6 +139,7 @@ async function selectPost(post: CommunityPost, options: { scroll?: boolean } = {
 }
 
 function handlePostsLoaded(posts: CommunityPost[]) {
+  fillPosts.value = []
   if (!isCommunityPage.value || posts.length === 0) return
   if (window.innerWidth <= 900) return
   scheduleSplitLayout()
@@ -133,12 +175,13 @@ function handlePostsLoaded(posts: CommunityPost[]) {
       <CommunityToolbar :list="list" :modes="communityModes" @publish="panelRef?.openCreate()" />
 
       <div class="community-page__split-body">
-        <div class="community-page__list-column" :style="splitColumnStyle">
+        <div ref="listColumnRef" class="community-page__list-column">
           <CommunityListPanel
             ref="panelRef"
             :list="list"
             selectable
             hide-chrome
+            :fill-posts="fillPosts"
             :selected-post-id="selectedPostId"
             @select-post="selectPost"
             @posts-loaded="handlePostsLoaded"
