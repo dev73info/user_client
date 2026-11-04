@@ -20,39 +20,32 @@ function requirement(
   } as PublicRequirementSpotlightItem
 }
 
-describe('RequirementHallCard 发布方式标签', () => {
-  it('电签担保卡把状态与担保方式拆成两枚 chip', () => {
+describe('RequirementHallCard 担保方式标签', () => {
+  it('电签担保卡只展示担保方式，不展示需求状态', () => {
     const wrapper = mount(RequirementHallCard, {
       props: { card: requirement('platform_guarantee') },
     })
     expect(wrapper.get('.requirement-hall__badge--success').text()).toBe('电签担保')
-    expect(wrapper.get('.requirement-hall__badge--info').text()).toBe('待付定金')
+    expect(wrapper.findAll('.requirement-hall__badge')).toHaveLength(1)
+    expect(wrapper.text()).not.toContain('待付定金')
     wrapper.unmount()
   })
 
-  it('自管卡的 deposit_paid 按自管口径写成「待开发」', () => {
+  it('自管卡只展示无电签约定，不展示需求状态', () => {
     const wrapper = mount(RequirementHallCard, {
       props: { card: requirement('self_managed') },
     })
     expect(wrapper.get('.requirement-hall__badge--warning').text()).toBe('无电签约定')
-    expect(wrapper.get('.requirement-hall__badge--info').text()).toBe('待开发')
+    expect(wrapper.findAll('.requirement-hall__badge')).toHaveLength(1)
+    expect(wrapper.text()).not.toContain('待开发')
     wrapper.unmount()
   })
 
-  it('已完成卡不再展示状态 chip，只保留担保方式', () => {
+  it('已完成卡同样只保留担保方式', () => {
     const wrapper = mount(RequirementHallCard, {
       props: { card: requirement('platform_guarantee', 'completed') },
     })
     expect(wrapper.text()).not.toContain('已完成')
-    expect(wrapper.get('.requirement-hall__badge--success').text()).toBe('电签担保')
-    wrapper.unmount()
-  })
-
-  it('担保单的「已付定金」不再展示状态 chip', () => {
-    const wrapper = mount(RequirementHallCard, {
-      props: { card: requirement('platform_guarantee', 'deposit_paid') },
-    })
-    expect(wrapper.find('.requirement-hall__badge--info').exists()).toBe(false)
     expect(wrapper.get('.requirement-hall__badge--success').text()).toBe('电签担保')
     wrapper.unmount()
   })

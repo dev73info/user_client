@@ -3,7 +3,7 @@
  * 需求大厅的一张需求卡（卡格里的 `<article>`）。
  *
  * 结构对齐 Stitch 源码「需求大厅（精密工程轻色工作台）」：
- * 顶部「状态 + 担保方式」两枚 chip 与右侧需求编号，下面标题、三行描述，
+ * 顶部担保方式 chip 与右侧需求编号，下面标题、三行描述，
  * 底部是更新时间与「预算估算 + 查看详情」。
  */
 import { computed } from 'vue'
@@ -14,7 +14,6 @@ import {
   formatCny as formatMoney,
   requirementPaymentModeLabel,
 } from '@/shared/requirementDisplay'
-import { requirementStatusLabel } from '@/shared/requirementStatus'
 import { requirementRichTextPreview } from '@/utils/requirementRichText'
 
 const props = defineProps<{
@@ -24,26 +23,6 @@ const props = defineProps<{
 const emit = defineEmits<{
   (e: 'open', card: PublicRequirementSpotlightItem): void
 }>()
-
-const statusLabel = computed(() =>
-  requirementStatusLabel(props.card.status, props.card.payment_mode),
-)
-
-/** 大厅里「已完成」和担保单的「已付定金」都不再提供筛选/判断价值，不占 chip。 */
-const showStatusChip = computed(
-  () =>
-    props.card.status !== 'completed' &&
-    !(props.card.status === 'deposit_paid' && props.card.payment_mode === 'platform_guarantee'),
-)
-
-/** 状态 chip 的语义色：待审核琥珀、终止态中性、其余在途蓝；已完成不展示状态 chip。 */
-const statusTone = computed(() => {
-  const status = props.card.status
-  if (status === 'completed') return 'success'
-  if (status === 'pending_review') return 'warning'
-  if (status === 'rejected' || status === 'cancelled') return 'muted'
-  return 'info'
-})
 
 const guaranteeLabel = computed(() => requirementPaymentModeLabel(props.card.payment_mode))
 const guaranteeTone = computed(() =>
@@ -66,13 +45,6 @@ function open(): void {
   >
     <div class="requirement-hall__card-main">
       <div class="requirement-hall__badges">
-        <span
-          v-if="showStatusChip"
-          class="requirement-hall__badge"
-          :class="`requirement-hall__badge--${statusTone}`"
-        >
-          {{ statusLabel }}
-        </span>
         <span class="requirement-hall__badge" :class="`requirement-hall__badge--${guaranteeTone}`">
           {{ guaranteeLabel }}
         </span>
@@ -171,18 +143,6 @@ function open(): void {
   border-color: var(--73-success-line);
   background: var(--73-success-soft);
   color: var(--73-success-text);
-}
-
-.requirement-hall__badge--info {
-  border-color: var(--73-accent-line);
-  background: var(--73-accent-soft);
-  color: var(--73-accent);
-}
-
-.requirement-hall__badge--muted {
-  border-color: var(--73-border);
-  background: var(--73-inset);
-  color: var(--73-ink-muted);
 }
 
 .requirement-hall__id {
