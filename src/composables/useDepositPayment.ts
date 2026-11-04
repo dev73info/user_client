@@ -5,7 +5,7 @@ import { TMessage } from 'ui_73info'
 
 import { type AdapayBusinessPayChannel } from '@/api/adapay'
 import { fetchContractSigningStatus, type ContractSigningStatus } from '@/api/contracts'
-import { getPaymentLimits } from '@/api/payments'
+import { getDepositRatio } from '@/api/settings'
 import type { RequirementPaymentMode, RequirementStatus } from '@/api/requirements'
 import { requirementPayFen } from '@/shared/requirementPayment'
 import { useAuthStore } from '@/stores/auth'
@@ -140,14 +140,14 @@ export function useDepositPayment(options: DepositPaymentOptions) {
     }
 
     try {
-      const payload = await getPaymentLimits(auth.token)
+      const payload = await getDepositRatio(auth.token)
       if (!options.isMounted()) {
         return
       }
 
-      const bps = payload.deposit_ratio_bps
-      if (typeof bps === 'number' && Number.isInteger(bps) && bps > 0) {
-        depositRatioPercent.value = bps / 100
+      const percent = payload.deposit_ratio_percent
+      if (Number.isFinite(percent) && percent > 0) {
+        depositRatioPercent.value = percent
       }
     } catch {
       /* 比例取不到时保留默认值，页面上展示的是预估金额 */

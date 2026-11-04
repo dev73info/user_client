@@ -39,24 +39,6 @@ function orderQuery(query: PaymentOrderQuery): string {
   return text ? `?${text}` : ''
 }
 
-/** 平台资金口径（契约 `PaymentConfig`）：定金比例、平台费率、违约金与个税基点在**万分之几**。 */
-export type PaymentLimits = Schemas['PaymentConfig']
-
-/**
- * 平台资金口径（`GET /api/payment/limits/system`）。
- *
- * 定金比例读 `deposit_ratio_bps`（万分之几：2000 = 20%），别再读 1.x 的
- * `deposit_ratio_percent`——那个字段在 2.0 不存在，读出来恒为 `undefined`，
- * 前端会静默退回默认比例。
- */
-export async function getPaymentLimits(token: string): Promise<PaymentLimits> {
-  return requestJson<PaymentLimits>(
-    '/payment/limits/system',
-    { headers: authHeaders(token) },
-    '加载平台资金口径失败',
-  )
-}
-
 /** 我的支付单列表（`GET /api/payment/orders`，按创建时间倒序）。 */
 export async function listPaymentOrders(
   token: string,

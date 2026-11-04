@@ -14123,6 +14123,31 @@
         }
       }
     },
+    "/api/payment/deposit-ratio": {
+      "get": {
+        "tags": [
+          "payment"
+        ],
+        "summary": "读取定金比例",
+        "description": "用户端计算定金 / 尾款预估用，登录即可读，不需要配置权限。只返回 `deposit_ratio_bps`（基点），不返回平台结算账户号等其他资金口径；真正应付金额以服务端按合同快照算出的下单回执为准。",
+        "operationId": "payment_get_deposit_ratio",
+        "responses": {
+          "200": {
+            "description": "当前定金比例（基点）",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DepositRatioResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "未登录"
+          }
+        }
+      }
+    },
     "/api/payment/developer-order-deposit": {
       "get": {
         "tags": [
@@ -38176,6 +38201,20 @@
           }
         }
       },
+      "DepositRatioResponse": {
+        "type": "object",
+        "description": "用户面可读的定金比例。",
+        "required": [
+          "deposit_ratio_bps"
+        ],
+        "properties": {
+          "deposit_ratio_bps": {
+            "type": "integer",
+            "format": "int64",
+            "description": "定金占总金额的比例，单位基点（2000 = 20%）。"
+          }
+        }
+      },
       "DevAccessStatusResponse": {
         "type": "object",
         "description": "开发者准入状态。",
@@ -44167,6 +44206,74 @@
           "total": {
             "type": "integer",
             "format": "int64"
+          }
+        }
+      },
+      "RequirementHallItemResponse": {
+        "type": "object",
+        "description": "需求大厅的一条：只含陌生开发者挑单需要的字段。\n\n大厅是「别人看你的单」，不能复用 [`RequirementResponse`]：那个结构带着审核流水\n（`review_note` / `reviewed_by` / `reviewed_at`）、内部主键、订阅设置与交付绑定信息，\n这些都不该给接单方看。字段与前端大厅卡片 / 接单页逐项对应，**加字段前先确认它真的该给陌生人看**。",
+        "required": [
+          "requirement_id",
+          "created_time",
+          "creator",
+          "title",
+          "payment_mode",
+          "status"
+        ],
+        "properties": {
+          "acceptance_criteria": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "验收标准。"
+          },
+          "budget": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "format": "double",
+            "description": "预算（元）。"
+          },
+          "created_time": {
+            "type": "string",
+            "description": "创建时间。"
+          },
+          "creator": {
+            "type": "string",
+            "description": "发布者。"
+          },
+          "description": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "描述。"
+          },
+          "development_cycle_days": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32",
+            "description": "开发周期（天）。"
+          },
+          "payment_mode": {
+            "type": "string",
+            "description": "结算方式。"
+          },
+          "requirement_id": {
+            "type": "string",
+            "description": "业务编号。"
+          },
+          "status": {
+            "type": "string",
+            "description": "状态。"
+          },
+          "title": {
+            "type": "string",
+            "description": "标题。"
           }
         }
       },
@@ -51827,74 +51934,6 @@
           "payout_channel_ready": {
             "type": "boolean",
             "description": "出款条件是否就绪（渠道已装配 + 收款账户可用）。"
-          }
-        }
-      },
-      "RequirementHallItemResponse": {
-        "type": "object",
-        "description": "需求大厅的一条：只含陌生开发者挑单需要的字段。\n\n大厅是「别人看你的单」，不能复用 [`RequirementResponse`]：那个结构带着审核流水\n（`review_note` / `reviewed_by` / `reviewed_at`）、内部主键、订阅设置与交付绑定信息，\n这些都不该给接单方看。字段与前端大厅卡片 / 接单页逐项对应，**加字段前先确认它真的该给陌生人看**。",
-        "required": [
-          "requirement_id",
-          "created_time",
-          "creator",
-          "title",
-          "payment_mode",
-          "status"
-        ],
-        "properties": {
-          "acceptance_criteria": {
-            "type": [
-              "string",
-              "null"
-            ],
-            "description": "验收标准。"
-          },
-          "budget": {
-            "type": [
-              "number",
-              "null"
-            ],
-            "format": "double",
-            "description": "预算（元）。"
-          },
-          "created_time": {
-            "type": "string",
-            "description": "创建时间。"
-          },
-          "creator": {
-            "type": "string",
-            "description": "发布者。"
-          },
-          "description": {
-            "type": [
-              "string",
-              "null"
-            ],
-            "description": "描述。"
-          },
-          "development_cycle_days": {
-            "type": [
-              "integer",
-              "null"
-            ],
-            "format": "int32",
-            "description": "开发周期（天）。"
-          },
-          "payment_mode": {
-            "type": "string",
-            "description": "结算方式。"
-          },
-          "requirement_id": {
-            "type": "string",
-            "description": "业务编号。"
-          },
-          "status": {
-            "type": "string",
-            "description": "状态。"
-          },
-          "title": {
-            "type": "string",
-            "description": "标题。"
           }
         }
       }

@@ -80,6 +80,12 @@ export const accountRoutes: MockRoute[] = [
   },
   {
     method: 'GET',
+    path: '/payment/deposit-ratio',
+    note: '用户面定金比例（登录即可读，只回基点）',
+    handler: () => jsonResponse({ deposit_ratio_bps: 2000 }),
+  },
+  {
+    method: 'GET',
     path: '/payment/limits/system',
     note: '定金比例与平台费率（发布需求页要显示定金比例；契约只有基点口径）',
     handler: () =>

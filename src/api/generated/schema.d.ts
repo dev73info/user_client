@@ -5236,6 +5236,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/payment/deposit-ratio": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 读取定金比例
+         * @description 用户端计算定金 / 尾款预估用，登录即可读，不需要配置权限。只返回 `deposit_ratio_bps`（基点），不返回平台结算账户号等其他资金口径；真正应付金额以服务端按合同快照算出的下单回执为准。
+         */
+        get: operations["payment_get_deposit_ratio"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/payment/developer-order-deposit": {
         parameters: {
             query?: never;
@@ -14151,6 +14171,14 @@ export interface components {
             /** @description 支付单状态。 */
             status: string;
         };
+        /** @description 用户面可读的定金比例。 */
+        DepositRatioResponse: {
+            /**
+             * Format: int64
+             * @description 定金占总金额的比例，单位基点（2000 = 20%）。
+             */
+            deposit_ratio_bps: number;
+        };
         /** @description 开发者准入状态。 */
         DevAccessStatusResponse: {
             /** @description 是否已签《接口使用协议》。 */
@@ -16645,6 +16673,41 @@ export interface components {
             rejected: number;
             /** Format: int64 */
             total: number;
+        };
+        /**
+         * @description 需求大厅的一条：只含陌生开发者挑单需要的字段。
+         *
+         *     大厅是「别人看你的单」，不能复用 [`RequirementResponse`]：那个结构带着审核流水
+         *     （`review_note` / `reviewed_by` / `reviewed_at`）、内部主键、订阅设置与交付绑定信息，
+         *     这些都不该给接单方看。字段与前端大厅卡片 / 接单页逐项对应，**加字段前先确认它真的该给陌生人看**。
+         */
+        RequirementHallItemResponse: {
+            /** @description 验收标准。 */
+            acceptance_criteria?: string | null;
+            /**
+             * Format: double
+             * @description 预算（元）。
+             */
+            budget?: number | null;
+            /** @description 创建时间。 */
+            created_time: string;
+            /** @description 发布者。 */
+            creator: string;
+            /** @description 描述。 */
+            description?: string | null;
+            /**
+             * Format: int32
+             * @description 开发周期（天）。
+             */
+            development_cycle_days?: number | null;
+            /** @description 结算方式。 */
+            payment_mode: string;
+            /** @description 业务编号。 */
+            requirement_id: string;
+            /** @description 状态。 */
+            status: string;
+            /** @description 标题。 */
+            title: string;
         };
         /** @description 管理端分页列表响应（字段与 legacy `RequirementListPageResponse` 一致）。 */
         RequirementListPageResponse: {
@@ -19892,41 +19955,6 @@ export interface components {
             auto_withdraw_enabled_at?: string | null;
             /** @description 出款条件是否就绪（渠道已装配 + 收款账户可用）。 */
             payout_channel_ready: boolean;
-        };
-        /**
-         * @description 需求大厅的一条：只含陌生开发者挑单需要的字段。
-         *
-         *     大厅是「别人看你的单」，不能复用 [`RequirementResponse`]：那个结构带着审核流水
-         *     （`review_note` / `reviewed_by` / `reviewed_at`）、内部主键、订阅设置与交付绑定信息，
-         *     这些都不该给接单方看。字段与前端大厅卡片 / 接单页逐项对应，**加字段前先确认它真的该给陌生人看**。
-         */
-        RequirementHallItemResponse: {
-            /** @description 验收标准。 */
-            acceptance_criteria?: string | null;
-            /**
-             * Format: double
-             * @description 预算（元）。
-             */
-            budget?: number | null;
-            /** @description 创建时间。 */
-            created_time: string;
-            /** @description 发布者。 */
-            creator: string;
-            /** @description 描述。 */
-            description?: string | null;
-            /**
-             * Format: int32
-             * @description 开发周期（天）。
-             */
-            development_cycle_days?: number | null;
-            /** @description 结算方式。 */
-            payment_mode: string;
-            /** @description 业务编号。 */
-            requirement_id: string;
-            /** @description 状态。 */
-            status: string;
-            /** @description 标题。 */
-            title: string;
         };
     };
     responses: never;
@@ -34210,6 +34238,33 @@ export interface operations {
             };
             /** @description 没有该接口权限 */
             403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    payment_get_deposit_ratio: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 当前定金比例（基点） */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DepositRatioResponse"];
+                };
+            };
+            /** @description 未登录 */
+            401: {
                 headers: {
                     [name: string]: unknown;
                 };
