@@ -1,4 +1,4 @@
-const DEFAULT_TITLE = '73Info 柒叁信息 - 资源与需求协作平台'
+const DEFAULT_TITLE = '柒叁信息-需求定制交易平台'
 const DEFAULT_DESCRIPTION =
   '73Info 柒叁信息是内测中的资源与需求协作平台，优先沉淀网站开发和小工具资源，支持公开资源浏览、需求发布、沟通记录、合同签署、担保支付、交付验收和合规说明。'
 const SITE_URL = (

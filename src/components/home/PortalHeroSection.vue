@@ -35,9 +35,7 @@ const emit = defineEmits<{
           [ 工程协作枢纽 · ENGINEERING COLLABORATION HUB ]
         </div>
 
-        <h1>
-          <span>需求</span><span class="portal-title-accent">定制</span><span>与交易平台</span>
-        </h1>
+        <h1><span>需求</span><span class="portal-title-accent">定制</span><span>交易平台</span></h1>
 
         <div v-if="signals.length" class="portal-signal-list">
           <span v-for="signal in signals" :key="signal" class="portal-signal">{{ signal }}</span>

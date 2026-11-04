@@ -84,7 +84,7 @@ export function useHomePortalLifecycle(options: HomePortalLifecycleOptions) {
 
   onMounted(() => {
     setSeoMeta({
-      title: '73Info 柒叁信息 - 资源与需求协作平台',
+      title: '柒叁信息-需求定制交易平台',
       description:
         '73Info 柒叁信息面向网站开发和小工具场景提供免费资源浏览、需求发布、开发者协作、沟通记录与合规说明服务。',
       path: '/',

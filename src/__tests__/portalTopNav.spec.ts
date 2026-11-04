@@ -115,6 +115,15 @@ describe('门户顶栏最小挂载烟测', () => {
     wrapper.unmount()
   })
 
+  it('品牌区只展示柒叁信息，不再展示域名', async () => {
+    const { wrapper } = await render()
+
+    expect(wrapper.get('.portal-brand').text()).toContain('柒叁信息')
+    expect(wrapper.get('.portal-brand').text()).not.toContain('73info.cn')
+
+    wrapper.unmount()
+  })
+
   it('登录后追加「工作台」入口，并拉一次个人资料', async () => {
     const { wrapper } = await render({ authed: true })
 
