@@ -66,8 +66,10 @@ async function submitPost(payload: CreateCommunityPostPayload) {
 
 async function submitComment() {
   const saved = await commentState.submit()
-  if (saved && post.value)
+  if (saved && post.value) {
     post.value = { ...post.value, comment_count: post.value.comment_count + 1 }
+    commentSectionRef.value?.showLatestComment()
+  }
 }
 </script>
 

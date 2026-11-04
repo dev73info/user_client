@@ -14,12 +14,17 @@ const props = defineProps<{
   count: number
   loading: boolean
   hasNext: boolean
+  /** 已知总数时直接使用，避免根据相邻页反推。 */
+  total?: number
+  label?: string
 }>()
 
 const emit = defineEmits<{ change: [page: number] }>()
 
 const knownTotal = computed(
-  () => (props.page - 1) * props.pageSize + props.count + (props.hasNext ? props.pageSize : 0),
+  () =>
+    props.total ??
+    (props.page - 1) * props.pageSize + props.count + (props.hasNext ? props.pageSize : 0),
 )
 </script>
 
@@ -32,7 +37,7 @@ const knownTotal = computed(
       :page-size="pageSize"
       :show-total="false"
       :disabled="loading"
-      aria-label="社区帖子分页"
+      :aria-label="label ?? '社区帖子分页'"
       @change="emit('change', $event)"
     />
   </div>

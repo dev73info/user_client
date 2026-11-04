@@ -81,6 +81,11 @@
   display: grid;
   gap: 8px;
 }
+.community-comments__pager {
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid var(--73-border-soft);
+}
 .community-comment {
   display: grid;
   grid-template-columns: 32px minmax(0, 1fr);

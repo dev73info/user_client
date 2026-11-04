@@ -140,6 +140,55 @@ describe('社区详情与评论', () => {
     wrapper.unmount()
   })
 
+  it('评论超过一页时按每页 10 条分页', async () => {
+    mocks.listComments.mockResolvedValueOnce(
+      Array.from({ length: 18 }, (_, index) =>
+        makeCommunityComment({
+          id: 100 + index,
+          comment_text: `分页评论 ${index + 1}`,
+        }),
+      ),
+    )
+    const { wrapper } = await render()
+
+    expect(wrapper.findAll('.community-comment')).toHaveLength(10)
+    expect(wrapper.text()).toContain('分页评论 10')
+    expect(wrapper.find('[data-comment-id="110"]').exists()).toBe(false)
+
+    const pageTwo = wrapper.findAll('button').find((button) => button.text() === '2')
+    await pageTwo?.trigger('click')
+    await flushPromises()
+
+    expect(wrapper.findAll('.community-comment')).toHaveLength(8)
+    expect(wrapper.text()).toContain('分页评论 18')
+    expect(wrapper.find('[data-comment-id="117"]').exists()).toBe(true)
+    wrapper.unmount()
+  })
+
+  it('长正文默认折叠，可展开并收起', async () => {
+    const { wrapper } = await render()
+    const content = wrapper.get('.community-detail-card__content')
+    Object.defineProperty(content.element, 'scrollHeight', {
+      configurable: true,
+      value: 900,
+    })
+    window.dispatchEvent(new Event('resize'))
+    await flushPromises()
+
+    expect(content.classes()).toContain('community-detail-card__content--collapsed')
+    const expand = wrapper.findAll('button').find((button) => button.text() === '展开全文')
+    expect(expand).toBeDefined()
+
+    await expand?.trigger('click')
+    expect(content.classes()).not.toContain('community-detail-card__content--collapsed')
+    expect(wrapper.findAll('button').some((button) => button.text() === '收起正文')).toBe(true)
+
+    const collapse = wrapper.findAll('button').find((button) => button.text() === '收起正文')
+    await collapse?.trigger('click')
+    expect(content.classes()).toContain('community-detail-card__content--collapsed')
+    wrapper.unmount()
+  })
+
   it('点击详情操作栏空白区域聚焦评论输入框', async () => {
     const { wrapper } = await render()
     await wrapper.get('.community-detail-card__actions').trigger('click')

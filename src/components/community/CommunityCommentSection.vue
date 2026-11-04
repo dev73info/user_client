@@ -1,10 +1,13 @@
 <script setup lang="ts">
-import { nextTick, ref } from 'vue'
+import { computed, nextTick, ref, watch } from 'vue'
 import { TButton, TEmpty, TLoading } from 'ui_73info'
 
 import type { CommunityComment } from '@/api/community'
+import CommunityPagination from '@/components/community/CommunityPagination.vue'
 import { COMMUNITY_COMMENT_MAX_LENGTH } from '@/composables/useCommunityComments'
 import { formatBackendDateTime } from '@/shared/datetime'
+
+const COMMENT_PAGE_SIZE = 10
 
 const props = defineProps<{
   comments: CommunityComment[]
@@ -31,8 +34,25 @@ const emit = defineEmits<{
 }>()
 const text = defineModel<string>('text', { required: true })
 const replyTo = defineModel<CommunityComment | null>('replyTo', { required: true })
+const sectionRef = ref<HTMLElement | null>(null)
 const composerRef = ref<HTMLTextAreaElement | null>(null)
 const replyComposerRef = ref<HTMLTextAreaElement | null>(null)
+const currentPage = ref(1)
+const pageCount = computed(() => Math.max(1, Math.ceil(props.comments.length / COMMENT_PAGE_SIZE)))
+const pagedComments = computed(() => {
+  const start = (currentPage.value - 1) * COMMENT_PAGE_SIZE
+  return props.comments.slice(start, start + COMMENT_PAGE_SIZE)
+})
+
+watch(pageCount, (count) => {
+  if (currentPage.value > count) currentPage.value = count
+})
+watch(
+  () => props.postId,
+  () => {
+    currentPage.value = 1
+  },
+)
 
 function avatarInitial(name: string): string {
   return Array.from(name.trim())[0]?.toUpperCase() ?? '?'
@@ -63,7 +83,21 @@ async function focusComposer(): Promise<void> {
   composerRef.value?.focus()
 }
 
-defineExpose({ focusComposer })
+function showLatestComment(): void {
+  void nextTick(() => {
+    currentPage.value = pageCount.value
+  })
+}
+
+function goToPage(page: number): void {
+  currentPage.value = Math.min(Math.max(1, page), pageCount.value)
+  replyTo.value = null
+  void nextTick(() => {
+    sectionRef.value?.scrollIntoView?.({ block: 'start', behavior: 'smooth' })
+  })
+}
+
+defineExpose({ focusComposer, showLatestComment })
 
 function setReplyComposer(element: unknown): void {
   replyComposerRef.value = element instanceof HTMLTextAreaElement ? element : null
@@ -80,7 +114,7 @@ function canAccept(comment: CommunityComment): boolean {
 </script>
 
 <template>
-  <section class="community-comments" aria-labelledby="community-comments-title">
+  <section ref="sectionRef" class="community-comments" aria-labelledby="community-comments-title">
     <header class="community-comments__header">
       <h2 id="community-comments-title">评论与回复</h2>
       <span>{{ comments.length }} 条</span>
@@ -121,7 +155,7 @@ function canAccept(comment: CommunityComment): boolean {
       <TEmpty v-else-if="!comments.length" description="暂时没有评论" />
       <div v-else class="community-comments__list">
         <article
-          v-for="comment in comments"
+          v-for="comment in pagedComments"
           :key="comment.id"
           class="community-comment"
           :class="{
@@ -199,6 +233,18 @@ function canAccept(comment: CommunityComment): boolean {
         </article>
       </div>
     </TLoading>
+    <CommunityPagination
+      v-if="!loading && !error && pageCount > 1"
+      class="community-comments__pager"
+      :page="currentPage"
+      :page-size="COMMENT_PAGE_SIZE"
+      :count="pagedComments.length"
+      :total="comments.length"
+      :loading="loading"
+      :has-next="currentPage < pageCount"
+      label="社区评论分页"
+      @change="goToPage"
+    />
   </section>
 </template>
 

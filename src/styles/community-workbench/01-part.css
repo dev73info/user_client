@@ -151,7 +151,7 @@
     box-shadow: var(--73-shadow-card-hover);
   }
 
-  .community-page.community-page--split .community-post-card.active {
+  .community-page.community-page--split .community-post-card.is-selected {
     border-color: var(--73-accent-line);
     background: var(--73-accent-soft);
   }

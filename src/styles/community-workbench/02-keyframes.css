@@ -63,7 +63,7 @@
   }
 
   /* 选中帖子：浅蓝底 + 左侧蓝色标线（源码 selected 行） */
-  .community-page.community-page--split .community-post-card.active {
+  .community-page.community-page--split .community-post-card.is-selected {
     border-color: var(--73-accent-line);
     border-left: 3px solid var(--73-accent);
     background: var(--73-accent-soft);

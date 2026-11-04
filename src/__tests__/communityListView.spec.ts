@@ -109,11 +109,14 @@ describe('社区列表', () => {
     expect(wrapper.find('.community-page--split').exists()).toBe(true)
     expect(wrapper.get('.community-post-panel').text()).toContain('帖子 7')
     expect(router.currentRoute.value.query.post).toBe('7')
+    expect(wrapper.findAll('.community-post-card')[0]!.classes()).toContain('is-selected')
 
     await wrapper.findAll('.community-post-card')[1]!.trigger('click')
     await flushPromises()
     expect(router.currentRoute.value.query.post).toBe('8')
     expect(wrapper.get('.community-post-panel').text()).toContain('帖子 8')
+    expect(wrapper.findAll('.community-post-card')[0]!.classes()).not.toContain('is-selected')
+    expect(wrapper.findAll('.community-post-card')[1]!.classes()).toContain('is-selected')
     wrapper.unmount()
   })
 
