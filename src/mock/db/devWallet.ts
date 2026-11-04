@@ -63,11 +63,8 @@ export const devWithdrawalSetting = {
   account_no_tail: '3445',
 }
 
-/** 提现限额（契约 `WithdrawalConfig`，单位一律分；`0` 表示不设限）。 */
+/** 单笔提现限额（契约 `WithdrawalLimitsResponse`，单位一律分；`0` 表示不设限）。 */
 export const devWithdrawalLimits = {
   min_fen: 100,
   max_fen: 5000000,
-  auto_payout_max_fen: 1000000,
-  reconcile_cooldown_secs: 60,
-  reconcile_on_read: true,
 }

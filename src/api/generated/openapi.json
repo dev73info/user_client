@@ -14579,6 +14579,63 @@
         }
       }
     },
+    "/api/payment/developer-order-deposit-reconcile": {
+      "get": {
+        "tags": [
+          "payment-admin"
+        ],
+        "summary": "查看预付余额对账结果",
+        "description": "返回最近一轮对账：每条含平台镜像余额、渠道可用 / 冻结 / 总额与差额。`diff_fen` 为负通常是渠道扣了手续费；对账只报差异，不自动调账。",
+        "operationId": "payment_admin_prepaid_reconcile_list",
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PrepaidReconcileListResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "没有该接口权限"
+          },
+          "500": {
+            "description": "读取失败"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "payment-admin"
+        ],
+        "summary": "执行预付余额对账",
+        "description": "逐个有余额 / 有收款账户的预付账户向渠道查询余额，与平台镜像比较后落库。单个账户查询失败记为 `error`，不影响其它账户。",
+        "operationId": "payment_admin_prepaid_reconcile_run",
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PrepaidReconcileSummaryResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "没有该接口权限"
+          },
+          "500": {
+            "description": "对账失败"
+          },
+          "503": {
+            "description": "渠道未就绪"
+          }
+        }
+      }
+    },
     "/api/payment/developer-order-deposit/orders": {
       "get": {
         "tags": [
@@ -15718,6 +15775,31 @@
           },
           "503": {
             "description": "收款账户进件通道未装配"
+          }
+        }
+      }
+    },
+    "/api/payment/withdrawal-limits": {
+      "get": {
+        "tags": [
+          "payment"
+        ],
+        "summary": "读取单笔提现限额",
+        "description": "开发者提现弹窗用，登录即可读，不需要配置权限。只返回 `min_fen` / `max_fen`；`max_fen = 0` 表示不设上限。最终金额仍以提交时的服务端校验为准。",
+        "operationId": "payment_get_my_withdrawal_limits",
+        "responses": {
+          "200": {
+            "description": "当前单笔提现限额",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WithdrawalLimitsResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "未登录"
           }
         }
       }
@@ -42386,6 +42468,142 @@
           }
         }
       },
+      "PrepaidReconcileItemResponse": {
+        "type": "object",
+        "description": "一条预付余额对账结果。",
+        "required": [
+          "username",
+          "mirror_fen",
+          "status",
+          "detail",
+          "checked_time"
+        ],
+        "properties": {
+          "channel_available_fen": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "渠道可用余额（分）。"
+          },
+          "channel_frozen_fen": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "渠道冻结余额（分）。"
+          },
+          "channel_total_fen": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "渠道总额 = 可用 + 冻结（分）。"
+          },
+          "checked_time": {
+            "type": "string"
+          },
+          "detail": {
+            "type": "string"
+          },
+          "diff_fen": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "`渠道总额 - 镜像`；负数通常是渠道扣了手续费。"
+          },
+          "member_id": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "mirror_fen": {
+            "type": "integer",
+            "format": "int64",
+            "description": "平台镜像余额（分）。"
+          },
+          "settle_account_id": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "status": {
+            "type": "string",
+            "description": "`matched` / `mismatched` / `unavailable` / `error`。"
+          },
+          "username": {
+            "type": "string"
+          }
+        }
+      },
+      "PrepaidReconcileListResponse": {
+        "type": "object",
+        "description": "最近一轮对账结果（按用户名）。",
+        "required": [
+          "items"
+        ],
+        "properties": {
+          "checked_time": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "最近一次对账时间；从没对过账时为 `null`。"
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PrepaidReconcileItemResponse"
+            }
+          }
+        }
+      },
+      "PrepaidReconcileSummaryResponse": {
+        "type": "object",
+        "description": "一轮对账的汇总。",
+        "required": [
+          "checked_time",
+          "matched",
+          "mismatched",
+          "unavailable",
+          "errors",
+          "items"
+        ],
+        "properties": {
+          "checked_time": {
+            "type": "string"
+          },
+          "errors": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PrepaidReconcileItemResponse"
+            }
+          },
+          "matched": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "mismatched": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "unavailable": {
+            "type": "integer",
+            "minimum": 0
+          }
+        }
+      },
       "PrepaidRefundLookupRequest": {
         "type": "object",
         "required": [
@@ -46165,6 +46383,12 @@
                 "format": "int64",
                 "description": "单笔最小提现金额（分）。",
                 "default": 1
+              },
+              "prepaid_reconcile_interval_secs": {
+                "type": "integer",
+                "format": "int64",
+                "description": "预付余额对账的周期（秒）；`0` 表示关闭自动对账。\n\n对账是只读的渠道查询，但每个有余额的账户要打一次；周期太短没有意义，\n还会触发渠道限流。默认 6 小时。",
+                "default": 21600
               },
               "reconcile_cooldown_secs": {
                 "type": "integer",
@@ -51715,6 +51939,12 @@
             "description": "单笔最小提现金额（分）。",
             "default": 1
           },
+          "prepaid_reconcile_interval_secs": {
+            "type": "integer",
+            "format": "int64",
+            "description": "预付余额对账的周期（秒）；`0` 表示关闭自动对账。\n\n对账是只读的渠道查询，但每个有余额的账户要打一次；周期太短没有意义，\n还会触发渠道限流。默认 6 小时。",
+            "default": 21600
+          },
           "reconcile_cooldown_secs": {
             "type": "integer",
             "format": "int64",
@@ -51728,6 +51958,26 @@
           }
         },
         "additionalProperties": false
+      },
+      "WithdrawalLimitsResponse": {
+        "type": "object",
+        "description": "用户面可读的单笔提现限额。",
+        "required": [
+          "min_fen",
+          "max_fen"
+        ],
+        "properties": {
+          "max_fen": {
+            "type": "integer",
+            "format": "int64",
+            "description": "单笔最大提现金额（分）；`0` 表示不设上限。"
+          },
+          "min_fen": {
+            "type": "integer",
+            "format": "int64",
+            "description": "单笔最小提现金额（分）。"
+          }
+        }
       },
       "WithdrawalListQuery": {
         "type": "object",

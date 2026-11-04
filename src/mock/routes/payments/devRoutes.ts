@@ -77,8 +77,8 @@ export const devPaymentRoutes: MockRoute[] = [
   },
   {
     method: 'GET',
-    path: '/payment/withdrawal-limits/system',
-    note: '提现限额（契约 `WithdrawalConfig`）',
+    path: '/payment/withdrawal-limits',
+    note: '单笔提现限额（契约 `WithdrawalLimitsResponse`）',
     handler: () => jsonResponse(devWithdrawalLimits),
   },
   {

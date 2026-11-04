@@ -5388,6 +5388,30 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/payment/developer-order-deposit-reconcile": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 查看预付余额对账结果
+         * @description 返回最近一轮对账：每条含平台镜像余额、渠道可用 / 冻结 / 总额与差额。`diff_fen` 为负通常是渠道扣了手续费；对账只报差异，不自动调账。
+         */
+        get: operations["payment_admin_prepaid_reconcile_list"];
+        put?: never;
+        /**
+         * 执行预付余额对账
+         * @description 逐个有余额 / 有收款账户的预付账户向渠道查询余额，与平台镜像比较后落库。单个账户查询失败记为 `error`，不影响其它账户。
+         */
+        post: operations["payment_admin_prepaid_reconcile_run"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/payment/developer-order-deposit/orders": {
         parameters: {
             query?: never;
@@ -5789,6 +5813,26 @@ export interface paths {
          * @description 主动向渠道问一次本人开户的审核结果并刷新本地状态，需要 `payment.settlement.mine.get`。本地为 `failed` 时按已通过的实名资料重试进件；已有会员只回查，不重复创建。还没拿到渠道会员号回 409；渠道未装配回 503。管理端替指定账号发起的同一动作见 `POST /api/admin/payment/settlement-accounts/{username}/sync`。
          */
         post: operations["payment_sync_settlement_account"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/payment/withdrawal-limits": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 读取单笔提现限额
+         * @description 开发者提现弹窗用，登录即可读，不需要配置权限。只返回 `min_fen` / `max_fen`；`max_fen = 0` 表示不设上限。最终金额仍以提交时的服务端校验为准。
+         */
+        get: operations["payment_get_my_withdrawal_limits"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -15913,6 +15957,56 @@ export interface components {
             client_platform: string;
             idempotency_key?: string | null;
         };
+        /** @description 一条预付余额对账结果。 */
+        PrepaidReconcileItemResponse: {
+            /**
+             * Format: int64
+             * @description 渠道可用余额（分）。
+             */
+            channel_available_fen?: number | null;
+            /**
+             * Format: int64
+             * @description 渠道冻结余额（分）。
+             */
+            channel_frozen_fen?: number | null;
+            /**
+             * Format: int64
+             * @description 渠道总额 = 可用 + 冻结（分）。
+             */
+            channel_total_fen?: number | null;
+            checked_time: string;
+            detail: string;
+            /**
+             * Format: int64
+             * @description `渠道总额 - 镜像`；负数通常是渠道扣了手续费。
+             */
+            diff_fen?: number | null;
+            member_id?: string | null;
+            /**
+             * Format: int64
+             * @description 平台镜像余额（分）。
+             */
+            mirror_fen: number;
+            settle_account_id?: string | null;
+            /** @description `matched` / `mismatched` / `unavailable` / `error`。 */
+            status: string;
+            username: string;
+        };
+        /** @description 最近一轮对账结果（按用户名）。 */
+        PrepaidReconcileListResponse: {
+            /** @description 最近一次对账时间；从没对过账时为 `null`。 */
+            checked_time?: string | null;
+            items: components["schemas"]["PrepaidReconcileItemResponse"][];
+        };
+        /** @description 一轮对账的汇总。 */
+        PrepaidReconcileSummaryResponse: {
+            checked_time: string;
+            errors: number;
+            items: components["schemas"]["PrepaidReconcileItemResponse"][];
+            matched: number;
+            mismatched: number;
+            unavailable: number;
+        };
         PrepaidRefundLookupRequest: {
             refund_no: string;
         };
@@ -17696,6 +17790,15 @@ export interface components {
                  * @default 1
                  */
                 min_fen: number;
+                /**
+                 * Format: int64
+                 * @description 预付余额对账的周期（秒）；`0` 表示关闭自动对账。
+                 *
+                 *     对账是只读的渠道查询，但每个有余额的账户要打一次；周期太短没有意义，
+                 *     还会触发渠道限流。默认 6 小时。
+                 * @default 21600
+                 */
+                prepaid_reconcile_interval_secs: number;
                 /**
                  * Format: int64
                  * @description 出款对账的冷却期（秒）：同一笔在冷却期内不重复回查渠道。
@@ -19843,6 +19946,15 @@ export interface components {
             min_fen: number;
             /**
              * Format: int64
+             * @description 预付余额对账的周期（秒）；`0` 表示关闭自动对账。
+             *
+             *     对账是只读的渠道查询，但每个有余额的账户要打一次；周期太短没有意义，
+             *     还会触发渠道限流。默认 6 小时。
+             * @default 21600
+             */
+            prepaid_reconcile_interval_secs: number;
+            /**
+             * Format: int64
              * @description 出款对账的冷却期（秒）：同一笔在冷却期内不重复回查渠道。
              *
              *     渠道对取现是异步的，回查太勤既没用又会触发限流；太慢则失败的钱迟迟不退回额度。
@@ -19860,6 +19972,19 @@ export interface components {
              * @default true
              */
             reconcile_on_read: boolean;
+        };
+        /** @description 用户面可读的单笔提现限额。 */
+        WithdrawalLimitsResponse: {
+            /**
+             * Format: int64
+             * @description 单笔最大提现金额（分）；`0` 表示不设上限。
+             */
+            max_fen: number;
+            /**
+             * Format: int64
+             * @description 单笔最小提现金额（分）。
+             */
+            min_fen: number;
         };
         /** @description 提现列表筛选。 */
         WithdrawalListQuery: {
@@ -34647,6 +34772,79 @@ export interface operations {
             };
         };
     };
+    payment_admin_prepaid_reconcile_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PrepaidReconcileListResponse"];
+                };
+            };
+            /** @description 没有该接口权限 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 读取失败 */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    payment_admin_prepaid_reconcile_run: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PrepaidReconcileSummaryResponse"];
+                };
+            };
+            /** @description 没有该接口权限 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 对账失败 */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 渠道未就绪 */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     payment_prepaid_order_list: {
         parameters: {
             query?: {
@@ -35725,6 +35923,33 @@ export interface operations {
             };
             /** @description 收款账户进件通道未装配 */
             503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    payment_get_my_withdrawal_limits: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 当前单笔提现限额 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WithdrawalLimitsResponse"];
+                };
+            };
+            /** @description 未登录 */
+            401: {
                 headers: {
                     [name: string]: unknown;
                 };

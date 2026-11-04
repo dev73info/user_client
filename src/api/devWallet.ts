@@ -21,7 +21,7 @@ export type DevWithdrawalRecord = Schemas['WithdrawalResponse']
 export type DevWithdrawalBalance = Schemas['WithdrawalBalanceResponse']
 export type DevWithdrawalSetting = Schemas['WithdrawalSettingResponse']
 export type CreateDevWithdrawalRequest = Schemas['WithdrawalRequest']
-export type DevWithdrawalConfig = Schemas['WithdrawalConfig']
+export type DevWithdrawalConfig = Schemas['WithdrawalLimitsResponse']
 export type DevAutoPayoutRun = Schemas['AutoPayoutRunResponse']
 export type DevFreezeDetailPage = Schemas['DepositFreezePageResponse']
 export type DevFreezeDetailItem = Schemas['DepositFreezeItemResponse']
@@ -36,7 +36,7 @@ export type WithdrawalValidationInput = {
   payload: CreateDevWithdrawalRequest
   /** 当前可提现（分）。不传则不校验上限，交给后端拦。 */
   withdrawableFen?: number | null
-  /** 单笔上下限（分）：来自 `GET /api/payment/withdrawal-limits/system`，0 表示不设限。 */
+  /** 单笔上下限（分）：来自 `GET /api/payment/withdrawal-limits`，0 表示不设限。 */
   limits?: Pick<DevWithdrawalConfig, 'min_fen' | 'max_fen'> | null
 }
 
@@ -191,10 +191,10 @@ export async function updateDevWithdrawalSetting(
   )
 }
 
-/** 提现限额配置（分）：`auto_payout_max_fen = 0` 表示不限额。 */
+/** 单笔提现限额（分）：`max_fen = 0` 表示不设上限。 */
 export async function getDevWithdrawalConfig(token: string): Promise<DevWithdrawalConfig> {
   return requestJson<DevWithdrawalConfig>(
-    '/payment/withdrawal-limits/system',
+    '/payment/withdrawal-limits',
     { headers: authHeader(token) },
     '加载提现限额失败',
   )
