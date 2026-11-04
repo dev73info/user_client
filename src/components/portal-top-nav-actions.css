@@ -144,11 +144,11 @@
     min-width: 0;
   }
 
-  .portal-header--dev .portal-brand__copy strong {
+  .portal-header--dev .portal-brand__badge {
     overflow: hidden;
+    font-size: 14px;
     text-overflow: ellipsis;
     white-space: nowrap;
-    font-size: 14px;
   }
 
   .portal-header--dev .portal-header__tools {
