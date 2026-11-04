@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { computed } from 'vue'
 import { ArrowDown, ArrowUp, TButton, TIcon } from 'ui_73info'
 
 import type { CommunityPost } from '@/api/community'
+import { useCollapsibleContent } from '@/composables/useCollapsibleContent'
 import { communityBountyLabel, communityStatusNotice } from '@/shared/community'
 import { formatBackendDateTime } from '@/shared/datetime'
 import { sanitizeRichHtml } from '@/utils/sanitizeHtml'
@@ -21,50 +22,7 @@ const emit = defineEmits<{
   reply: []
 }>()
 const safeContent = computed(() => sanitizeRichHtml(props.post.content_html))
-const contentRef = ref<HTMLElement | null>(null)
-const contentExpanded = ref(false)
-const contentCanToggle = ref(false)
-const CONTENT_COLLAPSED_HEIGHT = 420
-
-function measureContentOverflow(): void {
-  const target = contentRef.value
-  if (!target) return
-
-  const collapsedClass = 'community-detail-card__content--collapsed'
-  const wasCollapsed = target.classList.contains(collapsedClass)
-  if (wasCollapsed) target.classList.remove(collapsedClass)
-  const naturalHeight = target.scrollHeight
-  if (wasCollapsed) target.classList.add(collapsedClass)
-
-  contentCanToggle.value = naturalHeight > CONTENT_COLLAPSED_HEIGHT + 2
-  if (!contentCanToggle.value) contentExpanded.value = false
-}
-
-function bindContentMediaMeasurements(): void {
-  const target = contentRef.value
-  if (!target) return
-  target.querySelectorAll('img, video').forEach((media) => {
-    const eventName = media instanceof HTMLVideoElement ? 'loadedmetadata' : 'load'
-    media.addEventListener(eventName, measureContentOverflow, { once: true })
-  })
-}
-
-function refreshContentLayout(): void {
-  contentExpanded.value = false
-  void nextTick(() => {
-    measureContentOverflow()
-    bindContentMediaMeasurements()
-  })
-}
-
-watch(safeContent, refreshContentLayout)
-onMounted(() => {
-  refreshContentLayout()
-  window.addEventListener('resize', measureContentOverflow)
-})
-onBeforeUnmount(() => {
-  window.removeEventListener('resize', measureContentOverflow)
-})
+const { contentRef, contentExpanded, contentCanToggle } = useCollapsibleContent(safeContent)
 
 function handleActionsClick(event: MouseEvent): void {
   if (
@@ -300,10 +258,7 @@ function handleActionsClick(event: MouseEvent): void {
   max-width: 100%;
   height: auto;
 }
-.community-detail-card__content :deep(pre) {
-  max-width: 100%;
-  overflow-x: auto;
-}
+.community-detail-card__content :deep(pre),
 .community-detail-card__content :deep(table) {
   display: block;
   max-width: 100%;
@@ -427,10 +382,7 @@ function handleActionsClick(event: MouseEvent): void {
     min-height: 44px;
     flex: 1 1 auto;
   }
-  .community-detail-card__actions .community-detail-card__like {
-    min-height: 44px;
-    flex: 0 0 auto;
-  }
+  .community-detail-card__actions .community-detail-card__like,
   .community-detail-card__actions .community-detail-card__favorite {
     min-height: 44px;
     flex: 0 0 auto;
