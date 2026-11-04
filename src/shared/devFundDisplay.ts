@@ -9,7 +9,7 @@
  * | 退款冲减 | 同上，`refund_developer_cny > 0` 的行 | 售后按原分账份额从开发者收回的那部分 |
  * | 收入提现 | `GET /api/payment/withdrawals` | 接单收入的提现出款单 |
  * | 保证金充值 | `GET /api/payment/developer-order-deposit` 的 `ledger`（`kind = recharge`） | 预付账户充值入账 |
- * | 保证金提现 | `GET /api/payment/developer-order-deposit/withdrawals` | 预付账户退回保证金的出款单 |
+ * | 保证金退回 | 预付账户流水的 `kind = refund` / 旧提现单 | 保证金的钱原路退回充值账户 |
  *
  * 保证金池的 `freeze` / `unfreeze` / `refund_*` 流水是账户内部动作（接单冻结、解冻、退款占用），
  * 不进这张表：这里是「钱进出了哪些口」，不是预付账户的完整账本。
@@ -60,7 +60,7 @@ export const KIND_LABELS: Record<FundRecordKind, string> = {
   income_reversal: '退款冲减',
   income_withdrawal: '提现',
   deposit_recharge: '保证金充值',
-  deposit_withdrawal: '保证金提现',
+  deposit_withdrawal: '保证金退回',
 }
 
 /** 金额展示：一律带 ¥ 与两位小数；缺值按 0 处理（列表里不出现空白格）。 */

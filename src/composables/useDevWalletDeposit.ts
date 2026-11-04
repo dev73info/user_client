@@ -28,7 +28,9 @@ export type DepositReading = {
   balanceFen: number
   /** 已被接单冻结（分） */
   frozenFen: number
-  /** 现在还能提现（分） */
+  /** 正在原路退回、渠道还没给出结果（分） */
+  refundingFen: number
+  /** 现在还能退回（分） */
   withdrawableFen: number
   /** 已申请未出账（分） */
   pendingWithdrawalFen: number
@@ -56,6 +58,7 @@ export function useDevWalletDeposit() {
     return {
       balanceFen: current.account.balance_fen,
       frozenFen: current.account.frozen_fen,
+      refundingFen: current.account.refunding_fen,
       withdrawableFen: current.withdrawable_fen,
       pendingWithdrawalFen: current.pending_withdrawal_fen,
       totalRechargedFen: current.account.total_recharged_fen,

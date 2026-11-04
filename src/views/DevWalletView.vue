@@ -138,7 +138,7 @@ async function refreshWallet() {
           <TOption label="退款冲减" value="income_reversal" />
           <TOption label="提现" value="income_withdrawal" />
           <TOption label="保证金充值" value="deposit_recharge" />
-          <TOption label="保证金提现" value="deposit_withdrawal" />
+          <TOption label="保证金退回" value="deposit_withdrawal" />
         </TSelect>
         <TInput
           v-model="recordKeyword"

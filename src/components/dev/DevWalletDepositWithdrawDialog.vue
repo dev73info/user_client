@@ -7,7 +7,7 @@ import { toFen } from '@/composables/useDevWalletDeposit'
 import { useAuthStore } from '@/stores/auth'
 
 /**
- * 保证金提现申请弹窗。
+ * 保证金退回申请弹窗。
  *
  * 只提交「整数分 + 备注」：收款账户取账号中心绑定的那一张，**前端不传也不该传**——
  * 让前端指定收款账户等于把别人账户填进去就能提走钱。
@@ -28,10 +28,10 @@ const note = ref('')
 const amountFen = computed(() => (amountYuan.value == null ? 0 : toFen(amountYuan.value)))
 const amountError = computed(() => {
   if (amountYuan.value == null || !Number.isFinite(amountYuan.value) || amountYuan.value <= 0) {
-    return '请输入提现金额'
+    return '请输入退回金额'
   }
   if (amountFen.value > props.withdrawableFen) {
-    return `超过可提现额度 ¥${(props.withdrawableFen / 100).toFixed(2)}`
+    return `超过可退回额度 ¥${(props.withdrawableFen / 100).toFixed(2)}`
   }
   return ''
 })
@@ -54,11 +54,11 @@ async function submit() {
       amount_fen: amountFen.value,
       ...(note.value.trim() ? { note: note.value.trim() } : {}),
     })
-    TMessage.success('提现申请已提交，等待审核')
+    TMessage.success('退回申请已提交，将原路退回')
     visible.value = false
     emit('succeeded')
   } catch (err) {
-    TMessage.error(err instanceof Error ? err.message : '提交提现申请失败')
+    TMessage.error(err instanceof Error ? err.message : '提交退回申请失败')
   } finally {
     submitting.value = false
   }
@@ -68,19 +68,19 @@ defineExpose({ open })
 </script>
 
 <template>
-  <TDialog v-model:open="visible" title="提现接单保证金" width="420px">
+  <TDialog v-model:open="visible" title="退回接单保证金" width="420px">
     <p class="withdraw-dialog__hint">
-      可提现 ¥{{ (withdrawableFen / 100).toFixed(2) }}。提现金额原路退回充值时的付款账户。
+      可退回 ¥{{ (withdrawableFen / 100).toFixed(2) }}。退回金额原路退回充值时的付款账户。
     </p>
 
     <label class="withdraw-dialog__field">
-      <span>提现金额（元）</span>
+      <span>退回金额（元）</span>
       <TInputNumber
         v-model="amountYuan"
         :min="0.01"
         :max="withdrawableFen / 100"
         :precision="2"
-        placeholder="请输入提现金额"
+        placeholder="请输入退回金额"
         class="withdraw-dialog__input"
       />
     </label>

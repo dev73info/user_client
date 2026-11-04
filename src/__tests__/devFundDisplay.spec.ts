@@ -79,7 +79,7 @@ describe('类型着色', () => {
   it('类型标签：收入黄色、提现绿色、退款冲减红色、保证金入/出分两档', () => {
     expect(KIND_LABELS.income_withdrawal).toBe('提现')
     expect(KIND_LABELS.deposit_recharge).toBe('保证金充值')
-    expect(KIND_LABELS.deposit_withdrawal).toBe('保证金提现')
+    expect(KIND_LABELS.deposit_withdrawal).toBe('保证金退回')
     expect(isInflowKind('income')).toBe(true)
     expect(isInflowKind('deposit_recharge')).toBe(true)
     expect(isInflowKind('income_withdrawal')).toBe(false)
@@ -188,7 +188,7 @@ describe('buildFundRecords', () => {
     expect(reversal?.note).toBe('售后退款按原分账份额从开发者收回')
   })
 
-  it('保证金充值只取 recharge 流水，保证金提现来自预付提现单', () => {
+  it('保证金充值只取 recharge 流水，旧提现单来自预付提现接口', () => {
     const records = buildFundRecords({
       depositLedger: [
         {
@@ -231,6 +231,34 @@ describe('buildFundRecords', () => {
     expect(records.some((record) => record.reference === 'FZ-1')).toBe(false)
     expect(filterFundRecords(records, '', 'deposit_recharge')).toHaveLength(1)
     expect(filterFundRecords(records, '', 'deposit_withdrawal')).toHaveLength(1)
+  })
+
+  it('保证金退回成功时，流水里记一行「保证金退回」', () => {
+    const records = buildFundRecords({
+      depositLedger: [
+        {
+          id: 9,
+          username: 'dev',
+          direction: 'out',
+          kind: 'refund',
+          amount_fen: 30000,
+          balance_after_fen: 90000,
+          ref_no: 'RF-1',
+          note: '充值退款成功',
+          operator: 'dev',
+          created_time: '2026-09-10 10:00:00',
+        },
+      ],
+    })
+
+    expect(records).toHaveLength(1)
+    expect(records[0]).toMatchObject({
+      kind: 'deposit_withdrawal',
+      amount: 300,
+      detail: '保证金退回 · 原路退回',
+      status: '已退回',
+      reference: 'RF-1',
+    })
   })
 })
 

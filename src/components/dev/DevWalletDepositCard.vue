@@ -1,10 +1,10 @@
 <script setup lang="ts">
 /**
- * 「保证金余额」卡：可提现保证金大数、冻结/退款处理中/提现处理中三档状态、
- * 信用额度（启用封顶时）与两个出口（提现保证金 / 充值）。
+ * 「保证金余额」卡：可退回保证金大数、冻结/退款处理中/提现处理中三档状态、
+ * 信用额度（启用封顶时）与两个出口（退回保证金 / 充值）。
  *
  * 保证金是接单资格的押金，与「接单收入」是两个互不相通的池子——这里只读
- * `useDevWalletDeposit` 的投影，充值、提现两个动作都只 `emit` 出去，弹窗与回刷在页面。
+ * `useDevWalletDeposit` 的投影，充值、退回两个动作都只 `emit` 出去，弹窗与回刷在页面。
  *
  * 样式走全局 `styles/dev-wallet.css` 的 `.wallet-hero*`，本组件不带 style 块：
  * 两张卡的骨架（卡头 / 大数 / 标签行 / 分隔线 / 操作区）全靠那一份共享样式对齐，
@@ -35,7 +35,7 @@ const emit = defineEmits<{
 
 const money = (fen: number | null | undefined) => `¥${toYuan(fen).toFixed(2)}`
 
-/** 能不能提：后端算好的可提额度 > 0。 */
+/** 能不能退：后端算好的可退额度 > 0。 */
 const canWithdraw = computed(() => (props.deposit?.withdrawableFen ?? 0) > 0)
 
 /** 信用额度标签只在启用保证金封顶时才有意义；credit_score 是浮点分，不是金额，不能过 toYuan。 */
@@ -73,6 +73,9 @@ const notOpened = computed(() => !props.loading && !props.error && !props.deposi
         <TTag v-if="(props.deposit?.frozenFen ?? 0) > 0" variant="outline" tone="warning">
           冻结中 {{ money(props.deposit?.frozenFen) }}
         </TTag>
+        <TTag v-if="(props.deposit?.refundingFen ?? 0) > 0" variant="outline" tone="warning">
+          退款处理中 {{ money(props.deposit?.refundingFen) }}
+        </TTag>
         <TTag
           v-if="(props.deposit?.pendingWithdrawalFen ?? 0) > 0"
           variant="outline"
@@ -98,7 +101,7 @@ const notOpened = computed(() => !props.loading && !props.error && !props.deposi
         <TIcon v-if="!props.loading">
           <Wallet />
         </TIcon>
-        <span>提现保证金</span>
+        <span>退回保证金</span>
       </TButton>
       <TButton variant="outline" @click="emit('recharge')">
         <TIcon>
