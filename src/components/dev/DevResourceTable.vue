@@ -122,9 +122,10 @@ function handleRowClick(event: MouseEvent) {
         <span class="dev-resource-table__tags">{{ resourceTagColumnLabel(scope.row) }}</span>
       </template>
     </TTableColumn>
-    <!-- 售价要给「价格胶囊 + BETA」留位：最宽的真实组合是「单版本 ¥19999.00」+ sm BETA，
-         可用宽度要 176px 以上，152 仍会把胶囊压到状态列（存量溢出，本轮加 BETA 后必须收干净）。 -->
-    <TTableColumn label="售价" width="200" resizable>
+    <!-- 售价要给「价格胶囊 + BETA」留位：最宽的真实组合「单版本 ¥19999.00」+ sm BETA 实测
+         175.6px，200px 列扣掉 24px 内边距只剩 0.4px 余量，换字体回退 / 不同 DPI 就会压到状态列；
+         208 给到 184px 可用宽度（约 8px 裕度）。96px 时本就有存量溢出。 -->
+    <TTableColumn label="售价" width="208" resizable>
       <template #default="scope">
         <span class="dev-resource-table__price-cell">
           <TTag
