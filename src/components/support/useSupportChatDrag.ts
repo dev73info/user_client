@@ -35,10 +35,20 @@ export function useSupportChatDrag(onTap: () => void) {
       : DESKTOP_FAB_HEIGHT
   }
 
+  /** Dock 实际占高（含安全区）；取不到时用固定预留值兜底。 */
+  function mobileDockReserve(): number {
+    const dock = document.querySelector<HTMLElement>('.portal-mobile-dock')
+    if (dock) {
+      const rect = dock.getBoundingClientRect()
+      if (rect.height > 0) return window.innerHeight - rect.top + 8
+    }
+    return MOBILE_DOCK_RESERVE
+  }
+
   function clampFabTop(value: number): number {
     const mobile = window.matchMedia(`(max-width: ${MOBILE_BREAKPOINT_PX}px)`).matches
     // 移动端给底部 Dock 留位，避免拖到最底部后按钮被 Dock 盖住点不到。
-    const bottomGap = mobile ? MOBILE_DOCK_RESERVE : 8
+    const bottomGap = mobile ? mobileDockReserve() : 8
     return clamp(value, 8, Math.max(8, window.innerHeight - currentFabHeight() - bottomGap))
   }
 

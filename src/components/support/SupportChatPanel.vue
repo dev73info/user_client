@@ -37,7 +37,8 @@ let scrollWrap: HTMLElement | null = null
 let scrollLocked = false
 
 const statusText = computed(() => {
-  if (props.unavailable) return '实时连接已断开'
+  // 断线时由下方的 role="alert" 横幅播报，头部不再重复一句。
+  if (props.unavailable) return ''
   if (!props.connected) return '连接中…'
   if (props.activeStatus === 'closed') return '会话已结束，发送将创建新会话'
   return '已连接'
@@ -58,7 +59,7 @@ function onInputKeydown(event: KeyboardEvent) {
 function lockScroll() {
   if (scrollLocked) return
   scrollLocked = true
-  const wrap = document.querySelector<HTMLElement>('.t73-scrollbar__wrap')
+  const wrap = document.querySelector<HTMLElement>('.app-scrollbar .t73-scrollbar__wrap')
   if (wrap) {
     scrollWrap = wrap
     wrap.style.overflow = 'hidden'
@@ -110,7 +111,7 @@ onBeforeUnmount(() => {
     <header class="support-panel__head">
       <div class="support-panel__heading">
         <h2 class="support-panel__title">在线客服</h2>
-        <span class="support-panel__status">{{ statusText }}</span>
+        <span v-if="statusText" class="support-panel__status">{{ statusText }}</span>
       </div>
       <div class="support-panel__head-actions">
         <button type="button" class="support-panel__history-toggle" @click="emit('toggle-history')">
