@@ -51,7 +51,8 @@ function rowButtonLabel(row: RequirementHallItem): string {
       <p class="dev-empty-state">{{ emptyText }}</p>
     </template>
     <!-- 列宽合计必须留在卡片可用宽度以内（桌面端 1440 宽时约 965px）。
-         固定五列 110+88+108+132+118 = 556px，需求列（min-width 260）吃掉剩余宽度。
+         固定五列 110+88+140+132+118 = 588px，需求列（min-width 260）吃掉剩余宽度。
+         「发布方式」给 140：担保胶囊后面还要跟一枚 BETA，108 会把胶囊压到隔壁列。
          大厅入口本身就是「未被接单」，行状态对接单决策没有增量信息，故不展示状态列。 -->
     <TTableColumn label="需求" min-width="260" resizable>
       <template #default="scope">
@@ -70,7 +71,7 @@ function rowButtonLabel(row: RequirementHallItem): string {
         <span>{{ formatRequirementBudget(scope.row.budget) }}</span>
       </template>
     </TTableColumn>
-    <TTableColumn label="发布方式" width="108" resizable>
+    <TTableColumn label="发布方式" width="140" resizable>
       <template #default="scope">
         <PaymentModeChip :mode="scope.row.payment_mode" />
       </template>

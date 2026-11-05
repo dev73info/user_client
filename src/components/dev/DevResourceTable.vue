@@ -122,7 +122,9 @@ function handleRowClick(event: MouseEvent) {
         <span class="dev-resource-table__tags">{{ resourceTagColumnLabel(scope.row) }}</span>
       </template>
     </TTableColumn>
-    <TTableColumn label="售价" width="96" resizable>
+    <!-- 售价要给「价格胶囊 + BETA」留位：md 价格标签约 78px + sm BETA 42px + 6px 间距，
+         96px 会把胶囊压到状态列。 -->
+    <TTableColumn label="售价" width="152" resizable>
       <template #default="scope">
         <span class="dev-resource-table__price-cell">
           <TTag

@@ -29,7 +29,7 @@ const paidMode = defineModel<ResourcePaidMode>('paidMode', { required: true })
         :aria-pressed="creationType === option.value"
         @click="creationType = option.value"
       >
-        <span class="dev-segmented__label">{{ option.label }}</span>
+        <span>{{ option.label }}</span>
         <BetaTag v-if="option.value === 'paid' || option.value === 'api'" />
       </button>
     </div>

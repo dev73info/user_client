@@ -161,11 +161,12 @@
   background: var(--73-surface-strong);
 }
 
-.publish-mode-options--single {
-  grid-template-columns: minmax(0, 1fr);
-}
-
 .publish-mode-option {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  /* 选项里可能跟一枚 BETA 标签：文案与标签同一行，拉开 6px。 */
+  gap: 6px;
   min-height: 40px;
   padding: 0 10px;
   border: 0;
@@ -185,15 +186,8 @@
   font-weight: 700;
 }
 
-/* 选项里可能跟一枚 BETA 标签：文案与标签同一行，拉开 6px。 */
-.publish-mode-option {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-}
-
-.publish-mode-option:hover:not(:disabled):not(.active) {
+/* 悬停变蓝要排除置灰项，否则「不可选」的暗示会被 hover 压掉。 */
+.publish-mode-option:hover:not(.is-unavailable):not(.active) {
   color: var(--73-accent);
 }
 
@@ -201,10 +195,6 @@
 .publish-mode-option.is-unavailable {
   color: var(--73-ink-disabled);
   cursor: not-allowed;
-}
-
-.publish-mode-option.is-unavailable:hover {
-  color: var(--73-ink-disabled);
 }
 
 .publish-mode-option.is-unavailable.active {

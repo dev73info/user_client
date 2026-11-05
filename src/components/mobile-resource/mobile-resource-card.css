@@ -111,13 +111,9 @@
   color: var(--73-warning);
 }
 
-/* 标题行里的 BETA：跟价格徽标同一档小字号，别把单行标题撑高。 */
+/* 统计行里的 BETA：高度档在 BetaTag 的 xs 里，这里只把它推离点赞数。 */
 .card-beta-tag {
-  margin-left: 6px;
-  min-height: 16px;
-  padding: 0 5px;
-  font-size: 10px;
-  vertical-align: middle;
+  margin-right: 2px;
 }
 
 .card-desc {

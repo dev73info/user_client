@@ -26,6 +26,14 @@ describe('BetaTag', () => {
     expect(wrapper.classes()).toContain('t73-tag--tone-neutral')
     wrapper.unmount()
   })
+
+  it('size=xs 只收高度，字号仍是标签档（不引 10px）', () => {
+    const wrapper = mount(BetaTag, { props: { size: 'xs' } })
+    expect(wrapper.classes()).toContain('beta-tag--xs')
+    // 字号档来自 TTag 的 sm（11px），BetaTag 自己不再写 font-size。
+    expect(wrapper.classes()).toContain('t73-tag--sm')
+    wrapper.unmount()
+  })
 })
 
 describe('资源类型：付费 / 接口打 BETA，免费不打', () => {

@@ -49,17 +49,6 @@ const cardTags = computed(() =>
           }"
           >{{ props.card.priceLabel }}</span
         >
-        <!-- 面板价资源在价格徽标后戴一枚蓝色 BETA（与桌面卡的判据同一份）。 -->
-        <BetaTag
-          v-if="
-            isPricedResource(
-              props.card.priceFen,
-              props.card.pricePoints,
-              props.card.minVersionPriceFen,
-            )
-          "
-          class="card-beta-tag"
-        />
         <span
           class="card-repost-badge"
           :class="{ 'is-repost': props.card.originType === 'repost' }"
@@ -77,6 +66,19 @@ const cardTags = computed(() =>
         <span class="card-desc">{{ props.card.desc }}</span>
       </TTooltip>
       <div class="card-stats">
+        <!-- 面板价资源的 BETA 放在标题外的统计行：标题是 `-webkit-line-clamp: 1`，
+             标签留在标题里会被长标题裁掉（判据与桌面卡同一份）。 -->
+        <BetaTag
+          v-if="
+            isPricedResource(
+              props.card.priceFen,
+              props.card.pricePoints,
+              props.card.minVersionPriceFen,
+            )
+          "
+          size="xs"
+          class="card-beta-tag"
+        />
         <span class="card-stat">
           <span class="card-stat__heart" aria-hidden="true">♥</span>
           <span class="card-stat__num">{{ props.card.likeCount }}</span>

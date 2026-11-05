@@ -131,6 +131,7 @@ async function toggleCardLike(card: McCardItem) {
             props.card.minVersionPriceFen,
           )
         "
+        size="xs"
         class="portal-resource-browser__beta"
       />
     </div>

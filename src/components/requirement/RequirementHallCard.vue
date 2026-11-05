@@ -51,6 +51,7 @@ function open(): void {
           <BetaTag
             v-if="props.card.payment_mode === 'platform_guarantee'"
             tone="soon"
+            size="xs"
             class="requirement-hall__badge-beta"
           />
         </span>
@@ -152,11 +153,9 @@ function open(): void {
   color: var(--73-success-text);
 }
 
-/* 胶囊内塞一枚 BETA 后仍是 20px 高：标签字号降一档，别把卡头撑高。 */
+/* 胶囊内塞一枚 BETA 后仍是 20px 高：高度档在 BetaTag 的 xs 里。 */
 .requirement-hall__badge-beta {
-  min-height: 16px;
-  padding: 0 5px;
-  font-size: 10px;
+  flex: 0 0 auto;
 }
 
 .requirement-hall__id {
