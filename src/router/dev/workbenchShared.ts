@@ -76,6 +76,18 @@ export const devWorkbenchSharedRoutes: RouteRecordRaw[] = [
     },
   },
   {
+    // 工单中心用户端与开发者端共用页面，各挂一条路由；开发者这条带 devArea，
+    // 从开发者侧边栏进入时不会切回用户工作台。
+    path: 'developer/tickets',
+    name: 'dev-tickets',
+    component: () => import('@/views/TicketCenterView.vue'),
+    meta: {
+      title: '工单中心',
+      description: '提交问题与查看回复',
+      devArea: true,
+    },
+  },
+  {
     path: 'developer/realname',
     redirect: { name: 'workbench-realname' },
   },

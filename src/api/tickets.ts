@@ -59,3 +59,9 @@ export async function closeTicket(token: string, ticketId: string): Promise<Tick
     '关闭工单失败',
   )
 }
+
+/** 用户侧工单实时事件（WebSocket）：只推当前用户自己的工单。 */
+export function ticketWsUrl(token: string): string {
+  const protocol = window.location.protocol === 'https:' ? 'wss' : 'ws'
+  return `${protocol}://${window.location.host}/api/tickets/ws?token=${encodeURIComponent(token.trim())}`
+}

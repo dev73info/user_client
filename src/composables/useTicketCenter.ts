@@ -1,4 +1,4 @@
-import { computed, onMounted, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 
 import {
   closeTicket,
@@ -6,6 +6,7 @@ import {
   getTicketDetail,
   listTickets,
   replyTicket,
+  ticketWsUrl,
   type TicketDetail,
   type TicketItem,
 } from '@/api/tickets'
@@ -43,6 +44,11 @@ export function useTicketCenter() {
   const newPriority = ref('normal')
   const content = ref('')
   const replyContent = ref('')
+  const realtimeWarning = ref('')
+  let socket: WebSocket | null = null
+  let reconnectTimer: ReturnType<typeof setTimeout> | null = null
+  let reconnectAttempt = 0
+  let disposed = false
 
   const stats = computed(() => countTickets(tickets.value))
   const filtered = computed(() =>
@@ -173,10 +179,75 @@ export function useTicketCenter() {
     }
   }
 
+  function connectRealtime() {
+    const token = auth.token.trim()
+    if (!token || socket || disposed) return
+    let next: WebSocket
+    try {
+      next = new WebSocket(ticketWsUrl(token))
+    } catch {
+      scheduleReconnect()
+      return
+    }
+    socket = next
+    next.onopen = () => {
+      reconnectAttempt = 0
+      realtimeWarning.value = ''
+    }
+    next.onmessage = (event: MessageEvent) => {
+      if (socket !== next || typeof event.data !== 'string') return
+      try {
+        const payload = JSON.parse(event.data) as { event?: string; ticket_id?: string }
+        if (payload.event && payload.event !== 'ticket.updated') return
+        void loadTickets()
+        if (payload.ticket_id === selectedId.value) void loadDetail(payload.ticket_id)
+      } catch {
+        // 无法识别的推送不改变当前列表。
+      }
+    }
+    next.onerror = () => {
+      next.close()
+    }
+    next.onclose = () => {
+      if (socket !== next) return
+      socket = null
+      scheduleReconnect()
+    }
+  }
+
+  function scheduleReconnect() {
+    if (disposed) return
+    // 连续 5 次连不上（含 401/403 握手失败）就停下并给出可见提示。
+    if (reconnectAttempt >= 5) {
+      realtimeWarning.value = '实时连接不可用，请刷新页面'
+      return
+    }
+    const delay = Math.min(3000 * 2 ** reconnectAttempt, 15_000)
+    reconnectAttempt += 1
+    reconnectTimer = setTimeout(() => {
+      reconnectTimer = null
+      connectRealtime()
+    }, delay)
+  }
+
+  function disconnectRealtime() {
+    disposed = true
+    if (reconnectTimer !== null) {
+      clearTimeout(reconnectTimer)
+      reconnectTimer = null
+    }
+    const current = socket
+    socket = null
+    current?.close()
+  }
+
   onMounted(() => {
     auth.hydrate()
     void loadTickets()
+    connectRealtime()
   })
+
+  onBeforeUnmount(disconnectRealtime)
 
   return {
     auth,
@@ -201,6 +272,7 @@ export function useTicketCenter() {
     newPriority,
     content,
     replyContent,
+    realtimeWarning,
     stats,
     filtered,
     selected,

@@ -13,12 +13,15 @@ export function useSupportChatRealtime(options: {
   url: () => string | null
   onOpen?: () => void
   onDetail: (detail: SupportConversationDetail) => void
+  /** 连续重连失败后回调一次；调用方据此给出可见提示并停止空转。 */
+  onUnavailable?: () => void
 }) {
   const connected = ref(false)
   let socket: WebSocket | null = null
   let active = false
   let attempt = 0
   let reconnectTimer: ReturnType<typeof setTimeout> | null = null
+  let unavailableNotified = false
 
   function clearReconnectTimer() {
     if (reconnectTimer !== null) {
@@ -61,6 +64,7 @@ export function useSupportChatRealtime(options: {
       if (socket !== next) return
       connected.value = true
       attempt = 0
+      unavailableNotified = false
       options.onOpen?.()
     }
     next.onmessage = (event: MessageEvent) => {
@@ -86,6 +90,15 @@ export function useSupportChatRealtime(options: {
     if (!active || !options.url()) return
     connected.value = false
     clearReconnectTimer()
+    // 连续 5 次连不上（含 401/403 握手失败）就停下，避免无限重连静默失败。
+    if (attempt >= 5) {
+      active = false
+      if (!unavailableNotified) {
+        unavailableNotified = true
+        options.onUnavailable?.()
+      }
+      return
+    }
     const delay = supportReconnectDelay(attempt)
     attempt += 1
     reconnectTimer = setTimeout(() => {
@@ -98,6 +111,7 @@ export function useSupportChatRealtime(options: {
     if (active) return
     active = true
     attempt = 0
+    unavailableNotified = false
     open()
   }
 

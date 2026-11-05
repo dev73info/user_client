@@ -33,6 +33,7 @@ const {
   newPriority,
   content,
   replyContent,
+  realtimeWarning,
   stats,
   filtered,
   hasFilters,
@@ -59,6 +60,7 @@ const {
         <span>已结束</span><strong>{{ stats.resolved }}</strong>
       </div>
       <div class="wb-strip__item wb-strip__action">
+        <span v-if="realtimeWarning" class="ticket-realtime">{{ realtimeWarning }}</span>
         <TButton variant="outline" :loading="loading" @click="loadTickets">刷新</TButton>
       </div>
     </section>

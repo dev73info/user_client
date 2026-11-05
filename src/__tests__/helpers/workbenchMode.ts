@@ -45,6 +45,7 @@ export const DEV_ROUTE_NAMES = [
   'dev-messages',
   'dev-invoices',
   'dev-notifications',
+  'dev-tickets',
 ]
 
 // 开发者路由的路径不都是 /workbench/developer/<name>：钱包按业务词分了分段路径，「我的发票」也是。
@@ -55,6 +56,7 @@ export const DEV_ROUTE_PATHS: Record<string, string> = {
   'dev-resource-list': '/workbench/developer/resources/list',
   'dev-resource-sold-purchases': '/workbench/developer/resources/sold',
   'dev-tip-settings': '/workbench/developer/tips',
+  'dev-tickets': '/workbench/developer/tickets',
 }
 
 export const workbenchRoutes: RouteRecordRaw[] = [

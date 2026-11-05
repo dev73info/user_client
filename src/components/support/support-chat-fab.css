@@ -1,6 +1,12 @@
 .support-widget {
   position: fixed;
-  z-index: 9999;
+  /* 低于移动 Dock（60），不挡工作台底部操作区 */
+  z-index: 55;
+}
+
+/* 面板打开时提升到 Dock 之上：移动端是全屏面板，不能被底部导航压住输入框 */
+.support-widget.is-open {
+  z-index: 70;
 }
 
 .support-fab {
@@ -15,8 +21,8 @@
   height: 140px;
   padding: 10px 0;
   border: none;
-  background: var(--73-success);
-  color: var(--73-surface-strong);
+  background: var(--73-accent);
+  color: var(--73-accent-contrast);
   font-size: 13px;
   cursor: pointer;
   box-shadow: 0 4px 16px color-mix(in srgb, var(--73-ink) 18%, transparent);
@@ -43,7 +49,7 @@
 }
 
 .support-fab:hover {
-  background: var(--73-app-success-strong);
+  background: color-mix(in srgb, var(--73-accent) 88%, var(--73-ink));
 }
 
 .support-fab__icon {
@@ -56,6 +62,21 @@
   writing-mode: vertical-rl;
   letter-spacing: 2px;
   font-size: 13px;
+}
+
+.support-fab__badge {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: var(--73-danger);
+  color: var(--73-ink-inverse);
+  font-size: 11px;
+  line-height: 18px;
+  text-align: center;
 }
 
 @media (max-width: 900px) {
@@ -72,6 +93,13 @@
   }
 
   .support-fab__text {
+    display: none;
+  }
+}
+
+@media (max-width: 640px) {
+  /* 全屏面板自带关闭按钮，侧签只保留「打开」用途 */
+  .support-widget.is-open .support-fab {
     display: none;
   }
 }

@@ -112,6 +112,12 @@ export const devWorkbenchItems: DevWorkbenchItem[] = [
     description: '查看已关联需求、交付与到账',
     icon: Tickets,
   },
+  {
+    label: '工单中心',
+    name: 'dev-tickets',
+    description: '提交问题与查看回复',
+    icon: Tickets,
+  },
 ]
 
 // 财务中心：只跟钱有关的三条收成一组的折叠组。收益钱包原先是开发者菜单的一级条目，

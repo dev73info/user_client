@@ -92,7 +92,7 @@ watch(
 
     <!-- 全局资源下载进度浮层：切换路由不中断下载，浮层持续展示进度 -->
     <AppDownloadCard />
-    <SupportChatWidget v-if="!immersiveWorkbench" />
+    <SupportChatWidget />
   </div>
 </template>
 

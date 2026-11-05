@@ -127,6 +127,7 @@ describe('workbench mode switch', () => {
       '接入客户端',
       '需求大厅',
       '我的接单',
+      '工单中心',
     ])
     // 财务中心与团队服务是折叠组（分组头自带组名），消息中心夹在分组之间
     expect(wrapper.findAll('.user-workbench__menu-group-head').map((head) => head.text())).toEqual([
@@ -165,7 +166,8 @@ describe('workbench mode switch', () => {
     expect(text).toContain('团队资源')
     // 系统通知两种工作台都有这一条
     expect(text).toContain('系统通知')
-    expect(text).not.toContain('工单中心')
+    // 工单中心两种工作台都有这一条（开发者端走 dev-tickets）
+    expect(text).toContain('工单中心')
     // 退出登录挂在系统通知下方，两种工作台共用
     expect(text).toContain('退出登录')
     const modeSwitch = wrapper.find('.user-workbench__mode-switch')

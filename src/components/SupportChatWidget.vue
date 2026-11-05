@@ -14,7 +14,14 @@ const {
   input,
   error,
   connected,
+  conversations,
+  unread,
+  activeStatus,
+  historyOpen,
+  unavailable,
   toggleOpen,
+  toggleHistory,
+  openConversation,
   send,
   resolveChannelEnabled,
   setChatBodyRef,
@@ -50,7 +57,7 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <div v-if="channelEnabled" class="support-widget" :style="widgetStyle">
+  <div v-if="channelEnabled" class="support-widget" :class="{ 'is-open': opened }" :style="widgetStyle">
     <Transition name="support-pop">
       <SupportChatPanel
         v-if="opened"
@@ -61,10 +68,16 @@ onBeforeUnmount(() => {
         :messages="messages"
         :input="input"
         :error="error"
+        :conversations="conversations"
+        :active-status="activeStatus"
+        :history-open="historyOpen"
+        :unavailable="unavailable"
         :set-body-ref="setChatBodyRef"
         @close="toggleOpen"
         @update:input="input = $event"
         @send="send"
+        @toggle-history="toggleHistory"
+        @open-conversation="openConversation"
       />
     </Transition>
 
@@ -108,6 +121,9 @@ onBeforeUnmount(() => {
         />
       </svg>
       <span class="support-fab__text">在线客服</span>
+      <span v-if="!opened && unread > 0" class="support-fab__badge" aria-label="未读消息">
+        {{ unread > 99 ? '99+' : unread }}
+      </span>
     </button>
   </div>
 </template>

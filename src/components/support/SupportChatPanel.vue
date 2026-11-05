@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 
-import type { SupportMessage } from '@/api/support'
+import type { SupportConversation, SupportMessage } from '@/api/support'
 
 const props = defineProps<{
   side: 'left' | 'right'
@@ -11,6 +11,10 @@ const props = defineProps<{
   messages: Array<SupportMessage & { time: string }>
   input: string
   error: string
+  conversations: SupportConversation[]
+  activeStatus: 'open' | 'closed' | null
+  historyOpen: boolean
+  unavailable: boolean
   setBodyRef: (el: unknown) => void
 }>()
 
@@ -18,11 +22,44 @@ const emit = defineEmits<{
   (event: 'close'): void
   (event: 'update:input', value: string): void
   (event: 'send'): void
+  (event: 'toggle-history'): void
+  (event: 'open-conversation', id: number): void
 }>()
 
 const inputModel = computed({
   get: () => props.input,
   set: (value: string) => emit('update:input', value),
+})
+
+const textareaRef = ref<HTMLTextAreaElement | null>(null)
+
+const statusText = computed(() => {
+  if (props.unavailable) return '实时连接不可用'
+  if (!props.connected) return '连接中…'
+  if (props.activeStatus === 'closed') return '会话已结束，发送将创建新会话'
+  return '已连接，客服将及时回复'
+})
+
+function onKeydown(event: KeyboardEvent) {
+  if (event.key === 'Escape') emit('close')
+}
+
+/** Enter 发送、Shift+Enter 换行；输入法组合期内的回车不算发送。 */
+function onInputKeydown(event: KeyboardEvent) {
+  if (event.key !== 'Enter' || event.shiftKey || event.isComposing) return
+  event.preventDefault()
+  if (props.input.trim() && !props.sending && !props.loading) emit('send')
+}
+
+onMounted(() => {
+  textareaRef.value?.focus()
+  window.addEventListener('keydown', onKeydown)
+  if (window.innerWidth <= 640) document.body.style.overflow = 'hidden'
+})
+
+onBeforeUnmount(() => {
+  window.removeEventListener('keydown', onKeydown)
+  document.body.style.overflow = ''
 })
 </script>
 
@@ -31,26 +68,46 @@ const inputModel = computed({
     class="support-panel"
     :class="side === 'left' ? 'support-panel--left' : 'support-panel--right'"
     role="dialog"
+    aria-modal="true"
     aria-label="在线客服"
   >
     <header class="support-panel__head">
-      <div>
+      <div class="support-panel__heading">
         <h2 class="support-panel__title">在线客服</h2>
-        <span class="support-panel__status">
-          {{ connected ? '已连接，客服将及时回复' : '连接中…' }}
-        </span>
+        <span class="support-panel__status">{{ statusText }}</span>
       </div>
-      <button
-        type="button"
-        class="support-panel__close"
-        aria-label="关闭客服窗口"
-        @click="emit('close')"
-      >
-        ×
-      </button>
+      <div class="support-panel__head-actions">
+        <button type="button" class="support-panel__history-toggle" @click="emit('toggle-history')">
+          {{ historyOpen ? '返回会话' : '历史会话' }}
+        </button>
+        <button
+          type="button"
+          class="support-panel__close"
+          aria-label="关闭客服窗口"
+          @click="emit('close')"
+        >
+          ×
+        </button>
+      </div>
     </header>
 
-    <div :ref="setBodyRef" class="support-panel__body">
+    <div v-if="historyOpen" class="support-history">
+      <p v-if="!conversations.length" class="support-hint">还没有历史会话</p>
+      <button
+        v-for="item in conversations"
+        :key="item.id"
+        type="button"
+        class="support-history__item"
+        @click="emit('open-conversation', item.id)"
+      >
+        <span class="support-history__text">{{ item.last_message || '（无消息）' }}</span>
+        <span class="support-history__meta">
+          {{ item.status === 'open' ? '进行中' : '已结束' }}
+        </span>
+      </button>
+    </div>
+
+    <div v-else :ref="setBodyRef" class="support-panel__body">
       <div v-if="loading" class="support-hint">加载中…</div>
       <div v-else-if="messages.length === 0" class="support-hint">
         您好，请输入您的问题，我们会尽快回复您。
@@ -70,13 +127,14 @@ const inputModel = computed({
 
     <footer class="support-panel__foot">
       <textarea
+        ref="textareaRef"
         v-model="inputModel"
         class="support-input"
         rows="2"
         maxlength="5000"
-        placeholder="请输入消息，Enter 发送"
+        placeholder="请输入消息，Enter 发送，Shift+Enter 换行"
         aria-label="客服消息"
-        @keydown.enter.exact.prevent="emit('send')"
+        @keydown="onInputKeydown"
       />
       <button
         type="button"
