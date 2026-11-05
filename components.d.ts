@@ -29,6 +29,7 @@ declare module 'vue' {
     AuthModal: typeof import('./src/components/AuthModal.vue')['default']
     AuthModalHead: typeof import('./src/components/authModal/AuthModalHead.vue')['default']
     BadgeWall: typeof import('./src/components/BadgeWall.vue')['default']
+    BetaTag: typeof import('./src/components/BetaTag.vue')['default']
     BreachCaseFacts: typeof import('./src/components/aftersales/BreachCaseFacts.vue')['default']
     CatalogPager: typeof import('./src/components/resource-catalog/CatalogPager.vue')['default']
     CatalogToolbar: typeof import('./src/components/resource-catalog/CatalogToolbar.vue')['default']

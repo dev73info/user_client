@@ -9,6 +9,7 @@
 import { computed } from 'vue'
 
 import type { PublicRequirementSpotlightItem } from '@/api/requirements'
+import BetaTag from '@/components/BetaTag.vue'
 import {
   formatCnDateTime as formatTimeLabel,
   formatCny as formatMoney,
@@ -47,6 +48,11 @@ function open(): void {
       <div class="requirement-hall__badges">
         <span class="requirement-hall__badge" :class="`requirement-hall__badge--${guaranteeTone}`">
           {{ guaranteeLabel }}
+          <BetaTag
+            v-if="props.card.payment_mode === 'platform_guarantee'"
+            tone="soon"
+            class="requirement-hall__badge-beta"
+          />
         </span>
         <span class="requirement-hall__id">{{ props.card.requirement_id }}</span>
       </div>
@@ -122,6 +128,7 @@ function open(): void {
 .requirement-hall__badge {
   display: inline-flex;
   align-items: center;
+  gap: 6px;
   height: 20px;
   padding: 0 8px;
   border: 1px solid var(--73-border);
@@ -143,6 +150,13 @@ function open(): void {
   border-color: var(--73-success-line);
   background: var(--73-success-soft);
   color: var(--73-success-text);
+}
+
+/* 胶囊内塞一枚 BETA 后仍是 20px 高：标签字号降一档，别把卡头撑高。 */
+.requirement-hall__badge-beta {
+  min-height: 16px;
+  padding: 0 5px;
+  font-size: 10px;
 }
 
 .requirement-hall__id {

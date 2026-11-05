@@ -12,6 +12,7 @@ import {
 } from 'ui_73info'
 
 import type { McResourcePayload } from '@/api/mcResources'
+import BetaTag from '@/components/BetaTag.vue'
 import {
   formatDevResourcePrice,
   formatExposureStatus,
@@ -123,12 +124,21 @@ function handleRowClick(event: MouseEvent) {
     </TTableColumn>
     <TTableColumn label="售价" width="96" resizable>
       <template #default="scope">
-        <TTag
-          variant="outline"
-          :tone="hasDevResourcePrice(scope.row, versionPrices) ? 'accent' : 'neutral'"
-        >
-          {{ formatDevResourcePrice(scope.row, versionPrices) }}
-        </TTag>
+        <span class="dev-resource-table__price-cell">
+          <TTag
+            variant="outline"
+            :tone="hasDevResourcePrice(scope.row, versionPrices) ? 'accent' : 'neutral'"
+          >
+            {{ formatDevResourcePrice(scope.row, versionPrices) }}
+          </TTag>
+          <!-- 付费资源（非接口）打蓝色 BETA；接口资源的 BETA 落在状态列的「接口资源」标签旁。 -->
+          <BetaTag
+            v-if="
+              !isApiResourceKind(scope.row.resource_kind) &&
+              hasDevResourcePrice(scope.row, versionPrices)
+            "
+          />
+        </span>
       </template>
     </TTableColumn>
     <TTableColumn label="状态" width="190" resizable>
@@ -144,6 +154,7 @@ function handleRowClick(event: MouseEvent) {
           >
             {{ resourceVisibilityLabel(scope.row.visibility) }}
           </TTag>
+          <BetaTag v-if="isApiResourceKind(scope.row.resource_kind)" />
           <TTag
             v-if="isResourceArchiveLocked(scope.row)"
             variant="soft"
@@ -275,6 +286,13 @@ function handleRowClick(event: MouseEvent) {
 .dev-resource-table__status-tags {
   display: inline-flex;
   flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+/* 售价列：价格胶囊与 BETA 同一行，留 6px。 */
+.dev-resource-table__price-cell {
+  display: inline-flex;
   align-items: center;
   gap: 6px;
 }

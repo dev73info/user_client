@@ -2,6 +2,7 @@
 import { computed } from 'vue'
 import { TTooltip } from 'ui_73info'
 
+import BetaTag from '@/components/BetaTag.vue'
 import { isPointsResource, isPricedResource } from '@/shared/resourceSale'
 import { formatUpdatedAt, type MobileCard } from '@/components/mobile-resource/mobileResourceModel'
 
@@ -48,6 +49,17 @@ const cardTags = computed(() =>
           }"
           >{{ props.card.priceLabel }}</span
         >
+        <!-- 面板价资源在价格徽标后戴一枚蓝色 BETA（与桌面卡的判据同一份）。 -->
+        <BetaTag
+          v-if="
+            isPricedResource(
+              props.card.priceFen,
+              props.card.pricePoints,
+              props.card.minVersionPriceFen,
+            )
+          "
+          class="card-beta-tag"
+        />
         <span
           class="card-repost-badge"
           :class="{ 'is-repost': props.card.originType === 'repost' }"

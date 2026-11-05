@@ -3,10 +3,12 @@ import { watch } from 'vue'
 import type { PropType } from 'vue'
 import { TIcon, ArrowDown } from 'ui_73info'
 
+import BetaTag from '@/components/BetaTag.vue'
 import RichTextEditor from '@/components/RichTextEditor.vue'
 import { useAcceptanceTemplateMenu } from '@/composables/useAcceptanceTemplateMenu'
 import { usePublishDraft } from '@/composables/usePublishDraft'
 import { usePublishModalFields } from '@/composables/usePublishModalFields'
+import { PLATFORM_GUARANTEE_BETA_OPEN } from '@/shared/betaFeatures'
 
 /**
  * 发布需求弹窗（首页 / 个人中心 / 需求大厅共用）。
@@ -43,6 +45,10 @@ const props = defineProps({
     default: '',
   },
   allowPlatformGuarantee: { type: Boolean as PropType<boolean | undefined>, default: undefined },
+  /** 电签担保是否已开放测试（D-2026-11-05-04），默认取平台口径。 */
+  platformGuaranteeBetaOpen: { type: Boolean, default: PLATFORM_GUARANTEE_BETA_OPEN },
+  /** 编辑 / 重新提交存量担保需求时放行担保方式（新发布为 `false`）。 */
+  allowExistingGuarantee: { type: Boolean, default: false },
   publishLoading: { type: Boolean, default: false },
   // 草稿作用域（一般传当前用户名），用于按用户隔离草稿，避免多账号共用浏览器时串数据
   draftScope: { type: String, default: 'default' },
@@ -67,7 +73,7 @@ function forwardNotify(message: string, type?: NotifyType) {
 const {
   isGuaranteeMode,
   developmentCycleHint,
-  platformGuaranteeAllowed,
+  platformGuaranteeSelectable,
   updateTitle,
   updateDescription,
   updateBudget,
@@ -218,12 +224,7 @@ defineExpose({
           </div>
           <div class="publish-mode-field">
             <span>发布方式 *</span>
-            <div
-              class="publish-mode-options"
-              :class="{ 'publish-mode-options--single': !platformGuaranteeAllowed }"
-              role="radiogroup"
-              aria-label="发布方式选择"
-            >
+            <div class="publish-mode-options" role="radiogroup" aria-label="发布方式选择">
               <button
                 type="button"
                 class="publish-mode-option"
@@ -234,16 +235,22 @@ defineExpose({
               >
                 <strong>无电签约定</strong>
               </button>
+              <!-- 担保入口始终渲染：未开放测试 / 后端不可用时置灰，点击给提示而不是静默无反应
+                   （所以不用原生 disabled，用 aria-disabled + 样式）。 -->
               <button
-                v-if="platformGuaranteeAllowed"
                 type="button"
                 class="publish-mode-option"
                 role="radio"
                 :aria-checked="publishPaymentMode === 'platform_guarantee'"
-                :class="{ active: publishPaymentMode === 'platform_guarantee' }"
+                :aria-disabled="platformGuaranteeSelectable ? undefined : 'true'"
+                :class="{
+                  active: publishPaymentMode === 'platform_guarantee',
+                  'is-unavailable': !platformGuaranteeSelectable,
+                }"
                 @click="updatePaymentMode('platform_guarantee')"
               >
                 <strong>电签担保</strong>
+                <BetaTag tone="soon" />
               </button>
             </div>
           </div>

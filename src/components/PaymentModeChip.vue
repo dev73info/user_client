@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 
+import BetaTag from '@/components/BetaTag.vue'
 import { requirementPaymentModeLabel } from '@/shared/requirementDisplay'
 
 /**
@@ -24,6 +25,7 @@ const label = computed(() => requirementPaymentModeLabel(props.mode))
 <template>
   <span class="pay-mode-chip" :class="`pay-mode-chip--${mode}`">
     {{ label }}<template v-if="$slots.default"> · <slot /></template>
+    <BetaTag v-if="mode === 'platform_guarantee'" tone="soon" class="pay-mode-chip__beta" />
   </span>
 </template>
 
@@ -53,5 +55,13 @@ const label = computed(() => requirementPaymentModeLabel(props.mode))
   border-color: var(--73-warning-line);
   background: var(--73-warning-soft);
   color: var(--73-warning-text);
+}
+
+/* 胶囊里再塞一枚 BETA：字号与高度各降一档，别把原有胶囊撑高。 */
+.pay-mode-chip__beta {
+  min-height: 16px;
+  margin-left: 6px;
+  padding: 0 5px;
+  font-size: 10px;
 }
 </style>

@@ -29,6 +29,17 @@
   color: var(--73-ink-inverse);
 }
 
+/* 面板价资源的 BETA：封面右上角、原创/转载角标下面一行，不挤占两个既有角标的位置。 */
+.portal-resource-browser__beta {
+  position: absolute;
+  top: 36px;
+  right: 8px;
+  z-index: 1;
+  min-height: 18px;
+  padding: 0 5px;
+  font-size: 10px;
+}
+
 .portal-resource-browser__meta {
   position: absolute;
   top: 8px;

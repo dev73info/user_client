@@ -21,6 +21,7 @@ import {
 
 import { apiUrl } from '@/api/http'
 import type { McResourcePayload } from '@/api/mcResources'
+import BetaTag from '@/components/BetaTag.vue'
 import DevResourceListMetaStrip from '@/components/dev/DevResourceListMetaStrip.vue'
 import DevResourcePublishVersionDialog from '@/components/dev/DevResourcePublishVersionDialog.vue'
 import DevResourceTable from '@/components/dev/DevResourceTable.vue'
@@ -132,8 +133,18 @@ onMounted(async () => {
             <template #dropdown>
               <TDropdownMenu>
                 <TDropdownItem :command="'free'">免费资源</TDropdownItem>
-                <TDropdownItem :command="'paid'">付费资源（买断 / 单版本）</TDropdownItem>
-                <TDropdownItem :command="'api'">接口资源</TDropdownItem>
+                <TDropdownItem :command="'paid'">
+                  <span class="dev-create-option">
+                    <span>付费资源（买断 / 单版本）</span>
+                    <BetaTag />
+                  </span>
+                </TDropdownItem>
+                <TDropdownItem :command="'api'">
+                  <span class="dev-create-option">
+                    <span>接口资源</span>
+                    <BetaTag />
+                  </span>
+                </TDropdownItem>
               </TDropdownMenu>
             </template>
           </TDropdown>
@@ -246,5 +257,12 @@ onMounted(async () => {
 /* R014：锁定资源的整体说明横幅，放在资源列表表格上方；观感取自 TAlert 的 warning 态。 */
 .dev-archive-locked-notice {
   margin: 0 0 16px;
+}
+
+/* 发布资源下拉项：文案与 BETA 标签同一行，标签与文案拉开 6px。 */
+.dev-create-option {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
 }
 </style>

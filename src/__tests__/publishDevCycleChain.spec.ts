@@ -35,6 +35,9 @@ vi.mock('@/api/requirements', async (importOriginal) => ({
 }))
 vi.mock('@/api/realname', () => ({ getMyRealnameVerification: mocks.getVerification }))
 vi.mock('@/utils/seo', () => ({ setSeoMeta: vi.fn(), resetSeoMeta: vi.fn() }))
+// 本文件钉的是「担保需求发布时必须带开发周期」这条既有链路，BETA 的开放口径不是被测对象：
+// 把担保当作已开放测试，弹窗里的担保入口才可选（口径见 shared/betaFeatures.ts）。
+vi.mock('@/shared/betaFeatures', () => ({ PLATFORM_GUARANTEE_BETA_OPEN: true }))
 // 「电签担保」选项只在服务端说可用时渲染；真实现要问一次后端，这里直接给可用。
 vi.mock('@/shared/adapayAvailability', () => ({
   platformGuaranteeReady: computed(() => true),

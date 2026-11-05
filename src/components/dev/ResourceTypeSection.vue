@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import BetaTag from '@/components/BetaTag.vue'
 import {
   RESOURCE_CREATION_TYPE_OPTIONS,
   RESOURCE_PAID_MODE_OPTIONS,
@@ -28,7 +29,8 @@ const paidMode = defineModel<ResourcePaidMode>('paidMode', { required: true })
         :aria-pressed="creationType === option.value"
         @click="creationType = option.value"
       >
-        {{ option.label }}
+        <span class="dev-segmented__label">{{ option.label }}</span>
+        <BetaTag v-if="option.value === 'paid' || option.value === 'api'" />
       </button>
     </div>
 
@@ -69,7 +71,11 @@ const paidMode = defineModel<ResourcePaidMode>('paidMode', { required: true })
 }
 
 .dev-resource-type > .dev-segmented .dev-segmented__item {
+  display: inline-flex;
   flex: 1 1 0;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
   min-width: 0;
 }
 
@@ -92,9 +98,17 @@ const paidMode = defineModel<ResourcePaidMode>('paidMode', { required: true })
   font-weight: 600;
 }
 
+/* 640 档：三档按钮可能挤不下一行「文案 + BETA」，允许换行、不要把标签压出按钮。 */
 @media (max-width: 640px) {
   .dev-resource-type__paid {
     grid-template-columns: 1fr;
+  }
+
+  .dev-resource-type > .dev-segmented .dev-segmented__item {
+    flex-wrap: wrap;
+    gap: 2px 6px;
+    padding: 6px 4px;
+    white-space: normal;
   }
 }
 </style>

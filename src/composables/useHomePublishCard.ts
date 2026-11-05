@@ -75,6 +75,8 @@ export function useHomePublishCard(options: HomePublishCardOptions) {
     loadingText: publishModalLoadingText.value,
     publishLoading: publishLoading.value,
     draftScope: draftScope.value,
+    // 驳回后「重新提交」是存量担保需求的编辑：保留担保方式可选。
+    ...(activeResubmitRequirementId.value ? { allowExistingGuarantee: true } : {}),
     'onUpdate:publishTitle': (value: string) => {
       publishTitle.value = value
     },

@@ -4,6 +4,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { TMessage } from 'ui_73info'
 
 import { HttpError } from '@/api/http'
+import BetaTag from '@/components/BetaTag.vue'
 import {
   invalidateResourceListCache,
   likePublicMcResource,
@@ -121,6 +122,17 @@ async function toggleCardLike(card: McCardItem) {
         :class="{ 'is-repost': props.card.originType === 'repost' }"
         >{{ props.card.originType === 'repost' ? '转载' : '原创' }}</span
       >
+      <!-- 面板价资源：封面右上角再戴一枚 BETA（与价格徽标同一套绝对定位口径）。 -->
+      <BetaTag
+        v-if="
+          isPricedResource(
+            props.card.priceFen,
+            props.card.pricePoints,
+            props.card.minVersionPriceFen,
+          )
+        "
+        class="portal-resource-browser__beta"
+      />
     </div>
 
     <div class="portal-resource-browser__body">

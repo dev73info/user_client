@@ -185,8 +185,32 @@
   font-weight: 700;
 }
 
+/* 选项里可能跟一枚 BETA 标签：文案与标签同一行，拉开 6px。 */
+.publish-mode-option {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
 .publish-mode-option:hover:not(:disabled):not(.active) {
   color: var(--73-accent);
+}
+
+/* 不可选（未开放测试 / 后端不可用）：置灰但仍可点，点下去由表单提示原因。 */
+.publish-mode-option.is-unavailable {
+  color: var(--73-ink-disabled);
+  cursor: not-allowed;
+}
+
+.publish-mode-option.is-unavailable:hover {
+  color: var(--73-ink-disabled);
+}
+
+.publish-mode-option.is-unavailable.active {
+  background: transparent;
+  color: var(--73-ink-disabled);
+  box-shadow: none;
 }
 
 .publish-mode-option.active {

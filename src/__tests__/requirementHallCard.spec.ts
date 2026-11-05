@@ -25,7 +25,10 @@ describe('RequirementHallCard 担保方式标签', () => {
     const wrapper = mount(RequirementHallCard, {
       props: { card: requirement('platform_guarantee') },
     })
-    expect(wrapper.get('.requirement-hall__badge--success').text()).toBe('电签担保')
+    const badge = wrapper.get('.requirement-hall__badge--success')
+    // 担保暂不开放测试：胶囊内追加一枚灰色 BETA（D-2026-11-05-04）。
+    expect(badge.text()).toBe('电签担保 BETA')
+    expect(badge.find('.beta-tag').classes()).toContain('t73-tag--tone-neutral')
     expect(wrapper.findAll('.requirement-hall__badge')).toHaveLength(1)
     expect(wrapper.text()).not.toContain('待付定金')
     wrapper.unmount()
@@ -46,7 +49,7 @@ describe('RequirementHallCard 担保方式标签', () => {
       props: { card: requirement('platform_guarantee', 'completed') },
     })
     expect(wrapper.text()).not.toContain('已完成')
-    expect(wrapper.get('.requirement-hall__badge--success').text()).toBe('电签担保')
+    expect(wrapper.get('.requirement-hall__badge--success').text()).toBe('电签担保 BETA')
     wrapper.unmount()
   })
 })

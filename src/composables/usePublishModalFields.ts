@@ -10,6 +10,10 @@ export type PublishModalFieldsProps = {
   visible: boolean
   publishPaymentMode: 'platform_guarantee' | 'self_managed'
   allowPlatformGuarantee?: boolean | undefined
+  /** 电签担保是否已开放测试（口径见 `shared/betaFeatures.ts`）。 */
+  platformGuaranteeBetaOpen: boolean
+  /** 编辑 / 重新提交存量担保需求时放行担保方式（新发布不放行）。 */
+  allowExistingGuarantee: boolean
 }
 
 export type PublishModalFieldsOptions = {
@@ -21,6 +25,7 @@ export type PublishModalFieldsOptions = {
     (event: 'update:publishAcceptance', value: string): void
     (event: 'update:publishPaymentMode', value: 'platform_guarantee' | 'self_managed'): void
     (event: 'update:publishDevelopmentCycleDays', value: string): void
+    (event: 'notify', message: string, type?: 'success' | 'warning' | 'error'): void
   }
 }
 
@@ -77,13 +82,30 @@ export function usePublishModalFields(
   const developmentCycleHint =
     '开发周期（天）＝合同自双方签署完成到截止的有效期；低于平台配置的最短天数会被拒绝，具体下限以后端提示为准。'
 
-  // 是否展示「电签担保」：显式传入时以传入值为准，否则跟随服务端可用性。
+  // 后端是否可用：显式传入时以传入值为准，否则跟随服务端可用性。
   const platformGuaranteeAllowed = computed(
     () => props.allowPlatformGuarantee ?? platformGuaranteeReady.value,
   )
 
+  /**
+   * 当前表单是否**可以选中**「电签担保」（D-2026-11-05-04）：
+   * 后端可用，且（担保已开放测试，或这是存量担保需求的编辑 / 重新提交）。
+   */
+  const platformGuaranteeSelectable = computed(
+    () =>
+      platformGuaranteeAllowed.value &&
+      (props.platformGuaranteeBetaOpen ||
+        (props.allowExistingGuarantee && props.publishPaymentMode === 'platform_guarantee')),
+  )
+
+  /** 不可选时点击的提示：未开放测试与后端不可用要说得不一样。 */
+  function guaranteeUnavailableMessage(): string {
+    return platformGuaranteeAllowed.value ? '电签担保暂未开放测试' : '电签担保当前不可用'
+  }
+
   function updatePaymentMode(value: 'platform_guarantee' | 'self_managed') {
-    if (value === 'platform_guarantee' && !platformGuaranteeAllowed.value) {
+    if (value === 'platform_guarantee' && !platformGuaranteeSelectable.value) {
+      emit('notify', guaranteeUnavailableMessage())
       return
     }
 
@@ -109,16 +131,22 @@ export function usePublishModalFields(
   watch(
     () =>
       [
-        platformGuaranteeAllowed.value,
+        platformGuaranteeSelectable.value,
         platformGuaranteeLoaded.value,
         props.publishPaymentMode,
       ] as const,
-    ([allowed, loaded, publishPaymentMode]) => {
-      // 可用性尚未加载完成时不降级，否则会误清掉草稿里已选的担保模式。
-      if (!loaded && props.allowPlatformGuarantee === undefined) {
+    ([selectable, loaded, publishPaymentMode]) => {
+      // 可用性尚未加载完成时不降级，否则会误清掉草稿里已选的担保模式；编辑存量担保需求同理，
+      // 加载完成前不能把它降成无电签。担保未开放测试的新发布与可用性无关，要直接降级
+      // （含旧草稿回填出的 platform_guarantee）。
+      const waitingForAvailability =
+        !loaded &&
+        props.allowPlatformGuarantee === undefined &&
+        (props.platformGuaranteeBetaOpen || props.allowExistingGuarantee)
+      if (waitingForAvailability) {
         return
       }
-      if (!allowed && publishPaymentMode === 'platform_guarantee') {
+      if (!selectable && publishPaymentMode === 'platform_guarantee') {
         emit('update:publishPaymentMode', 'self_managed')
       }
     },
@@ -129,6 +157,7 @@ export function usePublishModalFields(
     isGuaranteeMode,
     developmentCycleHint,
     platformGuaranteeAllowed,
+    platformGuaranteeSelectable,
     updateTitle,
     updateDescription,
     updateBudget,

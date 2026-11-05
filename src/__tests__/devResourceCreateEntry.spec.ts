@@ -79,6 +79,8 @@ function mountList(): VueWrapper {
           name: 'TDropdownItem',
           template: '<button type="button" class="entry-item"><slot /></button>',
         },
+        // shallowMount 会把 BetaTag 一起桩掉；这里让它照常出文案，才能钉住「哪些入口带 BETA」。
+        BetaTag: { name: 'BetaTag', template: '<span>BETA</span>' },
       },
     },
   })
@@ -114,8 +116,8 @@ describe('DevResourceListView：三类资源统一创建入口', () => {
     await flushPromises()
     expect(wrapper.findAll('.entry-item').map((item) => item.text())).toEqual([
       '免费资源',
-      '付费资源（买断 / 单版本）',
-      '接口资源',
+      '付费资源（买断 / 单版本）BETA',
+      '接口资源BETA',
     ])
     wrapper.unmount()
   })

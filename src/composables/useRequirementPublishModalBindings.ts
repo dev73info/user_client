@@ -50,6 +50,8 @@ export function useRequirementPublishModalBindings(
     ...(options.isEdit
       ? { modalTitle: '重新编辑需求', submitText: '重新提交审核', loadingText: '提交中...' }
       : {}),
+    // 编辑存量担保需求时保留担保方式可选（新发布不放行，见 betaFeatures）。
+    ...(options.isEdit ? { allowExistingGuarantee: true } : {}),
     'onUpdate:publishTitle': (value: string) => {
       form.title = value
     },
