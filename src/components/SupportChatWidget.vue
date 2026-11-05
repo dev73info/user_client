@@ -38,7 +38,10 @@ const {
 } = useSupportChatDrag(() => {
   void toggleOpen()
 })
-const openLabel = computed(() => (opened.value ? '收起在线客服' : '在线客服'))
+const openLabel = computed(() => {
+  if (opened.value) return '收起在线客服'
+  return unread.value > 0 ? `在线客服（${unread.value} 条未读）` : '在线客服'
+})
 let disposed = false
 
 onMounted(async () => {
@@ -121,7 +124,7 @@ onBeforeUnmount(() => {
         />
       </svg>
       <span class="support-fab__text">在线客服</span>
-      <span v-if="!opened && unread > 0" class="support-fab__badge" aria-label="未读消息">
+      <span v-if="!opened && unread > 0" class="support-fab__badge" aria-hidden="true">
         {{ unread > 99 ? '99+' : unread }}
       </span>
     </button>

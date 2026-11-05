@@ -219,7 +219,7 @@ export function useTicketCenter() {
     if (disposed) return
     // 连续 5 次连不上（含 401/403 握手失败）就停下并给出可见提示。
     if (reconnectAttempt >= 5) {
-      realtimeWarning.value = '实时连接不可用，请刷新页面'
+      realtimeWarning.value = '实时连接已断开'
       return
     }
     const delay = Math.min(3000 * 2 ** reconnectAttempt, 15_000)

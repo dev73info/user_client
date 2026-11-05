@@ -16,7 +16,7 @@ import { useSupportChatRealtime } from './useSupportChatRealtime'
 import { useSupportUnread } from './useSupportUnread'
 
 const LOGIN_REQUIRED_MESSAGE = '请先登录后再使用在线客服'
-const REALTIME_UNAVAILABLE_MESSAGE = '实时连接不可用，请刷新页面或重新登录'
+const REALTIME_UNAVAILABLE_MESSAGE = '实时连接已断开'
 
 export function useSupportChatSession() {
   const auth = useAuthStore()

@@ -32,12 +32,15 @@ const inputModel = computed({
 })
 
 const textareaRef = ref<HTMLTextAreaElement | null>(null)
+const isPhone = ref(false)
+let scrollWrap: HTMLElement | null = null
+let scrollLocked = false
 
 const statusText = computed(() => {
-  if (props.unavailable) return '实时连接不可用'
+  if (props.unavailable) return '实时连接已断开'
   if (!props.connected) return '连接中…'
   if (props.activeStatus === 'closed') return '会话已结束，发送将创建新会话'
-  return '已连接，客服将及时回复'
+  return '已连接'
 })
 
 function onKeydown(event: KeyboardEvent) {
@@ -51,15 +54,48 @@ function onInputKeydown(event: KeyboardEvent) {
   if (props.input.trim() && !props.sending && !props.loading) emit('send')
 }
 
+/** 本仓真正滚动的是工作台滚动容器，body 锁不住它。 */
+function lockScroll() {
+  if (scrollLocked) return
+  scrollLocked = true
+  const wrap = document.querySelector<HTMLElement>('.t73-scrollbar__wrap')
+  if (wrap) {
+    scrollWrap = wrap
+    wrap.style.overflow = 'hidden'
+  }
+  document.body.style.overflow = 'hidden'
+}
+
+function unlockScroll() {
+  if (!scrollLocked) return
+  scrollLocked = false
+  if (scrollWrap) {
+    scrollWrap.style.overflow = ''
+    scrollWrap = null
+  }
+  document.body.style.overflow = ''
+}
+
+/** 全屏只在手机档生效；跨档时同步滚动锁与 aria-modal。 */
+function syncPhone() {
+  const next = window.innerWidth <= 640
+  if (next && !isPhone.value) lockScroll()
+  if (!next && isPhone.value) unlockScroll()
+  isPhone.value = next
+}
+
 onMounted(() => {
   textareaRef.value?.focus()
   window.addEventListener('keydown', onKeydown)
-  if (window.innerWidth <= 640) document.body.style.overflow = 'hidden'
+  window.addEventListener('resize', syncPhone)
+  syncPhone()
 })
 
 onBeforeUnmount(() => {
   window.removeEventListener('keydown', onKeydown)
-  document.body.style.overflow = ''
+  window.removeEventListener('resize', syncPhone)
+  unlockScroll()
+  document.querySelector<HTMLElement>('.support-fab')?.focus()
 })
 </script>
 
@@ -68,7 +104,7 @@ onBeforeUnmount(() => {
     class="support-panel"
     :class="side === 'left' ? 'support-panel--left' : 'support-panel--right'"
     role="dialog"
-    aria-modal="true"
+    :aria-modal="isPhone ? 'true' : undefined"
     aria-label="在线客服"
   >
     <header class="support-panel__head">
@@ -125,7 +161,7 @@ onBeforeUnmount(() => {
 
     <p v-if="error" class="support-error" role="alert">{{ error }}</p>
 
-    <footer class="support-panel__foot">
+    <footer v-if="!historyOpen" class="support-panel__foot">
       <textarea
         ref="textareaRef"
         v-model="inputModel"

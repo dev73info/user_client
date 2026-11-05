@@ -5,6 +5,8 @@ const MOBILE_BREAKPOINT_PX = 900
 const DESKTOP_FAB_HEIGHT = 140
 const MOBILE_FAB_HEIGHT = 48
 const CLICK_DISTANCE_PX = 6
+/** 移动端底部 Dock：bottom 8px + 高度约 58px + 8px 间距。 */
+const MOBILE_DOCK_RESERVE = 74
 
 function clamp(value: number, min: number, max: number): number {
   return Math.min(Math.max(value, min), max)
@@ -34,7 +36,10 @@ export function useSupportChatDrag(onTap: () => void) {
   }
 
   function clampFabTop(value: number): number {
-    return clamp(value, 8, Math.max(8, window.innerHeight - currentFabHeight() - 8))
+    const mobile = window.matchMedia(`(max-width: ${MOBILE_BREAKPOINT_PX}px)`).matches
+    // 移动端给底部 Dock 留位，避免拖到最底部后按钮被 Dock 盖住点不到。
+    const bottomGap = mobile ? MOBILE_DOCK_RESERVE : 8
+    return clamp(value, 8, Math.max(8, window.innerHeight - currentFabHeight() - bottomGap))
   }
 
   function handleViewportResize() {
