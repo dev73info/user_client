@@ -115,10 +115,17 @@ describe('PublishModal：电签担保入口', () => {
     wrapper.unmount()
   })
 
-  it('后端不可用：提示「当前不可用」', async () => {
-    const wrapper = mountModal({ allowPlatformGuarantee: false })
+  it('担保已开放测试但后端不可用：提示「当前不可用」', async () => {
+    const wrapper = mountModal({ allowPlatformGuarantee: false, platformGuaranteeBetaOpen: true })
     await guaranteeOption(wrapper).trigger('click')
     expect(wrapper.emitted('notify')).toEqual([['电签担保当前不可用']])
+    wrapper.unmount()
+  })
+
+  it('未开放测试且可用性尚未落地：仍提示「暂未开放测试」，不误报后端不可用', async () => {
+    const wrapper = mountModal({ allowPlatformGuarantee: false })
+    await guaranteeOption(wrapper).trigger('click')
+    expect(wrapper.emitted('notify')).toEqual([['电签担保暂未开放测试']])
     wrapper.unmount()
   })
 

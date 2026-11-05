@@ -98,14 +98,27 @@ export function usePublishModalFields(
         (props.allowExistingGuarantee && props.publishPaymentMode === 'platform_guarantee')),
   )
 
-  /** 不可选时点击的提示：未开放测试与后端不可用要说得不一样。 */
-  function guaranteeUnavailableMessage(): string {
-    return platformGuaranteeAllowed.value ? '电签担保暂未开放测试' : '电签担保当前不可用'
-  }
+  /**
+   * 不可选的原因：灰色 BETA 说的是「暂未开放测试」，它优先于后端可用性。
+   *
+   * 顺序不能反过来：担保整档还没放出来时，可用性请求是否落地（首页入口常见未就绪）
+   * 都不改变结论；先判可用性会让同一枚灰色 BETA 在不同入口给出两种说法。
+   * 只有「这枚担保本来允许（已开放测试 / 存量担保编辑）」时才轮到后端不可用这一条。
+   */
+  const platformGuaranteeBlockedReason = computed<string | null>(() => {
+    if (platformGuaranteeSelectable.value) {
+      return null
+    }
+
+    const betaCoversThisForm =
+      props.platformGuaranteeBetaOpen ||
+      (props.allowExistingGuarantee && props.publishPaymentMode === 'platform_guarantee')
+    return betaCoversThisForm ? '电签担保当前不可用' : '电签担保暂未开放测试'
+  })
 
   function updatePaymentMode(value: 'platform_guarantee' | 'self_managed') {
-    if (value === 'platform_guarantee' && !platformGuaranteeSelectable.value) {
-      emit('notify', guaranteeUnavailableMessage())
+    if (value === 'platform_guarantee' && platformGuaranteeBlockedReason.value) {
+      emit('notify', platformGuaranteeBlockedReason.value)
       return
     }
 
