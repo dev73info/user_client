@@ -42130,6 +42130,8 @@
           "balance_fen",
           "frozen_fen",
           "refunding_fen",
+          "legacy_settled_fen",
+          "legacy_frozen_fen",
           "total_recharged_fen",
           "total_refunded_fen",
           "total_withdrawn_fen",
@@ -42151,6 +42153,16 @@
           "refunding_fen": {
             "type": "integer",
             "format": "int64"
+          },
+          "legacy_settled_fen": {
+            "type": "integer",
+            "format": "int64",
+            "description": "历史「充值即分账」留下的余额（legacy 域）。"
+          },
+          "legacy_frozen_fen": {
+            "type": "integer",
+            "format": "int64",
+            "description": "legacy 域冻结占用。"
           },
           "total_recharged_fen": {
             "type": "integer",
@@ -42178,6 +42190,7 @@
           "account",
           "pending_withdrawal_fen",
           "withdrawable_fen",
+          "available_fen",
           "ledger"
         ],
         "properties": {
@@ -42198,7 +42211,12 @@
           "withdrawable_fen": {
             "type": "integer",
             "format": "int64",
-            "description": "现在还能申请提现的额度。"
+            "description": "现在还能申请提现的额度（方案 C 下保证金一律不可提现，固定 0）。"
+          },
+          "available_fen": {
+            "type": "integer",
+            "format": "int64",
+            "description": "可冻结保证金 = 托管可用 + 历史余额（展示口径；实际冻结需单一域整额覆盖）。"
           }
         }
       },

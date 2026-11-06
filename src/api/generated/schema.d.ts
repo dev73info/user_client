@@ -15853,6 +15853,16 @@ export interface components {
             frozen_fen: number;
             /** Format: int64 */
             refunding_fen: number;
+            /**
+             * Format: int64
+             * @description 历史「充值即分账」留下的余额（legacy 域）。
+             */
+            legacy_settled_fen: number;
+            /**
+             * Format: int64
+             * @description legacy 域冻结占用。
+             */
+            legacy_frozen_fen: number;
             /** Format: int64 */
             total_recharged_fen: number;
             /** Format: int64 */
@@ -15872,9 +15882,14 @@ export interface components {
             pending_withdrawal_fen: number;
             /**
              * Format: int64
-             * @description 现在还能申请提现的额度。
+             * @description 现在还能申请提现的额度（方案 C 下保证金一律不可提现，固定 0）。
              */
             withdrawable_fen: number;
+            /**
+             * Format: int64
+             * @description 可冻结保证金 = 托管可用 + 历史余额（展示口径；实际冻结需单一域整额覆盖）。
+             */
+            available_fen: number;
         };
         PrepaidCreditRequest: {
             /**

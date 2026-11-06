@@ -13,6 +13,7 @@ import type { MockRoute } from '../../router'
 
 import {
   appendLedger,
+  availablePrepaidFen,
   pendingPrepaidWithdrawalFen,
   prepaidAccount,
   prepaidLedger,
@@ -63,13 +64,14 @@ export const prepaidRoutes: MockRoute[] = [
   {
     method: 'GET',
     path: '/payment/developer-order-deposit',
-    note: '保证金总览：余额、累计、可提额度与最近流水（契约 `PrepaidAccountStatementResponse`）',
+    note: '保证金总览：账户、可用保证金、累计与最近流水（契约 `PrepaidAccountStatementResponse`）',
     handler: () =>
       jsonResponse({
         account: prepaidAccount,
         ledger: prepaidLedger.slice(0, 20),
         pending_withdrawal_fen: pendingPrepaidWithdrawalFen(),
         withdrawable_fen: withdrawablePrepaidFen(),
+        available_fen: availablePrepaidFen(),
       }),
   },
   {
@@ -121,16 +123,16 @@ export const prepaidRoutes: MockRoute[] = [
   {
     method: 'POST',
     path: '/payment/developer-order-deposit/withdrawals',
-    note: '申请退回保证金：提交即占住可提额度，状态待审核',
+    note: '申请退回保证金：提交即占住可用保证金，状态待审核',
     handler: (request) => {
       const body = (request.body ?? {}) as { amount_fen?: number; note?: string | null }
       const amountFen = Math.round(Number(body.amount_fen ?? 0))
 
       if (!Number.isFinite(amountFen) || amountFen <= 0) {
-        return errorResponse(400, '提现金额必须大于 0')
+        return errorResponse(400, '退回金额必须大于 0')
       }
-      if (amountFen > withdrawablePrepaidFen()) {
-        return errorResponse(400, '提现金额超过可提额度')
+      if (amountFen > availablePrepaidFen()) {
+        return errorResponse(400, '退回金额超过可用保证金')
       }
 
       return jsonResponse(pushPrepaidWithdrawal(amountFen, (body.note ?? '').trim()))

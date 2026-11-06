@@ -16,8 +16,8 @@ const emit = defineEmits<{
   (event: 'succeeded'): void
 }>()
 
-/** 可提额度（分），由调用方从后端读数传入。 */
-const props = defineProps<{ withdrawableFen: number }>()
+/** 可用保证金（分），由调用方从后端读数传入。 */
+const props = defineProps<{ availableFen: number }>()
 
 const auth = useAuthStore()
 const visible = ref(false)
@@ -30,8 +30,8 @@ const amountError = computed(() => {
   if (amountYuan.value == null || !Number.isFinite(amountYuan.value) || amountYuan.value <= 0) {
     return '请输入退回金额'
   }
-  if (amountFen.value > props.withdrawableFen) {
-    return `超过可退回额度 ¥${(props.withdrawableFen / 100).toFixed(2)}`
+  if (amountFen.value > props.availableFen) {
+    return `超过可退回额度 ¥${(props.availableFen / 100).toFixed(2)}`
   }
   return ''
 })
@@ -70,7 +70,7 @@ defineExpose({ open })
 <template>
   <TDialog v-model:open="visible" title="退回接单保证金" width="420px">
     <p class="withdraw-dialog__hint">
-      可退回 ¥{{ (withdrawableFen / 100).toFixed(2) }}。退回金额原路退回充值时的付款账户。
+      可退回 ¥{{ (availableFen / 100).toFixed(2) }}。退回金额原路退回充值时的付款账户。
     </p>
 
     <label class="withdraw-dialog__field">
@@ -78,7 +78,7 @@ defineExpose({ open })
       <TInputNumber
         v-model="amountYuan"
         :min="0.01"
-        :max="withdrawableFen / 100"
+        :max="availableFen / 100"
         :precision="2"
         placeholder="请输入退回金额"
         class="withdraw-dialog__input"

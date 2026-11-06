@@ -115,7 +115,7 @@ function startPolling(orderNo: string): void {
       const status = await getPrepaidWechatStatus(orderNo, auth.token)
       const order = status.order
       if (order.status === 'paid') {
-        TMessage.success('充值成功，保证金余额已到账')
+        TMessage.success('充值成功，已进入托管，接单后可用')
         visible.value = false
         backToForm()
         emit('succeeded')
@@ -145,7 +145,7 @@ function startAlipayPolling(orderNo: string): void {
     try {
       const order = await refreshPaymentOrder(auth.token, orderNo)
       if (order.status === 'paid') {
-        TMessage.success('充值成功，保证金余额已到账')
+        TMessage.success('充值成功，已进入托管，接单后可用')
         visible.value = false
         backToForm()
         emit('succeeded')

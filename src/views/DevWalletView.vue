@@ -171,7 +171,7 @@ async function refreshWallet() {
     <DevDepositRechargeDialog ref="rechargeDepositDialog" @succeeded="loadDeposit" />
     <DevWalletDepositWithdrawDialog
       ref="withdrawDepositDialog"
-      :withdrawable-fen="deposit?.withdrawableFen ?? 0"
+      :available-fen="deposit?.availableFen ?? 0"
       @succeeded="loadDeposit"
     />
   </div>

@@ -30,8 +30,10 @@ export type PrepaidLedgerEntry = Schemas['PrepaidLedgerResponse']
 /**
  * 账户总览（契约 `PrepaidAccountStatementResponse`）。
  *
- * `withdrawable_fen` 是「现在还能申请提现的额度」，`pending_withdrawal_fen` 是「已申请未出账」，
- * 两者都由后端算；前端不要自己拿 `balance_fen` 减一遍，口径容易对不上。
+ * `available_fen` 是「可用保证金」（托管可用 + 历史余额，可冻结 / 可退回）；
+ * `withdrawable_fen` 在方案 C 下固定 0（保证金不可提现），页面不再用它判断能不能退；
+ * `pending_withdrawal_fen` 是「已申请未出账」。三者都由后端算，
+ * 前端不要自己拿 `balance_fen` 减一遍，口径容易对不上。
  */
 export type PrepaidAccountStatement = Schemas['PrepaidAccountStatementResponse']
 

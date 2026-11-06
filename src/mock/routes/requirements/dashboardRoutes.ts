@@ -13,6 +13,7 @@ import type { MockRoute } from '../../router'
 
 import { devDailyIncome, devWallet } from '../../db/devWallet'
 import {
+  availablePrepaidFen,
   pendingPrepaidWithdrawalFen,
   prepaidAccount,
   withdrawablePrepaidFen,
@@ -142,7 +143,7 @@ export const dashboardRoutes: MockRoute[] = [
           active_requirement_count: devWallet.active_requirement_count,
         },
         deposit: {
-          available_fen: prepaidAccount.balance_fen,
+          available_fen: availablePrepaidFen(),
           withdrawable_fen: withdrawablePrepaidFen(),
           frozen_fen: prepaidAccount.frozen_fen,
           total_paid_fen: prepaidAccount.total_recharged_fen,
@@ -150,7 +151,7 @@ export const dashboardRoutes: MockRoute[] = [
           pending_refund_fen: prepaidAccount.refunding_fen,
           pending_withdraw_fen: pendingPrepaidWithdrawalFen(),
           has_paid_deposit: prepaidAccount.total_recharged_fen > 0,
-          can_bind_requirement: prepaidAccount.balance_fen > 0,
+          can_bind_requirement: availablePrepaidFen() > 0,
         },
         income_daily: dailyIncome(),
         month_income_fen: fen(devWallet.total_income_cny),

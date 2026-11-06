@@ -35,8 +35,8 @@ const emit = defineEmits<{
 
 const money = (fen: number | null | undefined) => `¥${toYuan(fen).toFixed(2)}`
 
-/** 能不能退：后端算好的可退额度 > 0。 */
-const canWithdraw = computed(() => (props.deposit?.withdrawableFen ?? 0) > 0)
+/** 能不能退：后端算好的可用保证金 > 0。 */
+const canWithdraw = computed(() => (props.deposit?.availableFen ?? 0) > 0)
 
 /** 信用额度标签只在启用保证金封顶时才有意义；credit_score 是浮点分，不是金额，不能过 toYuan。 */
 const creditText = computed(() => {
@@ -66,7 +66,7 @@ const notOpened = computed(() => !props.loading && !props.error && !props.deposi
     <div class="wallet-hero__body">
       <div class="wallet-hero__main">
         <span class="dev-figure" :class="{ 'dev-figure--muted': !canWithdraw }">
-          {{ money(props.deposit?.withdrawableFen) }}
+          {{ money(props.deposit?.availableFen) }}
         </span>
       </div>
       <div class="wallet-hero__tags">

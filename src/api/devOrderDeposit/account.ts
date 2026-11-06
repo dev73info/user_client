@@ -19,7 +19,8 @@ import type {
 // ── 开发者自己的账 ───────────────────────────────────────────
 
 /**
- * 保证金总览：余额、累计、流水与可提现额度（`GET /api/payment/developer-order-deposit`）。
+ * 保证金总览：账户、可用保证金（可冻结 / 可退回）、累计与流水
+ * （`GET /api/payment/developer-order-deposit`）。
  *
  * `ledgerLimit` 缺省由后端决定条数；页面要「最近 N 条」时显式传。
  */

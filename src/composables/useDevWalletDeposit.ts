@@ -12,14 +12,15 @@ import {
 import { useAuthStore } from '@/stores/auth'
 
 /**
- * 开发者保证金（2.0 叫「预付账户」）：余额读数 + 提现申请，外加自己的信用额度。
+ * 开发者保证金（2.0 叫「预付账户」）：余额读数 + 退回申请，外加自己的信用额度。
  *
  * 保证金读数只来自一个端点 `GET /api/payment/developer-order-deposit`——它一次给出
- * 账户、`withdrawable_fen`（现在还能提多少）与 `pending_withdrawal_fen`（已申请未出账）。
+ * 账户、`available_fen`（可用保证金：可冻结/可退回）、`withdrawable_fen`（方案 C 下固定 0）
+ * 与 `pending_withdrawal_fen`（已申请未出账）。
  * **前端不自己拿余额减一遍**：两处各算一次迟早对不上，而后端那个是唯一真相。
  *
  * 信用额度来自另一个端点（`GET /api/credit/credit/me`），只用来回答「还能再充多少」。
- * 它是**可选**的：取数失败一律当 `null`，卡片少一枚额度标签，余额与提现照常。
+ * 它是**可选**的：取数失败一律当 `null`，卡片少一枚额度标签，余额与退回照常。
  *
  * 金额一律整数分（`*_fen`）。按元展示是本文件的 `toYuan` 干的，
  * 提交前再用 `toFen` 换回去——浮点元永远不参与请求体。
@@ -31,8 +32,8 @@ export type DepositReading = {
   frozenFen: number
   /** 正在原路退回、渠道还没给出结果（分） */
   refundingFen: number
-  /** 现在还能退回（分） */
-  withdrawableFen: number
+  /** 可用保证金（分）：托管可用 + 历史余额，退回入口不再用 `withdrawable_fen` 判断 */
+  availableFen: number
   /** 已申请未出账（分） */
   pendingWithdrawalFen: number
   /** 累计充值（分） */
@@ -60,7 +61,7 @@ export function useDevWalletDeposit() {
       balanceFen: current.account.balance_fen,
       frozenFen: current.account.frozen_fen,
       refundingFen: current.account.refunding_fen,
-      withdrawableFen: current.withdrawable_fen,
+      availableFen: current.available_fen,
       pendingWithdrawalFen: current.pending_withdrawal_fen,
       totalRechargedFen: current.account.total_recharged_fen,
       totalWithdrawnFen: current.account.total_withdrawn_fen,

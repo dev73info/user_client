@@ -3,7 +3,8 @@
  *
  * 这一族接口在 mock 里原本整组缺失，`GET /api/payment/developer-order-deposit` 兜底回 `[]`，
  * `useDevWalletDeposit` 读 `account.balance_fen` 直接抛错，钱包页的「保证金余额」卡一直是异常态。
- * 这里给一份自洽的账：余额 = 累计充值 − 累计提现 − 冻结，可提额度 = 余额 − 已申请未出账。
+ * 这里给一份自洽的账：余额 = 累计充值 − 累计提现 − 冻结，
+ * 可用保证金 = 余额 + 历史余额 − 已申请未出账（方案 C 下 withdrawable_fen 固定 0）。
  *
  * 金额一律整数分。数据只在内存里，充值 / 提现会真的改这里，刷新页面回到初始值。
  */
@@ -20,6 +21,8 @@ export const prepaidAccount: PrepaidAccount = {
   balance_fen: INITIAL_BALANCE_FEN,
   frozen_fen: 0,
   refunding_fen: 0,
+  legacy_settled_fen: 0,
+  legacy_frozen_fen: 0,
   total_recharged_fen: INITIAL_BALANCE_FEN,
   total_refunded_fen: 0,
   total_withdrawn_fen: 0,
@@ -112,7 +115,15 @@ export function pendingPrepaidWithdrawalFen(): number {
     .reduce((sum, item) => sum + item.amount_fen, 0)
 }
 
-/** 现在还能提多少（分）。前端不自己拿余额减，口径只在这里算一次。 */
+/** 方案 C 下保证金一律不可提现，与后端一致固定返回 0（退回走原路退款）。 */
 export function withdrawablePrepaidFen(): number {
-  return Math.max(0, prepaidAccount.balance_fen - pendingPrepaidWithdrawalFen())
+  return 0
+}
+
+/** 可用保证金（分）：托管可用 + 历史余额 − 已申请未出账，与后端 `available_fen` 同口径。 */
+export function availablePrepaidFen(): number {
+  return Math.max(
+    0,
+    prepaidAccount.balance_fen + prepaidAccount.legacy_settled_fen - pendingPrepaidWithdrawalFen(),
+  )
 }
