@@ -82,6 +82,8 @@ export async function downloadPublicMcResourceFile(
     method: 'GET',
     headers: token ? authHeader(token) : undefined,
     credentials: 'omit',
+    // 下载响应带 Authorization，不能让浏览器按 URL 复用缓存（同一 URL 换账号会拿到上一次的包）
+    cache: 'no-store',
   })
 
   if (!response.ok) {

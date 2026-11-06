@@ -75,6 +75,15 @@ export function clearPersistedAuthProfile(): void {
   localStorage.removeItem(AUTH_PROFILE_STORAGE_KEY)
 }
 
+/**
+ * 用本地持久化档案先填上首屏展示用的用户名 / 角色。
+ *
+ * **这不代表会话已经过服务端校验**：`auth_profile_73hub` 是上一次会话留下的快照，
+ * 令牌可能已过期、角色可能已被收回（例如管理员 / 作者身份残留）。所以这里刻意把
+ * `profileLoaded` 置为 `false`，让 `initializeSession()` / 路由守卫 / `ensureDevAccess()`
+ * 走一次 `fetchProfile()`（`/auth/refresh` + `/auth/privileges`）覆盖本地值；
+ * 只有服务端返回后 `profileLoaded` 才会变真。
+ */
 export function restorePersistedAuthProfile(state: AuthProfileState): boolean {
   const profile = readPersistedAuthProfile()
   if (!profile) {
@@ -83,7 +92,7 @@ export function restorePersistedAuthProfile(state: AuthProfileState): boolean {
 
   state.username.value = profile.username
   state.role.value = profile.role
-  state.profileLoaded.value = true
+  state.profileLoaded.value = false
   state.profileRequest.value = null
   return true
 }

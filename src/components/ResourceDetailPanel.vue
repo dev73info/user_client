@@ -158,6 +158,8 @@ const { openResourceFile, downloadVersion } = useResourceFileDownload({
   getResource: () => resource.value,
   getLatestVersion: () => latestVersion.value,
   needsPurchase: () => needsPurchase.value,
+  // 版本售卖资源（资源级标价 0）：版本列表的下载按钮也要先开购买面板，不发注定 403 的请求
+  needsVersionPurchase: () => needsVersionPurchase.value,
   openPurchasePanel,
   // 0 价版本不单卖，403 后不能原样下单（后端会 409）：改按整包或最低价可购版本买
   resolvePurchaseVersion: (version) =>
