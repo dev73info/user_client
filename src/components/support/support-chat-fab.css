@@ -54,7 +54,7 @@
 
   .support-fab:hover .support-fab__sprite--wave {
     opacity: 1;
-    animation-play-state: running;
+    animation: support-mascot-wave 1.1s steps(1, end) 1 both;
   }
 
   .support-fab:hover .support-fab__sprite--idle {
@@ -68,7 +68,7 @@
 
 .support-fab:focus-visible .support-fab__sprite--wave {
   opacity: 1;
-  animation-play-state: running;
+  animation: support-mascot-wave 1.1s steps(1, end) 1 both;
 }
 
 .support-fab:focus-visible .support-fab__sprite--idle {
@@ -105,8 +105,7 @@
 .support-fab__sprite--wave {
   background-image: url('/icons/support-mascot-wave.webp');
   opacity: 0;
-  animation: support-mascot-wave 0.66s steps(3) infinite;
-  animation-play-state: paused;
+  animation: none;
 }
 
 @keyframes support-mascot-idle {
@@ -119,11 +118,17 @@
 }
 
 @keyframes support-mascot-wave {
-  from {
+  0%,
+  10% {
     background-position: 0 0;
   }
-  to {
-    background-position: -288px 0;
+  10.01%,
+  55% {
+    background-position: -96px 0;
+  }
+  55.01%,
+  100% {
+    background-position: -192px 0;
   }
 }
 
@@ -189,7 +194,9 @@
     transition: none;
   }
 
-  .support-fab__sprite {
+  .support-fab__sprite,
+  .support-fab:hover .support-fab__sprite,
+  .support-fab:focus-visible .support-fab__sprite {
     animation: none;
     background-position: 0 0;
   }
