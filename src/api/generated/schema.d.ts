@@ -2112,7 +2112,7 @@ export interface paths {
         put?: never;
         /**
          * 审核结果回调（渠道）
-         * @description 渠道回调入口，**免登录**。按 `X-SmartDoc-Signature: sha256=<hex>`对**原始字节**验签（恒定时间比较）；未配置回调密钥时失败关闭（401）。按 `task_no` 更新任务；未知 `task_no` 返回 200 且不落库；重复回调在结论一致时幂等返回 200。
+         * @description 渠道回调入口，**免登录**。按 `X-SmartDoc-Signature: sha256=<hex>`对**原始字节**验签（恒定时间比较）；未配置回调密钥时失败关闭（401）。先按 `task_no` 找任务，找不到再用 `request_id`（本地 `biz_key`）回退；未知任务返回 200 且不落库；没有 `status` 的事件只确认收到，重复回调在结论一致时幂等返回 200。
          */
         post: operations["audit_callback"];
         delete?: never;
@@ -2196,7 +2196,7 @@ export interface paths {
         put?: never;
         /**
          * 刷新审核任务
-         * @description 需要 `audit.task.refresh`。用已保存的配置对渠道做签名 GET（`{base_url}/open/v1/projects/{project_code}/tasks/{task_no}`），把状态与结论写回本地任务并返回任务视图。任务还没有渠道编号时回 400；配置未启用 / 凭据不全回 409；渠道报错回 502。
+         * @description 需要 `audit.task.refresh`。用已保存的配置对渠道做签名 GET：有渠道编号时查 `{base_url}/open/v1/projects/{project_code}/tasks/{task_no}`，还没有编号时回退到 `task-by-request-id/{biz_key}`；把状态与结论写回本地任务并返回任务视图。配置未启用 / 凭据不全回 409；渠道报错回 502。
          */
         post: operations["audit_task_refresh"];
         delete?: never;
@@ -10451,7 +10451,7 @@ export interface paths {
         };
         /**
          * 读取身份验证器状态
-         * @description **需要登录 + `system.profile.update.put`**。只返回是否启用与启用时间，**不回显密钥**。
+         * @description **需要登录 + `system.profile.get`**。只返回是否启用与启用时间，**不回显密钥**。
          */
         get: operations["profile_get_totp"];
         put?: never;
@@ -26858,13 +26858,6 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["AuditTaskView"];
                 };
-            };
-            /** @description 任务还没有渠道编号 */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
             };
             /** @description 未登录 */
             401: {
@@ -50040,7 +50033,7 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description 没有 `system.profile.update.put` */
+            /** @description 没有 `system.profile.get` */
             403: {
                 headers: {
                     [name: string]: unknown;

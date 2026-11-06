@@ -79,7 +79,7 @@ export function useAccountTotpSettings() {
 
   async function confirmEnableTotp() {
     const code = totpBindCode.value.trim()
-    if (code.length !== 6) {
+    if (!/^\d{6}$/.test(code)) {
       TMessage.error('请输入 6 位动态码')
       return
     }
@@ -110,7 +110,7 @@ export function useAccountTotpSettings() {
 
   async function confirmDisableTotp() {
     const code = totpDisableCode.value.trim()
-    if (code.length !== 6) {
+    if (!/^\d{6}$/.test(code)) {
       TMessage.error('请输入 6 位动态码')
       return
     }
