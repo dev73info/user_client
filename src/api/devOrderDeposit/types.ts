@@ -49,9 +49,6 @@ export type PrepaidAccountPage = Schemas['PrepaidAccountPageResponse']
 /** 发起充值（契约 `PrepaidRechargeRequest`）：金额整数分，渠道与客户端形态必填。 */
 export type PrepaidRechargeRequest = Schemas['PrepaidRechargeRequest']
 
-/** 平台手工入账（契约 `PrepaidCreditRequest`）。 */
-export type PrepaidCreditRequest = Schemas['PrepaidCreditRequest']
-
 // ── 微信充值（中间页三步） ─────────────────────────────────────
 
 /** 授权地址与是否已授权（契约 `PrepaidWechatAuthUrlResponse`）。 */

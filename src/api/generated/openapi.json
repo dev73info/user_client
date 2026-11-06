@@ -2875,7 +2875,7 @@
           "payment-admin"
         ],
         "summary": "平台财务概览",
-        "description": "已收、在托管、已分账（服务费 / 个税 / 开发者净额）、已退款、开发者应得、提现在途与待提现等汇总口径，需要 `payment.finance.overview.get`。这是汇总视图，与逐笔台账分开：能看汇总不代表能看每一笔的对手方。金额**一律整数分**，不做浮点转换。",
+        "description": "已收、业务托管（定金/尾款）、保证金持有/累计、已分账（服务费 / 个税 / 开发者净额）、已退款、开发者应得、提现在途与待提现等汇总口径，需要 `payment.finance.overview.get`。`escrow_fen` 只算业务单；保证金看 `custody_held_total_fen` / `custody_recharge_fen`。这是汇总视图，与逐笔台账分开：能看汇总不代表能看每一笔的对手方。金额**一律整数分**，不做浮点转换。",
         "operationId": "payment_admin_finance_overview",
         "responses": {
           "200": {
@@ -3430,7 +3430,7 @@
           {
             "name": "kind",
             "in": "query",
-            "description": "只看某一类：`payment` / `refund` / `settlement` / `withdrawal`。",
+            "description": "只看某一类：`payment` / `refund` / `reverse` / `settlement` / `withdrawal`。",
             "required": false,
             "schema": {
               "type": "string"
@@ -5608,13 +5608,13 @@
         }
       }
     },
-    "/api/admin/tickets/ws": {
+    "/api/admin/tickets/events": {
       "get": {
         "tags": [
           "ticket-admin"
         ],
-        "summary": "管理端工单实时事件",
-        "description": "SSE 长连接，沿用 legacy `/ws` 路径。需要 `ticket.admin_list.get`；每次创建、回复、关闭或更新后推送 `ticket.updated`，数据只含 `ticket_id`，客户端据此刷新。事件为进程内广播，多实例间不共享。",
+        "summary": "管理端工单实时事件（SSE，兼容保留）",
+        "description": "SSE 长连接，沿用旧路径的兼容入口。需要 `ticket.admin_list.get`；每次创建、回复、关闭或更新后推送 `ticket.updated`，数据只含 `ticket_id`，客户端据此刷新。新客户端请使用 WebSocket `/api/admin/tickets/ws`。",
         "operationId": "ticket_admin_events",
         "responses": {
           "200": {
@@ -5625,6 +5625,37 @@
           },
           "401": {
             "description": "没有登录或令牌无效"
+          },
+          "403": {
+            "description": "没有管理端工单列表权限"
+          }
+        }
+      }
+    },
+    "/api/admin/tickets/ws": {
+      "get": {
+        "tags": [
+          "ticket-admin"
+        ],
+        "summary": "管理端工单实时事件（WebSocket）",
+        "description": "WebSocket 长连接，需要 `ticket.admin_list.get`。每次创建、回复、关闭或更新后推送 `{\"event\":\"ticket.updated\",\"ticket_id\":\"...\"}`，客户端据此刷新。事件为进程内广播，多实例间不共享。",
+        "operationId": "ticket_admin_events_ws",
+        "parameters": [
+          {
+            "name": "token",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "101": {
+            "description": "WebSocket 已建立"
+          },
+          "401": {
+            "description": "令牌缺失或无效"
           },
           "403": {
             "description": "没有管理端工单列表权限"
@@ -6989,6 +7020,53 @@
         }
       }
     },
+    "/api/auth/login/authenticator": {
+      "post": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "身份验证器免密登录",
+        "description": "**免登录**：不需要密码，凭「登录名（或主邮箱）+ Authenticator 生成的 6 位动态码」登录。账号不存在、未绑定身份验证器、动态码不正确 / 已过期 / 已使用，统一回 401 `INVALID_CREDENTIALS`，不区分具体原因，避免账号枚举。账号被停用 / 已注销回 403（与密码登录同口径）。同一动态码只能成功使用一次：校验通过后会记录命中的时间步，时间窗内重放一律失败。限流：同一 IP 15 分钟 40 次、同一用户名 15 分钟 8 次；人机校验动作名与密码登录相同（`login`）。",
+        "operationId": "auth_login_authenticator",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AuthenticatorLoginRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "登录成功，返回会话令牌与角色快照",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "请求体格式不正确"
+          },
+          "401": {
+            "description": "账号不存在、未绑定身份验证器或动态码不正确（`INVALID_CREDENTIALS`）"
+          },
+          "403": {
+            "description": "账号被停用 / 已注销，或人机校验未通过"
+          },
+          "429": {
+            "description": "触发限流"
+          },
+          "500": {
+            "description": "内部错误"
+          }
+        }
+      }
+    },
     "/api/auth/oauth-status": {
       "get": {
         "tags": [
@@ -8010,6 +8088,46 @@
           },
           "403": {
             "description": "没有 `user.role.post`"
+          },
+          "404": {
+            "description": "账号不存在（`USER_NOT_FOUND`）"
+          },
+          "500": {
+            "description": "权限查询失败，或内部错误"
+          }
+        }
+      }
+    },
+    "/api/auth/users/totp-reset": {
+      "post": {
+        "tags": [
+          "identity-admin"
+        ],
+        "summary": "重置用户身份验证器（管理端）",
+        "description": "**需要登录 + `user.totp_reset.post`**。清除目标账号的 TOTP 绑定，用于用户丢失验证器且无法自助登录的情况。目标账号原本已启用时，同时吊销其已签发的全部会话。账号本来就没绑定 TOTP 时是幂等的成功，不清会话。账号不存在回 404 `USER_NOT_FOUND`；该端点不返回密钥、不返回临时码。",
+        "operationId": "identity_admin_reset_user_totp",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResetUserTotpRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "已重置，无响应体"
+          },
+          "400": {
+            "description": "参数格式非法"
+          },
+          "401": {
+            "description": "未登录，或令牌无效 / 已吊销"
+          },
+          "403": {
+            "description": "没有 `user.totp_reset.post`"
           },
           "404": {
             "description": "账号不存在（`USER_NOT_FOUND`）"
@@ -14340,50 +14458,6 @@
         }
       }
     },
-    "/api/payment/developer-order-deposit-orders/credit": {
-      "post": {
-        "tags": [
-          "payment-admin"
-        ],
-        "summary": "人工调整预付保证金",
-        "description": "金额为整数分：正数充值、负数扣除，必须填写原因。扣除后余额不能为负，也不能占用在途提现。",
-        "operationId": "payment_admin_prepaid_credit",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/PrepaidCreditRequest"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/PrepaidAccountResponse"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": ""
-          },
-          "403": {
-            "description": ""
-          },
-          "404": {
-            "description": ""
-          },
-          "409": {
-            "description": ""
-          }
-        }
-      }
-    },
     "/api/payment/developer-order-deposit-orders/{payment_id}": {
       "delete": {
         "tags": [
@@ -14632,6 +14706,273 @@
           },
           "503": {
             "description": "渠道未就绪"
+          }
+        }
+      }
+    },
+    "/api/payment/developer-order-deposit/custody": {
+      "get": {
+        "tags": [
+          "payment-admin"
+        ],
+        "summary": "查看托管 lot 明细",
+        "description": "按 payer / 状态 / 到期窗口筛选托管 lot；金额全部取视图派生值。只读，不提供任何资金动作。",
+        "operationId": "payment_admin_custody_lots",
+        "parameters": [
+          {
+            "name": "payer",
+            "in": "query",
+            "description": "付款人（平台用户名）。",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          {
+            "name": "state",
+            "in": "query",
+            "description": "`held` / `partially_confirmed` / ... / `settled`。",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          {
+            "name": "expiring_within_days",
+            "in": "query",
+            "description": "只看到期窗口内的 lot：`refund_cap_at - now() <= N 天` 且仍有 held。",
+            "required": false,
+            "schema": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "format": "int64"
+            }
+          },
+          {
+            "name": "overdue_only",
+            "in": "query",
+            "description": "只看已过 `refund_cap_at` 且仍有 held 的 lot（原始筛选，不做 A-1 的人工处置排除）。",
+            "required": false,
+            "schema": {
+              "type": [
+                "boolean",
+                "null"
+              ]
+            }
+          },
+          {
+            "name": "deadline_estimated",
+            "in": "query",
+            "description": "只看期限是回退值估算的 lot。",
+            "required": false,
+            "schema": {
+              "type": [
+                "boolean",
+                "null"
+              ]
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "format": "int64"
+            }
+          },
+          {
+            "name": "page_size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CustodyLotListResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "筛选参数不合法"
+          },
+          "403": {
+            "description": "没有该接口权限"
+          }
+        }
+      }
+    },
+    "/api/payment/developer-order-deposit/custody/alerts": {
+      "get": {
+        "tags": [
+          "payment-admin"
+        ],
+        "summary": "查看托管运维视图",
+        "description": "一次返回到期 / 超期 / unknown / 净额待定 / A 拒绝记录五组数据；`warn_days` 是当前生效的预警节点。只读，处置动作不在本端点。",
+        "operationId": "payment_admin_custody_alerts",
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CustodyAlertsResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "没有该接口权限"
+          },
+          "500": {
+            "description": "读取失败"
+          }
+        }
+      }
+    },
+    "/api/payment/developer-order-deposit/custody/ops": {
+      "get": {
+        "tags": [
+          "payment-admin"
+        ],
+        "summary": "查看托管操作明细",
+        "description": "按业务单 / op 号 / 类型 / 状态筛选；`stuck_only` 对应 I-OP-STUCK（>24h），`fee_pending_only` 对应净额待定。只读。",
+        "operationId": "payment_admin_custody_ops",
+        "parameters": [
+          {
+            "name": "payment_order_no",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          {
+            "name": "op_no",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          {
+            "name": "kind",
+            "in": "query",
+            "description": "`confirm` / `reverse`。",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "description": "`intent` / `submitted` / `succeeded` / `failed` / `unknown`。",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          {
+            "name": "fee_pending_only",
+            "in": "query",
+            "description": "只看手续费挂起的成功 confirm。",
+            "required": false,
+            "schema": {
+              "type": [
+                "boolean",
+                "null"
+              ]
+            }
+          },
+          {
+            "name": "stuck_only",
+            "in": "query",
+            "description": "只看卡在非终态超过 24 小时的 op。",
+            "required": false,
+            "schema": {
+              "type": [
+                "boolean",
+                "null"
+              ]
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "format": "int64"
+            }
+          },
+          {
+            "name": "page_size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CustodyOpListResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "筛选参数不合法"
+          },
+          "403": {
+            "description": "没有该接口权限"
           }
         }
       }
@@ -28320,6 +28661,180 @@
         }
       }
     },
+    "/api/system/settings/profile/totp": {
+      "get": {
+        "tags": [
+          "profile"
+        ],
+        "summary": "读取身份验证器状态",
+        "description": "**需要登录 + `system.profile.update.put`**。只返回是否启用与启用时间，**不回显密钥**。",
+        "operationId": "profile_get_totp",
+        "responses": {
+          "200": {
+            "description": "当前状态",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TotpStatusResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "未登录，或令牌无效 / 已吊销"
+          },
+          "403": {
+            "description": "没有 `system.profile.update.put`"
+          },
+          "404": {
+            "description": "账号不存在（`USER_NOT_FOUND`）"
+          },
+          "500": {
+            "description": "权限查询失败或内部错误"
+          }
+        }
+      }
+    },
+    "/api/system/settings/profile/totp/disable": {
+      "post": {
+        "tags": [
+          "profile"
+        ],
+        "summary": "停用身份验证器",
+        "description": "**需要登录 + `system.profile.update.put`**。必须提交一次当前动态码；停用后清除密钥，登录回到邮箱两步验证（若开启）或仅密码。未启用回 400 `TOTP_NOT_ENABLED`，动态码不对回 400 `TOTP_CODE_INVALID`。限流：同一账号每 15 分钟 12 次。",
+        "operationId": "profile_disable_totp",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TotpCodeRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "已停用",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TotpSwitchResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "未启用身份验证器，或动态码不正确"
+          },
+          "401": {
+            "description": "未登录，或令牌无效 / 已吊销"
+          },
+          "403": {
+            "description": "没有 `system.profile.update.put`"
+          },
+          "404": {
+            "description": "账号不存在（`USER_NOT_FOUND`）"
+          },
+          "429": {
+            "description": "触发限流"
+          },
+          "500": {
+            "description": "权限查询失败或内部错误"
+          }
+        }
+      }
+    },
+    "/api/system/settings/profile/totp/enable": {
+      "post": {
+        "tags": [
+          "profile"
+        ],
+        "summary": "确认启用身份验证器",
+        "description": "**需要登录 + `system.profile.update.put`**。用 `/totp/setup` 返回的密钥生成的6 位动态码确认绑定；校验允许前后各一个 30 秒时间窗。没有待确认密钥回 400 `TOTP_SECRET_MISSING`，动态码不对回 400 `TOTP_CODE_INVALID`，已启用回 400 `TOTP_ALREADY_ENABLED`。启用后账号登录优先走动态码，邮箱两步验证开关保留但不再生效。限流：同一账号每 15 分钟 12 次。",
+        "operationId": "profile_enable_totp",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TotpCodeRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "已启用",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TotpSwitchResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "没有待确认密钥、动态码不正确，或已经启用"
+          },
+          "401": {
+            "description": "未登录，或令牌无效 / 已吊销"
+          },
+          "403": {
+            "description": "没有 `system.profile.update.put`"
+          },
+          "404": {
+            "description": "账号不存在（`USER_NOT_FOUND`）"
+          },
+          "429": {
+            "description": "触发限流"
+          },
+          "500": {
+            "description": "权限查询失败或内部错误"
+          }
+        }
+      }
+    },
+    "/api/system/settings/profile/totp/setup": {
+      "post": {
+        "tags": [
+          "profile"
+        ],
+        "summary": "生成身份验证器绑定密钥",
+        "description": "**需要登录 + `system.profile.update.put`**。生成新的 Base32 密钥与 `otpauth://` 地址，供前端渲染二维码或手动输入；密钥先以「待确认」状态落库，**要再用一次动态码调`/totp/enable` 才真正启用**。重复调用会覆盖尚未确认的旧密钥。已启用的账号回 400 `TOTP_ALREADY_ENABLED`（换绑必须先停用）。限流：同一账号每小时 5 次。",
+        "operationId": "profile_setup_totp",
+        "responses": {
+          "200": {
+            "description": "绑定密钥与扫码地址",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TotpSetupResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "账号已启用身份验证器（`TOTP_ALREADY_ENABLED`）"
+          },
+          "401": {
+            "description": "未登录，或令牌无效 / 已吊销"
+          },
+          "403": {
+            "description": "没有 `system.profile.update.put`"
+          },
+          "404": {
+            "description": "账号不存在（`USER_NOT_FOUND`）"
+          },
+          "429": {
+            "description": "触发限流"
+          },
+          "500": {
+            "description": "权限查询失败或内部错误"
+          }
+        }
+      }
+    },
     "/api/system/settings/profile/two-factor": {
       "put": {
         "tags": [
@@ -29964,6 +30479,37 @@
           },
           "404": {
             "description": "工单不存在"
+          }
+        }
+      }
+    },
+    "/api/tickets/ws": {
+      "get": {
+        "tags": [
+          "ticket"
+        ],
+        "summary": "本人工单实时事件（WebSocket）",
+        "description": "WebSocket 长连接，需要 `ticket.detail.get`；只推送当前用户自己创建的工单事件。`/api/ticket/ws` 是等价入口。",
+        "operationId": "ticket_events_ws",
+        "parameters": [
+          {
+            "name": "token",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "101": {
+            "description": "WebSocket 已建立"
+          },
+          "401": {
+            "description": "令牌缺失或无效"
+          },
+          "403": {
+            "description": "没有工单详情权限"
           }
         }
       }
@@ -34042,6 +34588,31 @@
           }
         }
       },
+      "AuthenticatorLoginRequest": {
+        "type": "object",
+        "description": "身份验证器免密登录请求体。",
+        "required": [
+          "username",
+          "code"
+        ],
+        "properties": {
+          "code": {
+            "type": "string",
+            "description": "Authenticator 生成的 6 位动态码。"
+          },
+          "turnstile_token": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "人机校验令牌。"
+          },
+          "username": {
+            "type": "string",
+            "description": "登录名或主邮箱。"
+          }
+        }
+      },
       "AuthorizeConsent": {
         "type": "object",
         "description": "用户同意授权。",
@@ -37147,9 +37718,6 @@
           "content": {
             "type": "string"
           },
-          "subject": {
-            "type": "string"
-          },
           "user_role": {
             "type": [
               "string",
@@ -37610,6 +38178,529 @@
             "format": "int64"
           },
           "username": {
+            "type": "string"
+          }
+        }
+      },
+      "CustodyAlertsResponse": {
+        "type": "object",
+        "description": "管理端托管运维视图聚合。",
+        "required": [
+          "warn_days",
+          "expiry",
+          "overdue",
+          "stuck_ops",
+          "fee_pending_ops",
+          "rejected_refunds"
+        ],
+        "properties": {
+          "expiry": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CustodyExpiryItemResponse"
+            }
+          },
+          "fee_pending_ops": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CustodyOpItemResponse"
+            }
+          },
+          "overdue": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CustodyOverdueItemResponse"
+            }
+          },
+          "rejected_refunds": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CustodyDecisionItemResponse"
+            }
+          },
+          "stuck_ops": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CustodyOpItemResponse"
+            }
+          },
+          "warn_days": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        }
+      },
+      "CustodyDecisionItemResponse": {
+        "type": "object",
+        "required": [
+          "payment_order_no",
+          "decision",
+          "operator",
+          "reason",
+          "created_time"
+        ],
+        "properties": {
+          "created_time": {
+            "type": "string"
+          },
+          "decision": {
+            "type": "string"
+          },
+          "operator": {
+            "type": "string"
+          },
+          "payment_order_no": {
+            "type": "string"
+          },
+          "reason": {
+            "type": "string"
+          },
+          "warn_days": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32"
+          }
+        }
+      },
+      "CustodyExpiryItemResponse": {
+        "type": "object",
+        "required": [
+          "payment_order_no",
+          "payer",
+          "held_fen",
+          "refund_cap_time",
+          "hit_day",
+          "deadline_estimated"
+        ],
+        "properties": {
+          "deadline_estimated": {
+            "type": "boolean"
+          },
+          "held_fen": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "hit_day": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "payer": {
+            "type": "string"
+          },
+          "payment_order_no": {
+            "type": "string"
+          },
+          "refund_cap_time": {
+            "type": "string"
+          }
+        }
+      },
+      "CustodyLotItemResponse": {
+        "type": "object",
+        "description": "一条托管 lot 明细。",
+        "required": [
+          "payment_order_no",
+          "provider_payment_id",
+          "payer",
+          "pay_amt_fen",
+          "paid_time",
+          "deadline_estimated",
+          "refund_cap_time",
+          "reverse_cap_time",
+          "confirmed_fen",
+          "reversed_fen",
+          "reserved_confirm_fen",
+          "reserved_reverse_fen",
+          "held_fen",
+          "refunded_fen",
+          "reverse_count",
+          "state",
+          "opened_time",
+          "updated_time"
+        ],
+        "properties": {
+          "confirmed_fen": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "deadline_estimated": {
+            "type": "boolean"
+          },
+          "held_fen": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "opened_time": {
+            "type": "string"
+          },
+          "paid_time": {
+            "type": "string"
+          },
+          "pay_amt_fen": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "payer": {
+            "type": "string"
+          },
+          "payment_order_no": {
+            "type": "string"
+          },
+          "provider_payment_id": {
+            "type": "string"
+          },
+          "refund_cap_time": {
+            "type": "string"
+          },
+          "refunded_fen": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "reserved_confirm_fen": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "reserved_reverse_fen": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "reverse_cap_time": {
+            "type": "string"
+          },
+          "reverse_count": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "reversed_fen": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "state": {
+            "type": "string",
+            "description": "视图派生状态。"
+          },
+          "updated_time": {
+            "type": "string"
+          }
+        }
+      },
+      "CustodyLotListQuery": {
+        "type": "object",
+        "description": "托管 lot 明细查询。",
+        "properties": {
+          "deadline_estimated": {
+            "type": [
+              "boolean",
+              "null"
+            ],
+            "description": "只看期限是回退值估算的 lot。"
+          },
+          "expiring_within_days": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "只看到期窗口内的 lot：`refund_cap_at - now() <= N 天` 且仍有 held。"
+          },
+          "overdue_only": {
+            "type": [
+              "boolean",
+              "null"
+            ],
+            "description": "只看已过 `refund_cap_at` 且仍有 held 的 lot（原始筛选，不做 A-1 的人工处置排除）。"
+          },
+          "page": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64"
+          },
+          "page_size": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64"
+          },
+          "payer": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "付款人（平台用户名）。"
+          },
+          "state": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "`held` / `partially_confirmed` / ... / `settled`。"
+          }
+        }
+      },
+      "CustodyLotListResponse": {
+        "type": "object",
+        "description": "托管 lot 明细分页。",
+        "required": [
+          "total",
+          "page",
+          "page_size",
+          "items"
+        ],
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CustodyLotItemResponse"
+            }
+          },
+          "page": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "page_size": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "total": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      },
+      "CustodyOpItemResponse": {
+        "type": "object",
+        "description": "一条托管 op 明细。",
+        "required": [
+          "op_no",
+          "payment_order_no",
+          "kind",
+          "amount_fen",
+          "fee_status",
+          "status",
+          "provider_order_no",
+          "attempt",
+          "created_time"
+        ],
+        "properties": {
+          "amount_fen": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "attempt": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "created_time": {
+            "type": "string"
+          },
+          "decided_time": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "evidence": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "failure_code": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "failure_reason": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "fee_amt_fen": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64"
+          },
+          "fee_status": {
+            "type": "string"
+          },
+          "kind": {
+            "type": "string"
+          },
+          "last_queried_time": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "op_no": {
+            "type": "string"
+          },
+          "payee_share_fen": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64"
+          },
+          "payee_username": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "payment_order_no": {
+            "type": "string"
+          },
+          "provider_object_id": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "provider_order_no": {
+            "type": "string"
+          },
+          "shares_json": {
+            "description": "渠道 `div_members` 形状的份额（金额键为 `amount_fen`）。"
+          },
+          "status": {
+            "type": "string"
+          },
+          "submitted_time": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "CustodyOpListQuery": {
+        "type": "object",
+        "description": "托管 op 明细查询。",
+        "properties": {
+          "fee_pending_only": {
+            "type": [
+              "boolean",
+              "null"
+            ],
+            "description": "只看手续费挂起的成功 confirm。"
+          },
+          "kind": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "`confirm` / `reverse`。"
+          },
+          "op_no": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "page": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64"
+          },
+          "page_size": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64"
+          },
+          "payment_order_no": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "status": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "`intent` / `submitted` / `succeeded` / `failed` / `unknown`。"
+          },
+          "stuck_only": {
+            "type": [
+              "boolean",
+              "null"
+            ],
+            "description": "只看卡在非终态超过 24 小时的 op。"
+          }
+        }
+      },
+      "CustodyOpListResponse": {
+        "type": "object",
+        "description": "托管 op 明细分页。",
+        "required": [
+          "total",
+          "page",
+          "page_size",
+          "items"
+        ],
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CustodyOpItemResponse"
+            }
+          },
+          "page": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "page_size": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "total": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      },
+      "CustodyOverdueItemResponse": {
+        "type": "object",
+        "required": [
+          "payment_order_no",
+          "payer",
+          "held_fen",
+          "refund_cap_time",
+          "overdue_seconds"
+        ],
+        "properties": {
+          "held_fen": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "overdue_seconds": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "payer": {
+            "type": "string"
+          },
+          "payment_order_no": {
+            "type": "string"
+          },
+          "refund_cap_time": {
             "type": "string"
           }
         }
@@ -39428,9 +40519,21 @@
           "developer_income_fen",
           "withdrawing_fen",
           "withdrawn_fen",
-          "withdrawable_fen"
+          "withdrawable_fen",
+          "custody_held_total_fen",
+          "custody_recharge_fen"
         ],
         "properties": {
+          "custody_held_total_fen": {
+            "type": "integer",
+            "format": "int64",
+            "description": "保证金当前未确认余额（分，全平台 Σ held）。"
+          },
+          "custody_recharge_fen": {
+            "type": "integer",
+            "format": "int64",
+            "description": "保证金累计充值总额（分，Σ lot 充值面额，不随 confirm/reverse 变）。"
+          },
           "developer_income_fen": {
             "type": "integer",
             "format": "int64",
@@ -41780,6 +42883,45 @@
         "type": "object",
         "description": "平台资金口径。\n\n这些比例决定「一笔需求的钱怎么分」，改动会直接影响已签合同之外的**新**业务；\n已发生的交易都按当时的快照存进资金条款，不受配置变更影响。\n\n全部用**基点**（1 bps = 0.01%）而不是百分比浮点：钱的分配不能碰浮点。",
         "properties": {
+          "custody_enabled": {
+            "type": "boolean",
+            "description": "方案 C 托管充值总开关：`false` = 充值即 100% confirm（现状），\n`true` = 充值只开 `custody_lot`，不调渠道分账。",
+            "default": false
+          },
+          "custody_expiry_warn_days": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "format": "int64"
+            },
+            "description": "到期预警节点（距 `refund_cap_at` 的剩余天数）。默认 `[150, 90, 30, 7]`\n对应 178 天窗口；Q3 改成 360 天后必须同步上调，否则最后一个节点太晚。",
+            "default": [
+              150,
+              90,
+              30,
+              7
+            ]
+          },
+          "custody_refund_cap_days": {
+            "type": "integer",
+            "format": "int64",
+            "description": "托管 lot 的「原路退回」期限（天），落到 `custody_lot.refund_cap_at`。\n渠道确认前固定 178；Q3 答复后改为 360。",
+            "default": 178
+          },
+          "custody_reverse_cap_days": {
+            "type": "integer",
+            "format": "int64",
+            "description": "托管挂单的渠道期限（天），落到 `custody_lot.reverse_cap_at`。",
+            "default": 360
+          },
+          "custody_rollout_usernames": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "托管灰度白名单：空 + `custody_enabled=true` ⇒ 全量；\n非空 ⇒ 只有这些 username 的新充值走托管，其余保持旧行为。",
+            "default": []
+          },
           "customer_breach_platform_fee_bps": {
             "type": "integer",
             "format": "int64",
@@ -42150,19 +43292,19 @@
             "type": "integer",
             "format": "int64"
           },
-          "refunding_fen": {
+          "legacy_frozen_fen": {
             "type": "integer",
-            "format": "int64"
+            "format": "int64",
+            "description": "legacy 域冻结占用。"
           },
           "legacy_settled_fen": {
             "type": "integer",
             "format": "int64",
             "description": "历史「充值即分账」留下的余额（legacy 域）。"
           },
-          "legacy_frozen_fen": {
+          "refunding_fen": {
             "type": "integer",
-            "format": "int64",
-            "description": "legacy 域冻结占用。"
+            "format": "int64"
           },
           "total_recharged_fen": {
             "type": "integer",
@@ -42197,6 +43339,11 @@
           "account": {
             "$ref": "#/components/schemas/PrepaidAccountResponse"
           },
+          "available_fen": {
+            "type": "integer",
+            "format": "int64",
+            "description": "可冻结保证金 = 托管可用 + 历史余额（展示口径；实际冻结需单一域整额覆盖）。"
+          },
           "ledger": {
             "type": "array",
             "items": {
@@ -42212,34 +43359,6 @@
             "type": "integer",
             "format": "int64",
             "description": "现在还能申请提现的额度（方案 C 下保证金一律不可提现，固定 0）。"
-          },
-          "available_fen": {
-            "type": "integer",
-            "format": "int64",
-            "description": "可冻结保证金 = 托管可用 + 历史余额（展示口径；实际冻结需单一域整额覆盖）。"
-          }
-        }
-      },
-      "PrepaidCreditRequest": {
-        "type": "object",
-        "required": [
-          "username",
-          "amount_fen",
-          "note"
-        ],
-        "properties": {
-          "amount_fen": {
-            "type": "integer",
-            "format": "int64",
-            "description": "调整金额（分）：正数充值、负数扣除，不能为零。"
-          },
-          "note": {
-            "type": "string",
-            "description": "操作原因，与操作人一起写入审计流水。"
-          },
-          "username": {
-            "type": "string",
-            "description": "要调整的开发者平台账号。"
           }
         }
       },
@@ -42488,10 +43607,14 @@
       },
       "PrepaidReconcileItemResponse": {
         "type": "object",
-        "description": "一条预付余额对账结果。",
+        "description": "一条预付余额对账结果。一次运行同时给出 (A) 会员级与 (B) 托管级两条核对。",
         "required": [
           "username",
           "mirror_fen",
+          "member_local_fen",
+          "custody_local_settled_fen",
+          "escrow_held_fen",
+          "fee_pending_fen",
           "status",
           "detail",
           "checked_time"
@@ -42524,6 +43647,26 @@
           "checked_time": {
             "type": "string"
           },
+          "custody_channel_settled_fen": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "(B) 渠道已结算（分）；取不到为 `null`。"
+          },
+          "custody_diff_kind": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "(B) 结论：`matched` / `mismatched` / `in_flight` / `no_channel_basis`。"
+          },
+          "custody_local_settled_fen": {
+            "type": "integer",
+            "format": "int64",
+            "description": "(B) 本地已结算（confirm 排除核销 + reverse，分）。"
+          },
           "detail": {
             "type": "string"
           },
@@ -42533,7 +43676,40 @@
               "null"
             ],
             "format": "int64",
-            "description": "`渠道总额 - 镜像`；负数通常是渠道扣了手续费。"
+            "description": "`渠道总额 - 本地会员合计`；负数通常是渠道扣了手续费。"
+          },
+          "escrow_held_fen": {
+            "type": "integer",
+            "format": "int64",
+            "description": "该用户名下托管中金额（分）。"
+          },
+          "fee_pending_fen": {
+            "type": "integer",
+            "format": "int64",
+            "description": "手续费挂起额（分）。"
+          },
+          "member_channel_fen": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "(A) 渠道会员余额 = 可用 + 冻结（分）。"
+          },
+          "member_diff_fen": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "(A) 差额 = 渠道 - 本地（分）。"
+          },
+          "member_diff_kind": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "(A) 差额归类：`fee_pending` / `in_flight` / `unexplained`；无差异为 `null`。"
           },
           "member_id": {
             "type": [
@@ -42541,10 +43717,15 @@
               "null"
             ]
           },
+          "member_local_fen": {
+            "type": "integer",
+            "format": "int64",
+            "description": "(A) 本地已确认到该会员的钱（分）。"
+          },
           "mirror_fen": {
             "type": "integer",
             "format": "int64",
-            "description": "平台镜像余额（分）。"
+            "description": "平台镜像余额（分）；等于会员级本地合计，保留旧字段兼容。"
           },
           "settle_account_id": {
             "type": [
@@ -44782,6 +45963,19 @@
           }
         }
       },
+      "ResetUserTotpRequest": {
+        "type": "object",
+        "description": "重置用户身份验证器请求体。",
+        "required": [
+          "username"
+        ],
+        "properties": {
+          "username": {
+            "type": "string",
+            "description": "用户名。"
+          }
+        }
+      },
       "ResourceListQuery": {
         "type": "object",
         "description": "资源列表查询参数（公开面：平台过滤 + 偏移分页，对齐 legacy）。",
@@ -46233,6 +47427,45 @@
             "type": "object",
             "description": "平台资金口径。\n\n这些比例决定「一笔需求的钱怎么分」，改动会直接影响已签合同之外的**新**业务；\n已发生的交易都按当时的快照存进资金条款，不受配置变更影响。\n\n全部用**基点**（1 bps = 0.01%）而不是百分比浮点：钱的分配不能碰浮点。",
             "properties": {
+              "custody_enabled": {
+                "type": "boolean",
+                "description": "方案 C 托管充值总开关：`false` = 充值即 100% confirm（现状），\n`true` = 充值只开 `custody_lot`，不调渠道分账。",
+                "default": false
+              },
+              "custody_expiry_warn_days": {
+                "type": "array",
+                "items": {
+                  "type": "integer",
+                  "format": "int64"
+                },
+                "description": "到期预警节点（距 `refund_cap_at` 的剩余天数）。默认 `[150, 90, 30, 7]`\n对应 178 天窗口；Q3 改成 360 天后必须同步上调，否则最后一个节点太晚。",
+                "default": [
+                  150,
+                  90,
+                  30,
+                  7
+                ]
+              },
+              "custody_refund_cap_days": {
+                "type": "integer",
+                "format": "int64",
+                "description": "托管 lot 的「原路退回」期限（天），落到 `custody_lot.refund_cap_at`。\n渠道确认前固定 178；Q3 答复后改为 360。",
+                "default": 178
+              },
+              "custody_reverse_cap_days": {
+                "type": "integer",
+                "format": "int64",
+                "description": "托管挂单的渠道期限（天），落到 `custody_lot.reverse_cap_at`。",
+                "default": 360
+              },
+              "custody_rollout_usernames": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "托管灰度白名单：空 + `custody_enabled=true` ⇒ 全量；\n非空 ⇒ 只有这些 username 的新充值走托管，其余保持旧行为。",
+                "default": []
+              },
               "customer_breach_platform_fee_bps": {
                 "type": "integer",
                 "format": "int64",
@@ -49480,6 +50713,70 @@
           }
         }
       },
+      "TotpCodeRequest": {
+        "type": "object",
+        "description": "动态码请求体。",
+        "required": [
+          "code"
+        ],
+        "properties": {
+          "code": {
+            "type": "string",
+            "description": "Authenticator 生成的 6 位动态码。"
+          }
+        }
+      },
+      "TotpSetupResponse": {
+        "type": "object",
+        "description": "生成绑定信息时返回的密钥与扫码地址。",
+        "required": [
+          "secret",
+          "otpauth_uri"
+        ],
+        "properties": {
+          "otpauth_uri": {
+            "type": "string",
+            "description": "Authenticator 扫码用的 `otpauth://` 地址。"
+          },
+          "secret": {
+            "type": "string",
+            "description": "Base32 密钥，供手动输入。"
+          }
+        }
+      },
+      "TotpStatusResponse": {
+        "type": "object",
+        "description": "身份验证器的当前状态。",
+        "required": [
+          "enabled"
+        ],
+        "properties": {
+          "confirmed_at": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "启用时间（东八区 `YYYY-MM-DD HH:MM:SS`）；未启用为 `null`。"
+          },
+          "enabled": {
+            "type": "boolean",
+            "description": "是否已启用。"
+          }
+        }
+      },
+      "TotpSwitchResponse": {
+        "type": "object",
+        "description": "启用 / 停用后的状态。",
+        "required": [
+          "enabled"
+        ],
+        "properties": {
+          "enabled": {
+            "type": "boolean",
+            "description": "操作后的启用状态。"
+          }
+        }
+      },
       "TransactionItemResponse": {
         "type": "object",
         "description": "流水里的一行。",
@@ -49600,7 +50897,7 @@
               "string",
               "null"
             ],
-            "description": "只看某一类：`payment` / `refund` / `settlement` / `withdrawal`。"
+            "description": "只看某一类：`payment` / `refund` / `reverse` / `settlement` / `withdrawal`。"
           },
           "page": {
             "type": [

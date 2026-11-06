@@ -2,9 +2,7 @@ import { authHeaders, requestJson, requestVoid } from '@/api/http'
 
 import { queryString } from './query'
 import type {
-  PrepaidAccount,
   PrepaidAccountPage,
-  PrepaidCreditRequest,
   PrepaidOrderList,
   PrepaidOrderQuery,
   PrepaidRefundRequest,
@@ -34,26 +32,6 @@ export async function listAllPrepaidOrders(
     `/payment/developer-order-deposit-orders${queryString(query)}`,
     { headers: authHeaders(token) },
     '加载保证金充值单列表失败',
-  )
-}
-
-/**
- * 手工入账（`POST /api/payment/developer-order-deposit-orders/credit`）。
- *
- * 平台替开发者补记一笔保证金，返回入账后的账户余额。
- */
-export async function creditPrepaidAccount(
-  token: string,
-  payload: PrepaidCreditRequest,
-): Promise<PrepaidAccount> {
-  return requestJson<PrepaidAccount>(
-    '/payment/developer-order-deposit-orders/credit',
-    {
-      method: 'POST',
-      headers: authHeaders(token, { 'Content-Type': 'application/json' }),
-      body: JSON.stringify(payload),
-    },
-    '保证金手工入账失败',
   )
 }
 

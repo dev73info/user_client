@@ -990,7 +990,7 @@ export interface paths {
         };
         /**
          * 平台财务概览
-         * @description 已收、在托管、已分账（服务费 / 个税 / 开发者净额）、已退款、开发者应得、提现在途与待提现等汇总口径，需要 `payment.finance.overview.get`。这是汇总视图，与逐笔台账分开：能看汇总不代表能看每一笔的对手方。金额**一律整数分**，不做浮点转换。
+         * @description 已收、业务托管（定金/尾款）、保证金持有/累计、已分账（服务费 / 个税 / 开发者净额）、已退款、开发者应得、提现在途与待提现等汇总口径，需要 `payment.finance.overview.get`。`escrow_fen` 只算业务单；保证金看 `custody_held_total_fen` / `custody_recharge_fen`。这是汇总视图，与逐笔台账分开：能看汇总不代表能看每一笔的对手方。金额**一律整数分**，不做浮点转换。
          */
         get: operations["payment_admin_finance_overview"];
         put?: never;
@@ -1889,6 +1889,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/admin/tickets/events": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 管理端工单实时事件（SSE，兼容保留）
+         * @description SSE 长连接，沿用旧路径的兼容入口。需要 `ticket.admin_list.get`；每次创建、回复、关闭或更新后推送 `ticket.updated`，数据只含 `ticket_id`，客户端据此刷新。新客户端请使用 WebSocket `/api/admin/tickets/ws`。
+         */
+        get: operations["ticket_admin_events"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/admin/tickets/ws": {
         parameters: {
             query?: never;
@@ -1897,10 +1917,10 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * 管理端工单实时事件
-         * @description SSE 长连接，沿用 legacy `/ws` 路径。需要 `ticket.admin_list.get`；每次创建、回复、关闭或更新后推送 `ticket.updated`，数据只含 `ticket_id`，客户端据此刷新。事件为进程内广播，多实例间不共享。
+         * 管理端工单实时事件（WebSocket）
+         * @description WebSocket 长连接，需要 `ticket.admin_list.get`。每次创建、回复、关闭或更新后推送 `{"event":"ticket.updated","ticket_id":"..."}`，客户端据此刷新。事件为进程内广播，多实例间不共享。
          */
-        get: operations["ticket_admin_events"];
+        get: operations["ticket_admin_events_ws"];
         put?: never;
         post?: never;
         delete?: never;
@@ -2445,6 +2465,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/auth/login/authenticator": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 身份验证器免密登录
+         * @description **免登录**：不需要密码，凭「登录名（或主邮箱）+ Authenticator 生成的 6 位动态码」登录。账号不存在、未绑定身份验证器、动态码不正确 / 已过期 / 已使用，统一回 401 `INVALID_CREDENTIALS`，不区分具体原因，避免账号枚举。账号被停用 / 已注销回 403（与密码登录同口径）。同一动态码只能成功使用一次：校验通过后会记录命中的时间步，时间窗内重放一律失败。限流：同一 IP 15 分钟 40 次、同一用户名 15 分钟 8 次；人机校验动作名与密码登录相同（`login`）。
+         */
+        post: operations["auth_login_authenticator"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/auth/oauth-status": {
         parameters: {
             query?: never;
@@ -2881,6 +2921,26 @@ export interface paths {
          * @description **需要登录 + `user.role.post`**。整体替换目标账号的角色集合，返回替换后的角色。`roles` 为空时落默认角色 `user`（这是清空角色的写法）；`role` 是单角色兼容字段，`roles` 有值就以 `roles` 为准。角色码会去首尾空白、排序、去重。响应里的 `role` 是第一个非默认角色，`roles` 是全部角色。账号不存在回 404；角色码不做存在性校验，写不存在的码不会报错。
          */
         post: operations["identity_admin_update_user_role"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/auth/users/totp-reset": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 重置用户身份验证器（管理端）
+         * @description **需要登录 + `user.totp_reset.post`**。清除目标账号的 TOTP 绑定，用于用户丢失验证器且无法自助登录的情况。目标账号原本已启用时，同时吊销其已签发的全部会话。账号本来就没绑定 TOTP 时是幂等的成功，不清会话。账号不存在回 404 `USER_NOT_FOUND`；该端点不返回密钥、不返回临时码。
+         */
+        post: operations["identity_admin_reset_user_totp"];
         delete?: never;
         options?: never;
         head?: never;
@@ -5304,26 +5364,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/payment/developer-order-deposit-orders/credit": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * 人工调整预付保证金
-         * @description 金额为整数分：正数充值、负数扣除，必须填写原因。扣除后余额不能为负，也不能占用在途提现。
-         */
-        post: operations["payment_admin_prepaid_credit"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/api/payment/developer-order-deposit-orders/{payment_id}": {
         parameters: {
             query?: never;
@@ -5406,6 +5446,66 @@ export interface paths {
          * @description 逐个有余额 / 有收款账户的预付账户向渠道查询余额，与平台镜像比较后落库。单个账户查询失败记为 `error`，不影响其它账户。
          */
         post: operations["payment_admin_prepaid_reconcile_run"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/payment/developer-order-deposit/custody": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 查看托管 lot 明细
+         * @description 按 payer / 状态 / 到期窗口筛选托管 lot；金额全部取视图派生值。只读，不提供任何资金动作。
+         */
+        get: operations["payment_admin_custody_lots"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/payment/developer-order-deposit/custody/alerts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 查看托管运维视图
+         * @description 一次返回到期 / 超期 / unknown / 净额待定 / A 拒绝记录五组数据；`warn_days` 是当前生效的预警节点。只读，处置动作不在本端点。
+         */
+        get: operations["payment_admin_custody_alerts"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/payment/developer-order-deposit/custody/ops": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 查看托管操作明细
+         * @description 按业务单 / op 号 / 类型 / 状态筛选；`stuck_only` 对应 I-OP-STUCK（>24h），`fee_pending_only` 对应净额待定。只读。
+         */
+        get: operations["payment_admin_custody_ops"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -10342,6 +10442,86 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/system/settings/profile/totp": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 读取身份验证器状态
+         * @description **需要登录 + `system.profile.update.put`**。只返回是否启用与启用时间，**不回显密钥**。
+         */
+        get: operations["profile_get_totp"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/system/settings/profile/totp/disable": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 停用身份验证器
+         * @description **需要登录 + `system.profile.update.put`**。必须提交一次当前动态码；停用后清除密钥，登录回到邮箱两步验证（若开启）或仅密码。未启用回 400 `TOTP_NOT_ENABLED`，动态码不对回 400 `TOTP_CODE_INVALID`。限流：同一账号每 15 分钟 12 次。
+         */
+        post: operations["profile_disable_totp"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/system/settings/profile/totp/enable": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 确认启用身份验证器
+         * @description **需要登录 + `system.profile.update.put`**。用 `/totp/setup` 返回的密钥生成的6 位动态码确认绑定；校验允许前后各一个 30 秒时间窗。没有待确认密钥回 400 `TOTP_SECRET_MISSING`，动态码不对回 400 `TOTP_CODE_INVALID`，已启用回 400 `TOTP_ALREADY_ENABLED`。启用后账号登录优先走动态码，邮箱两步验证开关保留但不再生效。限流：同一账号每 15 分钟 12 次。
+         */
+        post: operations["profile_enable_totp"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/system/settings/profile/totp/setup": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 生成身份验证器绑定密钥
+         * @description **需要登录 + `system.profile.update.put`**。生成新的 Base32 密钥与 `otpauth://` 地址，供前端渲染二维码或手动输入；密钥先以「待确认」状态落库，**要再用一次动态码调`/totp/enable` 才真正启用**。重复调用会覆盖尚未确认的旧密钥。已启用的账号回 400 `TOTP_ALREADY_ENABLED`（换绑必须先停用）。限流：同一账号每小时 5 次。
+         */
+        post: operations["profile_setup_totp"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/system/settings/profile/two-factor": {
         parameters: {
             query?: never;
@@ -10920,6 +11100,26 @@ export interface paths {
          * @description 只有创建者本人可回复；resolved 或 closed 状态会重新打开为 open。返回的详情不含内部留言。需要 `ticket.reply.post`。
          */
         post: operations["ticket_reply"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tickets/ws": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 本人工单实时事件（WebSocket）
+         * @description WebSocket 长连接，需要 `ticket.detail.get`；只推送当前用户自己创建的工单事件。`/api/ticket/ws` 是等价入口。
+         */
+        get: operations["ticket_events_ws"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -12511,6 +12711,15 @@ export interface components {
             /** @description 用户名。 */
             username: string;
         };
+        /** @description 身份验证器免密登录请求体。 */
+        AuthenticatorLoginRequest: {
+            /** @description Authenticator 生成的 6 位动态码。 */
+            code: string;
+            /** @description 人机校验令牌。 */
+            turnstile_token?: string | null;
+            /** @description 登录名或主邮箱。 */
+            username: string;
+        };
         /** @description 用户同意授权。 */
         AuthorizeConsent: {
             /** @description 客户端编号。 */
@@ -13728,7 +13937,6 @@ export interface components {
         };
         CreateSupportConversationRequest: {
             content: string;
-            subject?: string;
             user_role?: string | null;
         };
         CreateTagGroupRequest: {
@@ -13886,6 +14094,158 @@ export interface components {
             /** Format: int64 */
             remaining_deposit_cap_fen: number;
             username: string;
+        };
+        /** @description 管理端托管运维视图聚合。 */
+        CustodyAlertsResponse: {
+            expiry: components["schemas"]["CustodyExpiryItemResponse"][];
+            fee_pending_ops: components["schemas"]["CustodyOpItemResponse"][];
+            overdue: components["schemas"]["CustodyOverdueItemResponse"][];
+            rejected_refunds: components["schemas"]["CustodyDecisionItemResponse"][];
+            stuck_ops: components["schemas"]["CustodyOpItemResponse"][];
+            warn_days: number[];
+        };
+        CustodyDecisionItemResponse: {
+            created_time: string;
+            decision: string;
+            operator: string;
+            payment_order_no: string;
+            reason: string;
+            /** Format: int32 */
+            warn_days?: number | null;
+        };
+        CustodyExpiryItemResponse: {
+            deadline_estimated: boolean;
+            /** Format: int64 */
+            held_fen: number;
+            /** Format: int64 */
+            hit_day: number;
+            payer: string;
+            payment_order_no: string;
+            refund_cap_time: string;
+        };
+        /** @description 一条托管 lot 明细。 */
+        CustodyLotItemResponse: {
+            /** Format: int64 */
+            confirmed_fen: number;
+            deadline_estimated: boolean;
+            /** Format: int64 */
+            held_fen: number;
+            opened_time: string;
+            paid_time: string;
+            /** Format: int64 */
+            pay_amt_fen: number;
+            payer: string;
+            payment_order_no: string;
+            provider_payment_id: string;
+            refund_cap_time: string;
+            /** Format: int64 */
+            refunded_fen: number;
+            /** Format: int64 */
+            reserved_confirm_fen: number;
+            /** Format: int64 */
+            reserved_reverse_fen: number;
+            reverse_cap_time: string;
+            /** Format: int32 */
+            reverse_count: number;
+            /** Format: int64 */
+            reversed_fen: number;
+            /** @description 视图派生状态。 */
+            state: string;
+            updated_time: string;
+        };
+        /** @description 托管 lot 明细查询。 */
+        CustodyLotListQuery: {
+            /** @description 只看期限是回退值估算的 lot。 */
+            deadline_estimated?: boolean | null;
+            /**
+             * Format: int64
+             * @description 只看到期窗口内的 lot：`refund_cap_at - now() <= N 天` 且仍有 held。
+             */
+            expiring_within_days?: number | null;
+            /** @description 只看已过 `refund_cap_at` 且仍有 held 的 lot（原始筛选，不做 A-1 的人工处置排除）。 */
+            overdue_only?: boolean | null;
+            /** Format: int64 */
+            page?: number | null;
+            /** Format: int64 */
+            page_size?: number | null;
+            /** @description 付款人（平台用户名）。 */
+            payer?: string | null;
+            /** @description `held` / `partially_confirmed` / ... / `settled`。 */
+            state?: string | null;
+        };
+        /** @description 托管 lot 明细分页。 */
+        CustodyLotListResponse: {
+            items: components["schemas"]["CustodyLotItemResponse"][];
+            /** Format: int64 */
+            page: number;
+            /** Format: int64 */
+            page_size: number;
+            /** Format: int64 */
+            total: number;
+        };
+        /** @description 一条托管 op 明细。 */
+        CustodyOpItemResponse: {
+            /** Format: int64 */
+            amount_fen: number;
+            /** Format: int32 */
+            attempt: number;
+            created_time: string;
+            decided_time?: string | null;
+            evidence?: string | null;
+            failure_code?: string | null;
+            failure_reason?: string | null;
+            /** Format: int64 */
+            fee_amt_fen?: number | null;
+            fee_status: string;
+            kind: string;
+            last_queried_time?: string | null;
+            op_no: string;
+            /** Format: int64 */
+            payee_share_fen?: number | null;
+            payee_username?: string | null;
+            payment_order_no: string;
+            provider_object_id?: string | null;
+            provider_order_no: string;
+            /** @description 渠道 `div_members` 形状的份额（金额键为 `amount_fen`）。 */
+            shares_json?: unknown;
+            status: string;
+            submitted_time?: string | null;
+        };
+        /** @description 托管 op 明细查询。 */
+        CustodyOpListQuery: {
+            /** @description 只看手续费挂起的成功 confirm。 */
+            fee_pending_only?: boolean | null;
+            /** @description `confirm` / `reverse`。 */
+            kind?: string | null;
+            op_no?: string | null;
+            /** Format: int64 */
+            page?: number | null;
+            /** Format: int64 */
+            page_size?: number | null;
+            payment_order_no?: string | null;
+            /** @description `intent` / `submitted` / `succeeded` / `failed` / `unknown`。 */
+            status?: string | null;
+            /** @description 只看卡在非终态超过 24 小时的 op。 */
+            stuck_only?: boolean | null;
+        };
+        /** @description 托管 op 明细分页。 */
+        CustodyOpListResponse: {
+            items: components["schemas"]["CustodyOpItemResponse"][];
+            /** Format: int64 */
+            page: number;
+            /** Format: int64 */
+            page_size: number;
+            /** Format: int64 */
+            total: number;
+        };
+        CustodyOverdueItemResponse: {
+            /** Format: int64 */
+            held_fen: number;
+            /** Format: int64 */
+            overdue_seconds: number;
+            payer: string;
+            payment_order_no: string;
+            refund_cap_time: string;
         };
         /** @description 需求概览响应（字段与 legacy `UserDashboardOverviewResponse` 一致）。 */
         DashboardResponse: {
@@ -14699,6 +15059,16 @@ export interface components {
          *     后端多做一次浮点转换就多一次精度风险。
          */
         FinanceOverviewResponse: {
+            /**
+             * Format: int64
+             * @description 保证金当前未确认余额（分，全平台 Σ held）。
+             */
+            custody_held_total_fen: number;
+            /**
+             * Format: int64
+             * @description 保证金累计充值总额（分，Σ lot 充值面额，不随 confirm/reverse 变）。
+             */
+            custody_recharge_fen: number;
             /**
              * Format: int64
              * @description 开发者应得合计（分）。
@@ -15679,6 +16049,42 @@ export interface components {
          */
         PaymentConfig: {
             /**
+             * @description 方案 C 托管充值总开关：`false` = 充值即 100% confirm（现状），
+             *     `true` = 充值只开 `custody_lot`，不调渠道分账。
+             * @default false
+             */
+            custody_enabled: boolean;
+            /**
+             * @description 到期预警节点（距 `refund_cap_at` 的剩余天数）。默认 `[150, 90, 30, 7]`
+             *     对应 178 天窗口；Q3 改成 360 天后必须同步上调，否则最后一个节点太晚。
+             * @default [
+             *       150,
+             *       90,
+             *       30,
+             *       7
+             *     ]
+             */
+            custody_expiry_warn_days: number[];
+            /**
+             * Format: int64
+             * @description 托管 lot 的「原路退回」期限（天），落到 `custody_lot.refund_cap_at`。
+             *     渠道确认前固定 178；Q3 答复后改为 360。
+             * @default 178
+             */
+            custody_refund_cap_days: number;
+            /**
+             * Format: int64
+             * @description 托管挂单的渠道期限（天），落到 `custody_lot.reverse_cap_at`。
+             * @default 360
+             */
+            custody_reverse_cap_days: number;
+            /**
+             * @description 托管灰度白名单：空 + `custody_enabled=true` ⇒ 全量；
+             *     非空 ⇒ 只有这些 username 的新充值走托管，其余保持旧行为。
+             * @default []
+             */
+            custody_rollout_usernames: string[];
+            /**
              * Format: int64
              * @description 客户违约（无正当理由取消）时，被罚没的定金里平台拿的比例（基点）。
              *
@@ -15851,18 +16257,18 @@ export interface components {
             created_time: string;
             /** Format: int64 */
             frozen_fen: number;
-            /** Format: int64 */
-            refunding_fen: number;
-            /**
-             * Format: int64
-             * @description 历史「充值即分账」留下的余额（legacy 域）。
-             */
-            legacy_settled_fen: number;
             /**
              * Format: int64
              * @description legacy 域冻结占用。
              */
             legacy_frozen_fen: number;
+            /**
+             * Format: int64
+             * @description 历史「充值即分账」留下的余额（legacy 域）。
+             */
+            legacy_settled_fen: number;
+            /** Format: int64 */
+            refunding_fen: number;
             /** Format: int64 */
             total_recharged_fen: number;
             /** Format: int64 */
@@ -15874,6 +16280,11 @@ export interface components {
         };
         PrepaidAccountStatementResponse: {
             account: components["schemas"]["PrepaidAccountResponse"];
+            /**
+             * Format: int64
+             * @description 可冻结保证金 = 托管可用 + 历史余额（展示口径；实际冻结需单一域整额覆盖）。
+             */
+            available_fen: number;
             ledger: components["schemas"]["PrepaidLedgerResponse"][];
             /**
              * Format: int64
@@ -15885,22 +16296,6 @@ export interface components {
              * @description 现在还能申请提现的额度（方案 C 下保证金一律不可提现，固定 0）。
              */
             withdrawable_fen: number;
-            /**
-             * Format: int64
-             * @description 可冻结保证金 = 托管可用 + 历史余额（展示口径；实际冻结需单一域整额覆盖）。
-             */
-            available_fen: number;
-        };
-        PrepaidCreditRequest: {
-            /**
-             * Format: int64
-             * @description 调整金额（分）：正数充值、负数扣除，不能为零。
-             */
-            amount_fen: number;
-            /** @description 操作原因，与操作人一起写入审计流水。 */
-            note: string;
-            /** @description 要调整的开发者平台账号。 */
-            username: string;
         };
         PrepaidLedgerResponse: {
             /** Format: int64 */
@@ -15972,7 +16367,7 @@ export interface components {
             client_platform: string;
             idempotency_key?: string | null;
         };
-        /** @description 一条预付余额对账结果。 */
+        /** @description 一条预付余额对账结果。一次运行同时给出 (A) 会员级与 (B) 托管级两条核对。 */
         PrepaidReconcileItemResponse: {
             /**
              * Format: int64
@@ -15990,16 +16385,55 @@ export interface components {
              */
             channel_total_fen?: number | null;
             checked_time: string;
+            /**
+             * Format: int64
+             * @description (B) 渠道已结算（分）；取不到为 `null`。
+             */
+            custody_channel_settled_fen?: number | null;
+            /** @description (B) 结论：`matched` / `mismatched` / `in_flight` / `no_channel_basis`。 */
+            custody_diff_kind?: string | null;
+            /**
+             * Format: int64
+             * @description (B) 本地已结算（confirm 排除核销 + reverse，分）。
+             */
+            custody_local_settled_fen: number;
             detail: string;
             /**
              * Format: int64
-             * @description `渠道总额 - 镜像`；负数通常是渠道扣了手续费。
+             * @description `渠道总额 - 本地会员合计`；负数通常是渠道扣了手续费。
              */
             diff_fen?: number | null;
+            /**
+             * Format: int64
+             * @description 该用户名下托管中金额（分）。
+             */
+            escrow_held_fen: number;
+            /**
+             * Format: int64
+             * @description 手续费挂起额（分）。
+             */
+            fee_pending_fen: number;
+            /**
+             * Format: int64
+             * @description (A) 渠道会员余额 = 可用 + 冻结（分）。
+             */
+            member_channel_fen?: number | null;
+            /**
+             * Format: int64
+             * @description (A) 差额 = 渠道 - 本地（分）。
+             */
+            member_diff_fen?: number | null;
+            /** @description (A) 差额归类：`fee_pending` / `in_flight` / `unexplained`；无差异为 `null`。 */
+            member_diff_kind?: string | null;
             member_id?: string | null;
             /**
              * Format: int64
-             * @description 平台镜像余额（分）。
+             * @description (A) 本地已确认到该会员的钱（分）。
+             */
+            member_local_fen: number;
+            /**
+             * Format: int64
+             * @description 平台镜像余额（分）；等于会员级本地合计，保留旧字段兼容。
              */
             mirror_fen: number;
             settle_account_id?: string | null;
@@ -16937,6 +17371,11 @@ export interface components {
             /** @description 人机校验令牌。 */
             turnstile_token?: string | null;
         };
+        /** @description 重置用户身份验证器请求体。 */
+        ResetUserTotpRequest: {
+            /** @description 用户名。 */
+            username: string;
+        };
         /** @description 资源列表查询参数（公开面：平台过滤 + 偏移分页，对齐 legacy）。 */
         ResourceListQuery: {
             /**
@@ -17646,6 +18085,42 @@ export interface components {
              *     全部用**基点**（1 bps = 0.01%）而不是百分比浮点：钱的分配不能碰浮点。
              */
             config: {
+                /**
+                 * @description 方案 C 托管充值总开关：`false` = 充值即 100% confirm（现状），
+                 *     `true` = 充值只开 `custody_lot`，不调渠道分账。
+                 * @default false
+                 */
+                custody_enabled: boolean;
+                /**
+                 * @description 到期预警节点（距 `refund_cap_at` 的剩余天数）。默认 `[150, 90, 30, 7]`
+                 *     对应 178 天窗口；Q3 改成 360 天后必须同步上调，否则最后一个节点太晚。
+                 * @default [
+                 *       150,
+                 *       90,
+                 *       30,
+                 *       7
+                 *     ]
+                 */
+                custody_expiry_warn_days: number[];
+                /**
+                 * Format: int64
+                 * @description 托管 lot 的「原路退回」期限（天），落到 `custody_lot.refund_cap_at`。
+                 *     渠道确认前固定 178；Q3 答复后改为 360。
+                 * @default 178
+                 */
+                custody_refund_cap_days: number;
+                /**
+                 * Format: int64
+                 * @description 托管挂单的渠道期限（天），落到 `custody_lot.reverse_cap_at`。
+                 * @default 360
+                 */
+                custody_reverse_cap_days: number;
+                /**
+                 * @description 托管灰度白名单：空 + `custody_enabled=true` ⇒ 全量；
+                 *     非空 ⇒ 只有这些 username 的新充值走托管，其余保持旧行为。
+                 * @default []
+                 */
+                custody_rollout_usernames: string[];
                 /**
                  * Format: int64
                  * @description 客户违约（无正当理由取消）时，被罚没的定金里平台拿的比例（基点）。
@@ -18977,6 +19452,30 @@ export interface components {
             /** @description 令牌类型。 */
             token_type: string;
         };
+        /** @description 动态码请求体。 */
+        TotpCodeRequest: {
+            /** @description Authenticator 生成的 6 位动态码。 */
+            code: string;
+        };
+        /** @description 生成绑定信息时返回的密钥与扫码地址。 */
+        TotpSetupResponse: {
+            /** @description Authenticator 扫码用的 `otpauth://` 地址。 */
+            otpauth_uri: string;
+            /** @description Base32 密钥，供手动输入。 */
+            secret: string;
+        };
+        /** @description 身份验证器的当前状态。 */
+        TotpStatusResponse: {
+            /** @description 启用时间（东八区 `YYYY-MM-DD HH:MM:SS`）；未启用为 `null`。 */
+            confirmed_at?: string | null;
+            /** @description 是否已启用。 */
+            enabled: boolean;
+        };
+        /** @description 启用 / 停用后的状态。 */
+        TotpSwitchResponse: {
+            /** @description 操作后的启用状态。 */
+            enabled: boolean;
+        };
         /** @description 流水里的一行。 */
         TransactionItemResponse: {
             /**
@@ -19029,7 +19528,7 @@ export interface components {
             created_from?: string | null;
             /** @description 发生时间上界（不含）。 */
             created_to?: string | null;
-            /** @description 只看某一类：`payment` / `refund` / `settlement` / `withdrawal`。 */
+            /** @description 只看某一类：`payment` / `refund` / `reverse` / `settlement` / `withdrawal`。 */
             kind?: string | null;
             /**
              * Format: int64
@@ -23281,7 +23780,7 @@ export interface operations {
     payment_admin_list_transactions: {
         parameters: {
             query?: {
-                /** @description 只看某一类：`payment` / `refund` / `settlement` / `withdrawal`。 */
+                /** @description 只看某一类：`payment` / `refund` / `reverse` / `settlement` / `withdrawal`。 */
                 kind?: string;
                 /** @description 发生时间下界（含）。 */
                 created_from?: string;
@@ -25520,6 +26019,40 @@ export interface operations {
             };
         };
     };
+    ticket_admin_events_ws: {
+        parameters: {
+            query?: {
+                token?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description WebSocket 已建立 */
+            101: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 令牌缺失或无效 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 没有管理端工单列表权限 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     ticket_admin_detail: {
         parameters: {
             query?: never;
@@ -26988,6 +27521,65 @@ export interface operations {
             };
         };
     };
+    auth_login_authenticator: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AuthenticatorLoginRequest"];
+            };
+        };
+        responses: {
+            /** @description 登录成功，返回会话令牌与角色快照 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AuthResponse"];
+                };
+            };
+            /** @description 请求体格式不正确 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 账号不存在、未绑定身份验证器或动态码不正确（`INVALID_CREDENTIALS`） */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 账号被停用 / 已注销，或人机校验未通过 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 触发限流 */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 内部错误 */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     auth_oauth_status: {
         parameters: {
             query?: never;
@@ -28176,6 +28768,63 @@ export interface operations {
                 content?: never;
             };
             /** @description 没有 `user.role.post` */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 账号不存在（`USER_NOT_FOUND`） */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 权限查询失败，或内部错误 */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    identity_admin_reset_user_totp: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ResetUserTotpRequest"];
+            };
+        };
+        responses: {
+            /** @description 已重置，无响应体 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 参数格式非法 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 未登录，或令牌无效 / 已吊销 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 没有 `user.totp_reset.post` */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -34546,53 +35195,6 @@ export interface operations {
             };
         };
     };
-    payment_admin_prepaid_credit: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["PrepaidCreditRequest"];
-            };
-        };
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["PrepaidAccountResponse"];
-                };
-            };
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            409: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
     payment_admin_prepaid_order_delete: {
         parameters: {
             query?: never;
@@ -34853,6 +35455,131 @@ export interface operations {
             };
             /** @description 渠道未就绪 */
             503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    payment_admin_custody_lots: {
+        parameters: {
+            query?: {
+                /** @description 付款人（平台用户名）。 */
+                payer?: string | null;
+                /** @description `held` / `partially_confirmed` / ... / `settled`。 */
+                state?: string | null;
+                /** @description 只看到期窗口内的 lot：`refund_cap_at - now() <= N 天` 且仍有 held。 */
+                expiring_within_days?: number | null;
+                /** @description 只看已过 `refund_cap_at` 且仍有 held 的 lot（原始筛选，不做 A-1 的人工处置排除）。 */
+                overdue_only?: boolean | null;
+                /** @description 只看期限是回退值估算的 lot。 */
+                deadline_estimated?: boolean | null;
+                page?: number | null;
+                page_size?: number | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CustodyLotListResponse"];
+                };
+            };
+            /** @description 筛选参数不合法 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 没有该接口权限 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    payment_admin_custody_alerts: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CustodyAlertsResponse"];
+                };
+            };
+            /** @description 没有该接口权限 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 读取失败 */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    payment_admin_custody_ops: {
+        parameters: {
+            query?: {
+                payment_order_no?: string | null;
+                op_no?: string | null;
+                /** @description `confirm` / `reverse`。 */
+                kind?: string | null;
+                /** @description `intent` / `submitted` / `succeeded` / `failed` / `unknown`。 */
+                status?: string | null;
+                /** @description 只看手续费挂起的成功 confirm。 */
+                fee_pending_only?: boolean | null;
+                /** @description 只看卡在非终态超过 24 小时的 op。 */
+                stuck_only?: boolean | null;
+                page?: number | null;
+                page_size?: number | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CustodyOpListResponse"];
+                };
+            };
+            /** @description 筛选参数不合法 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 没有该接口权限 */
+            403: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -49288,6 +50015,248 @@ export interface operations {
             };
         };
     };
+    profile_get_totp: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 当前状态 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TotpStatusResponse"];
+                };
+            };
+            /** @description 未登录，或令牌无效 / 已吊销 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 没有 `system.profile.update.put` */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 账号不存在（`USER_NOT_FOUND`） */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 权限查询失败或内部错误 */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    profile_disable_totp: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TotpCodeRequest"];
+            };
+        };
+        responses: {
+            /** @description 已停用 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TotpSwitchResponse"];
+                };
+            };
+            /** @description 未启用身份验证器，或动态码不正确 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 未登录，或令牌无效 / 已吊销 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 没有 `system.profile.update.put` */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 账号不存在（`USER_NOT_FOUND`） */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 触发限流 */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 权限查询失败或内部错误 */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    profile_enable_totp: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TotpCodeRequest"];
+            };
+        };
+        responses: {
+            /** @description 已启用 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TotpSwitchResponse"];
+                };
+            };
+            /** @description 没有待确认密钥、动态码不正确，或已经启用 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 未登录，或令牌无效 / 已吊销 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 没有 `system.profile.update.put` */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 账号不存在（`USER_NOT_FOUND`） */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 触发限流 */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 权限查询失败或内部错误 */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    profile_setup_totp: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 绑定密钥与扫码地址 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TotpSetupResponse"];
+                };
+            };
+            /** @description 账号已启用身份验证器（`TOTP_ALREADY_ENABLED`） */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 未登录，或令牌无效 / 已吊销 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 没有 `system.profile.update.put` */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 账号不存在（`USER_NOT_FOUND`） */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 触发限流 */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 权限查询失败或内部错误 */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     profile_update_two_factor: {
         parameters: {
             query?: never;
@@ -51050,6 +52019,40 @@ export interface operations {
             };
             /** @description 工单不存在 */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    ticket_events_ws: {
+        parameters: {
+            query?: {
+                token?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description WebSocket 已建立 */
+            101: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 令牌缺失或无效 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 没有工单详情权限 */
+            403: {
                 headers: {
                     [name: string]: unknown;
                 };
