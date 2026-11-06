@@ -60,6 +60,12 @@ const routes: MockRoute[] = [
   },
   {
     method: 'POST',
+    path: '/auth/login/authenticator',
+    note: '身份验证器免密登录：mock 不校验动态码，按当前身份返回会话',
+    handler: (request) => jsonResponse(authPayload(identityOf(request))),
+  },
+  {
+    method: 'POST',
     path: '/auth/register',
     note: '注册：直接建成当前身份的账号',
     handler: (request) => jsonResponse(authPayload(identityOf(request))),

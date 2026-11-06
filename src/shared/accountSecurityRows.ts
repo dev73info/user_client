@@ -54,7 +54,7 @@ export function buildSecurityGroups(state: SecurityRowsState): AccountEntryGroup
         {
           key: 'twoFactor',
           title: '两步验证',
-          desc: '登录时额外校验一次邮箱验证码',
+          desc: '登录时额外校验邮箱验证码或动态码',
           icon: Bell,
           status: {
             text: state.twoFactorEnabled ? '已开启' : '未开启',

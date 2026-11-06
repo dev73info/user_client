@@ -5,6 +5,16 @@ import { currentMockProfile } from '../../identity'
 import { jsonResponse, noContentResponse } from '../../response'
 import { buildProfile, nowText, profileOverrides } from './helpers'
 
+/** mock 不存密钥：绑定状态只在本次会话里翻转，够预览启用 / 停用两条路径。 */
+let mockTotpEnabled = false
+let mockTotpConfirmedAt: string | null = null
+let mockTotpPendingSecret = ''
+const MOCK_TOTP_SECRET = 'JBSWY3DPEHPK3PXPJBSWY3DPEHPK3PXP'
+
+function isSixDigitCode(value: unknown): boolean {
+  return typeof value === 'string' && /^\d{6}$/.test(value)
+}
+
 export const accountRoutes: MockRoute[] = [
   /* ---------------------------------------------------------------- 账号设置 */
   {
@@ -198,6 +208,57 @@ export const accountRoutes: MockRoute[] = [
       profileOverrides[profile.id] = store
 
       return jsonResponse(buildProfile())
+    },
+  },
+  {
+    method: 'GET',
+    path: '/settings/profile/totp',
+    note: '身份验证器状态（mock 只在本次会话里记住启用与否）',
+    handler: () => jsonResponse({ enabled: mockTotpEnabled, confirmed_at: mockTotpConfirmedAt }),
+  },
+  {
+    method: 'POST',
+    path: '/settings/profile/totp/setup',
+    note: '生成绑定密钥与 otpauth 地址（固定密钥，二维码可扫但码不会校验）',
+    handler: () => {
+      mockTotpPendingSecret = MOCK_TOTP_SECRET
+      const username = currentMockProfile().username
+      return jsonResponse({
+        secret: MOCK_TOTP_SECRET,
+        otpauth_uri: `otpauth://totp/73Info:${encodeURIComponent(username)}?secret=${MOCK_TOTP_SECRET}&issuer=73Info`,
+      })
+    },
+  },
+  {
+    method: 'POST',
+    path: '/settings/profile/totp/enable',
+    note: '启用身份验证器（6 位数字即可）',
+    handler: (request) => {
+      const body = (request.body ?? {}) as { code?: string }
+      if (!mockTotpPendingSecret) {
+        return jsonResponse({ code: 'TOTP_SECRET_MISSING', message: '请先绑定' }, 400)
+      }
+      if (!isSixDigitCode(body.code)) {
+        return jsonResponse({ code: 'TOTP_CODE_INVALID', message: '动态码不正确' }, 400)
+      }
+      mockTotpEnabled = true
+      mockTotpConfirmedAt = nowText()
+      mockTotpPendingSecret = ''
+      return jsonResponse({ enabled: true })
+    },
+  },
+  {
+    method: 'POST',
+    path: '/settings/profile/totp/disable',
+    note: '停用身份验证器（6 位数字即可）',
+    handler: (request) => {
+      const body = (request.body ?? {}) as { code?: string }
+      if (!isSixDigitCode(body.code)) {
+        return jsonResponse({ code: 'TOTP_CODE_INVALID', message: '动态码不正确' }, 400)
+      }
+      mockTotpEnabled = false
+      mockTotpConfirmedAt = null
+      return jsonResponse({ enabled: false })
     },
   },
   {

@@ -1,3 +1,5 @@
+import { requestAuthenticatorLogin } from './authenticator'
+import { detectClientPlatform } from './clientPlatform'
 import { md5Hex } from './md5'
 import { buildAuthBody, type AuthPath } from './requestBody'
 
@@ -17,7 +19,8 @@ export type AuthPayload = {
 export type TwoFactorRequiredPayload = {
   requires_two_factor: true
   username: string
-  delivery: 'email'
+  /** 密码校验通过后，第二步校验用哪种动态码。 */
+  delivery: 'email' | 'totp'
 }
 
 export type AuthRequestPayload = AuthPayload | TwoFactorRequiredPayload
@@ -53,19 +56,9 @@ export type { AuthPath } from './requestBody'
 /**
  * 客户端平台标识（协议同意留痕用）。
  *
- * 判定口径必须各处一致：留痕要能证明"用户在哪台设备上同意的"，
- * 协议页、登录弹窗、签署页各写一套就会对不上，所以只留这一份。
+ * 实现在 `./clientPlatform`（登录与协议两族接口共用），这里原样转出，调用方仍从本文件取。
  */
-export function detectClientPlatform(): string {
-  if (typeof navigator === 'undefined') return 'web'
-  const ua = navigator.userAgent
-  if (/MicroMessenger/i.test(ua)) return 'wechat'
-  if (/windows/i.test(ua)) return 'web-windows'
-  if (/macintosh|Mac OS/i.test(ua)) return 'web-macos'
-  if (/android/i.test(ua)) return 'web-android'
-  if (/iphone|ipad|ipod/i.test(ua)) return 'web-ios'
-  return 'web'
-}
+export { detectClientPlatform } from './clientPlatform'
 
 type RequestJson = <T>(path: string, init: RequestInit, fallbackError?: string) => Promise<T>
 type RequestVoid = (path: string, init: RequestInit, fallbackError?: string) => Promise<void>
@@ -142,6 +135,19 @@ export function createAuthApiClient(deps: AuthApiDependencies, options: AuthApiO
       },
       '刷新令牌失败',
     )
+  }
+
+  /**
+   * 身份验证器免密登录：登录名 + Authenticator 动态码，不需要密码。
+   *
+   * 实现与错误归一化在 `./authenticator`（只依赖请求层，不需要本工厂的其余闭包）。
+   */
+  function loginWithAuthenticator(
+    username: string,
+    code: string,
+    turnstileToken?: string,
+  ): Promise<AuthPayload> {
+    return requestAuthenticatorLogin(deps, username, code, turnstileToken)
   }
 
   async function sendRegisterEmailCode(email: string, turnstileToken?: string): Promise<void> {
@@ -280,6 +286,7 @@ export function createAuthApiClient(deps: AuthApiDependencies, options: AuthApiO
 
   return {
     authRequest,
+    loginWithAuthenticator,
     refreshToken,
     sendRegisterEmailCode,
     sendResetPasswordEmailCode,

@@ -57,6 +57,7 @@ export {
   authRequest,
   getGiteeAuthorizeUrl,
   getGithubAuthorizeUrl,
+  loginWithAuthenticator,
   recordAgreementAcceptance,
   refreshToken,
   resetPassword,

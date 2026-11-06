@@ -8,11 +8,13 @@ import {
   authRequest,
   getDevAccessStatus,
   isTwoFactorRequiredPayload,
+  loginWithAuthenticator as loginWithAuthenticatorApi,
   requestDevRole,
   resetPassword,
   sendRegisterEmailCode as sendRegisterEmailCodeApi,
   sendResetPasswordEmailCode as sendResetPasswordEmailCodeApi,
 } from '@/api/auth'
+import type { AuthPayload } from '@/api/auth'
 import { HttpError } from '@/api/http'
 import type { AuthSession } from '@/stores/auth/session'
 import type { LoginResult } from '@/stores/auth/types'
@@ -104,14 +106,40 @@ export function createAuthActions(session: AuthSession) {
         return {
           requiresTwoFactor: true,
           username: payload.username,
+          delivery: payload.delivery,
         }
       }
-      applyAuthPayload(payload)
-      if (!payload.username || !payload.role) {
-        await initializeSession(true)
-      } else {
-        await fetchPrivileges()
-      }
+      await finishLogin(payload)
+      return { requiresTwoFactor: false }
+    } finally {
+      loading.value = false
+    }
+  }
+
+  /** 登录成功后的共同收尾：落令牌，再按响应是否带角色快照决定走完整初始化还是只刷权限。 */
+  async function finishLogin(payload: AuthPayload) {
+    applyAuthPayload(payload)
+    if (!payload.username || !payload.role) {
+      await initializeSession(true)
+    } else {
+      await fetchPrivileges()
+    }
+  }
+
+  /** 身份验证器免密登录：登录名 + 6 位动态码，成功后与密码登录走同一套收尾。 */
+  async function loginWithAuthenticator(
+    usernameInput: string,
+    codeInput: string,
+    turnstileToken?: string,
+  ): Promise<LoginResult> {
+    loading.value = true
+    try {
+      const payload = await loginWithAuthenticatorApi(
+        usernameInput,
+        codeInput,
+        turnstileToken,
+      )
+      await finishLogin(payload)
       return { requiresTwoFactor: false }
     } finally {
       loading.value = false
@@ -206,6 +234,7 @@ export function createAuthActions(session: AuthSession) {
   return {
     ensureDevAccess,
     login,
+    loginWithAuthenticator,
     register,
     sendRegisterEmailCode,
     sendResetPasswordEmailCode,

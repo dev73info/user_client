@@ -22,6 +22,9 @@ const props = defineProps({
   authEmailCode: { type: String, default: '' },
   authInviteCode: { type: String, default: '' },
   loginRequiresTwoFactor: { type: Boolean, default: false },
+  loginTwoFactorDelivery: { type: String as PropType<'email' | 'totp'>, default: 'email' },
+  loginAuthenticatorMode: { type: Boolean, default: false },
+  authAuthenticatorCode: { type: String, default: '' },
   acceptTerms: { type: Boolean, default: false },
   githubLoginLoading: { type: Boolean, default: false },
   wechatLoginLoading: { type: Boolean, default: false },
@@ -50,9 +53,11 @@ const emit = defineEmits<{
   (e: 'update:authPassword', value: string): void
   (e: 'update:authEmail', value: string): void
   (e: 'update:authEmailCode', value: string): void
+  (e: 'update:authAuthenticatorCode', value: string): void
   (e: 'update:authInviteCode', value: string): void
   (e: 'update:acceptTerms', value: boolean): void
   (e: 'update:turnstileToken', value: string): void
+  (e: 'toggle-authenticator', enabled: boolean): void
 }>()
 
 /**
@@ -219,6 +224,9 @@ function canSubmitAuth(): boolean {
         :auth-email-code="authEmailCode"
         :auth-invite-code="authInviteCode"
         :login-requires-two-factor="loginRequiresTwoFactor"
+        :login-two-factor-delivery="loginTwoFactorDelivery"
+        :login-authenticator-mode="loginAuthenticatorMode"
+        :auth-authenticator-code="authAuthenticatorCode"
         :accept-terms="acceptTerms"
         :send-code-loading="sendCodeLoading"
         :send-code-countdown="sendCodeCountdown"
@@ -235,9 +243,11 @@ function canSubmitAuth(): boolean {
         @update:auth-password="emit('update:authPassword', $event)"
         @update:auth-email="emit('update:authEmail', $event)"
         @update:auth-email-code="emit('update:authEmailCode', $event)"
+        @update:auth-authenticator-code="emit('update:authAuthenticatorCode', $event)"
         @update:auth-invite-code="emit('update:authInviteCode', $event)"
         @update:accept-terms="emit('update:acceptTerms', $event)"
         @update:turnstile-token="emit('update:turnstileToken', $event)"
+        @toggle-authenticator="emit('toggle-authenticator', $event)"
       />
 
       <OtherLoginMethods
@@ -275,7 +285,7 @@ function canSubmitAuth(): boolean {
             authLoading
               ? '登录中...'
               : authMode === 'login'
-                ? loginRequiresTwoFactor
+                ? loginRequiresTwoFactor && !loginAuthenticatorMode
                   ? '验证并登录'
                   : '登录'
                 : authMode === 'register'

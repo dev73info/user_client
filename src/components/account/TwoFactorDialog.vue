@@ -23,7 +23,11 @@
  */
 import { computed, ref } from 'vue'
 
+import type { ProfileTotpSetup } from '@/api/settings'
 import { TDialog, TTag } from 'ui_73info'
+
+import TotpSettingsPanel from './TotpSettingsPanel.vue'
+import TwoFactorMethodTabs from './TwoFactorMethodTabs.vue'
 
 const props = defineProps<{
   /** 弹窗是否打开：父级持有。 */
@@ -42,6 +46,26 @@ const props = defineProps<{
   emailBound: boolean
   /** 「当前邮箱：…」那行文案（未绑定时是「未绑定邮箱」，由父级折算）。 */
   emailLabel: string
+  /** 身份验证器是否已启用。 */
+  totpEnabled: boolean
+  /** 身份验证器状态查询进行中。 */
+  totpStatusLoading: boolean
+  /** 身份验证器启用时间，未启用为 null。 */
+  totpConfirmedAt: string | null
+  /** 待确认的绑定信息；非空时展开二维码与动态码输入。 */
+  totpSetup: ProfileTotpSetup | null
+  /** 生成绑定信息进行中。 */
+  totpSetupLoading: boolean
+  /** 绑定动态码草稿。 */
+  totpBindCode: string
+  /** 启用身份验证器进行中。 */
+  totpEnableSubmitting: boolean
+  /** 停用确认是否展开。 */
+  totpDisableVisible: boolean
+  /** 停用动态码草稿。 */
+  totpDisableCode: string
+  /** 停用身份验证器进行中。 */
+  totpDisableSubmitting: boolean
 }>()
 
 const emit = defineEmits<{
@@ -55,10 +79,28 @@ const emit = defineEmits<{
   'send-code': []
   /** 点了「保存设置」。 */
   submit: []
+  /** 点了「生成绑定二维码」。 */
+  'start-totp-setup': []
+  /** 取消绑定。 */
+  'cancel-totp-setup': []
+  /** 绑定动态码输入即回传。 */
+  'update:totp-bind-code': [code: string]
+  /** 点了「确认启用」。 */
+  'confirm-enable-totp': []
+  /** 点了「停用」。 */
+  'start-totp-disable': []
+  /** 取消停用。 */
+  'cancel-totp-disable': []
+  /** 停用动态码输入即回传。 */
+  'update:totp-disable-code': [code: string]
+  /** 点了「确认停用」。 */
+  'confirm-disable-totp': []
+  /** 点了「复制密钥」。 */
+  'copy-totp-secret': []
 }>()
 
 /** 验证方式页签：纯 UI 态，手机号那条一直是灰的，切不过去。 */
-const method = ref<'email' | 'mobile'>('email')
+const method = ref<'email' | 'mobile' | 'totp'>('email')
 
 /** 受控输入：取值来自父级，写入立刻回传（组件内不另存草稿）。 */
 const code = computed({
@@ -82,27 +124,11 @@ function onToggle(event: Event): void {
     @update:open="emit('update:visible', $event)"
   >
     <div class="dialog-form">
-      <div class="account-2fa-methods">
-        <button
-          class="account-2fa-method"
-          :class="{ active: method === 'email' }"
-          type="button"
-          @click="method = 'email'"
-        >
-          <span class="account-2fa-method__name">邮箱验证码</span>
-          <small class="account-2fa-method__desc">通过绑定邮箱接收验证码</small>
-        </button>
-        <button
-          class="account-2fa-method"
-          :class="{ active: method === 'mobile' }"
-          type="button"
-          disabled
-        >
-          <span class="account-2fa-method__name">手机号验证码</span>
-          <small class="account-2fa-method__desc">通过绑定手机号接收验证码</small>
-          <TTag size="sm" tone="info" class="account-2fa-method__tag">暂不支持</TTag>
-        </button>
-      </div>
+      <TwoFactorMethodTabs
+        :method="method"
+        :totp-enabled="props.totpEnabled"
+        @update:method="method = $event"
+      />
 
       <template v-if="method === 'email'">
         <label class="account-security-toggle-row">
@@ -149,9 +175,32 @@ function onToggle(event: Event): void {
         </div>
       </template>
 
-      <div v-else class="account-2fa-unsupported">
+      <div v-else-if="method === 'mobile'" class="account-2fa-unsupported">
         <TTag tone="info">手机号两步验证暂不支持，请使用邮箱验证码</TTag>
       </div>
+
+      <TotpSettingsPanel
+        v-else
+        :enabled="props.totpEnabled"
+        :confirmed-at="props.totpConfirmedAt"
+        :status-loading="props.totpStatusLoading"
+        :setup="props.totpSetup"
+        :setup-loading="props.totpSetupLoading"
+        :bind-code="props.totpBindCode"
+        :enable-submitting="props.totpEnableSubmitting"
+        :disable-visible="props.totpDisableVisible"
+        :disable-code="props.totpDisableCode"
+        :disable-submitting="props.totpDisableSubmitting"
+        @start-setup="emit('start-totp-setup')"
+        @cancel-setup="emit('cancel-totp-setup')"
+        @update:bind-code="emit('update:totp-bind-code', $event)"
+        @confirm-enable="emit('confirm-enable-totp')"
+        @start-disable="emit('start-totp-disable')"
+        @cancel-disable="emit('cancel-totp-disable')"
+        @update:disable-code="emit('update:totp-disable-code', $event)"
+        @confirm-disable="emit('confirm-disable-totp')"
+        @copy-secret="emit('copy-totp-secret')"
+      />
     </div>
   </TDialog>
 </template>
@@ -264,59 +313,6 @@ function onToggle(event: Event): void {
 
 .account-security-actions input::placeholder {
   color: var(--73-ink-placeholder);
-}
-
-.account-2fa-methods {
-  display: grid;
-  gap: 12px;
-  margin-bottom: 16px;
-}
-
-.account-2fa-methods > * {
-  min-width: 0;
-}
-
-.account-2fa-method {
-  position: relative;
-  display: grid;
-  gap: 4px;
-  padding: 14px 16px;
-  border: 1px solid color-mix(in srgb, var(--73-accent-soft) 92%, transparent);
-  border-radius: 14px;
-  background: var(--73-app-grad-accent-soft-02);
-  color: var(--73-ink);
-  text-align: left;
-  cursor: pointer;
-  transition:
-    border-color 0.18s ease,
-    box-shadow 0.18s ease,
-    background 0.18s ease;
-}
-
-.account-2fa-method.active {
-  border-color: color-mix(in srgb, var(--73-accent) 92%, transparent);
-  box-shadow: 0 10px 26px color-mix(in srgb, var(--73-accent) 14%, transparent);
-  background: var(--73-app-grad-accent-soft-01);
-}
-
-.account-2fa-method:disabled {
-  cursor: not-allowed;
-  opacity: 0.66;
-}
-
-.account-2fa-method__name {
-  font-weight: 800;
-  font-size: 14px;
-}
-
-.account-2fa-method__desc {
-  color: var(--73-ink-muted);
-  font-size: 12px;
-}
-
-.account-2fa-method__tag {
-  justify-self: start;
-  margin-top: 2px;
 }
 
 .account-2fa-unsupported {

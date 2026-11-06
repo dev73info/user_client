@@ -30,7 +30,12 @@ function shouldRedirectOnUnauthorized(path: string): boolean {
   const authPath = normalizedPath.startsWith('/api/')
     ? normalizedPath.slice('/api'.length)
     : normalizedPath
-  return !new Set(['/auth/login', '/auth/register', '/auth/reset-password']).has(authPath)
+  return !new Set([
+    '/auth/login',
+    '/auth/login/authenticator',
+    '/auth/register',
+    '/auth/reset-password',
+  ]).has(authPath)
 }
 
 const httpClient = createHttpClient({

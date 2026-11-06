@@ -6,6 +6,7 @@ import { useAccountCloseAccount } from './useAccountCloseAccount'
 import { useAccountProviderBinding } from './useAccountProviderBinding'
 import { useAccountSeal } from './useAccountSeal'
 import { useAccountSecuritySettings } from './useAccountSecuritySettings'
+import { useAccountTotpSettings } from './useAccountTotpSettings'
 import { useAccountTwoFactorSettings } from './useAccountTwoFactorSettings'
 import { useAccountUsername } from './useAccountUsername'
 import type { AccountEntryActions, AccountEntryGroupsOptions } from './useAccountEntryGroups'
@@ -85,6 +86,7 @@ export function useAccountDialogRegistry(deps: AccountDialogDeps) {
   const provider = useAccountProviderBinding()
   const username = useAccountUsername()
   const twoFactor = useAccountTwoFactorSettings({ profileEmail })
+  const totp = useAccountTotpSettings()
   const security = useAccountSecuritySettings({
     profileEmail,
     applyUsername: username.applyUsername,
@@ -195,7 +197,9 @@ export function useAccountDialogRegistry(deps: AccountDialogDeps) {
   }
   const securityEntry: AccountEntryGroupsOptions['security'] = {
     profileEmail,
-    twoFactorEnabled: twoFactor.twoFactorEnabled,
+    twoFactorEnabled: computed(
+      () => twoFactor.twoFactorEnabled.value || totp.totpEnabled.value,
+    ),
     wechatBound: provider.wechatBound,
     wechatBindingLoading: provider.wechatBindingLoading,
     providerBindingLoading: provider.providerBindingLoading,
@@ -225,6 +229,7 @@ export function useAccountDialogRegistry(deps: AccountDialogDeps) {
     openUsernameDialog: username.openUsernameDialog,
     openTwoFactorDialog: () => {
       twoFactor.twoFactorDialogVisible.value = true
+      void totp.loadTotpStatus()
     },
     openAccountCloseDialog: closeAccount.openAccountCloseDialog,
     toggleWechatBinding: provider.toggleWechatBinding,
@@ -240,6 +245,7 @@ export function useAccountDialogRegistry(deps: AccountDialogDeps) {
     settle,
     security: { ...security, ...username },
     twoFactor,
+    totp,
     asign,
     provider,
     seal,

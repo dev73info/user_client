@@ -108,6 +108,16 @@ describe('TwoFactorDialog：两步验证弹窗', () => {
       changed: true,
       emailBound: true,
       emailLabel: 'old@example.com',
+      totpEnabled: false,
+      totpStatusLoading: false,
+      totpConfirmedAt: null,
+      totpSetup: null,
+      totpSetupLoading: false,
+      totpBindCode: '',
+      totpEnableSubmitting: false,
+      totpDisableVisible: false,
+      totpDisableCode: '',
+      totpDisableSubmitting: false,
       ...overrides,
     })
   }
@@ -116,10 +126,22 @@ describe('TwoFactorDialog：两步验证弹窗', () => {
     const wrapper = mountTwoFactor()
 
     const methods = wrapper.findAll('.account-2fa-method')
-    expect(methods).toHaveLength(2)
+    expect(methods).toHaveLength(3)
     expect(methods[0]!.classes()).toContain('active')
     expect(methods[1]!.attributes('disabled')).toBeDefined()
+    expect(methods[2]!.text()).toContain('身份验证器')
     expect(wrapper.text()).toContain('当前邮箱：old@example.com')
+    wrapper.unmount()
+  })
+
+  it('切到身份验证器页签后回传生成绑定二维码的动作', async () => {
+    const wrapper = mountTwoFactor()
+    const totpMethod = wrapper.findAll('.account-2fa-method')[2]!
+
+    await totpMethod.trigger('click')
+    expect(totpMethod.classes()).toContain('active')
+    await buttonByText(wrapper, '生成绑定二维码').trigger('click')
+    expect(wrapper.emitted('start-totp-setup')).toHaveLength(1)
     wrapper.unmount()
   })
 

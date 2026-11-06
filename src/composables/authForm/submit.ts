@@ -28,6 +28,9 @@ export function useAuthSubmit({
     authTurnstileToken,
     acceptTerms,
     loginRequiresTwoFactor,
+    loginTwoFactorDelivery,
+    loginAuthenticatorMode,
+    authAuthenticatorCode,
     sendCodeLoading,
     sendCodeCountdown,
     startSendCodeCountdown,
@@ -41,6 +44,10 @@ export function useAuthSubmit({
     sendCodeLoading.value = true
     try {
       if (mode.value === 'login' && loginRequiresTwoFactor.value) {
+        // 身份验证器动态码没有「重新发送」：码由 App 在本地生成，不经过邮箱。
+        if (loginTwoFactorDelivery.value === 'totp') {
+          return
+        }
         const username = authUsername.value.trim()
         const password = authPassword.value
         if (!username || !password) {
@@ -81,6 +88,9 @@ export function useAuthSubmit({
   async function submitAuth() {
     try {
       if (mode.value === 'login') {
+        if (loginAuthenticatorMode.value) {
+          return await submitAuthenticatorLogin()
+        }
         if (!acceptTerms.value) {
           TMessage.error('请先同意用户协议、隐私政策和支付与退款说明')
           return false
@@ -97,7 +107,11 @@ export function useAuthSubmit({
           return false
         }
         if (loginRequiresTwoFactor.value && twoFactorCode.length !== 6) {
-          TMessage.error('请输入 6 位邮箱验证码')
+          TMessage.error(
+            loginTwoFactorDelivery.value === 'totp'
+              ? '请输入 6 位动态码'
+              : '请输入 6 位邮箱验证码',
+          )
           return false
         }
         const result = await auth.login(
@@ -108,11 +122,17 @@ export function useAuthSubmit({
         )
         if (result.requiresTwoFactor) {
           loginRequiresTwoFactor.value = true
+          loginTwoFactorDelivery.value = result.delivery ?? 'email'
           authEmailCode.value = ''
-          TMessage.success('验证码已发送，请查收邮箱')
+          TMessage.success(
+            loginTwoFactorDelivery.value === 'totp'
+              ? '请输入 Authenticator 动态码'
+              : '验证码已发送，请查收邮箱',
+          )
           return false
         }
         loginRequiresTwoFactor.value = false
+        loginTwoFactorDelivery.value = 'email'
         TMessage.success('登录成功')
         return true
       }
@@ -181,8 +201,44 @@ export function useAuthSubmit({
     }
   }
 
+  /**
+   * 身份验证器免密登录：用户名（或主邮箱）+ 6 位动态码，不提交密码。
+   *
+   * 后端对「账号不存在 / 未绑定 / 动态码不对」统一回 401，前端也只显示一句
+   * 「登录名或动态码不正确」，不提供逐项排查线索。
+   */
+  async function submitAuthenticatorLogin(): Promise<boolean> {
+    try {
+      if (!acceptTerms.value) {
+        TMessage.error('请先同意用户协议、隐私政策和支付与退款说明')
+        return false
+      }
+      const username = authUsername.value.trim()
+      const code = authAuthenticatorCode.value.trim()
+      if (!username) {
+        TMessage.error('请输入用户名或邮箱')
+        return false
+      }
+      if (code.length !== 6) {
+        TMessage.error('请输入 6 位动态码')
+        return false
+      }
+      await auth.loginWithAuthenticator(
+        username,
+        code,
+        authTurnstileToken.value || undefined,
+      )
+      TMessage.success('登录成功')
+      return true
+    } catch (err) {
+      TMessage.error(err instanceof Error ? err.message : '登录失败')
+      return false
+    }
+  }
+
   return {
     sendAuthCode,
     submitAuth,
+    submitAuthenticatorLogin,
   }
 }

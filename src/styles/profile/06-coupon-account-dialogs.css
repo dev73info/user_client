@@ -147,7 +147,7 @@
 }
 
 .account-2fa-methods {
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
 /* R047 断点收敛：这条原档位 720px → 640px（本文件上方已有三块 640px）。

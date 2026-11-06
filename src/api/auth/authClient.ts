@@ -14,6 +14,7 @@ const authClient = createAuthApiClient({
 
 export const {
   authRequest,
+  loginWithAuthenticator,
   sendRegisterEmailCode,
   sendResetPasswordEmailCode,
   resetPassword,

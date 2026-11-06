@@ -28,6 +28,9 @@ const {
   authTurnstileToken,
   acceptTerms,
   loginRequiresTwoFactor,
+  loginTwoFactorDelivery,
+  loginAuthenticatorMode,
+  authAuthenticatorCode,
   sendCodeLoading,
   sendCodeCountdown,
   githubLoading,
@@ -92,6 +95,14 @@ function closeAuth() {
   resetAuthForm()
 }
 
+/** 切到 / 退出「Authenticator 免密登录」：清掉两种动态码草稿，避免串码。 */
+function toggleAuthenticator(enabled: boolean) {
+  loginAuthenticatorMode.value = enabled
+  loginRequiresTwoFactor.value = false
+  authEmailCode.value = ''
+  authAuthenticatorCode.value = ''
+}
+
 async function handleSubmitAuth() {
   const ok = await submitAuth()
   if (!ok) {
@@ -147,10 +158,13 @@ onMounted(() => {
       v-model:authPassword="authPassword"
       v-model:authEmail="authEmail"
       v-model:authEmailCode="authEmailCode"
+      v-model:authAuthenticatorCode="authAuthenticatorCode"
       v-model:turnstileToken="authTurnstileToken"
       v-model:acceptTerms="acceptTerms"
       :authLoading="auth.loading"
       :loginRequiresTwoFactor="loginRequiresTwoFactor"
+      :loginTwoFactorDelivery="loginTwoFactorDelivery"
+      :loginAuthenticatorMode="loginAuthenticatorMode"
       :githubLoginLoading="githubLoading"
       :wechatLoginLoading="wechatLoginLoading"
       :qqLoginLoading="qqLoginLoading"
@@ -168,6 +182,7 @@ onMounted(() => {
       @loginWithQq="loginWithQq"
       @loginWithGitee="loginWithGitee"
       @sendAuthCode="sendAuthCode"
+      @toggle-authenticator="toggleAuthenticator"
       @change-mode="changeAuthMode"
     />
   </section>

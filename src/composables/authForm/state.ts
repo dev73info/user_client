@@ -17,6 +17,12 @@ export function useAuthFormState() {
   const authTurnstileToken = ref('')
   const acceptTerms = ref(false)
   const loginRequiresTwoFactor = ref(false)
+  /** 密码校验通过后第二步用哪种动态码（后端 202 的 `delivery`）。 */
+  const loginTwoFactorDelivery = ref<'email' | 'totp'>('email')
+  /** 登录面板是否切到「Authenticator 免密登录」。 */
+  const loginAuthenticatorMode = ref(false)
+  /** 免密登录的动态码草稿（与邮箱验证码分开，切换模式时互不污染）。 */
+  const authAuthenticatorCode = ref('')
   const sendCodeLoading = ref(false)
   const sendCodeCountdown = ref(0)
   let sendCodeTimer: ReturnType<typeof setInterval> | null = null
@@ -39,6 +45,9 @@ export function useAuthFormState() {
     authTurnstileToken.value = ''
     acceptTerms.value = false
     loginRequiresTwoFactor.value = false
+    loginTwoFactorDelivery.value = 'email'
+    loginAuthenticatorMode.value = false
+    authAuthenticatorCode.value = ''
     sendCodeLoading.value = false
     sendCodeCountdown.value = 0
     clearSendCodeTimer()
@@ -70,6 +79,9 @@ export function useAuthFormState() {
     authTurnstileToken,
     acceptTerms,
     loginRequiresTwoFactor,
+    loginTwoFactorDelivery,
+    loginAuthenticatorMode,
+    authAuthenticatorCode,
     sendCodeLoading,
     sendCodeCountdown,
     resetAuthForm,

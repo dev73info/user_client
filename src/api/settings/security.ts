@@ -1,6 +1,7 @@
 import { authHeader, requestJson, requestVoid } from '@/api/http'
 import { md5Hex } from '@/shared/auth/md5'
 
+import type { components } from '@/api/generated/schema'
 import type { ProfileResponse } from './types'
 
 export async function sendProfileEmailChangeCode(token: string, newEmail: string): Promise<void> {
@@ -111,5 +112,74 @@ export async function updateProfileTwoFactor(
       body: JSON.stringify({ two_factor_enabled: enabled, email_code: emailCode }),
     },
     '更新两步验证失败',
+  )
+}
+
+/* ------------------------------------------------------------------ 身份验证器（TOTP） */
+
+type TotpStatusResponse = components['schemas']['TotpStatusResponse']
+type TotpSetupResponse = components['schemas']['TotpSetupResponse']
+type TotpSwitchResponse = components['schemas']['TotpSwitchResponse']
+
+export type ProfileTotpStatus = TotpStatusResponse
+export type ProfileTotpSetup = TotpSetupResponse
+export type ProfileTotpSwitch = TotpSwitchResponse
+
+/** 只返回是否启用与启用时间，密钥不回显。 */
+export async function getProfileTotp(token: string): Promise<TotpStatusResponse> {
+  return requestJson<TotpStatusResponse>(
+    '/settings/profile/totp',
+    {
+      headers: authHeader(token),
+    },
+    '加载身份验证器状态失败',
+  )
+}
+
+/** 生成待确认密钥与 `otpauth://` 地址；重复调用会覆盖尚未确认的旧密钥。 */
+export async function setupProfileTotp(token: string): Promise<TotpSetupResponse> {
+  return requestJson<TotpSetupResponse>(
+    '/settings/profile/totp/setup',
+    {
+      method: 'POST',
+      headers: authHeader(token),
+    },
+    '生成绑定密钥失败',
+  )
+}
+
+export async function enableProfileTotp(
+  token: string,
+  code: string,
+): Promise<TotpSwitchResponse> {
+  return requestJson<TotpSwitchResponse>(
+    '/settings/profile/totp/enable',
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...authHeader(token),
+      },
+      body: JSON.stringify({ code }),
+    },
+    '启用身份验证器失败',
+  )
+}
+
+export async function disableProfileTotp(
+  token: string,
+  code: string,
+): Promise<TotpSwitchResponse> {
+  return requestJson<TotpSwitchResponse>(
+    '/settings/profile/totp/disable',
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...authHeader(token),
+      },
+      body: JSON.stringify({ code }),
+    },
+    '停用身份验证器失败',
   )
 }

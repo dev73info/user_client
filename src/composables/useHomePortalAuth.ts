@@ -46,6 +46,9 @@ export function useHomePortalAuth(options: HomePortalAuthOptions) {
     authTurnstileToken,
     acceptTerms,
     loginRequiresTwoFactor,
+    loginTwoFactorDelivery,
+    loginAuthenticatorMode,
+    authAuthenticatorCode,
     sendCodeLoading,
     sendCodeCountdown,
     githubLoading,
@@ -162,6 +165,14 @@ export function useHomePortalAuth(options: HomePortalAuthOptions) {
     await sendAuthCodeAction()
   }
 
+  /** 切到 / 退出「Authenticator 免密登录」：另一种方式的草稿清掉，避免切回来时串码。 */
+  function toggleAuthenticator(enabled: boolean) {
+    loginAuthenticatorMode.value = enabled
+    loginRequiresTwoFactor.value = false
+    authEmailCode.value = ''
+    authAuthenticatorCode.value = ''
+  }
+
   async function submitAuth() {
     const result = await submitAuthAction()
     if (result) {
@@ -192,11 +203,14 @@ export function useHomePortalAuth(options: HomePortalAuthOptions) {
     authPassword: authPassword.value,
     authEmail: authEmail.value,
     authEmailCode: authEmailCode.value,
+    authAuthenticatorCode: authAuthenticatorCode.value,
     authInviteCode: authInviteCode.value,
     turnstileToken: authTurnstileToken.value,
     acceptTerms: acceptTerms.value,
     authLoading: auth.loading,
     loginRequiresTwoFactor: loginRequiresTwoFactor.value,
+    loginTwoFactorDelivery: loginTwoFactorDelivery.value,
+    loginAuthenticatorMode: loginAuthenticatorMode.value,
     githubLoginLoading: githubLoading.value,
     wechatLoginLoading: wechatLoginLoading.value,
     qqLoginLoading: qqLoginLoading.value,
@@ -214,6 +228,7 @@ export function useHomePortalAuth(options: HomePortalAuthOptions) {
     onLoginWithQq: loginWithQq,
     onLoginWithGitee: loginWithGitee,
     onSendAuthCode: sendAuthCode,
+    onToggleAuthenticator: toggleAuthenticator,
     onChangeMode: openAuth,
     'onUpdate:authUsername': (value: string) => {
       authUsername.value = value
@@ -226,6 +241,9 @@ export function useHomePortalAuth(options: HomePortalAuthOptions) {
     },
     'onUpdate:authEmailCode': (value: string) => {
       authEmailCode.value = value
+    },
+    'onUpdate:authAuthenticatorCode': (value: string) => {
+      authAuthenticatorCode.value = value
     },
     'onUpdate:authInviteCode': (value: string) => {
       authInviteCode.value = value

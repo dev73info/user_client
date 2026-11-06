@@ -31,6 +31,9 @@ export function useAuthForm(mode: Ref<AuthMode>) {
     authTurnstileToken,
     acceptTerms,
     loginRequiresTwoFactor,
+    loginTwoFactorDelivery,
+    loginAuthenticatorMode,
+    authAuthenticatorCode,
     sendCodeLoading,
     sendCodeCountdown,
     resetAuthForm,
@@ -59,12 +62,19 @@ export function useAuthForm(mode: Ref<AuthMode>) {
 
   const { qqLoginLoading, loginWithQq } = useQqLogin({ auth, router, acceptTerms })
 
-  const { sendAuthCode, submitAuth } = useAuthSubmit({ mode, auth, state })
+  const { sendAuthCode, submitAuth, submitAuthenticatorLogin } = useAuthSubmit({
+    mode,
+    auth,
+    state,
+  })
 
   function changeAuthMode(modeValue: AuthMode) {
     mode.value = modeValue
     loginRequiresTwoFactor.value = false
+    loginTwoFactorDelivery.value = 'email'
+    loginAuthenticatorMode.value = false
     authEmailCode.value = ''
+    authAuthenticatorCode.value = ''
   }
 
   void loadOauthStatus()
@@ -80,6 +90,9 @@ export function useAuthForm(mode: Ref<AuthMode>) {
     authTurnstileToken,
     acceptTerms,
     loginRequiresTwoFactor,
+    loginTwoFactorDelivery,
+    loginAuthenticatorMode,
+    authAuthenticatorCode,
     sendCodeLoading,
     sendCodeCountdown,
     githubLoading,
@@ -97,6 +110,7 @@ export function useAuthForm(mode: Ref<AuthMode>) {
     loginWithWechat,
     sendAuthCode,
     submitAuth,
+    submitAuthenticatorLogin,
     changeAuthMode,
     wechatQrLogin,
     closeWechatQrLogin,

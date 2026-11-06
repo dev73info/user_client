@@ -9,6 +9,8 @@ import { HttpError } from '@/api/http'
 export type LoginResult = {
   requiresTwoFactor: boolean
   username?: string
+  /** 第二步校验用哪种动态码：邮箱验证码或身份验证器动态码。 */
+  delivery?: 'email' | 'totp'
 }
 
 export function isAuthRejected(error: unknown): boolean {

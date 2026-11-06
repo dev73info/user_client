@@ -14,6 +14,9 @@ const props = defineProps({
   authEmailCode: { type: String, default: '' },
   authInviteCode: { type: String, default: '' },
   loginRequiresTwoFactor: { type: Boolean, default: false },
+  loginTwoFactorDelivery: { type: String as () => 'email' | 'totp', default: 'email' },
+  loginAuthenticatorMode: { type: Boolean, default: false },
+  authAuthenticatorCode: { type: String, default: '' },
   acceptTerms: { type: Boolean, default: false },
   sendCodeLoading: { type: Boolean, default: false },
   sendCodeCountdown: { type: Number, default: 0 },
@@ -33,9 +36,11 @@ const emit = defineEmits<{
   (e: 'update:authPassword', value: string): void
   (e: 'update:authEmail', value: string): void
   (e: 'update:authEmailCode', value: string): void
+  (e: 'update:authAuthenticatorCode', value: string): void
   (e: 'update:authInviteCode', value: string): void
   (e: 'update:acceptTerms', value: boolean): void
   (e: 'update:turnstileToken', value: string): void
+  (e: 'toggle-authenticator', enabled: boolean): void
 }>()
 
 const authMode = computed(() => props.authMode)
@@ -45,6 +50,9 @@ const authEmail = computed(() => props.authEmail)
 const authEmailCode = computed(() => props.authEmailCode)
 const authInviteCode = computed(() => props.authInviteCode)
 const loginRequiresTwoFactor = computed(() => props.loginRequiresTwoFactor)
+const loginTwoFactorDelivery = computed(() => props.loginTwoFactorDelivery)
+const loginAuthenticatorMode = computed(() => props.loginAuthenticatorMode)
+const authAuthenticatorCode = computed(() => props.authAuthenticatorCode)
 const acceptTerms = computed(() => props.acceptTerms)
 const sendCodeLoading = computed(() => props.sendCodeLoading)
 const sendCodeCountdown = computed(() => props.sendCodeCountdown)
@@ -100,6 +108,10 @@ function updateEmail(event: Event) {
 
 function updateEmailCode(event: Event) {
   emit('update:authEmailCode', (event.target as HTMLInputElement).value)
+}
+
+function updateAuthenticatorCode(event: Event) {
+  emit('update:authAuthenticatorCode', (event.target as HTMLInputElement).value)
 }
 
 function updateInviteCode(event: Event) {
@@ -163,7 +175,20 @@ function updateAcceptTerms(event: Event) {
     </template>
 
     <template v-if="authMode === 'login'">
-      <label>
+      <label v-if="loginAuthenticatorMode">
+        动态码
+        <input
+          :value="authAuthenticatorCode"
+          type="text"
+          inputmode="numeric"
+          maxlength="6"
+          autocomplete="one-time-code"
+          placeholder="输入 6 位动态码"
+          @input="updateAuthenticatorCode"
+          @keydown.enter.prevent="submitOnEnter"
+        />
+      </label>
+      <label v-if="!loginAuthenticatorMode">
         密码
         <input
           :value="authPassword"
@@ -175,8 +200,20 @@ function updateAcceptTerms(event: Event) {
         />
       </label>
       <label v-if="loginRequiresTwoFactor">
-        邮箱验证码
-        <div class="inline-inputs auth-code-row">
+        {{ loginTwoFactorDelivery === 'totp' ? '动态码' : '邮箱验证码' }}
+        <div v-if="loginTwoFactorDelivery === 'totp'" class="inline-inputs auth-code-row">
+          <input
+            :value="authEmailCode"
+            type="text"
+            inputmode="numeric"
+            maxlength="6"
+            autocomplete="one-time-code"
+            placeholder="输入 6 位动态码"
+            @input="updateEmailCode"
+            @keydown.enter.prevent="submitOnEnter"
+          />
+        </div>
+        <div v-else class="inline-inputs auth-code-row">
           <input
             :value="authEmailCode"
             type="text"
@@ -255,6 +292,14 @@ function updateAcceptTerms(event: Event) {
         @update:token="emit('update:turnstileToken', $event)"
       />
       <div v-if="authMode === 'login'" class="auth-turnstile-row__actions">
+        <button
+          v-if="!loginRequiresTwoFactor"
+          class="auth-link"
+          type="button"
+          @click="emit('toggle-authenticator', !loginAuthenticatorMode)"
+        >
+          {{ loginAuthenticatorMode ? '返回密码登录' : '使用 Authenticator 登录' }}
+        </button>
         <button class="auth-link" type="button" @click="changeMode('reset')">忘记密码？</button>
         <button
           v-if="preferInAppOauth"

@@ -15,6 +15,8 @@ export type {
   UpdateSubscriptionsRequest,
 } from './types'
 
+export type { ProfileTotpSetup, ProfileTotpStatus, ProfileTotpSwitch } from './security'
+
 export {
   getProfile,
   updateProfile,
@@ -26,9 +28,13 @@ export {
 } from './profile'
 
 export {
+  disableProfileTotp,
+  enableProfileTotp,
+  getProfileTotp,
   sendProfileEmailChangeCode,
   sendProfilePasswordCode,
   sendProfileTwoFactorCode,
+  setupProfileTotp,
   updateProfileEmail,
   updateProfilePassword,
   updateProfileTwoFactor,
