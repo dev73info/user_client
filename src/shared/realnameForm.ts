@@ -175,6 +175,83 @@ export function validateRealnameDraft(fields: RealnameDraftFields): string {
 }
 
 /**
+ * 手动填写认证的缺失项清单：空清单即可提交。
+ *
+ * 手动路径走 `POST /api/realname/`（平台人工审核），个人只要姓名 / 证件号 / 手机号；
+ * 企业还要企业名称、统一社会信用代码、经办人信息、营业执照与企业进件七项。
+ * 与 OCR 路径的差异是**不要求身份证照片**——证件信息由用户自己填。
+ */
+export function manualRealnameMissing(fields: RealnameDraftFields): string[] {
+  const missing: string[] = []
+  if (!fields.realName.trim()) missing.push('姓名')
+  if (!fields.idCardNo.trim()) missing.push('身份证号')
+  if (!isValidMobile(fields.mobile)) missing.push('手机号')
+  if (isBusinessAuthType(fields.authType)) {
+    if (!fields.companyName.trim()) missing.push('企业名称')
+    if (!fields.unifiedSocialCreditCode.trim()) missing.push('统一社会信用代码')
+    if (!fields.operatorName.trim()) missing.push('经办人姓名')
+    if (!fields.operatorIdCardNo.trim()) missing.push('经办人身份证号')
+    if (!fields.businessLicenseFile.trim()) missing.push('营业执照')
+    missing.push(...derivedEnterpriseMissing(fields))
+    if (!fields.legalCertBeginOn.trim() || !fields.legalCertExpiresOn.trim()) {
+      missing.push('法人证件有效期')
+    }
+  }
+  if (fields.guardianRequired && !fields.guardianConsent) missing.push('监护人同意')
+  if (fields.guardianRequired && !fields.guardianConsentFile.trim()) missing.push('监护人同意书')
+  return missing
+}
+
+export function validateManualRealnameDraft(fields: RealnameDraftFields): string {
+  const missing = manualRealnameMissing(fields)
+  return missing.length ? `请填写${missing.join('、')}` : ''
+}
+
+/**
+ * 手动填写认证的提交载荷。
+ *
+ * 只带非空字段；后端对个人要求姓名 / 证件号 / 手机号，对企业另要求营业执照与企业进件资料。
+ * 身份证照片不在这条路径的请求体里（契约本来就没有这两个字段）。
+ */
+export function buildManualRealnamePayload(
+  fields: RealnameDraftFields,
+  today: Date = new Date(),
+): SubmitRealnameVerificationPayload {
+  const payload: SubmitRealnameVerificationPayload = {
+    auth_type: fields.authType,
+  }
+  if (fields.realName.trim()) payload.real_name = fields.realName.trim()
+  if (fields.idCardNo.trim()) payload.id_card_no = fields.idCardNo.trim()
+  if (fields.mobile.trim()) payload.mobile = fields.mobile.trim()
+  if (fields.companyName.trim()) payload.company_name = fields.companyName.trim()
+  if (fields.unifiedSocialCreditCode.trim()) {
+    payload.unified_social_credit_code = fields.unifiedSocialCreditCode.trim()
+  }
+  if (fields.businessLicenseNo.trim()) payload.business_license_no = fields.businessLicenseNo.trim()
+  if (fields.businessLicenseFile.trim()) {
+    payload.business_license_file = fields.businessLicenseFile.trim()
+  }
+  if (fields.operatorName.trim()) payload.operator_name = fields.operatorName.trim()
+  if (fields.operatorIdCardNo.trim()) payload.operator_id_card_no = fields.operatorIdCardNo.trim()
+  if (isBusinessAuthType(fields.authType)) {
+    payload.company_prov_code = fields.companyProvCode.trim()
+    payload.company_area_code = fields.companyAreaCode.trim()
+    payload.company_address = fields.companyAddress.trim()
+    payload.business_scope = fields.businessScope.trim()
+    payload.business_license_expires_on = fields.businessLicenseExpiresOn.trim()
+    payload.legal_cert_begin_on = fields.legalCertBeginOn.trim()
+    payload.legal_cert_expires_on = fields.legalCertExpiresOn.trim()
+  }
+  if (idCardAgeBand(fields.authType, fields.idCardNo, today) === 'minor') {
+    payload.guardian_consent = fields.guardianConsent
+    if (fields.guardianConsentFile.trim()) {
+      payload.guardian_consent_file = fields.guardianConsentFile.trim()
+    }
+  }
+  return payload
+}
+
+/**
  * 组装提交载荷：空字段一律不出现在载荷里（后端按「未传」处理），
  * 企业进件资料只在该主体下传，监护人同意只对 14~18 周岁的未成年人传。
  */

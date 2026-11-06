@@ -5,6 +5,9 @@ import {
   businessLicenseDerivedNote,
   businessLicenseDerivedSummary,
   realnameEntryCopy,
+  realnameOverallStatus,
+  realnameOverallStatusText,
+  realnameOverallStatusTone,
   realnameStatusText,
   realnameStatusTone,
   realnameSubjectLabel,
@@ -69,7 +72,7 @@ describe('状态文案与语气', () => {
   it('没有记录写「未提交」，三种状态各有各的词', () => {
     expect(realnameStatusText(null)).toBe('未提交')
     expect(realnameStatusText(undefined)).toBe('未提交')
-    expect(realnameStatusText('approved')).toBe('已通过')
+    expect(realnameStatusText('approved')).toBe('已认证')
     expect(realnameStatusText('pending')).toBe('审核中')
     expect(realnameStatusText('rejected')).toBe('已驳回')
   })
@@ -79,6 +82,37 @@ describe('状态文案与语气', () => {
     expect(realnameStatusTone('approved')).toBe('success')
     expect(realnameStatusTone('pending')).toBe('warning')
     expect(realnameStatusTone('rejected')).toBe('danger')
+  })
+})
+
+describe('综合状态：爱签实名 + 渠道会员', () => {
+  it('爱签通过且渠道会员通过才算已认证', () => {
+    const approved = record({ status: 'approved' })
+    expect(realnameOverallStatus(approved, true)).toBe('verified')
+    expect(realnameOverallStatusText('verified')).toBe('已认证')
+    expect(realnameOverallStatusTone('verified')).toBe('success')
+  })
+
+  it('爱签审核中，或爱签通过但渠道会员未通过，都算审核中', () => {
+    expect(realnameOverallStatus(record({ status: 'pending' }), true)).toBe('reviewing')
+    expect(realnameOverallStatus(record({ status: 'approved' }), false)).toBe('reviewing')
+    expect(realnameOverallStatusText('reviewing')).toBe('审核中')
+    expect(realnameOverallStatusTone('reviewing')).toBe('warning')
+  })
+
+  it('渠道状态未加载（null / undefined）时只按爱签状态判定，不误显示审核中', () => {
+    const approved = record({ status: 'approved' })
+    expect(realnameOverallStatus(approved, null)).toBe('verified')
+    expect(realnameOverallStatus(approved, undefined)).toBe('verified')
+  })
+
+  it('平台驳回优先于渠道状态；没有实名记录写未认证', () => {
+    expect(realnameOverallStatus(record({ status: 'rejected' }), true)).toBe('rejected')
+    expect(realnameOverallStatusText('rejected')).toBe('已驳回')
+    expect(realnameOverallStatusTone('rejected')).toBe('danger')
+    expect(realnameOverallStatus(null, true)).toBe('unsubmitted')
+    expect(realnameOverallStatusText('unsubmitted')).toBe('未认证')
+    expect(realnameOverallStatusTone('unsubmitted')).toBe('info')
   })
 })
 

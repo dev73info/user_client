@@ -1,6 +1,10 @@
 import type { Component } from 'vue'
 
-import type { AccountDialogDomains, AccountDialogKey } from '@/composables/useAccountDialogRegistry'
+import type {
+  AccountDialogDomains,
+  AccountDialogKey,
+} from '@/composables/useAccountDialogRegistry'
+import type { RealnameAuthMode } from '@/composables/useRealnameFormDraft'
 
 import CloseSettleDialog from './CloseSettleDialog.vue'
 import FaceidDialog from './FaceidDialog.vue'
@@ -54,24 +58,40 @@ export function dialog<C extends abstract new (...args: never[]) => { $props: ob
   } as AccountDialogEntry
 }
 
+/** 两条路径的必填口径不同：OCR 要证照齐全，手动填写要文字字段齐全。 */
 function submitBlocked(d: AccountDialogDomains): boolean {
   const guardianMissing =
     d.draft.form.guardianRequired &&
     (!d.draft.form.guardianConsent || !d.draft.form.guardianConsentFile)
+  const requiredMissing =
+    d.draft.mode.value === 'manual'
+      ? d.draft.manualRequiredMissing.value
+      : d.draft.identityCardRequiredMissing.value || d.draft.enterpriseRequiredMissing.value
   return (
     d.identity.realnameLocked.value ||
     d.submit.submitting.value ||
-    d.draft.identityCardRequiredMissing.value ||
-    d.draft.enterpriseRequiredMissing.value ||
+    requiredMissing ||
     guardianMissing
   )
 }
 
 function submitText(d: AccountDialogDomains): string {
-  if (d.identity.realnameChanging.value) return '提交变更，开始认证'
+  const manual = d.draft.mode.value === 'manual'
+  if (d.identity.realnameChanging.value) {
+    return manual ? '提交变更，等待审核' : '提交变更，开始认证'
+  }
   if (d.identity.realnameApproved.value) return '已通过认证'
   if (d.identity.realnameLocked.value) return '认证处理中'
-  return '开始认证'
+  return manual ? '提交人工审核' : '开始认证'
+}
+
+/** 提交按当前路径分流：手动填写落「待审核」，OCR 走爱签核身。 */
+function submitRealnameByMode(d: AccountDialogDomains) {
+  if (d.draft.mode.value === 'manual') {
+    void d.submit.submitManualRealname()
+    return
+  }
+  void d.submit.submitRealname()
 }
 
 export const verifyDialogEntries: AccountDialogEntry[] = [
@@ -81,6 +101,7 @@ export const verifyDialogEntries: AccountDialogEntry[] = [
     'open',
     (d) => ({
       form: d.draft.form,
+      mode: d.draft.mode.value,
       locked: d.identity.realnameLocked.value,
       changing: d.identity.realnameChanging.value,
       changeInReview: d.identity.realnamePending.value && d.identity.realnameChangeBacked.value,
@@ -98,7 +119,10 @@ export const verifyDialogEntries: AccountDialogEntry[] = [
       consentUploading: d.materials.consentUploading.value,
     }),
     (d) => ({
-      submit: d.submit.submitRealname,
+      'update:mode': (next: RealnameAuthMode) => {
+        d.draft.mode.value = next
+      },
+      submit: () => submitRealnameByMode(d),
       'cancel-change': d.page.cancelRealnameChange,
       withdraw: d.faceid.handleWithdraw,
       'business-license-picked': d.materials.handleBusinessLicenseFile,

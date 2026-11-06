@@ -104,6 +104,10 @@ export function useAccountDialogRegistry(deps: AccountDialogDeps) {
       window.open(authUrl, '_self')
     },
     faceidStarting: faceid.faceidStarting,
+    // 手动填写认证没有扫码环节，提交成功即收工：关掉弹窗让用户看到「审核中」。
+    onSubmitted: () => {
+      realnameDialogVisible.value = false
+    },
   })
   const settle = useSettlementAccount({
     realname: identity.current,
@@ -187,6 +191,7 @@ export function useAccountDialogRegistry(deps: AccountDialogDeps) {
     providerError: settle.settleProviderError,
     corporateLocked: settle.settleCorporateLocked,
     bound: settle.settleBound,
+    accountNoTail: settle.settleAccountNoTail,
   }
   const securityEntry: AccountEntryGroupsOptions['security'] = {
     profileEmail,

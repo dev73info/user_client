@@ -9,6 +9,7 @@ const mocks = vi.hoisted(() => ({
   getBoundProviders: vi.fn(),
   getMyRealnameVerification: vi.fn(),
   quickStartAsignIdentify: vi.fn(),
+  submitMyRealnameVerification: vi.fn(),
   uploadBusinessLicenseFile: vi.fn(),
   uploadLegalCertFrontFile: vi.fn(),
   uploadLegalCertBackFile: vi.fn(),
@@ -49,6 +50,7 @@ vi.mock('@/api/realname', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/api/realname')>()),
   getMyRealnameVerification: mocks.getMyRealnameVerification,
   quickStartAsignIdentify: mocks.quickStartAsignIdentify,
+  submitMyRealnameVerification: mocks.submitMyRealnameVerification,
   uploadBusinessLicenseFile: mocks.uploadBusinessLicenseFile,
   uploadLegalCertFrontFile: mocks.uploadLegalCertFrontFile,
   uploadLegalCertBackFile: mocks.uploadLegalCertBackFile,
@@ -72,7 +74,7 @@ const OPERATOR_FILE = '/uploads/realname-operator-certs/flow/front.jpg'
 const OPERATOR_MOBILE = '13900000000'
 
 type Setup = {
-  draft: { form: Record<string, unknown> }
+  draft: { form: Record<string, unknown>; mode: { value: 'ocr' | 'manual' } }
   identity: { realnameChanging: { value: boolean } }
   realnameDialogVisible: boolean
 }
@@ -108,13 +110,17 @@ async function renderPage(): Promise<VueWrapper> {
   return wrapper
 }
 
-async function fillMobile(placeholder: string, value = '13800000000') {
+async function fillInput(placeholder: string, value: string) {
   const input = document.querySelector(
     `.t73-dialog input[placeholder="${placeholder}"]`,
   ) as HTMLInputElement
   input.value = value
   input.dispatchEvent(new Event('input'))
   await nextTick()
+}
+
+async function fillMobile(placeholder: string, value = '13800000000') {
+  await fillInput(placeholder, value)
 }
 
 beforeEach(() => {
@@ -155,6 +161,32 @@ describe('材料认证弹窗', () => {
       legal_cert_front_file: FRONT_FILE,
     })
     expect(mocks.open).toHaveBeenCalledWith('https://asign.test/auth', '_self')
+    wrapper.unmount()
+  })
+
+  it('手动填写认证：填文字字段后提交人工审核，不走爱签', async () => {
+    mocks.submitMyRealnameVerification.mockResolvedValue({ ...REJECTED_RECORD, status: 'pending' })
+    const wrapper = await renderPage()
+    const state = setupState(wrapper)
+    state.draft.mode.value = 'manual'
+    await nextTick()
+
+    // 手动路径不收证件照片，OCR 的上传位全部让位给文字字段
+    expect(document.querySelectorAll('.t73-dialog .realname-consent-upload__native')).toHaveLength(0)
+    await fillInput('请输入身份证上的姓名', '张三')
+    await fillInput('请输入身份证号', '110101199001011234')
+    await fillInput('请输入本人手机号', '13800000000')
+    bodyButton('提交人工审核').click()
+    await flushPromises()
+
+    expect(mocks.submitMyRealnameVerification).toHaveBeenCalledWith('test-token', {
+      auth_type: 'IDENTITY_CARD',
+      real_name: '张三',
+      id_card_no: '110101199001011234',
+      mobile: '13800000000',
+    })
+    expect(mocks.quickStartAsignIdentify).not.toHaveBeenCalled()
+    expect(state.realnameDialogVisible).toBe(false)
     wrapper.unmount()
   })
 

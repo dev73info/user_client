@@ -33,6 +33,9 @@ export function useSettlementAccountLabels(options: SettlementAccountLabelsOptio
   /** 是否已绑卡（决定提交时走「绑定」还是「更换」接口）。 */
   const settleBound = computed(() => isSettleBound(adapayMember.value?.acceptsSettlement))
 
+  /** 已绑卡的脱敏尾号：契约只回后四位，没有可回显的完整卡号。 */
+  const settleAccountNoTail = computed(() => (adapayMember.value?.accountNoTail ?? '').trim())
+
   /** 四态分开看：`failed` 是「去整改」不是「等」。 */
   const settleStage = computed(() =>
     settleAccountStage(
@@ -94,6 +97,7 @@ export function useSettlementAccountLabels(options: SettlementAccountLabelsOptio
 
   return {
     settleBound,
+    settleAccountNoTail,
     settleStage,
     settleSubjectMismatch,
     settleCorporateLocked,

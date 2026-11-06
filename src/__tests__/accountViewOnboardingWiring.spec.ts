@@ -219,12 +219,23 @@ describe('账号与安全页入口行：收款账户走到哪一步了', () => {
     expect(wrapper.text()).not.toContain('注销结算账户')
   })
 
-  it('渠道还在审写「渠道审核中」，且入口不放开', async () => {
+  it('渠道还在审写「结算账户：审核中」，且入口不放开', async () => {
     mocks.getMyAdapayMember.mockResolvedValue({
       onboardingStatus: 'under_review',
       acceptsSettlement: false,
     })
     const wrapper = await renderAccountPage()
-    expect(wrapper.text()).toContain('收款账户：渠道审核中')
+    expect(wrapper.text()).toContain('结算账户：审核中')
+  })
+
+  it('已绑卡写脱敏尾号后四位', async () => {
+    mocks.getMyAdapayMember.mockResolvedValue({
+      onboardingStatus: 'active',
+      acceptsSettlement: true,
+      accountNoTail: '1234',
+    })
+    const wrapper = await renderAccountPage()
+    expect(wrapper.text()).toContain('结算账户：尾号 1234')
+    expect(wrapper.text()).not.toContain('结算账户：已设置')
   })
 })

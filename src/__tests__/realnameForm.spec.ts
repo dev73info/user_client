@@ -3,10 +3,13 @@ import { describe, expect, it } from 'vitest'
 import { TODAY, draft, enterpriseDraft } from '@/__tests__/realnameDraftFixtures'
 import {
   LONG_TERM_DATE,
+  buildManualRealnamePayload,
   buildRealnamePayload,
   idCardAge,
   idCardAgeBand,
   isValidMobile,
+  manualRealnameMissing,
+  validateManualRealnameDraft,
   validateRealnameDraft,
 } from '@/shared/realnameForm'
 
@@ -83,6 +86,78 @@ describe('材料认证表单校验', () => {
         enterpriseDraft({ companyName: '', companyAddress: '', businessScope: '' }),
       ),
     ).toBe('')
+  })
+})
+
+describe('手动填写认证', () => {
+  it('个人只要姓名、身份证号与手机号，不要求身份证照片', () => {
+    expect(manualRealnameMissing(draft({ legalCertFrontFile: '' }))).toEqual([])
+    expect(manualRealnameMissing(draft({ realName: '', idCardNo: '', mobile: '' }))).toEqual([
+      '姓名',
+      '身份证号',
+      '手机号',
+    ])
+    expect(validateManualRealnameDraft(draft({ realName: '', mobile: '138' }))).toBe(
+      '请填写姓名、手机号',
+    )
+  })
+
+  it('企业要收齐企业名称、统一社会信用代码、经办人、执照与进件资料', () => {
+    expect(manualRealnameMissing(enterpriseDraft())).toEqual([])
+    expect(
+      manualRealnameMissing(
+        enterpriseDraft({
+          companyName: '',
+          unifiedSocialCreditCode: '',
+          operatorName: '',
+          operatorIdCardNo: '',
+          businessLicenseFile: '',
+          companyAddress: '',
+          legalCertBeginOn: '',
+        }),
+      ),
+    ).toEqual([
+      '企业名称',
+      '统一社会信用代码',
+      '经办人姓名',
+      '经办人身份证号',
+      '营业执照',
+      '企业注册地址',
+      '法人证件有效期',
+    ])
+  })
+
+  it('提交载荷不带身份证照片，企业带七项进件资料', () => {
+    expect(buildManualRealnamePayload(draft(), TODAY)).toEqual({
+      auth_type: 'IDENTITY_CARD',
+      real_name: '张三',
+      id_card_no: '110101199001011234',
+      mobile: '13800000000',
+    })
+    const enterprise = buildManualRealnamePayload(enterpriseDraft(), TODAY)
+    expect(enterprise).toMatchObject({
+      auth_type: 'ENTERPRISE',
+      company_name: '示例科技有限公司',
+      unified_social_credit_code: '91310000MA1K35Q64U',
+      operator_name: '张三',
+      operator_id_card_no: '110101199001011234',
+      company_prov_code: '0011',
+      business_license_expires_on: LONG_TERM_DATE,
+    })
+    expect(enterprise).not.toHaveProperty('legal_cert_front_file')
+    expect(enterprise).not.toHaveProperty('legal_cert_back_file')
+  })
+
+  it('未成年人要监护人同意与同意书', () => {
+    const minor = draft({
+      idCardNo: '110101201005101234',
+      guardianRequired: true,
+      guardianConsent: false,
+      guardianConsentFile: '',
+    })
+    expect(manualRealnameMissing(minor)).toEqual(['监护人同意', '监护人同意书'])
+    expect(buildManualRealnamePayload(minor, TODAY)).toMatchObject({ guardian_consent: false })
+    expect(buildManualRealnamePayload(draft(), TODAY)).not.toHaveProperty('guardian_consent')
   })
 })
 

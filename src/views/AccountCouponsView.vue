@@ -11,7 +11,7 @@
  * 页面加载后读取实名与渠道会员状态，认证中先回查一次结果；只有用户主动点击
  * 「继续认证」才恢复爱签链接，不会在回跳后自动再次跳走。
  */
-import { onMounted, ref, watch } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
 import { useAuthStore } from '@/stores/auth'
@@ -24,6 +24,11 @@ import { useFaceidChallenge } from '@/composables/useFaceidChallenge'
 import { useRealnameFormDraft } from '@/composables/useRealnameFormDraft'
 import { useRealnameIdentity } from '@/composables/useRealnameIdentity'
 import type { AdapayMemberStatus } from '@/composables/useSettlementAccount'
+import {
+  realnameOverallStatus,
+  realnameOverallStatusText,
+  realnameOverallStatusTone,
+} from '@/shared/realnameDisplay'
 import { shouldRecheckRealnameResult } from '@/shared/realnameRecheck'
 import { TButton, TCard } from 'ui_73info'
 
@@ -79,11 +84,18 @@ const providerLoadError = dialogs.providerLoadError
  * （与弹窗共用同一份状态），动作表也由它出。`openAccountEntry` 必须留在 `setupState` 上
  * ——三个 spec 的 `openEntry()` 靠它点入口。
  */
+/** 入口卡与 hero 用同一套综合状态：爱签通过但渠道会员未通过时写「审核中」。 */
+const overallStatus = computed(() =>
+  realnameOverallStatus(identity.current.value, adapayMember.value?.memberReady),
+)
+const realnameStatusText = computed(() => realnameOverallStatusText(overallStatus.value))
+const realnameStatusTone = computed(() => realnameOverallStatusTone(overallStatus.value))
+
 const { realnameEntryGroups, accountEntryGroups, openAccountEntry } = useAccountEntryGroups({
   identity: {
     copy: identity.realnameEntryCopy,
-    statusText: identity.statusText,
-    statusTone: identity.statusTone,
+    statusText: realnameStatusText,
+    statusTone: realnameStatusTone,
     pending: identity.realnamePending,
     approved: identity.realnameApproved,
     canWithdraw: identity.realnameCanWithdraw,

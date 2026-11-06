@@ -5,10 +5,11 @@ import {
   getMyRealnameVerification,
   REALNAME_ERROR_CODES,
   quickStartAsignIdentify,
+  submitMyRealnameVerification,
   type QuickStartIdentifyPayload,
   type UserRealnameVerification,
 } from '@/api/realname'
-import type { RealnameDraftFields } from '@/shared/realnameForm'
+import { buildManualRealnamePayload, type RealnameDraftFields } from '@/shared/realnameForm'
 import { useAuthStore } from '@/stores/auth'
 import { TMessage } from 'ui_73info'
 
@@ -20,6 +21,8 @@ export type RealnameSubmitOptions = {
   applyRecord: (record: UserRealnameVerification) => void
   beginChallenge: (authUrl: string) => Promise<void>
   faceidStarting: Ref<boolean>
+  /** 手动填写认证提交成功后的收尾：关闭弹窗（人工审核没有后续扫码步骤）。 */
+  onSubmitted?: () => void
 }
 
 export function useRealnameSubmit(options: RealnameSubmitOptions) {
@@ -81,5 +84,42 @@ export function useRealnameSubmit(options: RealnameSubmitOptions) {
     }
   }
 
-  return { submitting, submitRealname }
+  /**
+   * 手动填写认证：直接提交 `POST /api/realname/`，落「待审核」由平台人工核验。
+   *
+   * 与扫码路径共用 `submitting` 与校验入口；不调用爱签，也不打开人脸核身弹窗。
+   */
+  async function submitManualRealname() {
+    auth.hydrate()
+    if (!auth.token.trim()) {
+      TMessage.error('登录状态已失效，请重新登录')
+      return
+    }
+    if (options.locked.value && !options.rejected.value) {
+      TMessage.warning('实名认证正在处理中，请稍后查询结果')
+      return
+    }
+    const validationError = options.validate()
+    if (validationError) {
+      TMessage.warning(validationError)
+      return
+    }
+
+    submitting.value = true
+    try {
+      const record = await submitMyRealnameVerification(
+        auth.token,
+        buildManualRealnamePayload(options.form),
+      )
+      options.applyRecord(record)
+      TMessage.success('已提交，等待平台审核')
+      options.onSubmitted?.()
+    } catch (error) {
+      TMessage.error(error instanceof Error ? error.message : '提交实名认证失败')
+    } finally {
+      submitting.value = false
+    }
+  }
+
+  return { submitting, submitRealname, submitManualRealname }
 }

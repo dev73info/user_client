@@ -163,6 +163,7 @@ declare module 'vue' {
     PurchaseTransferDialog: typeof import('./src/components/payment/PurchaseTransferDialog.vue')['default']
     RealnameDialog: typeof import('./src/components/account/RealnameDialog.vue')['default']
     RealnameHero: typeof import('./src/components/RealnameHero.vue')['default']
+    RealnameManualForm: typeof import('./src/components/account/RealnameManualForm.vue')['default']
     RealnameMaterialUpload: typeof import('./src/components/account/RealnameMaterialUpload.vue')['default']
     RequirementArchiveBanner: typeof import('./src/components/dev/RequirementArchiveBanner.vue')['default']
     RequirementBindingCard: typeof import('./src/components/dev/RequirementBindingCard.vue')['default']

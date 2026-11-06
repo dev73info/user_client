@@ -19,10 +19,52 @@ import { getSettlementCities, settlementProvinces } from '@/utils/settlementAcco
 
 export type RealnameStatusTone = 'info' | 'warning' | 'success' | 'danger'
 
+/**
+ * 用户端展示用的**综合状态**：把爱签实名状态与 Adapay 渠道会员状态合成一句话。
+ *
+ * 口径（用户 2026-11-06 确认）：
+ * - `verified` 已认证：爱签通过 + 渠道会员通过（`memberReady === true`）
+ * - `reviewing` 审核中：爱签审核中，或爱签已通过但渠道会员还没通过
+ * - `rejected` 已驳回：平台管理端（或爱签回调）驳回了认证
+ * - `unsubmitted` 未认证：还没有实名记录
+ *
+ * `memberReady` 为 `null` / `undefined` 表示渠道状态还没加载出来（或接口失败），
+ * 这时只按爱签状态判定，避免把「不知道」误显示成永久的「审核中」。
+ */
+export type RealnameOverallStatus = 'unsubmitted' | 'reviewing' | 'verified' | 'rejected'
+
+export function realnameOverallStatus(
+  record?: UserRealnameVerification | null,
+  memberReady?: boolean | null,
+): RealnameOverallStatus {
+  if (!record) return 'unsubmitted'
+  if (record.status === 'rejected') return 'rejected'
+  if (record.status === 'approved') {
+    return memberReady === false ? 'reviewing' : 'verified'
+  }
+  return 'reviewing'
+}
+
+/** 综合状态的一句话。 */
+export function realnameOverallStatusText(status: RealnameOverallStatus): string {
+  if (status === 'verified') return '已认证'
+  if (status === 'reviewing') return '审核中'
+  if (status === 'rejected') return '已驳回'
+  return '未认证'
+}
+
+/** 综合状态的语气：与上面的文案一一对应。 */
+export function realnameOverallStatusTone(status: RealnameOverallStatus): RealnameStatusTone {
+  if (status === 'verified') return 'success'
+  if (status === 'reviewing') return 'warning'
+  if (status === 'rejected') return 'danger'
+  return 'info'
+}
+
 /** 状态的一句话：没有记录 = 未提交。 */
 export function realnameStatusText(status?: UserRealnameStatus | null): string {
   if (!status) return '未提交'
-  if (status === 'approved') return '已通过'
+  if (status === 'approved') return '已认证'
   if (status === 'pending') return '审核中'
   return '已驳回'
 }

@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { watch } from 'vue'
 
-import type { RealnameDraftFields } from '@/shared/realnameForm'
+import type { RealnameAuthMode } from '@/composables/useRealnameFormDraft'
+import { idCardAgeBand, type RealnameDraftFields } from '@/shared/realnameForm'
 import {
   TAlert,
   TButton,
@@ -16,10 +17,13 @@ import {
   TSelect,
 } from 'ui_73info'
 
+import RealnameManualForm from './RealnameManualForm.vue'
 import RealnameMaterialUpload from './RealnameMaterialUpload.vue'
 
 const open = defineModel<boolean>('open', { required: true })
 const form = defineModel<RealnameDraftFields>('form', { required: true })
+/** 认证路径：OCR 上传认证（爱签识别） / 手动填写认证（平台人工审核）。 */
+const mode = defineModel<RealnameAuthMode>('mode', { required: true })
 
 const props = defineProps<{
   locked: boolean
@@ -57,6 +61,18 @@ watch(
   },
   { immediate: true },
 )
+
+/**
+ * 手动填写没有后端 OCR 兜底，未成年人判定只能前端按身份证号算：
+ * 只有这条路径写 `guardianRequired`，OCR 路径仍由后端错误码置位。
+ */
+watch(
+  () => [mode.value, form.value.authType, form.value.idCardNo] as const,
+  ([currentMode, authType, idCardNo]) => {
+    if (currentMode !== 'manual') return
+    form.value.guardianRequired = idCardAgeBand(authType, idCardNo) === 'minor'
+  },
+)
 </script>
 
 <template>
@@ -79,6 +95,15 @@ watch(
       </TFormItem>
 
       <TFormItem label="认证方式" required>
+        <TRadioGroup v-model="mode" :disabled="props.locked || props.submitting">
+          <TRadio value="ocr">OCR 上传认证</TRadio>
+          <TRadio value="manual">手动填写认证</TRadio>
+        </TRadioGroup>
+      </TFormItem>
+    </TForm>
+
+    <TForm v-if="mode === 'ocr'" label-position="top" class="realname-form">
+      <TFormItem label="核身方式" required>
         <TSelect
           v-model="form.identifyType"
           :disabled="props.locked || props.submitting"
@@ -185,36 +210,47 @@ watch(
           </RealnameMaterialUpload>
         </TFormItem>
       </template>
-
-      <div class="realname-form__actions">
-        <TButton
-          v-if="props.canWithdraw"
-          variant="outline"
-          tone="danger"
-          :loading="props.withdrawing"
-          @click="emit('withdraw')"
-        >
-          {{ props.changeBacked ? '取消变更，还原原主体' : '撤回认证' }}
-        </TButton>
-        <TButton
-          v-if="props.changing"
-          variant="outline"
-          :disabled="props.submitting"
-          @click="emit('cancel-change')"
-        >
-          放弃变更
-        </TButton>
-        <TButton
-          variant="solid"
-          tone="accent"
-          :loading="props.submitting"
-          :disabled="props.submitDisabled"
-          @click="emit('submit')"
-        >
-          {{ props.submitText }}
-        </TButton>
-      </div>
     </TForm>
+
+    <RealnameManualForm
+      v-else
+      v-model:form="form"
+      :business-selected="props.businessSelected"
+      :disabled="props.locked || props.submitting"
+      :business-license-uploading="props.businessLicenseUploading"
+      :consent-uploading="props.consentUploading"
+      @business-license-picked="emit('business-license-picked', $event)"
+      @consent-picked="emit('consent-picked', $event)"
+    />
+
+    <div class="realname-form__actions">
+      <TButton
+        v-if="props.canWithdraw"
+        variant="outline"
+        tone="danger"
+        :loading="props.withdrawing"
+        @click="emit('withdraw')"
+      >
+        {{ props.changeBacked ? '取消变更，还原原主体' : '撤回认证' }}
+      </TButton>
+      <TButton
+        v-if="props.changing"
+        variant="outline"
+        :disabled="props.submitting"
+        @click="emit('cancel-change')"
+      >
+        放弃变更
+      </TButton>
+      <TButton
+        variant="solid"
+        tone="accent"
+        :loading="props.submitting"
+        :disabled="props.submitDisabled"
+        @click="emit('submit')"
+      >
+        {{ props.submitText }}
+      </TButton>
+    </div>
   </TDialog>
 </template>
 

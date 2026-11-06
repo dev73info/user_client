@@ -76,6 +76,8 @@ export type AccountEntryGroupsOptions = {
     providerError: Ref<string>
     corporateLocked: Ref<boolean>
     bound: Ref<boolean>
+    /** 已绑卡的脱敏尾号；入口行显示「结算账户：尾号 XXXX」。 */
+    accountNoTail: Ref<string>
   }
   /** 安全设置域（邮箱 / 两步验证）与第三方绑定域（已绑渠道与两个加载位）。 */
   security: {
@@ -125,6 +127,7 @@ export function useAccountEntryGroups(options: AccountEntryGroupsOptions) {
         corporateLocked: settle.corporateLocked.value,
         approved: identity.approved.value,
         bound: settle.bound.value,
+        accountNoTail: settle.accountNoTail.value,
       }),
     },
   ])

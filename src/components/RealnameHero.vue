@@ -5,6 +5,11 @@ import { TTag } from 'ui_73info'
 
 import { getMyAdapayMember } from '@/api/adapay'
 import { getMyRealnameVerification, type UserRealnameVerification } from '@/api/realname'
+import {
+  realnameOverallStatus,
+  realnameOverallStatusText,
+  realnameOverallStatusTone,
+} from '@/shared/realnameDisplay'
 import { isSettleRejected, isSettleUnderReview } from '@/shared/settleAccountStage'
 import { useAuthStore } from '@/stores/auth'
 
@@ -17,6 +22,8 @@ const props = defineProps<{
     memberReady?: boolean
     /** 能不能收分账款：契约 `SettlementAccountResponse.accepts_settlement`。 */
     acceptsSettlement?: boolean
+    /** 结算银行卡后四位：契约 `SettlementAccountResponse.account_no_tail`。 */
+    accountNoTail?: string | null
     providerError?: string | null
   } | null
 }>()
@@ -26,6 +33,7 @@ const localAdapayMember = ref<{
   onboardingStatus: string
   memberReady?: boolean
   acceptsSettlement?: boolean
+  accountNoTail?: string | null
   providerError?: string | null
 } | null>(null)
 const current = computed(() =>
@@ -35,24 +43,21 @@ const adapayMember = computed(() =>
   props.adapayMember === undefined ? localAdapayMember.value : props.adapayMember,
 )
 
-const statusText = computed(() => {
-  const status = current.value?.status
-  if (!status) return '未提交'
-  if (status === 'approved') return '已通过'
-  if (status === 'pending') return '审核中'
-  return '已驳回'
-})
+/**
+ * 综合状态：爱签实名 + 渠道会员。
+ *
+ * 只按实名状态判定会把「爱签已通过、渠道会员还在审」写成「已认证」，
+ * 用户会以为已经能收款；口径与入口卡、hero 指标格同源（`@/shared/realnameDisplay`）。
+ */
+const overallStatus = computed(() =>
+  realnameOverallStatus(current.value, adapayMember.value?.memberReady),
+)
+const statusText = computed(() => realnameOverallStatusText(overallStatus.value))
 
 /* 状态色的语义直接沿用 Tone：success / warning / danger / info 四个值与 el-tag 的
    `type` 同名同义，所以换 TTag 时只需要把 `:type` 改成 `:tone`，取值不动。
    这个值同时用作根元素的修饰类（realname-hero--{tone}），改名会连带改类名，所以保持原值。 */
-const statusType = computed<Tone>(() => {
-  const status = current.value?.status
-  if (!status) return 'info'
-  if (status === 'approved') return 'success'
-  if (status === 'pending') return 'warning'
-  return 'danger'
-})
+const statusType = computed<Tone>(() => realnameOverallStatusTone(overallStatus.value))
 
 const authTypeLabel = computed(() => {
   const t = current.value?.auth_type
@@ -68,28 +73,6 @@ const authTypeLabel = computed(() => {
 const isEnterpriseSubject = computed(() =>
   ['ENTERPRISE', 'SOLE_PROPRIETOR'].includes(current.value?.auth_type ?? ''),
 )
-
-const asignAuthText = computed(() => {
-  const status = current.value?.status
-  if (status === 'approved') return '已认证'
-  if (status === 'pending') return '审核中'
-  if (status === 'rejected') return '未通过'
-  return '未认证'
-})
-
-/**
- * 「结算账户」指标：直接回答**收款银行卡绑没绑**。
- *
- * 不用渠道会员的 `onboardingStatus`（那是「会员认证」状态，未绑卡时同样可能是
- * `active`→已认证，会误导成「已能收款」）；口径与账号页那个标签保持一致。
- */
-const settleAccountText = computed(() => {
-  // 这一格只回答**事实**：能不能收分账款。渠道审核中不等于已绑账户，也不等于「未设置」里有别的含义，
-  // 所以不能收款就写「未绑卡」；审核状态由旁边的标签与描述承担。
-  // 判定用契约的 `accepts_settlement`（后端给「状态可用且号码齐备」的结论），
-  // 不再拿卡号尾数当结算账户号来判断。
-  return adapayMember.value?.acceptsSettlement === true ? '已设置' : '未绑卡'
-})
 
 /**
  * 渠道会员是否还在审核中。
@@ -115,21 +98,42 @@ const settleUnderReview = computed(() =>
  */
 const settleRejected = computed(() => isSettleRejected(adapayMember.value?.onboardingStatus))
 
+/**
+ * 「结算账户」指标：渠道审核中写「审核中」，已绑卡写脱敏尾号。
+ *
+ * 判定用契约的 `accepts_settlement`（后端给「状态可用且号码齐备」的结论），
+ * 卡号只回后四位，所以最多只能写到「尾号 1234」。
+ */
+const settleAccountText = computed(() => {
+  if (adapayMember.value?.acceptsSettlement === true) {
+    const tail = (adapayMember.value?.accountNoTail ?? '').trim()
+    return tail ? `尾号 ${tail}` : '已设置'
+  }
+  if (settleRejected.value) return '未通过'
+  if (settleUnderReview.value) return '审核中'
+  return '未绑卡'
+})
+
 const heroDesc = computed(() => {
-  if (current.value?.status === 'approved') {
+  if (overallStatus.value === 'verified') {
+    return '已完成实名认证，信息核验通过，可正常使用合同签署等权益。'
+  }
+  if (overallStatus.value === 'reviewing') {
+    if (current.value?.status === 'pending') {
+      return '实名认证审核中，请耐心等待平台核验结果。'
+    }
     if (settleRejected.value) {
       return isEnterpriseSubject.value
-        ? '已完成实名认证，信息核验通过，可正常使用合同签署等权益。企业收款账户未通过渠道开户审核，暂时无法收取合同款——请到「认证管理」→「结算账户」查看原因并重新提交企业认证。'
-        : '已完成实名认证，信息核验通过，可正常使用合同签署等权益。收款账户开通被渠道拒绝，暂时无法收取合同款——请到「认证管理」→「结算账户」查看原因后重新提交。'
+        ? '实名认证已通过，企业收款账户未通过渠道开户审核，暂时无法收取合同款——请到「认证管理」→「结算账户」查看原因并重新提交企业认证。'
+        : '实名认证已通过，收款账户开通被渠道拒绝，暂时无法收取合同款——请到「认证管理」→「结算账户」查看原因后重新提交。'
     }
-    return settleUnderReview.value
-      ? isEnterpriseSubject.value
-        ? '已完成实名认证，信息核验通过，可正常使用合同签署等权益。企业收款账户正在渠道审核中，审核通过后即可绑定对公账户。'
-        : '已完成实名认证，信息核验通过，可正常使用合同签署等权益。收款账户正在渠道审核中，审核通过后即可绑定银行卡。'
-      : '已完成实名认证，信息核验通过，可正常使用合同签署等权益。'
+    return isEnterpriseSubject.value
+      ? '实名认证已通过，企业收款账户正在渠道审核中，审核通过后即可绑定对公账户。'
+      : '实名认证已通过，收款账户正在渠道审核中，审核通过后即可绑定银行卡。'
   }
-  if (current.value?.status === 'pending') return '实名认证审核中，请耐心等待平台核验结果。'
-  if (current.value?.status === 'rejected') return '实名认证未通过，请核对证件信息后重新提交。'
+  if (overallStatus.value === 'rejected') {
+    return '实名认证未通过，请核对证件信息后重新提交。'
+  }
   return '提交真实身份信息，经平台核验后即可开通合同签署等权益。'
 })
 
@@ -179,7 +183,7 @@ onMounted(async () => {
       </div>
       <div class="realname-metrics__item">
         <span>实名认证</span>
-        <strong>{{ asignAuthText }}</strong>
+        <strong>{{ statusText }}</strong>
       </div>
       <div class="realname-metrics__item">
         <span>结算账户</span>

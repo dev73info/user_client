@@ -137,6 +137,7 @@ export type SettleRowsState = {
   corporateLocked: boolean
   approved: boolean
   bound: boolean // 已绑卡：只有这时候「注销结算账户」才有意义
+  accountNoTail: string // 已绑卡的脱敏尾号（契约只回后四位）
 }
 
 /** 「收款与结算」整组：结算账户一行，已绑卡时再跟一行破坏性动作（注销）。 */
@@ -176,7 +177,7 @@ export function buildSettleEntries(state: SettleRowsState): AccountEntry[] {
       //   会把人误导成「已能收款」，2026-10-04 改回绑卡口径。）
       status:
         stage === 'reviewing'
-          ? { text: '收款账户：渠道审核中', tone: 'warning' }
+          ? { text: '结算账户：审核中', tone: 'warning' }
           : stage === 'failed'
             ? {
                 text: state.corporateLocked ? '收款账户：渠道审核未通过' : '收款账户：开通被拒',
@@ -185,7 +186,12 @@ export function buildSettleEntries(state: SettleRowsState): AccountEntry[] {
             : state.subjectMismatch
               ? { text: '收款账户：待重绑', tone: 'warning' }
               : stage === 'bound'
-                ? { text: '结算账户：已设置', tone: 'success' }
+                ? {
+                    text: state.accountNoTail
+                      ? `结算账户：尾号 ${state.accountNoTail}`
+                      : '结算账户：已设置',
+                    tone: 'success',
+                  }
                 : stage === 'ready'
                   ? { text: '收款账户：待绑卡', tone: 'warning' }
                   : { text: '收款账户：待认证', tone: 'info' },

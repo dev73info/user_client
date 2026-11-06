@@ -1,14 +1,21 @@
-import { computed, reactive } from 'vue'
+import { computed, reactive, ref } from 'vue'
 
 import type { UserRealnameVerification } from '@/api/realname'
 import {
   isEnterpriseDraftMissing,
   isIdentityCardDraftMissing,
+  manualRealnameMissing,
+  validateManualRealnameDraft,
   validateRealnameDraft,
   type RealnameDraftFields,
 } from '@/shared/realnameForm'
 
+/** 认证路径：OCR 上传认证（爱签扫码核身）/ 手动填写认证（平台人工审核）。 */
+export type RealnameAuthMode = 'ocr' | 'manual'
+
 export function useRealnameFormDraft() {
+  /** 当前认证路径：两条路径共用同一份字段，提交载荷与校验按它分流。 */
+  const mode = ref<RealnameAuthMode>('ocr')
   const form = reactive<RealnameDraftFields>({
     authType: 'IDENTITY_CARD',
     identifyType: 153,
@@ -47,6 +54,8 @@ export function useRealnameFormDraft() {
   const enterpriseRequiredMissing = computed(
     () => businessSelected.value && isEnterpriseDraftMissing(form),
   )
+  /** 手动路径的必填缺失：与 OCR 路径不同，个人不要求身份证照片。 */
+  const manualRequiredMissing = computed(() => manualRealnameMissing(form).length > 0)
 
   function resetSubjectFields() {
     form.identifyType = form.authType === 'IDENTITY_CARD' ? 153 : 369
@@ -83,10 +92,11 @@ export function useRealnameFormDraft() {
   }
 
   function validate(): string {
-    return validateRealnameDraft(form)
+    return mode.value === 'manual' ? validateManualRealnameDraft(form) : validateRealnameDraft(form)
   }
 
   return {
+    mode,
     form,
     identityCardSelected,
     enterpriseSelected,
@@ -94,6 +104,7 @@ export function useRealnameFormDraft() {
     businessSelected,
     identityCardRequiredMissing,
     enterpriseRequiredMissing,
+    manualRequiredMissing,
     resetSubjectFields,
     prefill,
     validate,
