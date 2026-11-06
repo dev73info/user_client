@@ -1,9 +1,9 @@
 import { computed, ref } from 'vue'
 
-const TAB_WIDTH = 48
+const TAB_WIDTH = 96
 const MOBILE_BREAKPOINT_PX = 900
-const DESKTOP_FAB_HEIGHT = 140
-const MOBILE_FAB_HEIGHT = 48
+const DESKTOP_FAB_HEIGHT = 120
+const MOBILE_FAB_HEIGHT = 120
 const CLICK_DISTANCE_PX = 6
 /** 移动端底部 Dock：bottom 8px + 高度约 58px + 8px 间距。 */
 const MOBILE_DOCK_RESERVE = 74

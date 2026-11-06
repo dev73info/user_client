@@ -17,11 +17,11 @@
 }
 
 .support-panel--right {
-  right: 48px;
+  right: var(--support-tab-width, 96px);
 }
 
 .support-panel--left {
-  left: 48px;
+  left: var(--support-tab-width, 96px);
 }
 
 .support-panel__head {
