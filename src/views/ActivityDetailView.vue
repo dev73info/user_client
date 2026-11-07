@@ -40,6 +40,8 @@ const loadError = ref('')
 const signupBusy = ref(false)
 const keyInput = ref('')
 const keyBusy = ref(false)
+/** 报名 / 兑换失败时的就地提示（实名、账号状态这类错误码），旁边同时弹 TMessage。 */
+const actionHint = ref<{ scope: 'signup' | 'key'; message: string } | null>(null)
 
 const code = computed(() => String(route.params.code ?? ''))
 const rewards = computed(() => activity.value?.my_rewards ?? [])
@@ -56,6 +58,10 @@ const waitingWechat = computed(() => hasWaitingWechatReward(rewards.value))
 const quotaRemaining = computed(() =>
   activity.value?.quota_remaining == null ? '不限' : activity.value.quota_remaining,
 )
+const signupHint = computed(() =>
+  actionHint.value?.scope === 'signup' ? actionHint.value.message : '',
+)
+const keyHint = computed(() => (actionHint.value?.scope === 'key' ? actionHint.value.message : ''))
 
 const {
   confirming,
@@ -101,17 +107,21 @@ async function load() {
 function applyResult(result: ActivitySignupResponse, message: string) {
   activity.value = result.activity
   keyInput.value = ''
+  actionHint.value = null
   TMessage.success(message)
 }
 
 async function signup() {
   if (!activity.value || signupBlocked.value || signupBusy.value) return
   signupBusy.value = true
+  actionHint.value = null
   try {
     const result = await signupActivity(auth.token, activity.value.code)
     applyResult(result, '报名成功')
   } catch (error) {
-    TMessage.error(activityActionError(error, '报名失败'))
+    const message = activityActionError(error, '报名失败')
+    actionHint.value = { scope: 'signup', message }
+    TMessage.error(message)
   } finally {
     signupBusy.value = false
   }
@@ -126,6 +136,7 @@ async function redeem() {
   if (keyBusy.value || keyBlocked.value) return
 
   keyBusy.value = true
+  actionHint.value = null
   try {
     const result = await redeemActivityKey(auth.token, key)
     if (result.activity.code !== activity.value?.code) {
@@ -139,7 +150,9 @@ async function redeem() {
     }
     applyResult(result, '兑换成功')
   } catch (error) {
-    TMessage.error(activityActionError(error, '兑换失败'))
+    const message = activityActionError(error, '兑换失败')
+    actionHint.value = { scope: 'key', message }
+    TMessage.error(message)
   } finally {
     keyBusy.value = false
   }
@@ -202,6 +215,7 @@ onMounted(() => {
         :activity="activity"
         :signup-blocked="signupBlocked"
         :signup-busy="signupBusy"
+        :signup-hint="signupHint"
         @signup="signup"
         @invite-rewards="router.push({ name: 'workbench-badges' })"
       />
@@ -228,7 +242,9 @@ onMounted(() => {
             @click="redeem"
             >兑换</TButton
           >
-          <span v-if="keyBlocked" class="activity-detail__blocked">{{ keyBlocked }}</span>
+          <span v-if="keyHint || keyBlocked" class="activity-detail__blocked">
+            {{ keyHint || keyBlocked }}
+          </span>
         </div>
       </section>
 

@@ -123,13 +123,13 @@
             "description": "参数不合法"
           },
           "403": {
-            "description": "无权限"
+            "description": "无权限；账号状态异常 ACCOUNT_INACTIVE"
           },
           "404": {
-            "description": "兑换码不存在"
+            "description": "兑换码不存在（KEY_INVALID）"
           },
           "409": {
-            "description": "已使用 / 已过期 / 名额不足 / 活动未开始或已结束"
+            "description": "已使用 KEY_USED / 已过期 KEY_EXPIRED / 名额不足 QUOTA_FULL / 每人上限 PER_USER_LIMIT / 未开始或已结束 ACTIVITY_NOT_ACTIVE / 未实名 REALNAME_REQUIRED"
           }
         }
       }
@@ -250,13 +250,13 @@
             }
           },
           "403": {
-            "description": "无权限"
+            "description": "无权限；账号状态异常 ACCOUNT_INACTIVE"
           },
           "404": {
             "description": "活动不存在"
           },
           "409": {
-            "description": "已报名 / 名额已满 / 未开始 / 已结束 / 未开放报名"
+            "description": "已报名 ALREADY_JOINED / 名额已满 QUOTA_FULL / 每人上限 PER_USER_LIMIT / 未开始或已结束 ACTIVITY_NOT_ACTIVE / 未开放报名 SIGNUP_DISABLED / 未实名 REALNAME_REQUIRED"
           }
         }
       }
@@ -740,6 +740,15 @@
             }
           },
           {
+            "name": "batch_no",
+            "in": "query",
+            "description": "兑换码批次过滤（仅 key 列表使用）。",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
             "name": "page",
             "in": "query",
             "required": false,
@@ -909,6 +918,15 @@
             }
           },
           {
+            "name": "batch_no",
+            "in": "query",
+            "description": "兑换码批次过滤（仅 key 列表使用）。",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
             "name": "page",
             "in": "query",
             "required": false,
@@ -1025,13 +1043,13 @@
             "description": "参数不合法"
           },
           "403": {
-            "description": "无权限"
+            "description": "无权限；账号状态异常 ACCOUNT_INACTIVE"
           },
           "404": {
             "description": "活动或用户不存在"
           },
           "409": {
-            "description": "名额不足 / 活动未开始或已结束"
+            "description": "名额不足 QUOTA_FULL / 每人上限 PER_USER_LIMIT / 活动未开始或已结束 ACTIVITY_NOT_ACTIVE / 未实名 REALNAME_REQUIRED"
           }
         }
       }
@@ -1065,6 +1083,15 @@
             "name": "status",
             "in": "query",
             "description": "状态过滤；不同子资源含义不同（key 状态 / 奖励状态 / 转账状态）。",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "batch_no",
+            "in": "query",
+            "description": "兑换码批次过滤（仅 key 列表使用）。",
             "required": false,
             "schema": {
               "type": "string"
@@ -35191,6 +35218,13 @@
       "AdminPageQuery": {
         "type": "object",
         "properties": {
+          "batch_no": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "兑换码批次过滤（仅 key 列表使用）。"
+          },
           "keyword": {
             "type": [
               "string",

@@ -13,6 +13,7 @@ import type {
 } from '@/api/activities'
 import { HttpError } from '@/api/http'
 import {
+  ACTIVITY_ACCOUNT_INACTIVE,
   ACTIVITY_ALREADY_JOINED,
   ACTIVITY_KEY_DISABLED,
   ACTIVITY_KEY_EXPIRED,
@@ -22,6 +23,7 @@ import {
   ACTIVITY_NOT_FOUND,
   ACTIVITY_PER_USER_LIMIT,
   ACTIVITY_QUOTA_FULL,
+  ACTIVITY_REALNAME_REQUIRED,
   ACTIVITY_REWARD_TOO_LARGE,
   ACTIVITY_SIGNUP_DISABLED,
   WECHAT_NOT_BOUND,
@@ -29,8 +31,8 @@ import {
 import { formatBackendDateTime } from '@/shared/datetime'
 import type { Tone } from 'ui_73info'
 
-/** 邀请奖励对应的活动 code：面板上的「查看活动」用它进详情。 */
-export const INVITE_ACTIVITY_CODE = 'invite'
+/** 邀请奖励对应的活动 code：后端内置活动固定为 `invite-reward`（见 activity 迁移与 service）。 */
+export const INVITE_ACTIVITY_CODE = 'invite-reward'
 
 export function activityPhaseLabel(phase: string | null | undefined): string {
   switch (phase) {
@@ -38,6 +40,8 @@ export function activityPhaseLabel(phase: string | null | undefined): string {
       return '进行中'
     case 'not_started':
       return '未开始'
+    case 'paused':
+      return '已暂停'
     case 'ended':
       return '已结束'
     case 'disabled':
@@ -52,6 +56,8 @@ export function activityPhaseTone(phase: string | null | undefined): Tone {
     case 'active':
       return 'success'
     case 'not_started':
+      return 'warning'
+    case 'paused':
       return 'warning'
     case 'ended':
       return 'neutral'
@@ -86,6 +92,7 @@ export function activityPerUserQuotaLabel(activity: ActivitySummary): string {
 function phaseBlockedReason(activity: ActivitySummary): string {
   if (activity.phase === 'disabled') return '活动未开启'
   if (activity.phase === 'not_started') return '活动未开始'
+  if (activity.phase === 'paused') return '活动已暂停'
   if (activity.phase === 'ended') return '活动已结束'
   return ''
 }
@@ -98,11 +105,12 @@ function quotaBlockedReason(activity: ActivitySummary): string {
   return ''
 }
 
-/** 报名按钮的禁用原因；空串表示可以报名。 */
+/** 报名按钮的禁用原因；空串表示可以报名。报名每人一次，已有名额即视为已报名。 */
 export function activitySignupBlockedReason(activity: ActivitySummary): string {
   const phase = phaseBlockedReason(activity)
   if (phase) return phase
   if (!activity.signup_enabled) return '未开放报名'
+  if (activity.my_quota > 0) return '已报名'
   return quotaBlockedReason(activity)
 }
 
@@ -216,6 +224,10 @@ export function activityActionError(error: unknown, fallback = '操作失败'): 
       return '兑换码已过期'
     case ACTIVITY_REWARD_TOO_LARGE:
       return '奖励金额超过单笔转账上限'
+    case ACTIVITY_REALNAME_REQUIRED:
+      return '请先完成实名认证'
+    case ACTIVITY_ACCOUNT_INACTIVE:
+      return '账号当前不可参与活动'
     case WECHAT_NOT_BOUND:
       return '请先微信登录并绑定'
     default:

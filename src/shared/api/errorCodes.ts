@@ -48,3 +48,7 @@ export const ACTIVITY_KEY_DISABLED = 'KEY_DISABLED'
 export const ACTIVITY_KEY_EXPIRED = 'KEY_EXPIRED'
 /** 活动：奖励金额超过单笔转账上限（HTTP 409）。 */
 export const ACTIVITY_REWARD_TOO_LARGE = 'REWARD_AMOUNT_TOO_LARGE'
+/** 活动要求实名认证但参与人未通过（HTTP 409）。 */
+export const ACTIVITY_REALNAME_REQUIRED = 'REALNAME_REQUIRED'
+/** 账号已注销 / 黑名单等非 active 状态，不能参与活动（HTTP 403）。 */
+export const ACTIVITY_ACCOUNT_INACTIVE = 'ACCOUNT_INACTIVE'

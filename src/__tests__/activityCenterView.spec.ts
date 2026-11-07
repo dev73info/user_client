@@ -3,6 +3,8 @@ import { flushPromises, mount, type VueWrapper } from '@vue/test-utils'
 import { createMemoryHistory, createRouter } from 'vue-router'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
+import { mockActivities } from '@/mock/db/activitySeed'
+import { INVITE_ACTIVITY_CODE } from '@/shared/activity'
 import { useAuthStore } from '@/stores/auth'
 import ActivityCenterView from '@/views/ActivityCenterView.vue'
 import { activitySummary } from './fixtures/activity'
@@ -89,6 +91,14 @@ afterEach(() => {
 })
 
 describe('活动中心', () => {
+  it('邀请活动 code 与后端播种、mock 种子一致', () => {
+    // 后端 migration 20261121000000_activity.sql 播种 code = 'invite-reward'；
+    // 这里钉死常量，避免再接真机时「查看活动」跳到 404。
+    expect(INVITE_ACTIVITY_CODE).toBe('invite-reward')
+    expect(mockActivities.some((activity) => activity.code === INVITE_ACTIVITY_CODE)).toBe(true)
+    expect(mockActivities.some((activity) => activity.code === 'invite')).toBe(false)
+  })
+
   it('展示活动标题、时间、名额、奖励与我的参与状态', async () => {
     await render()
 
@@ -114,7 +124,7 @@ describe('活动中心', () => {
     await flushPromises()
 
     expect(router.currentRoute.value.name).toBe('workbench-activity-detail')
-    expect(router.currentRoute.value.params.code).toBe('invite')
+    expect(router.currentRoute.value.params.code).toBe('invite-reward')
   })
 
   it('加载失败给重试入口', async () => {

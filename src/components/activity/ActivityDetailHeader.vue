@@ -17,6 +17,7 @@ const props = defineProps<{
   activity: ActivityDetail
   signupBlocked: string
   signupBusy: boolean
+  signupHint: string
 }>()
 
 defineEmits<{ signup: []; inviteRewards: [] }>()
@@ -50,6 +51,8 @@ const perUserQuotaLabel = computed(() => activityPerUserQuotaLabel(props.activit
         >
       </div>
     </div>
+
+    <p v-if="signupHint" class="activity-detail__hint" role="alert">{{ signupHint }}</p>
 
     <dl class="activity-detail__meta">
       <div class="activity-detail__meta-item">
@@ -85,6 +88,11 @@ const perUserQuotaLabel = computed(() => activityPerUserQuotaLabel(props.activit
   margin: 4px 0 0;
   color: var(--73-ink-muted);
   font-size: 12px;
+}
+.activity-detail__hint {
+  margin: 0;
+  color: var(--73-danger-text);
+  font-size: 13px;
 }
 .activity-detail__meta {
   display: grid;

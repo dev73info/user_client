@@ -11,7 +11,7 @@ import type {
 export function activitySummary(overrides: Partial<ActivitySummary> = {}): ActivitySummary {
   return {
     id: '1',
-    code: 'invite',
+    code: 'invite-reward',
     title: '邀请有礼',
     subtitle: '邀请好友注册，每位得 5 元现金',
     cover_url: null,
@@ -51,7 +51,7 @@ export function activityReward(overrides: Partial<ActivityRewardItem> = {}): Act
   return {
     id: '101',
     activity_id: '1',
-    activity_code: 'invite',
+    activity_code: 'invite-reward',
     activity_title: '邀请有礼',
     amount_fen: 300,
     status: 'pending',

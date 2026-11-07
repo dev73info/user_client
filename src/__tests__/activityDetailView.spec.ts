@@ -56,7 +56,7 @@ vi.mock('ui_73info', async (importOriginal) => {
 
 let wrapper: VueWrapper | undefined
 
-async function render(path = '/workbench/activities/invite') {
+async function render(path = '/workbench/activities/invite-reward') {
   const router = createRouter({
     history: createMemoryHistory(),
     routes: [
@@ -108,7 +108,7 @@ afterEach(() => {
 })
 
 describe('活动详情', () => {
-  it('报名成功后名额减少、奖励出现', async () => {
+  it('报名成功后名额减少、奖励出现并生成待确认转账单', async () => {
     const joinedReward = activityReward({
       id: '201',
       activity_id: '2',
@@ -116,6 +116,12 @@ describe('活动详情', () => {
       activity_title: '新人体验官',
       amount_fen: 300,
       source: 'signup',
+      status: 'transferring',
+      status_text: '发放中',
+    })
+    const joinedPayout = activityPayout({
+      activity_id: '2',
+      activity_title: '新人体验官',
     })
     const participation = activityParticipation({
       activity_id: '2',
@@ -152,27 +158,34 @@ describe('活动详情', () => {
         my_reward_pending_fen: 300,
         my_participation: participation,
         my_rewards: [joinedReward],
+        my_payouts: [joinedPayout],
       },
       participation,
       rewards: [joinedReward],
-      payouts: [],
+      payouts: [joinedPayout],
     })
 
     await render('/workbench/activities/newbie')
     expect(wrapper!.text()).toContain('报名领 3 元现金奖励')
-
     await button('立即报名').trigger('click')
     await flushPromises()
-
     expect(mocks.signup).toHaveBeenCalledWith('activity-token', 'newbie')
     expect(mocks.success).toHaveBeenCalledWith('报名成功')
     expect(wrapper!.text()).toContain('剩余 69 / 100')
-    expect(wrapper!.text()).toContain('待发放')
+    expect(wrapper!.text()).toContain('发放中')
     expect(wrapper!.text()).toContain('¥3.00')
     expect(wrapper!.text()).toContain('我的参与')
+    expect(button('已报名').attributes('disabled')).toBeDefined()
+    expect(button('确认收款')).toBeDefined()
   })
 
-  it('已结束与名额已满时报名按钮禁用', async () => {
+  it('已暂停、已结束与名额已满时报名按钮禁用', async () => {
+    mocks.detail.mockResolvedValue(activityDetail({ phase: 'paused', signup_enabled: true }))
+    await render('/workbench/activities/paused-demo')
+    const paused = button('活动已暂停')
+    expect(paused.attributes('disabled')).toBeDefined()
+
+    wrapper!.unmount()
     mocks.detail.mockResolvedValue(activityDetail({ phase: 'ended', signup_enabled: true }))
     await render('/workbench/activities/ended')
     const ended = button('活动已结束')
@@ -189,6 +202,7 @@ describe('活动详情', () => {
         quota_used: 20,
         quota_remaining: 0,
         signup_enabled: true,
+        my_quota: 0,
       }),
     )
     await render('/workbench/activities/full-house')
@@ -250,7 +264,6 @@ describe('活动详情', () => {
     await wrapper!.find('input').setValue('73INFO-2026')
     await button('兑换').trigger('click')
     await flushPromises()
-
     expect(mocks.redeem).toHaveBeenCalledWith('activity-token', '73INFO-2026')
     expect(mocks.success).toHaveBeenCalledWith('兑换成功')
     expect(wrapper!.text()).toContain('¥2.00')
@@ -272,7 +285,7 @@ describe('活动详情', () => {
       summary: { pending_fen: 0, transferring_fen: 300, paid_fen: 0 },
     })
 
-    await render('/workbench/activities/invite')
+    await render('/workbench/activities/invite-reward')
     expect(wrapper!.text()).toContain('待发放')
 
     await button('确认收款').trigger('click')

@@ -7,8 +7,10 @@
  *   微信内打开带该参数的本页会自动发起一次确认；
  * - 未绑定微信（409 `WECHAT_NOT_BOUND`）：`needWechatLogin` 置真，由页面给登录入口。
  *
- * 活动域没有单独的「领取」接口：`POST /activities/rewards/sync` 既对非终态单查渠道状态，
- * 也把待入账奖励推进成转账单，所以确认前先查一次单，再按返回的 payout 拉起确认页。
+ * 活动举报名 / 兑换后由后端自动发起微信商家转账（无 openid 时为 `waiting_wechat`），
+ * 页面没有「领取」接口：`POST /activities/rewards/sync` 只对**已有**非终态转账单查渠道状态，
+ * 不会新建转账单。所以确认前先查一次单，再按返回的 payout 拉起确认页；
+ * 还没有转账单时提示稍后刷新（后端扫描补发）。
  */
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import QRCode from 'qrcode'
@@ -104,6 +106,7 @@ export function useActivityRewardConfirm(options: ActivityRewardConfirmOptions) 
     const billable = billablePayouts(payouts)
     if (!billable.length) {
       if (hasActiveActivityPayout(payouts)) TMessage.info('已提交转账，到账后自动更新')
+      else if (options.hasPending?.()) TMessage.info('奖励发放处理中，请稍后刷新')
       else TMessage.info('暂无可确认的转账')
       return true
     }

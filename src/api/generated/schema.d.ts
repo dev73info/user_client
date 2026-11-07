@@ -12806,6 +12806,8 @@ export interface components {
             title: string;
         };
         AdminPageQuery: {
+            /** @description 兑换码批次过滤（仅 key 列表使用）。 */
+            batch_no?: string | null;
             keyword?: string | null;
             /** Format: int64 */
             page?: number | null;
@@ -21860,21 +21862,21 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description 无权限 */
+            /** @description 无权限；账号状态异常 ACCOUNT_INACTIVE */
             403: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content?: never;
             };
-            /** @description 兑换码不存在 */
+            /** @description 兑换码不存在（KEY_INVALID） */
             404: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content?: never;
             };
-            /** @description 已使用 / 已过期 / 名额不足 / 活动未开始或已结束 */
+            /** @description 已使用 KEY_USED / 已过期 KEY_EXPIRED / 名额不足 QUOTA_FULL / 每人上限 PER_USER_LIMIT / 未开始或已结束 ACTIVITY_NOT_ACTIVE / 未实名 REALNAME_REQUIRED */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -21991,7 +21993,7 @@ export interface operations {
                     "application/json": components["schemas"]["ActivitySignupResponse"];
                 };
             };
-            /** @description 无权限 */
+            /** @description 无权限；账号状态异常 ACCOUNT_INACTIVE */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -22005,7 +22007,7 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description 已报名 / 名额已满 / 未开始 / 已结束 / 未开放报名 */
+            /** @description 已报名 ALREADY_JOINED / 名额已满 QUOTA_FULL / 每人上限 PER_USER_LIMIT / 未开始或已结束 ACTIVITY_NOT_ACTIVE / 未开放报名 SIGNUP_DISABLED / 未实名 REALNAME_REQUIRED */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -22398,6 +22400,8 @@ export interface operations {
                 keyword?: string;
                 /** @description 状态过滤；不同子资源含义不同（key 状态 / 奖励状态 / 转账状态）。 */
                 status?: string;
+                /** @description 兑换码批次过滤（仅 key 列表使用）。 */
+                batch_no?: string;
                 page?: number;
                 page_size?: number;
             };
@@ -22525,6 +22529,8 @@ export interface operations {
                 keyword?: string;
                 /** @description 状态过滤；不同子资源含义不同（key 状态 / 奖励状态 / 转账状态）。 */
                 status?: string;
+                /** @description 兑换码批次过滤（仅 key 列表使用）。 */
+                batch_no?: string;
                 page?: number;
                 page_size?: number;
             };
@@ -22621,7 +22627,7 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description 无权限 */
+            /** @description 无权限；账号状态异常 ACCOUNT_INACTIVE */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -22635,7 +22641,7 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description 名额不足 / 活动未开始或已结束 */
+            /** @description 名额不足 QUOTA_FULL / 每人上限 PER_USER_LIMIT / 活动未开始或已结束 ACTIVITY_NOT_ACTIVE / 未实名 REALNAME_REQUIRED */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -22650,6 +22656,8 @@ export interface operations {
                 keyword?: string;
                 /** @description 状态过滤；不同子资源含义不同（key 状态 / 奖励状态 / 转账状态）。 */
                 status?: string;
+                /** @description 兑换码批次过滤（仅 key 列表使用）。 */
+                batch_no?: string;
                 page?: number;
                 page_size?: number;
             };

@@ -98,6 +98,21 @@ describe('邀请现金奖励面板', () => {
     expect(claimButton().attributes('disabled')).toBeUndefined()
   })
 
+  it('「查看活动」进入后端播种的邀请活动详情', async () => {
+    wrapper = mount(InviteRewardPanel)
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('由活动「邀请有礼」驱动')
+    const link = wrapper.findAll('button').find((item) => item.text() === '查看活动')
+    expect(link).toBeDefined()
+    await link!.trigger('click')
+
+    expect(mocks.push).toHaveBeenCalledWith({
+      name: 'workbench-activity-detail',
+      params: { code: 'invite-reward' },
+    })
+  })
+
   it('微信内领取时调用 requestMerchantTransfer 并查单刷新', async () => {
     mocks.wechat = true
     mocks.invoke.mockImplementation(

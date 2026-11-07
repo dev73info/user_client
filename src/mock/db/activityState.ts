@@ -36,7 +36,7 @@ export function takeBillNo(): number {
 }
 
 function seedState(): UserState {
-  const invite = activityByCode('invite')!
+  const invite = activityByCode('invite-reward')!
   const participation: ActivityParticipation = {
     activity_id: invite.id,
     quota_count: 1,
@@ -67,8 +67,8 @@ function seedState(): UserState {
         activity_code: invite.code,
         activity_title: invite.title,
         amount_fen: 300,
-        status: 'pending',
-        status_text: '待发放',
+        status: 'waiting_wechat',
+        status_text: '待绑定微信',
         source: 'invite',
         source_ref: null,
         fail_reason: null,

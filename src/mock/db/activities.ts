@@ -1,9 +1,9 @@
 /**
  * 活动中心的假数据变更：报名 / key 兑换 / 我的活动 / 我的奖励 / 查单。
  *
- * 与真实后端同口径：报名 / 兑换会真的占名额、生成参与记录与待发放奖励；
- * 查单会把待发放奖励推进成一张待确认的转账单（带 `package_info`），
- * 所以页面上的「名额减少」「奖励出现」「确认收款」都能真的走一遍。
+ * 与真实后端同口径：报名 / 兑换会真的占名额、生成参与记录，并在奖励生成时立即
+ * 发起一笔待确认的微信转账单（带 `package_info`）；查单只推进已有非终态单，
+ * 不会凭空建单。所以页面上的「名额减少」「奖励出现」「确认收款」都能真的走一遍。
  *
  * 状态与派生字段在 `activityState.ts`，静态种子在 `activitySeed.ts`。
  */
@@ -27,13 +27,7 @@ import {
   ACTIVITY_SIGNUP_DISABLED,
 } from '@/shared/api/errorCodes'
 
-import {
-  activityByCode,
-  activityById,
-  mockActivities,
-  mockActivityKeys,
-  type MockActivity,
-} from './activitySeed'
+import { activityByCode, mockActivities, mockActivityKeys, type MockActivity } from './activitySeed'
 import {
   currentState,
   detailOf,
@@ -130,6 +124,33 @@ function createReward(
   return reward
 }
 
+/**
+ * 与后端一致：奖励生成后立即尝试发起微信商家转账（有 openid 时）。
+ * mock 一律视为已绑定微信，直接生成待用户确认的转账单。
+ */
+function attemptTransfer(
+  state: UserState,
+  activity: MockActivity,
+  reward: ActivityRewardItem | null,
+): void {
+  if (!reward) return
+  state.payouts.push({
+    out_bill_no: `ACT${String(takeBillNo()).padStart(8, '0')}`,
+    activity_id: activity.id,
+    activity_title: activity.title,
+    amount_fen: reward.amount_fen,
+    reward_count: 1,
+    status: 'wait_user_confirm',
+    package_info: 'mock-activity-package',
+    mch_id: '1743365011',
+    app_id: 'wxcca827878ec0def8',
+    fail_reason: null,
+    created_at: datetime(0, 12, 1),
+  })
+  reward.status = 'transferring'
+  reward.status_text = '发放中'
+}
+
 function resultOf(
   state: UserState,
   activity: MockActivity,
@@ -163,6 +184,7 @@ export function signup(code: string): ActivityActionResult {
   activity.quota_used += 1
   const participation = createParticipation(state, activity, 1, 'signup')
   const reward = createReward(state, activity, 'signup')
+  attemptTransfer(state, activity, reward)
   return resultOf(state, activity, participation, reward)
 }
 
@@ -191,6 +213,7 @@ export function redeemKey(keyCode: string): ActivityActionResult {
   activity.quota_used += 1
   const participation = createParticipation(state, activity, 1, 'key')
   const reward = createReward(state, activity, 'key')
+  attemptTransfer(state, activity, reward)
   return resultOf(state, activity, participation, reward)
 }
 
@@ -207,7 +230,10 @@ export function myActivityRewards(): MyActivityRewardsResponse {
   }
 }
 
-/** 查单：处理中的单推进到待确认；待发放奖励合成一张待确认转账单。 */
+/**
+ * 查单：与后端 `POST /activities/rewards/sync` 一致，只推进**已有**非终态转账单，
+ * 不会新建转账单（新建由奖励生成时的自动发放 / 后台扫描负责）。
+ */
 export function syncActivityRewards(): MyActivityRewardsResponse {
   const state = currentState()
   for (const payout of state.payouts) {
@@ -216,31 +242,5 @@ export function syncActivityRewards(): MyActivityRewardsResponse {
       payout.package_info = 'mock-activity-package'
     }
   }
-
-  const pending = state.rewards.filter((reward) => reward.status === 'pending')
-  const activityIds = [...new Set(pending.map((reward) => reward.activity_id))]
-  for (const activityId of activityIds) {
-    const group = pending.filter((reward) => reward.activity_id === activityId)
-    const activity = activityById(activityId)
-    if (!activity) continue
-    state.payouts.push({
-      out_bill_no: `ACT20261107${String(takeBillNo()).padStart(3, '0')}`,
-      activity_id: activity.id,
-      activity_title: activity.title,
-      amount_fen: group.reduce((total, reward) => total + reward.amount_fen, 0),
-      reward_count: group.length,
-      status: 'wait_user_confirm',
-      package_info: 'mock-activity-package',
-      mch_id: '1743365011',
-      app_id: 'wxcca827878ec0def8',
-      fail_reason: null,
-      created_at: datetime(0, 12, 30),
-    })
-    for (const reward of group) {
-      reward.status = 'transferring'
-      reward.status_text = '发放中'
-    }
-  }
-
   return myActivityRewards()
 }

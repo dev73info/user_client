@@ -14,8 +14,8 @@ import { authHeaders, requestJson } from '@/api/http'
 
 type Schemas = components['schemas']
 
-/** 活动阶段：未开启 / 未开始 / 进行中 / 已结束。 */
-export type ActivityPhase = 'disabled' | 'not_started' | 'active' | 'ended'
+/** 活动阶段：草稿 / 未开始 / 进行中 / 已暂停 / 已结束。契约里是字符串，这里只收窄前端要分支的值。 */
+export type ActivityPhase = 'draft' | 'not_started' | 'active' | 'paused' | 'ended'
 
 /** 奖励状态：待发放 / 待绑定微信 / 发放中 / 已到账 / 已取消。 */
 export type ActivityRewardStatus =

@@ -57,7 +57,7 @@ const routes: MockRoute[] = [
   {
     method: 'POST',
     path: '/activities/rewards/sync',
-    note: '查单：推进处理中的转账单，并把待入账奖励合成待确认转账单',
+    note: '查单：只推进已有非终态转账单，不新建转账单',
     handler: () => jsonResponse(syncActivityRewards()),
   },
   {
