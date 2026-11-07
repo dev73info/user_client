@@ -15,7 +15,11 @@ import {
 } from '@/api/requirementFee'
 import { buildAdapayPaymentQuery } from '@/shared/paymentRoute'
 import { formatBpsPercent, stagePlatformFeeFen } from '@/shared/requirementFee'
-import { calculateDepositFen, calculateFinalPaymentFen } from '@/shared/requirementPayment'
+import {
+  calculateDepositFen,
+  calculateFinalPaymentFen,
+  requirementPayFenFromTerms,
+} from '@/shared/requirementPayment'
 
 /** 支付弹窗只需需求单的这几个字段。 */
 type PayableRequirement = {
@@ -51,11 +55,14 @@ export function useConversationPayment(readSources: () => PaymentSources) {
   const payStage = computed<'deposit' | 'final'>(() =>
     readSources().requirement?.status === 'pending_final' ? 'final' : 'deposit',
   )
-  /** 本次应付（**整数分**）：与「我的需求」页同一套口径（`shared/requirementPayment`）。 */
+  /** 本次应付（**整数分**）：有快照时与平台服务费同源；404 才回落到当前 settings 估算。 */
   const payFen = computed(() => {
     const item = readSources().requirement
     if (!item) {
       return 1
+    }
+    if (feeTerms.value) {
+      return requirementPayFenFromTerms(feeTerms.value, payStage.value)
     }
     return payStage.value === 'final'
       ? calculateFinalPaymentFen(item, readSources().depositRatioPercent)

@@ -23,6 +23,7 @@ import { buildAdapayPaymentQuery } from '@/shared/paymentRoute'
 import {
   isRequirementFinalPayment,
   requirementPayFen,
+  requirementPayFenFromTerms,
   requirementPayStageLabel,
 } from '@/shared/requirementPayment'
 import { isAdapayRequirement } from '@/shared/requirementRowRules'
@@ -104,10 +105,19 @@ export function useRequirementPayFlow(options: UseRequirementPayFlowOptions) {
     feeTerms.value ? formatBpsPercent(feeTerms.value.platform_fee_bps) : '',
   )
 
-  /** 本次应付（**整数分**）：比例由视图注入，见 `shared/requirementPayment`。 */
-  const payFen = computed(() =>
-    requirement.value ? requirementPayFen(requirement.value, options.depositRatioPercent()) : 1,
-  )
+  /**
+   * 本次应付（**整数分**）：拿到快照时与平台服务费同源（定金 `deposit_fen` / 尾款
+   * `total_fen - deposit_fen`）；只有 404（自管单 / 旧合同）才回落到当前 settings 估算。
+   */
+  const payFen = computed(() => {
+    if (!requirement.value) {
+      return 1
+    }
+    if (feeTerms.value) {
+      return requirementPayFenFromTerms(feeTerms.value, feeStage.value)
+    }
+    return requirementPayFen(requirement.value, options.depositRatioPercent())
+  })
 
   /**
    * 给 `RequirementPayModal` 的「本次应付」文本用的元值。

@@ -1,4 +1,4 @@
-import { computed, ref, type Ref } from 'vue'
+import { computed, ref, watch, type Ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
 import { TMessage } from 'ui_73info'
@@ -13,7 +13,7 @@ import {
 } from '@/api/requirementFee'
 import type { RequirementPaymentMode, RequirementStatus } from '@/api/requirements'
 import { formatBpsPercent, stagePlatformFeeFen } from '@/shared/requirementFee'
-import { requirementPayFen } from '@/shared/requirementPayment'
+import { requirementPayFen, requirementPayFenFromTerms } from '@/shared/requirementPayment'
 import { useAuthStore } from '@/stores/auth'
 
 import { useDepositCheckout, type PaymentState } from './useDepositCheckout'
@@ -66,19 +66,22 @@ export function useDepositPayment(options: DepositPaymentOptions) {
   const paymentStageLabel = computed(() => (isFinalPayment.value ? '尾款' : '定金'))
 
   /**
-   * 本次应付金额（整数分）：定金按比例、尾款按「预算 − 定金」，口径统一走
-   * `@/shared/requirementPayment`。这只是一个**预估**，真正的应付以
-   * `POST /api/adapay/requirements/{id}/deposit|final-payment` 回执里的 `amount_fen` 为准。
-   *
-   * 优惠券**不参与**这块：契约里这两个下单接口的请求体只有 `client_platform` / `pay_channel`，
-   * 没有券字段，后端也没有「用券抵扣定金」的口径。所以这里不列券、不算券抵扣，
-   * 页面上也不再出现「当前可抵扣 / 实付」这类会让人以为能抵扣的文案。
+   * 本次应付金额（整数分）：拿到快照时与平台服务费同源（定金 `deposit_fen` /
+   * 尾款 `total_fen - deposit_fen`）；只有 404（自管单 / 旧合同）才回落到当前 settings 估算。
+   * 后端真正扣款也按快照走，避免弹窗显示 20% 而后端按 10% 收。
    */
-  const payableFen = computed(() =>
-    depositRequirement.value
-      ? requirementPayFen(depositRequirement.value, depositRatioPercent.value)
-      : 0,
-  )
+  const payableFen = computed(() => {
+    if (!depositRequirement.value) {
+      return 0
+    }
+    if (depositFeeTerms.value) {
+      return requirementPayFenFromTerms(
+        depositFeeTerms.value,
+        isFinalPayment.value ? 'final' : 'deposit',
+      )
+    }
+    return requirementPayFen(depositRequirement.value, depositRatioPercent.value)
+  })
 
   /** 本阶段平台服务费（分）：定金用定金快照，尾款用尾款快照；无快照为空。 */
   const depositPlatformFeeFen = computed(() =>
@@ -90,8 +93,16 @@ export function useDepositPayment(options: DepositPaymentOptions) {
     depositFeeTerms.value ? formatBpsPercent(depositFeeTerms.value.platform_fee_bps) : '',
   )
 
-  /** 担保单读一次费率快照；404（旧合同）按「不展示该行」处理，不挡支付。 */
+  /**
+   * 担保单读一次费率快照；404（旧合同）按「不展示该行」处理，不挡支付。
+   * 同一需求只请求一次：点击打开与深链挂载都会调到这里。
+   */
+  let feeRequestFor = ''
   async function loadDepositFeeTerms(requirementId: string) {
+    if (!requirementId || feeRequestFor === requirementId) {
+      return
+    }
+    feeRequestFor = requirementId
     depositFeeTerms.value = null
     try {
       const terms = await getRequirementFeeTerms(auth.token, requirementId)
@@ -101,9 +112,22 @@ export function useDepositPayment(options: DepositPaymentOptions) {
     } catch (error) {
       if (!isFeeTermsPending(error)) {
         depositFeeTerms.value = null
+        // 非 404 失败允许下次重试，不要把「当时没网」当成永久没有费率。
+        feeRequestFor = ''
       }
     }
   }
+
+  // 深链 / 刷新时弹窗由 URL 直接挂载，不经过 openDepositPayment：这里按当前需求补载一次。
+  watch(
+    depositRequirement,
+    (item) => {
+      if (item && isAdapayRequirement(item)) {
+        void loadDepositFeeTerms(item.id)
+      }
+    },
+    { immediate: true },
+  )
 
   function isAdapayRequirement(item: DepositRequirement) {
     return item.paymentMode === 'platform_guarantee'
@@ -161,6 +185,7 @@ export function useDepositPayment(options: DepositPaymentOptions) {
   function closeDepositCard() {
     depositPolicyAccepted.value = false
     depositFeeTerms.value = null
+    feeRequestFor = ''
     router.replace({ name: 'home' })
   }
 

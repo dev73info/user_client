@@ -1,3 +1,4 @@
+import type { RequirementFeeTerms } from '@/api/requirementFee'
 import { parseCnyToFen } from '@/shared/money'
 
 export type BudgetedRequirement = {
@@ -80,4 +81,18 @@ export function requirementPayFen(
   return isRequirementFinalPayment(item)
     ? calculateFinalPaymentFen(item, depositRatioPercent)
     : calculateDepositFen(item, depositRatioPercent)
+}
+
+/**
+ * 有费率快照时的「本次应付」（**整数分**）：与平台服务费同源。
+ *
+ * 定金取快照的 `deposit_fen`，尾款取「合同总额 − 定金」（契约没有单独的 `final_fen`）。
+ * 快照比例与当前 settings 不一致时以快照为准——后端口径也是按快照扣款。
+ */
+export function requirementPayFenFromTerms(
+  terms: RequirementFeeTerms,
+  stage: 'deposit' | 'final',
+): number {
+  const fen = stage === 'final' ? terms.total_fen - terms.deposit_fen : terms.deposit_fen
+  return Math.max(MIN_PAY_FEN, fen)
 }
