@@ -8,7 +8,7 @@
  *   微信内打开带该参数的本页会自动发起一次领取。
  * - 未绑定微信（409 `WECHAT_NOT_BOUND`）：把 `needWechatLogin` 置真，由面板给登录入口。
  */
-import { onBeforeUnmount, onMounted, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import QRCode from 'qrcode'
 import { TMessage } from 'ui_73info'
 
@@ -91,6 +91,18 @@ export function useInviteRewardClaim() {
   const qrError = ref('')
   const autoClaimTried = ref(false)
   let syncTimer: ReturnType<typeof setTimeout> | null = null
+
+  /**
+   * 已经拉起过微信确认页、但用户取消/退出后仍未完成的转账单。
+   *
+   * 这类单不占「可领取」，`available_fen` 可能是 0；但领取接口按契约会返回已有的
+   * 非终态单及其 `package_info`，所以仍要允许再走一次 claim 把确认页重新拉起来。
+   */
+  const payoutNeedsConfirm = computed(() =>
+    (overview.value?.payouts ?? []).some(
+      (payout) => payout.status === 'wait_user_confirm' && Boolean(payout.package_info),
+    ),
+  )
 
   async function load() {
     auth.hydrate()
@@ -198,7 +210,13 @@ export function useInviteRewardClaim() {
   async function claim() {
     auth.hydrate()
     const token = auth.token.trim()
-    if (!token || !overview.value?.enabled || overview.value.available_fen <= 0 || claiming.value) {
+    const hasAvailable = (overview.value?.available_fen ?? 0) > 0
+    if (
+      !token ||
+      !overview.value?.enabled ||
+      (!hasAvailable && !payoutNeedsConfirm.value) ||
+      claiming.value
+    ) {
       return
     }
 
@@ -248,6 +266,7 @@ export function useInviteRewardClaim() {
     claiming,
     loadError,
     needWechatLogin,
+    payoutNeedsConfirm,
     qrOpen,
     qrImage,
     qrError,

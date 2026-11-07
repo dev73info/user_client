@@ -175,6 +175,51 @@ describe('邀请现金奖励面板', () => {
     expect(mocks.get).toHaveBeenCalledTimes(2)
   })
 
+  it('可领取为 0 但有待确认转账单时显示继续确认收款并再次拉起 JSAPI', async () => {
+    mocks.wechat = true
+    mocks.invoke.mockImplementation(
+      (
+        _method: string,
+        _params: Record<string, string>,
+        callback: (result: { err_msg?: string }) => void,
+      ) => callback({ err_msg: 'requestMerchantTransfer:ok' }),
+    )
+    Object.assign(window, { WeixinJSBridge: { invoke: mocks.invoke } })
+    mocks.get.mockResolvedValue(
+      rewardOverview({
+        available_fen: 0,
+        payouts: [
+          {
+            out_bill_no: 'IR20261107',
+            amount_fen: 100,
+            reward_count: 1,
+            status: 'wait_user_confirm',
+            package_info: 'mock-package',
+            created_at: '2026-11-07 10:05:00',
+          },
+        ],
+      }),
+    )
+
+    wrapper = mount(InviteRewardPanel)
+    await flushPromises()
+
+    const button = wrapper.findAll('button').find((item) => item.text() === '继续确认收款')
+    expect(button).toBeDefined()
+    expect(button!.attributes('disabled')).toBeUndefined()
+
+    await button!.trigger('click')
+    await flushPromises()
+
+    // 复用领取接口：后端返回已有的非终态单，不重复建单。
+    expect(mocks.claim).toHaveBeenCalledWith('reward-token')
+    expect(mocks.invoke).toHaveBeenCalledWith(
+      'requestMerchantTransfer',
+      { mchId: '1743365011', appId: 'wxcca827878ec0def8', package: 'mock-package' },
+      expect.any(Function),
+    )
+  })
+
   it('微信内取消收款时提示稍后再领', async () => {
     mocks.wechat = true
     mocks.invoke.mockImplementation(

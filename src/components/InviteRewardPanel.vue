@@ -20,6 +20,7 @@ const {
   claiming,
   loadError,
   needWechatLogin,
+  payoutNeedsConfirm,
   qrOpen,
   qrImage,
   qrError,
@@ -28,9 +29,12 @@ const {
 } = useInviteRewardClaim()
 
 const amountText = computed(() => formatFenAsCny(overview.value?.amount_fen))
-const claimDisabled = computed(
-  () => !overview.value || overview.value.available_fen <= 0 || claiming.value,
+/** 已有待确认转账单时，即使可领取为 0 也允许再次拉起确认页。 */
+const canClaim = computed(
+  () => (overview.value?.available_fen ?? 0) > 0 || payoutNeedsConfirm.value,
 )
+const claimDisabled = computed(() => !canClaim.value || claiming.value)
+const claimLabel = computed(() => (payoutNeedsConfirm.value ? '继续确认收款' : '领取奖励'))
 const activePayouts = computed(() =>
   (overview.value?.payouts ?? []).filter(
     (payout) => payout.status === 'creating' || payout.status === 'wait_user_confirm',
@@ -96,7 +100,7 @@ defineExpose({ reload: load })
           :disabled="claimDisabled"
           :loading="claiming"
           @click="claim"
-          >领取奖励</TButton
+          >{{ claimLabel }}</TButton
         >
       </div>
     </div>
