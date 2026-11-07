@@ -6,6 +6,7 @@ import {
   acceptCommunityBounty,
   boostCommunityPost,
   cancelCommunityBounty,
+  deleteCommunityPost,
   getCommunityPost,
   setCommunityPostFavorite,
   setCommunityPostLike,
@@ -135,6 +136,14 @@ export function useCommunityPostDetail(options: CommunityPostDetailOptions = {})
     })
   }
 
+  function deletePost() {
+    const current = post.value
+    if (!current) return Promise.resolve(false)
+    return runAction('post-delete', '删除帖子失败', async () => {
+      await deleteCommunityPost(auth.token, current.id)
+    })
+  }
+
   function openBoost() {
     if (!requireLogin()) return
     actionError.value = ''
@@ -168,6 +177,7 @@ export function useCommunityPostDetail(options: CommunityPostDetailOptions = {})
     toggleFavorite,
     acceptBounty,
     cancelBounty,
+    deletePost,
     openBoost,
     submitBoost,
   }

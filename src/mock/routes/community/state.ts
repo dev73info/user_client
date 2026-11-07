@@ -26,6 +26,11 @@ export function findCommunityPost(id: number): CommunityPost | undefined {
   return communityPosts.find((item) => item.id === id)
 }
 
+export function removeCommunityPost(id: number): void {
+  const index = communityPosts.findIndex((item) => item.id === id)
+  if (index >= 0) communityPosts.splice(index, 1)
+}
+
 export function findCommunityComment(id: number): CommunityComment | undefined {
   return communityComments.find((item) => item.id === id)
 }

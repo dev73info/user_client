@@ -5,7 +5,7 @@ import type {
   UpdateCommunityPostPayload,
 } from '@/api/community'
 
-import { jsonResponse } from '../../response'
+import { jsonResponse, noContentResponse } from '../../response'
 import type { MockRequest, MockRoute } from '../../router'
 import { parseMockToken } from '../../token'
 import { nowText } from '../common/helpers'
@@ -20,6 +20,7 @@ import {
   findCommunityComment,
   findCommunityPost,
   nextCommunityId,
+  removeCommunityPost,
   resolveCommunityTags,
   setCommunityReaction,
 } from './state'
@@ -113,6 +114,20 @@ export const communityWriteRoutes: MockRoute[] = [
           updated_at: nowText(),
         })
         return jsonResponse(communityPostForViewer(post, username))
+      }),
+  },
+  {
+    method: 'DELETE',
+    path: '/community/posts/:postId',
+    note: '删除本人社区帖子',
+    handler: (request, params) =>
+      authorized(request, (username) => {
+        const post = findCommunityPost(Number(params.postId))
+        if (!post) return notFound()
+        if (post.author !== username) return forbidden()
+        // 硬删 / 软删对用户端没有差别：模拟里统一从 state 移除
+        removeCommunityPost(post.id)
+        return noContentResponse()
       }),
   },
   {

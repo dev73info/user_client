@@ -39,6 +39,7 @@ declare module 'vue' {
     CommunityCommentSection: typeof import('./src/components/community/CommunityCommentSection.vue')['default']
     CommunityListPanel: typeof import('./src/components/community/CommunityListPanel.vue')['default']
     CommunityPagination: typeof import('./src/components/community/CommunityPagination.vue')['default']
+    CommunityPostActions: typeof import('./src/components/community/CommunityPostActions.vue')['default']
     CommunityPostCard: typeof import('./src/components/community/CommunityPostCard.vue')['default']
     CommunityPostDetailCard: typeof import('./src/components/community/CommunityPostDetailCard.vue')['default']
     CommunityPostFormDialog: typeof import('./src/components/community/CommunityPostFormDialog.vue')['default']

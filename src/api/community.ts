@@ -1,5 +1,5 @@
 import type { components, operations } from '@/api/generated/schema'
-import { authHeaders, requestJson } from '@/api/http'
+import { authHeaders, requestJson, requestVoid } from '@/api/http'
 
 type Schemas = components['schemas']
 
@@ -87,6 +87,14 @@ export function updateCommunityPost(
     `/community/posts/${postId}`,
     { method: 'PATCH', headers: jsonHeaders(token), body: JSON.stringify(payload) },
     '保存帖子失败',
+  )
+}
+
+export function deleteCommunityPost(token: string, postId: number): Promise<void> {
+  return requestVoid(
+    `/community/posts/${postId}`,
+    { method: 'DELETE', headers: authHeaders(token) },
+    '删除帖子失败',
   )
 }
 

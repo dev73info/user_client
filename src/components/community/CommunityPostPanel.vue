@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { reactive, ref, watch } from 'vue'
-import { TButton, TLoading } from 'ui_73info'
+import { useRouter } from 'vue-router'
+import { TButton, TLoading, TMessage } from 'ui_73info'
 
 import type { CreateCommunityPostPayload } from '@/api/community'
 import CommunityBoostDialog from '@/components/community/CommunityBoostDialog.vue'
@@ -16,6 +17,8 @@ const props = defineProps<{
   /** 左右分栏传当前选中帖子；独立详情页不传，沿用路由参数。 */
   postId?: number | null
 }>()
+
+const router = useRouter()
 
 const { auth, openLogin, openRealname } = useCommunityAccess()
 const detail = useCommunityPostDetail(
@@ -71,6 +74,13 @@ async function submitComment() {
     commentSectionRef.value?.showLatestComment()
   }
 }
+
+async function deletePost() {
+  const deleted = await detail.deletePost()
+  if (!deleted) return
+  TMessage.success('帖子已删除')
+  await router.push({ name: 'community' })
+}
 </script>
 
 <template>
@@ -88,6 +98,7 @@ async function submitComment() {
           @like="detail.toggleLike"
           @favorite="detail.toggleFavorite"
           @edit="editor.openEdit(post)"
+          @delete="deletePost"
           @boost="detail.openBoost"
           @cancel-bounty="detail.cancelBounty"
           @reply="focusCommentComposer"
