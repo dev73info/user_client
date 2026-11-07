@@ -109,6 +109,13 @@ export function buildRailGroups(realnameApproved: boolean): RailGroup[] {
       description: '查看与佩戴徽章、邀请好友与邀请记录',
       activeNames: ['workbench-invite-leaderboard'],
     },
+    {
+      key: 'activities',
+      label: '活动中心',
+      name: 'workbench-activities',
+      description: '浏览活动、报名与查看我的奖励',
+      activeNames: ['workbench-activity-detail', 'workbench-activity-rewards'],
+    },
   ]
 
   return [

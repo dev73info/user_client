@@ -21,6 +21,125 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/activities": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 活动列表 */
+        get: operations["activities_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/activities/mine": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 我参加的活动 */
+        get: operations["activities_mine"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/activities/redeem-key": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** 兑换码兑换名额 */
+        post: operations["activities_redeem_key"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/activities/rewards": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 我的活动奖励 */
+        get: operations["activities_rewards"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/activities/rewards/sync": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** 同步我的活动奖励状态 */
+        post: operations["activities_rewards_sync"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/activities/{code}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 活动详情 */
+        get: operations["activities_detail"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/activities/{code}/signup": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** 报名活动 */
+        post: operations["activities_signup"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/adapay/requirements/{requirement_id}/deposit": {
         parameters: {
             query?: never;
@@ -89,6 +208,179 @@ export interface paths {
         get: operations["payment_union_oauth_authorize_url"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/activities": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 活动列表 */
+        get: operations["admin_activities_list"];
+        put?: never;
+        /** 创建活动 */
+        post: operations["admin_activities_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/activities/rewards/{out_bill_no}/sync": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** 强制查单 */
+        post: operations["admin_activities_sync_payout"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/activities/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 活动详情 */
+        get: operations["admin_activities_get"];
+        /** 更新活动 */
+        put: operations["admin_activities_update"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/activities/{id}/keys": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 兑换码列表 */
+        get: operations["admin_activities_keys"];
+        put?: never;
+        /** 生成兑换码 */
+        post: operations["admin_activities_create_keys"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/activities/{id}/keys/{key_id}/disable": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** 停用兑换码 */
+        post: operations["admin_activities_disable_key"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/activities/{id}/participants": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 活动参与者 */
+        get: operations["admin_activities_participants"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/activities/{id}/payout": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** 批量发起发放 */
+        post: operations["admin_activities_payout"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/activities/{id}/quotas": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** 补发名额 */
+        post: operations["admin_activities_grant_quota"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/activities/{id}/rewards": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 活动奖励流水 */
+        get: operations["admin_activities_rewards"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/activities/{id}/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** 变更活动状态 */
+        post: operations["admin_activities_status"];
         delete?: never;
         options?: never;
         head?: never;
@@ -796,6 +1088,24 @@ export interface paths {
         /** 邀请码列表 */
         get: operations["growth_admin_invite_codes"];
         put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/growth/invite-reward-config": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 邀请奖励配置 */
+        get: operations["growth_admin_invite_reward_config"];
+        /** 保存邀请奖励配置 */
+        put: operations["growth_admin_invite_reward_config_update"];
         post?: never;
         delete?: never;
         options?: never;
@@ -11783,6 +12093,123 @@ export interface components {
             /** Format: int64 */
             total_count: number;
         };
+        ActivityDetailResponse: {
+            activity_type: string;
+            code: string;
+            cover_url?: string | null;
+            description: string;
+            ends_at?: string | null;
+            id: string;
+            invite_summary?: null | components["schemas"]["InviteSummaryResponse"];
+            key_enabled: boolean;
+            /** Format: int64 */
+            max_single_transfer_fen: number;
+            /** Format: int64 */
+            min_member_age_days: number;
+            my_participation?: null | components["schemas"]["ParticipationResponse"];
+            my_payouts: components["schemas"]["ActivityPayoutItemResponse"][];
+            /** Format: int64 */
+            my_quota: number;
+            /** Format: int64 */
+            my_reward_paid_fen: number;
+            /** Format: int64 */
+            my_reward_pending_fen: number;
+            my_rewards: components["schemas"]["ActivityRewardItemResponse"][];
+            phase: string;
+            /** Format: int64 */
+            quota_per_user?: number | null;
+            /** Format: int64 */
+            quota_remaining?: number | null;
+            /** Format: int64 */
+            quota_total?: number | null;
+            /** Format: int64 */
+            quota_used: number;
+            require_realname: boolean;
+            /** Format: int64 */
+            reward_amount_fen: number;
+            signup_enabled: boolean;
+            starts_at?: string | null;
+            status: string;
+            subtitle: string;
+            title: string;
+        };
+        ActivityListQuery: {
+            /** @description `general` / `invite`。 */
+            activity_type?: string | null;
+            /** @description 按标题 / 标识模糊搜索。 */
+            keyword?: string | null;
+        };
+        ActivityListResponse: {
+            items: components["schemas"]["ActivitySummaryResponse"][];
+        };
+        ActivityPayoutItemResponse: {
+            activity_id: string;
+            activity_title: string;
+            /** Format: int64 */
+            amount_fen: number;
+            app_id: string;
+            created_at: string;
+            fail_reason?: string | null;
+            mch_id: string;
+            out_bill_no: string;
+            package_info?: string | null;
+            /** Format: int64 */
+            reward_count: number;
+            status: string;
+        };
+        ActivityRewardItemResponse: {
+            activity_code: string;
+            activity_id: string;
+            activity_title: string;
+            /** Format: int64 */
+            amount_fen: number;
+            created_at: string;
+            fail_reason?: string | null;
+            id: string;
+            paid_at?: string | null;
+            /** @description `signup` / `admin` / `key` / `invite`。 */
+            source: string;
+            source_ref?: string | null;
+            /** @description `pending` / `waiting_wechat` / `transferring` / `paid` / `cancelled`。 */
+            status: string;
+            status_text: string;
+        };
+        ActivitySignupResponse: {
+            activity: components["schemas"]["ActivityDetailResponse"];
+            participation?: null | components["schemas"]["ParticipationResponse"];
+            payouts: components["schemas"]["ActivityPayoutItemResponse"][];
+            rewards: components["schemas"]["ActivityRewardItemResponse"][];
+        };
+        ActivitySummaryResponse: {
+            activity_type: string;
+            code: string;
+            cover_url?: string | null;
+            ends_at?: string | null;
+            id: string;
+            key_enabled: boolean;
+            /** Format: int64 */
+            my_quota: number;
+            /** Format: int64 */
+            my_reward_paid_fen: number;
+            /** Format: int64 */
+            my_reward_pending_fen: number;
+            phase: string;
+            /** Format: int64 */
+            quota_per_user?: number | null;
+            /** Format: int64 */
+            quota_remaining?: number | null;
+            /** Format: int64 */
+            quota_total?: number | null;
+            /** Format: int64 */
+            quota_used: number;
+            /** Format: int64 */
+            reward_amount_fen: number;
+            signup_enabled: boolean;
+            starts_at?: string | null;
+            status: string;
+            subtitle: string;
+            title: string;
+        };
         /**
          * @description AdaPay 配置的对外形状。
          *
@@ -11839,6 +12266,152 @@ export interface components {
             delta: number;
             reason?: string | null;
             username: string;
+        };
+        AdminActivityItemResponse: {
+            activity_type: string;
+            code: string;
+            cover_url?: string | null;
+            created_at: string;
+            created_by: string;
+            description: string;
+            ends_at?: string | null;
+            id: string;
+            key_enabled: boolean;
+            /** Format: int64 */
+            key_total: number;
+            /** Format: int64 */
+            key_used: number;
+            /** Format: int64 */
+            max_payouts_per_day: number;
+            /** Format: int64 */
+            max_payouts_per_month: number;
+            /** Format: int64 */
+            max_single_transfer_fen: number;
+            /** Format: int64 */
+            min_member_age_days: number;
+            /** Format: int64 */
+            my_quota: number;
+            /** Format: int64 */
+            my_reward_paid_fen: number;
+            /** Format: int64 */
+            my_reward_pending_fen: number;
+            /** Format: int64 */
+            participant_count: number;
+            phase: string;
+            /** Format: int64 */
+            quota_per_user?: number | null;
+            /** Format: int64 */
+            quota_remaining?: number | null;
+            /** Format: int64 */
+            quota_total?: number | null;
+            /** Format: int64 */
+            quota_used: number;
+            require_realname: boolean;
+            /** Format: int64 */
+            reward_amount_fen: number;
+            /** Format: int64 */
+            reward_paid_count: number;
+            /** Format: int64 */
+            reward_paid_fen: number;
+            /** Format: int64 */
+            reward_pending_count: number;
+            signup_enabled: boolean;
+            starts_at?: string | null;
+            status: string;
+            subtitle: string;
+            title: string;
+            transfer_remark: string;
+            updated_at: string;
+        };
+        AdminActivityListResponse: {
+            items: components["schemas"]["AdminActivityItemResponse"][];
+            /** Format: int64 */
+            page: number;
+            /** Format: int64 */
+            page_size: number;
+            /** Format: int64 */
+            total: number;
+        };
+        AdminActivityQuery: {
+            activity_type?: string | null;
+            keyword?: string | null;
+            /** Format: int64 */
+            page?: number | null;
+            /** Format: int64 */
+            page_size?: number | null;
+            status?: string | null;
+        };
+        AdminActivityRewardItemResponse: {
+            activity_id: string;
+            activity_title: string;
+            /** Format: int64 */
+            amount_fen: number;
+            created_at: string;
+            fail_reason?: string | null;
+            finished_at?: string | null;
+            out_bill_no?: string | null;
+            reward_id: string;
+            reward_status: string;
+            source: string;
+            transfer_status?: string | null;
+            username: string;
+        };
+        AdminActivityRewardListResponse: {
+            items: components["schemas"]["AdminActivityRewardItemResponse"][];
+            /** Format: int64 */
+            page: number;
+            /** Format: int64 */
+            page_size: number;
+            summary: components["schemas"]["AdminActivityRewardSummaryResponse"];
+            /** Format: int64 */
+            total: number;
+        };
+        AdminActivityRewardSummaryResponse: {
+            /** Format: int64 */
+            cancelled_count: number;
+            /** Format: int64 */
+            paid_amount_fen: number;
+            /** Format: int64 */
+            paid_count: number;
+            /** Format: int64 */
+            pending_count: number;
+            /** Format: int64 */
+            transferring_count: number;
+            /** Format: int64 */
+            waiting_wechat_count: number;
+        };
+        AdminActivityUpsertRequest: {
+            /** @description 创建时可选（`general` / `invite`）；更新时忽略。 */
+            activity_type?: string | null;
+            /** @description 创建时必填；更新时忽略。 */
+            code?: string | null;
+            cover_url?: string | null;
+            description?: string | null;
+            ends_at?: string | null;
+            key_enabled: boolean;
+            /** Format: int64 */
+            max_payouts_per_day: number;
+            /** Format: int64 */
+            max_payouts_per_month: number;
+            /** Format: int64 */
+            max_single_transfer_fen: number;
+            /** Format: int64 */
+            min_member_age_days: number;
+            /** Format: int64 */
+            quota_per_user?: number | null;
+            /** Format: int64 */
+            quota_total?: number | null;
+            require_realname: boolean;
+            /** Format: int64 */
+            reward_amount_fen: number;
+            signup_enabled: boolean;
+            /** @description 东八区 `YYYY-MM-DD HH:MM:SS`、`YYYY-MM-DD` 或 RFC3339。 */
+            starts_at?: string | null;
+            /** @description `draft` / `published` / `paused` / `ended`；缺省按当前值。 */
+            status?: string | null;
+            subtitle?: string | null;
+            title: string;
+            transfer_remark: string;
         };
         AdminBadgeDefinitionItem: {
             /** Format: int64 */
@@ -12114,6 +12687,39 @@ export interface components {
             /** @description 状态筛选：`requested` / `under_review` / `approved` / `rejected` / `reversed`。 */
             status?: string | null;
         };
+        AdminKeyCreateRequest: {
+            batch_no?: string | null;
+            /** Format: int64 */
+            count: number;
+            /** @description 东八区 `YYYY-MM-DD HH:MM:SS`、`YYYY-MM-DD` 或 RFC3339；空表示不过期。 */
+            expires_at?: string | null;
+            /** Format: int64 */
+            quota_count: number;
+        };
+        AdminKeyCreateResponse: {
+            items: components["schemas"]["AdminKeyItemResponse"][];
+        };
+        AdminKeyItemResponse: {
+            batch_no: string;
+            code: string;
+            created_at: string;
+            expires_at?: string | null;
+            id: string;
+            /** Format: int64 */
+            quota_count: number;
+            status: string;
+            used_at?: string | null;
+            used_by?: string | null;
+        };
+        AdminKeyListResponse: {
+            items: components["schemas"]["AdminKeyItemResponse"][];
+            /** Format: int64 */
+            page: number;
+            /** Format: int64 */
+            page_size: number;
+            /** Format: int64 */
+            total: number;
+        };
         /** @description 管理端改企业信息入参。 */
         AdminModifyCompanyInfoBody: {
             /** @description 企业名称。 */
@@ -12199,19 +12805,76 @@ export interface components {
             /** @description 标题。 */
             title: string;
         };
-        AdminPayoutResponse: {
+        AdminPageQuery: {
+            keyword?: string | null;
+            /** Format: int64 */
+            page?: number | null;
+            /** Format: int64 */
+            page_size?: number | null;
+            /** @description 状态过滤；不同子资源含义不同（key 状态 / 奖励状态 / 转账状态）。 */
+            status?: string | null;
+        };
+        AdminParticipantItemResponse: {
+            created_at: string;
+            first_source: string;
+            /** Format: int64 */
+            quota_count: number;
+            /** Format: int64 */
+            reward_paid_fen: number;
+            /** Format: int64 */
+            reward_pending_fen: number;
+            updated_at: string;
+            username: string;
+        };
+        AdminParticipantListResponse: {
+            items: components["schemas"]["AdminParticipantItemResponse"][];
+            /** Format: int64 */
+            page: number;
+            /** Format: int64 */
+            page_size: number;
+            /** Format: int64 */
+            total: number;
+        };
+        AdminPayoutRecordResponse: {
+            activity_id: string;
+            activity_title: string;
             /** Format: int64 */
             amount_fen: number;
+            app_id: string;
             created_at: string;
             fail_reason?: string | null;
             finished_at?: string | null;
-            inviter: string;
+            mch_id: string;
             out_bill_no: string;
             package_info?: string | null;
             /** Format: int64 */
             reward_count: number;
             status: string;
             transfer_bill_no?: string | null;
+            username: string;
+        };
+        AdminPayoutTriggerResponse: {
+            /** Format: int64 */
+            skipped_users: number;
+            /** Format: int64 */
+            triggered_payouts: number;
+            /** Format: int64 */
+            triggered_users: number;
+        };
+        AdminQuotaRequest: {
+            /** @description 补发原因（审计用）；不填记为「管理员补发」。 */
+            note?: string | null;
+            /** Format: int64 */
+            quota_count: number;
+            username: string;
+        };
+        AdminQuotaResponse: {
+            /** Format: int64 */
+            amount_fen: number;
+            /** Format: int64 */
+            quota_count: number;
+            reward_id?: string | null;
+            username: string;
         };
         /** @description 管理端重新认证入参。 */
         AdminReAuthUserBody: {
@@ -12223,41 +12886,6 @@ export interface components {
             serialNo: string;
             /** @description 目标用户名。 */
             username: string;
-        };
-        AdminRewardItemResponse: {
-            /** Format: int64 */
-            amount_fen: number;
-            created_at: string;
-            fail_reason?: string | null;
-            finished_at?: string | null;
-            invitee: string;
-            inviter: string;
-            out_bill_no?: string | null;
-            reward_id: string;
-            reward_status: string;
-            transfer_status?: string | null;
-        };
-        AdminRewardListResponse: {
-            items: components["schemas"]["AdminRewardItemResponse"][];
-            /** Format: int64 */
-            page: number;
-            /** Format: int64 */
-            page_size: number;
-            summary: components["schemas"]["AdminRewardSummaryResponse"];
-            /** Format: int64 */
-            total: number;
-        };
-        AdminRewardSummaryResponse: {
-            /** Format: int64 */
-            claimed_count: number;
-            /** Format: int64 */
-            failed_count: number;
-            /** Format: int64 */
-            paid_amount_fen: number;
-            /** Format: int64 */
-            paid_count: number;
-            /** Format: int64 */
-            pending_count: number;
         };
         /**
          * @description 管理端单个收款账户的响应。
@@ -12318,6 +12946,9 @@ export interface components {
             page_size: number;
             /** Format: int64 */
             total: number;
+        };
+        AdminStatusRequest: {
+            status: string;
         };
         /** @description 管理端团队列表。 */
         AdminTeamListResponse: {
@@ -13504,18 +14135,6 @@ export interface components {
             token: string;
             /** @description 票据绑定的平台用户名。 */
             username: string;
-        };
-        ClaimResponse: {
-            payouts: components["schemas"]["ClaimedPayoutResponse"][];
-        };
-        ClaimedPayoutResponse: {
-            /** Format: int64 */
-            amount_fen: number;
-            app_id: string;
-            mch_id: string;
-            out_bill_no: string;
-            package_info?: string | null;
-            state: string;
         };
         /** @description 客户端响应。 */
         ClientResponse: {
@@ -15443,11 +16062,118 @@ export interface components {
             /** @description 团队名称。 */
             team_name: string;
         };
+        InviteAdminListResponse: {
+            items: components["schemas"]["InviteAdminRewardItemResponse"][];
+            /** Format: int64 */
+            page: number;
+            /** Format: int64 */
+            page_size: number;
+            summary: components["schemas"]["InviteAdminSummaryResponse"];
+            /** Format: int64 */
+            total: number;
+        };
+        InviteAdminPayoutResponse: {
+            /** Format: int64 */
+            amount_fen: number;
+            created_at: string;
+            fail_reason?: string | null;
+            finished_at?: string | null;
+            inviter: string;
+            out_bill_no: string;
+            package_info?: string | null;
+            /** Format: int64 */
+            reward_count: number;
+            status: string;
+            transfer_bill_no?: string | null;
+        };
+        InviteAdminRewardItemResponse: {
+            /** Format: int64 */
+            amount_fen: number;
+            created_at: string;
+            fail_reason?: string | null;
+            finished_at?: string | null;
+            invitee: string;
+            inviter: string;
+            out_bill_no?: string | null;
+            reward_id: string;
+            /** @description 旧口径：`pending` / `claimed` / `paid` / `failed`。 */
+            reward_status: string;
+            transfer_status?: string | null;
+        };
+        InviteAdminRewardQuery: {
+            keyword?: string | null;
+            /** Format: int64 */
+            page?: number | null;
+            /** Format: int64 */
+            page_size?: number | null;
+            status?: string | null;
+        };
+        InviteAdminSummaryResponse: {
+            /** Format: int64 */
+            claimed_count: number;
+            /** Format: int64 */
+            failed_count: number;
+            /** Format: int64 */
+            paid_amount_fen: number;
+            /** Format: int64 */
+            paid_count: number;
+            /** Format: int64 */
+            pending_count: number;
+        };
+        InviteClaimResponse: {
+            payouts: components["schemas"]["InviteClaimedPayoutResponse"][];
+        };
+        InviteClaimedPayoutResponse: {
+            /** Format: int64 */
+            amount_fen: number;
+            app_id: string;
+            mch_id: string;
+            out_bill_no: string;
+            package_info?: string | null;
+            state: string;
+        };
         InviteCodeResponse: {
             code: string;
             /** Format: int64 */
             invite_count: number;
             invite_url: string;
+        };
+        InviteConfigResponse: {
+            /** Format: int64 */
+            amount_fen: number;
+            enabled: boolean;
+            end_at: string;
+            /** Format: int64 */
+            max_rewards_per_day: number;
+            /** Format: int64 */
+            max_rewards_per_month: number;
+            /**
+             * Format: int64
+             * @description 渠道单笔上限，只读。
+             */
+            max_single_transfer_fen: number;
+            /** Format: int64 */
+            min_invitee_age_days: number;
+            /** @description `draft` / `not_started` / `active` / `paused` / `ended`。 */
+            phase: string;
+            require_invitee_realname: boolean;
+            /** @description `YYYY-MM-DD`；空表示不限。 */
+            start_at: string;
+        };
+        InviteConfigUpdateRequest: {
+            /** Format: int64 */
+            amount_fen: number;
+            enabled: boolean;
+            end_at?: string | null;
+            /** Format: int64 */
+            max_rewards_per_day: number;
+            /** Format: int64 */
+            max_rewards_per_month: number;
+            /** Format: int64 */
+            min_invitee_age_days: number;
+            require_invitee_realname: boolean;
+            /** @description `YYYY-MM-DD` 或 RFC3339；空串表示不限。 */
+            start_at?: string | null;
         };
         InviteLeaderboardEntry: {
             avatar_url?: string | null;
@@ -15469,11 +16195,68 @@ export interface components {
             my_rank?: null | components["schemas"]["InviteLeaderboardRank"];
             period: string;
         };
+        InvitePanelResponse: {
+            /** Format: int64 */
+            amount_fen: number;
+            /** Format: int64 */
+            available_fen: number;
+            enabled: boolean;
+            ends_at?: string | null;
+            /** Format: int64 */
+            min_invitee_age_days: number;
+            /** Format: int64 */
+            paid_fen: number;
+            payouts: components["schemas"]["InvitePayoutItemResponse"][];
+            /** Format: int64 */
+            pending_fen: number;
+            /** @description `draft` / `not_started` / `active` / `paused` / `ended`。 */
+            phase: string;
+            require_invitee_realname: boolean;
+            rewards: components["schemas"]["InviteRewardItemResponse"][];
+            starts_at?: string | null;
+            /** Format: int64 */
+            total_invited: number;
+            /** Format: int64 */
+            total_rewarded_fen: number;
+        };
+        InvitePayoutItemResponse: {
+            /** Format: int64 */
+            amount_fen: number;
+            created_at: string;
+            fail_reason?: string | null;
+            out_bill_no: string;
+            package_info?: string | null;
+            /** Format: int64 */
+            reward_count: number;
+            status: string;
+        };
+        InviteRewardItemResponse: {
+            /** Format: int64 */
+            amount_fen: number;
+            created_at: string;
+            id: string;
+            invitee: string;
+            reason: string;
+            /** @description `pending` / `available` / `claimed` / `paid` / `failed`。 */
+            status: string;
+        };
         InviteStatsResponse: {
             invite_code: string;
             invitees: components["schemas"]["InviteeResponse"][];
             /** Format: int64 */
             total_invited: number;
+        };
+        InviteSummaryResponse: {
+            /** Format: int64 */
+            available_fen: number;
+            /** Format: int64 */
+            paid_fen: number;
+            /** Format: int64 */
+            pending_fen: number;
+            /** Format: int64 */
+            total_invited: number;
+            /** Format: int64 */
+            total_rewarded_fen: number;
         };
         InviteeResponse: {
             avatar_url?: string | null;
@@ -15914,6 +16697,11 @@ export interface components {
             /** Format: int64 */
             target_index: number;
         };
+        MyActivityRewardsResponse: {
+            items: components["schemas"]["ActivityRewardItemResponse"][];
+            payouts: components["schemas"]["ActivityPayoutItemResponse"][];
+            summary: components["schemas"]["MyRewardSummaryResponse"];
+        };
         /** @description 我的通知列表筛选。 */
         MyNotificationQuery: {
             /**
@@ -15964,6 +16752,14 @@ export interface components {
              * @description 命中总数。
              */
             total: number;
+        };
+        MyRewardSummaryResponse: {
+            /** Format: int64 */
+            paid_fen: number;
+            /** Format: int64 */
+            pending_fen: number;
+            /** Format: int64 */
+            transferring_fen: number;
         };
         /** @description 通知响应。 */
         NotificationResponse: {
@@ -16291,6 +17087,14 @@ export interface components {
             target_id: string;
             title: string;
         };
+        ParticipationResponse: {
+            activity_id: string;
+            created_at: string;
+            first_source: string;
+            /** Format: int64 */
+            quota_count: number;
+            updated_at: string;
+        };
         /**
          * @description 平台资金口径。
          *
@@ -16421,17 +17225,6 @@ export interface components {
             status_label: string;
             /** @description 收银台标题。 */
             subject: string;
-        };
-        PayoutItemResponse: {
-            /** Format: int64 */
-            amount_fen: number;
-            created_at: string;
-            fail_reason?: string | null;
-            out_bill_no: string;
-            package_info?: string | null;
-            /** Format: int64 */
-            reward_count: number;
-            status: string;
         };
         PerkResponse: {
             created_at?: string | null;
@@ -17359,6 +18152,9 @@ export interface components {
             /** @description 本次处理了几笔。 */
             handled: number;
         };
+        RedeemKeyRequest: {
+            code: string;
+        };
         RedeemRequest: {
             /** Format: int64 */
             product_id: number;
@@ -18012,42 +18808,6 @@ export interface components {
             client_secret: string;
             /** @description 要撤销的令牌。 */
             token: string;
-        };
-        RewardItemResponse: {
-            /** Format: int64 */
-            amount_fen: number;
-            created_at: string;
-            id: string;
-            /** @description 脱敏后的被邀请人名，如 `u***3`。 */
-            invitee: string;
-            reason: string;
-            /** @description `pending` / `available` / `claimed` / `paid` / `failed`。 */
-            status: string;
-        };
-        RewardPanelResponse: {
-            /** Format: int64 */
-            amount_fen: number;
-            /** Format: int64 */
-            available_fen: number;
-            enabled: boolean;
-            ends_at?: string | null;
-            /** Format: int64 */
-            min_invitee_age_days: number;
-            /** Format: int64 */
-            paid_fen: number;
-            payouts: components["schemas"]["PayoutItemResponse"][];
-            /** Format: int64 */
-            pending_fen: number;
-            /** @description `disabled` / `not_started` / `active` / `ended`。 */
-            phase: string;
-            require_invitee_realname: boolean;
-            rewards: components["schemas"]["RewardItemResponse"][];
-            /** @description 活动开始 / 结束时间（东八区 `YYYY-MM-DD HH:MM:SS`）；空表示不限。 */
-            starts_at?: string | null;
-            /** Format: int64 */
-            total_invited: number;
-            /** Format: int64 */
-            total_rewarded_fen: number;
         };
         RewardRuleRequest: {
             code: string;
@@ -21015,6 +21775,245 @@ export interface operations {
             };
         };
     };
+    activities_list: {
+        parameters: {
+            query?: {
+                /** @description 按标题 / 标识模糊搜索。 */
+                keyword?: string;
+                /** @description `general` / `invite`。 */
+                activity_type?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ActivityListResponse"];
+                };
+            };
+            /** @description 无权限 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    activities_mine: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ActivityListResponse"];
+                };
+            };
+            /** @description 无权限 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    activities_redeem_key: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RedeemKeyRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ActivitySignupResponse"];
+                };
+            };
+            /** @description 参数不合法 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 无权限 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 兑换码不存在 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 已使用 / 已过期 / 名额不足 / 活动未开始或已结束 */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    activities_rewards: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MyActivityRewardsResponse"];
+                };
+            };
+            /** @description 无权限 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    activities_rewards_sync: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MyActivityRewardsResponse"];
+                };
+            };
+            /** @description 无权限 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    activities_detail: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description 活动标识 */
+                code: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ActivityDetailResponse"];
+                };
+            };
+            /** @description 无权限 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 活动不存在 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    activities_signup: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description 活动标识 */
+                code: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ActivitySignupResponse"];
+                };
+            };
+            /** @description 无权限 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 活动不存在 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 已报名 / 名额已满 / 未开始 / 已结束 / 未开放报名 */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     requirement_create_deposit: {
         parameters: {
             query?: never;
@@ -21198,6 +22197,528 @@ export interface operations {
             };
             /** @description 云闪付授权通道未配置 */
             503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    admin_activities_list: {
+        parameters: {
+            query?: {
+                keyword?: string;
+                status?: string;
+                activity_type?: string;
+                page?: number;
+                page_size?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminActivityListResponse"];
+                };
+            };
+            /** @description 无权限 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    admin_activities_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AdminActivityUpsertRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminActivityItemResponse"];
+                };
+            };
+            /** @description 参数不合法 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 无权限 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    admin_activities_sync_payout: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description 商户转账单号 */
+                out_bill_no: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminPayoutRecordResponse"];
+                };
+            };
+            /** @description 无权限 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 转账单不存在 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    admin_activities_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description 活动 ID */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminActivityItemResponse"];
+                };
+            };
+            /** @description 无权限 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 活动不存在 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    admin_activities_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description 活动 ID */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AdminActivityUpsertRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminActivityItemResponse"];
+                };
+            };
+            /** @description 参数不合法 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 无权限 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 活动不存在 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    admin_activities_keys: {
+        parameters: {
+            query?: {
+                keyword?: string;
+                /** @description 状态过滤；不同子资源含义不同（key 状态 / 奖励状态 / 转账状态）。 */
+                status?: string;
+                page?: number;
+                page_size?: number;
+            };
+            header?: never;
+            path: {
+                /** @description 活动 ID */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminKeyListResponse"];
+                };
+            };
+            /** @description 无权限 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    admin_activities_create_keys: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description 活动 ID */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AdminKeyCreateRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminKeyCreateResponse"];
+                };
+            };
+            /** @description 参数不合法 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 无权限 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 活动不存在 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    admin_activities_disable_key: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description 活动 ID */
+                id: string;
+                /** @description 兑换码 ID */
+                key_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminKeyItemResponse"];
+                };
+            };
+            /** @description 已使用的兑换码不能停用 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 无权限 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 兑换码不存在 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    admin_activities_participants: {
+        parameters: {
+            query?: {
+                keyword?: string;
+                /** @description 状态过滤；不同子资源含义不同（key 状态 / 奖励状态 / 转账状态）。 */
+                status?: string;
+                page?: number;
+                page_size?: number;
+            };
+            header?: never;
+            path: {
+                /** @description 活动 ID */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminParticipantListResponse"];
+                };
+            };
+            /** @description 无权限 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    admin_activities_payout: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description 活动 ID */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminPayoutTriggerResponse"];
+                };
+            };
+            /** @description 无权限 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 活动不存在 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    admin_activities_grant_quota: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description 活动 ID */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AdminQuotaRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminQuotaResponse"];
+                };
+            };
+            /** @description 参数不合法 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 无权限 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 活动或用户不存在 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 名额不足 / 活动未开始或已结束 */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    admin_activities_rewards: {
+        parameters: {
+            query?: {
+                keyword?: string;
+                /** @description 状态过滤；不同子资源含义不同（key 状态 / 奖励状态 / 转账状态）。 */
+                status?: string;
+                page?: number;
+                page_size?: number;
+            };
+            header?: never;
+            path: {
+                /** @description 活动 ID */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminActivityRewardListResponse"];
+                };
+            };
+            /** @description 无权限 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    admin_activities_status: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description 活动 ID */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AdminStatusRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminActivityItemResponse"];
+                };
+            };
+            /** @description 状态不合法 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 无权限 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 活动不存在 */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -23249,12 +24770,73 @@ export interface operations {
             };
         };
     };
+    growth_admin_invite_reward_config: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InviteConfigResponse"];
+                };
+            };
+            /** @description 无权限 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    growth_admin_invite_reward_config_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["InviteConfigUpdateRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InviteConfigResponse"];
+                };
+            };
+            /** @description 参数不合法 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 无权限 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     growth_admin_invite_rewards: {
         parameters: {
             query?: {
-                /** @description 奖励状态或转账状态（`pending` / `paid` / `success` / `failed` …）。 */
                 status?: string;
-                /** @description 按邀请人 / 被邀请人用户名或商户单号模糊搜索。 */
                 keyword?: string;
                 page?: number;
                 page_size?: number;
@@ -23270,7 +24852,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["AdminRewardListResponse"];
+                    "application/json": components["schemas"]["InviteAdminListResponse"];
                 };
             };
             /** @description 无权限 */
@@ -23299,7 +24881,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["AdminPayoutResponse"];
+                    "application/json": components["schemas"]["InviteAdminPayoutResponse"];
                 };
             };
             /** @description 无权限 */
@@ -34652,7 +36234,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["RewardPanelResponse"];
+                    "application/json": components["schemas"]["InvitePanelResponse"];
                 };
             };
             /** @description 无权限 */
@@ -34662,7 +36244,7 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description 用户不存在 */
+            /** @description 活动不存在 */
             404: {
                 headers: {
                     [name: string]: unknown;
@@ -34685,7 +36267,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ClaimResponse"];
+                    "application/json": components["schemas"]["InviteClaimResponse"];
                 };
             };
             /** @description 无权限 */
@@ -34732,7 +36314,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["RewardPanelResponse"];
+                    "application/json": components["schemas"]["InvitePanelResponse"];
                 };
             };
             /** @description 无权限 */

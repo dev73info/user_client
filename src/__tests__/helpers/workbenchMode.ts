@@ -24,6 +24,7 @@ export const USER_ROUTE_NAMES = [
   'mall',
   'workbench-perks',
   'workbench-badges',
+  'workbench-activities',
   'workbench-resource-purchases',
   'workbench-purchase-transfers',
   'workbench-messages',

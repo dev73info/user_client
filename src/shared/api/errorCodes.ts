@@ -17,9 +17,34 @@ export const REQUIREMENT_CONTRACT_NOT_SIGNED = 'REQUIREMENT_CONTRACT_NOT_SIGNED'
 export const COMMUNITY_REALNAME_REQUIRED = 'REALNAME_REQUIRED'
 /** 社区悬赏冻结或积分推广时余额不足（HTTP 400）。 */
 export const COMMUNITY_INSUFFICIENT_POINTS = 'COMMUNITY_INSUFFICIENT_POINTS'
-/** 邀请现金奖励：邀请人未绑定微信 openid，需先微信登录（HTTP 409）。 */
-export const INVITE_REWARD_WECHAT_NOT_BOUND = 'WECHAT_NOT_BOUND'
+/** 未绑定微信 openid，需先微信登录（邀请 / 活动奖励共用，HTTP 409）。 */
+export const WECHAT_NOT_BOUND = 'WECHAT_NOT_BOUND'
+/** 邀请现金奖励：邀请人未绑定微信 openid（沿用 `WECHAT_NOT_BOUND`）。 */
+export const INVITE_REWARD_WECHAT_NOT_BOUND = WECHAT_NOT_BOUND
 /** 邀请现金奖励：没有可领取奖励（HTTP 409）。 */
 export const INVITE_REWARD_NONE = 'NO_REWARD_TO_CLAIM'
 /** 邀请现金奖励：活动未开启（HTTP 409）。 */
 export const INVITE_REWARD_DISABLED = 'REWARD_DISABLED'
+
+/** 活动：不存在（HTTP 404）。 */
+export const ACTIVITY_NOT_FOUND = 'ACTIVITY_NOT_FOUND'
+/** 活动：当前不可参与（未开始、已结束或未开启，HTTP 409）。 */
+export const ACTIVITY_NOT_ACTIVE = 'ACTIVITY_NOT_ACTIVE'
+/** 活动：未开放报名（HTTP 409）。 */
+export const ACTIVITY_SIGNUP_DISABLED = 'SIGNUP_DISABLED'
+/** 活动：已经报名过（HTTP 409）。 */
+export const ACTIVITY_ALREADY_JOINED = 'ALREADY_JOINED'
+/** 活动：名额已满（HTTP 409）。 */
+export const ACTIVITY_QUOTA_FULL = 'QUOTA_FULL'
+/** 活动：已达单人参与上限（HTTP 409）。 */
+export const ACTIVITY_PER_USER_LIMIT = 'PER_USER_LIMIT'
+/** 活动 key：不存在（HTTP 404）。 */
+export const ACTIVITY_KEY_INVALID = 'KEY_INVALID'
+/** 活动 key：已被使用（HTTP 409）。 */
+export const ACTIVITY_KEY_USED = 'KEY_USED'
+/** 活动 key：已停用（HTTP 409）。 */
+export const ACTIVITY_KEY_DISABLED = 'KEY_DISABLED'
+/** 活动 key：已过期（HTTP 409）。 */
+export const ACTIVITY_KEY_EXPIRED = 'KEY_EXPIRED'
+/** 活动：奖励金额超过单笔转账上限（HTTP 409）。 */
+export const ACTIVITY_REWARD_TOO_LARGE = 'REWARD_AMOUNT_TOO_LARGE'

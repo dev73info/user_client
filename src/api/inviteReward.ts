@@ -16,12 +16,12 @@ type Schemas = components['schemas']
 /** 奖励明细状态：待满足条件 / 可领取 / 已并入转账单 / 已到账 / 发放失败（已回到可领取）。 */
 export type InviteRewardStatus = 'pending' | 'available' | 'claimed' | 'paid' | 'failed'
 
-export type InviteRewardItem = Schemas['RewardItemResponse']
-export type InviteRewardPayout = Schemas['PayoutItemResponse']
+export type InviteRewardItem = Schemas['InviteRewardItemResponse']
+export type InviteRewardPayout = Schemas['InvitePayoutItemResponse']
 export type InviteRewardPayoutStatus = InviteRewardPayout['status']
-export type InviteRewardOverview = Schemas['RewardPanelResponse']
-export type InviteRewardClaimPayout = Schemas['ClaimedPayoutResponse']
-export type InviteRewardClaimResponse = Schemas['ClaimResponse']
+export type InviteRewardOverview = Schemas['InvitePanelResponse']
+export type InviteRewardClaimPayout = Schemas['InviteClaimedPayoutResponse']
+export type InviteRewardClaimResponse = Schemas['InviteClaimResponse']
 
 export function getInviteRewards(token: string): Promise<InviteRewardOverview> {
   return requestJson('/invite/rewards', { headers: authHeaders(token) }, '加载邀请奖励失败')

@@ -23,6 +23,244 @@
         }
       }
     },
+    "/api/activities": {
+      "get": {
+        "tags": [
+          "activity"
+        ],
+        "summary": "活动列表",
+        "operationId": "activities_list",
+        "parameters": [
+          {
+            "name": "keyword",
+            "in": "query",
+            "description": "按标题 / 标识模糊搜索。",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "activity_type",
+            "in": "query",
+            "description": "`general` / `invite`。",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ActivityListResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "无权限"
+          }
+        }
+      }
+    },
+    "/api/activities/mine": {
+      "get": {
+        "tags": [
+          "activity"
+        ],
+        "summary": "我参加的活动",
+        "operationId": "activities_mine",
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ActivityListResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "无权限"
+          }
+        }
+      }
+    },
+    "/api/activities/redeem-key": {
+      "post": {
+        "tags": [
+          "activity"
+        ],
+        "summary": "兑换码兑换名额",
+        "operationId": "activities_redeem_key",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RedeemKeyRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ActivitySignupResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "参数不合法"
+          },
+          "403": {
+            "description": "无权限"
+          },
+          "404": {
+            "description": "兑换码不存在"
+          },
+          "409": {
+            "description": "已使用 / 已过期 / 名额不足 / 活动未开始或已结束"
+          }
+        }
+      }
+    },
+    "/api/activities/rewards": {
+      "get": {
+        "tags": [
+          "activity"
+        ],
+        "summary": "我的活动奖励",
+        "operationId": "activities_rewards",
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MyActivityRewardsResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "无权限"
+          }
+        }
+      }
+    },
+    "/api/activities/rewards/sync": {
+      "post": {
+        "tags": [
+          "activity"
+        ],
+        "summary": "同步我的活动奖励状态",
+        "operationId": "activities_rewards_sync",
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MyActivityRewardsResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "无权限"
+          }
+        }
+      }
+    },
+    "/api/activities/{code}": {
+      "get": {
+        "tags": [
+          "activity"
+        ],
+        "summary": "活动详情",
+        "operationId": "activities_detail",
+        "parameters": [
+          {
+            "name": "code",
+            "in": "path",
+            "description": "活动标识",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ActivityDetailResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "无权限"
+          },
+          "404": {
+            "description": "活动不存在"
+          }
+        }
+      }
+    },
+    "/api/activities/{code}/signup": {
+      "post": {
+        "tags": [
+          "activity"
+        ],
+        "summary": "报名活动",
+        "operationId": "activities_signup",
+        "parameters": [
+          {
+            "name": "code",
+            "in": "path",
+            "description": "活动标识",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ActivitySignupResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "无权限"
+          },
+          "404": {
+            "description": "活动不存在"
+          },
+          "409": {
+            "description": "已报名 / 名额已满 / 未开始 / 已结束 / 未开放报名"
+          }
+        }
+      }
+    },
     "/api/adapay/requirements/{requirement_id}/deposit": {
       "post": {
         "tags": [
@@ -237,6 +475,686 @@
             "bearer_auth": []
           }
         ]
+      }
+    },
+    "/api/admin/activities": {
+      "get": {
+        "tags": [
+          "activity-admin"
+        ],
+        "summary": "活动列表",
+        "operationId": "admin_activities_list",
+        "parameters": [
+          {
+            "name": "keyword",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "activity_type",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "page_size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminActivityListResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "无权限"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "activity-admin"
+        ],
+        "summary": "创建活动",
+        "operationId": "admin_activities_create",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AdminActivityUpsertRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminActivityItemResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "参数不合法"
+          },
+          "403": {
+            "description": "无权限"
+          }
+        }
+      }
+    },
+    "/api/admin/activities/rewards/{out_bill_no}/sync": {
+      "post": {
+        "tags": [
+          "activity-admin"
+        ],
+        "summary": "强制查单",
+        "operationId": "admin_activities_sync_payout",
+        "parameters": [
+          {
+            "name": "out_bill_no",
+            "in": "path",
+            "description": "商户转账单号",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminPayoutRecordResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "无权限"
+          },
+          "404": {
+            "description": "转账单不存在"
+          }
+        }
+      }
+    },
+    "/api/admin/activities/{id}": {
+      "get": {
+        "tags": [
+          "activity-admin"
+        ],
+        "summary": "活动详情",
+        "operationId": "admin_activities_get",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "活动 ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminActivityItemResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "无权限"
+          },
+          "404": {
+            "description": "活动不存在"
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "activity-admin"
+        ],
+        "summary": "更新活动",
+        "operationId": "admin_activities_update",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "活动 ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AdminActivityUpsertRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminActivityItemResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "参数不合法"
+          },
+          "403": {
+            "description": "无权限"
+          },
+          "404": {
+            "description": "活动不存在"
+          }
+        }
+      }
+    },
+    "/api/admin/activities/{id}/keys": {
+      "get": {
+        "tags": [
+          "activity-admin"
+        ],
+        "summary": "兑换码列表",
+        "operationId": "admin_activities_keys",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "活动 ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "keyword",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "description": "状态过滤；不同子资源含义不同（key 状态 / 奖励状态 / 转账状态）。",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "page_size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminKeyListResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "无权限"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "activity-admin"
+        ],
+        "summary": "生成兑换码",
+        "operationId": "admin_activities_create_keys",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "活动 ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AdminKeyCreateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminKeyCreateResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "参数不合法"
+          },
+          "403": {
+            "description": "无权限"
+          },
+          "404": {
+            "description": "活动不存在"
+          }
+        }
+      }
+    },
+    "/api/admin/activities/{id}/keys/{key_id}/disable": {
+      "post": {
+        "tags": [
+          "activity-admin"
+        ],
+        "summary": "停用兑换码",
+        "operationId": "admin_activities_disable_key",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "活动 ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "key_id",
+            "in": "path",
+            "description": "兑换码 ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminKeyItemResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "已使用的兑换码不能停用"
+          },
+          "403": {
+            "description": "无权限"
+          },
+          "404": {
+            "description": "兑换码不存在"
+          }
+        }
+      }
+    },
+    "/api/admin/activities/{id}/participants": {
+      "get": {
+        "tags": [
+          "activity-admin"
+        ],
+        "summary": "活动参与者",
+        "operationId": "admin_activities_participants",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "活动 ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "keyword",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "description": "状态过滤；不同子资源含义不同（key 状态 / 奖励状态 / 转账状态）。",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "page_size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminParticipantListResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "无权限"
+          }
+        }
+      }
+    },
+    "/api/admin/activities/{id}/payout": {
+      "post": {
+        "tags": [
+          "activity-admin"
+        ],
+        "summary": "批量发起发放",
+        "operationId": "admin_activities_payout",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "活动 ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminPayoutTriggerResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "无权限"
+          },
+          "404": {
+            "description": "活动不存在"
+          }
+        }
+      }
+    },
+    "/api/admin/activities/{id}/quotas": {
+      "post": {
+        "tags": [
+          "activity-admin"
+        ],
+        "summary": "补发名额",
+        "operationId": "admin_activities_grant_quota",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "活动 ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AdminQuotaRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminQuotaResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "参数不合法"
+          },
+          "403": {
+            "description": "无权限"
+          },
+          "404": {
+            "description": "活动或用户不存在"
+          },
+          "409": {
+            "description": "名额不足 / 活动未开始或已结束"
+          }
+        }
+      }
+    },
+    "/api/admin/activities/{id}/rewards": {
+      "get": {
+        "tags": [
+          "activity-admin"
+        ],
+        "summary": "活动奖励流水",
+        "operationId": "admin_activities_rewards",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "活动 ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "keyword",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "description": "状态过滤；不同子资源含义不同（key 状态 / 奖励状态 / 转账状态）。",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "page_size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminActivityRewardListResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "无权限"
+          }
+        }
+      }
+    },
+    "/api/admin/activities/{id}/status": {
+      "post": {
+        "tags": [
+          "activity-admin"
+        ],
+        "summary": "变更活动状态",
+        "operationId": "admin_activities_status",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "活动 ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AdminStatusRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminActivityItemResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "状态不合法"
+          },
+          "403": {
+            "description": "无权限"
+          },
+          "404": {
+            "description": "活动不存在"
+          }
+        }
       }
     },
     "/api/admin/adapay/payments/{payment_id}/simulate-paid": {
@@ -2316,6 +3234,65 @@
         }
       }
     },
+    "/api/admin/growth/invite-reward-config": {
+      "get": {
+        "tags": [
+          "growth-admin"
+        ],
+        "summary": "邀请奖励配置",
+        "operationId": "growth_admin_invite_reward_config",
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InviteConfigResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "无权限"
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "growth-admin"
+        ],
+        "summary": "保存邀请奖励配置",
+        "operationId": "growth_admin_invite_reward_config_update",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InviteConfigUpdateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InviteConfigResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "参数不合法"
+          },
+          "403": {
+            "description": "无权限"
+          }
+        }
+      }
+    },
     "/api/admin/growth/invite-rewards": {
       "get": {
         "tags": [
@@ -2327,7 +3304,6 @@
           {
             "name": "status",
             "in": "query",
-            "description": "奖励状态或转账状态（`pending` / `paid` / `success` / `failed` …）。",
             "required": false,
             "schema": {
               "type": "string"
@@ -2336,7 +3312,6 @@
           {
             "name": "keyword",
             "in": "query",
-            "description": "按邀请人 / 被邀请人用户名或商户单号模糊搜索。",
             "required": false,
             "schema": {
               "type": "string"
@@ -2367,7 +3342,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/AdminRewardListResponse"
+                  "$ref": "#/components/schemas/InviteAdminListResponse"
                 }
               }
             }
@@ -2402,7 +3377,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/AdminPayoutResponse"
+                  "$ref": "#/components/schemas/InviteAdminPayoutResponse"
                 }
               }
             }
@@ -13561,7 +14536,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RewardPanelResponse"
+                  "$ref": "#/components/schemas/InvitePanelResponse"
                 }
               }
             }
@@ -13570,7 +14545,7 @@
             "description": "无权限"
           },
           "404": {
-            "description": "用户不存在"
+            "description": "活动不存在"
           }
         }
       }
@@ -13588,7 +14563,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ClaimResponse"
+                  "$ref": "#/components/schemas/InviteClaimResponse"
                 }
               }
             }
@@ -13621,7 +14596,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RewardPanelResponse"
+                  "$ref": "#/components/schemas/InvitePanelResponse"
                 }
               }
             }
@@ -32147,6 +33122,461 @@
           }
         }
       },
+      "ActivityDetailResponse": {
+        "type": "object",
+        "required": [
+          "id",
+          "code",
+          "title",
+          "subtitle",
+          "description",
+          "activity_type",
+          "status",
+          "phase",
+          "quota_used",
+          "reward_amount_fen",
+          "signup_enabled",
+          "key_enabled",
+          "my_quota",
+          "my_reward_pending_fen",
+          "my_reward_paid_fen",
+          "require_realname",
+          "min_member_age_days",
+          "max_single_transfer_fen",
+          "my_rewards",
+          "my_payouts"
+        ],
+        "properties": {
+          "activity_type": {
+            "type": "string"
+          },
+          "code": {
+            "type": "string"
+          },
+          "cover_url": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "description": {
+            "type": "string"
+          },
+          "ends_at": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "id": {
+            "type": "string"
+          },
+          "invite_summary": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/InviteSummaryResponse"
+              }
+            ]
+          },
+          "key_enabled": {
+            "type": "boolean"
+          },
+          "max_single_transfer_fen": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "min_member_age_days": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "my_participation": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/ParticipationResponse"
+              }
+            ]
+          },
+          "my_payouts": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ActivityPayoutItemResponse"
+            }
+          },
+          "my_quota": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "my_reward_paid_fen": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "my_reward_pending_fen": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "my_rewards": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ActivityRewardItemResponse"
+            }
+          },
+          "phase": {
+            "type": "string"
+          },
+          "quota_per_user": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64"
+          },
+          "quota_remaining": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64"
+          },
+          "quota_total": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64"
+          },
+          "quota_used": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "require_realname": {
+            "type": "boolean"
+          },
+          "reward_amount_fen": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "signup_enabled": {
+            "type": "boolean"
+          },
+          "starts_at": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "status": {
+            "type": "string"
+          },
+          "subtitle": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          }
+        }
+      },
+      "ActivityListQuery": {
+        "type": "object",
+        "properties": {
+          "activity_type": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "`general` / `invite`。"
+          },
+          "keyword": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "按标题 / 标识模糊搜索。"
+          }
+        }
+      },
+      "ActivityListResponse": {
+        "type": "object",
+        "required": [
+          "items"
+        ],
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ActivitySummaryResponse"
+            }
+          }
+        }
+      },
+      "ActivityPayoutItemResponse": {
+        "type": "object",
+        "required": [
+          "out_bill_no",
+          "activity_id",
+          "activity_title",
+          "amount_fen",
+          "reward_count",
+          "status",
+          "mch_id",
+          "app_id",
+          "created_at"
+        ],
+        "properties": {
+          "activity_id": {
+            "type": "string"
+          },
+          "activity_title": {
+            "type": "string"
+          },
+          "amount_fen": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "app_id": {
+            "type": "string"
+          },
+          "created_at": {
+            "type": "string"
+          },
+          "fail_reason": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "mch_id": {
+            "type": "string"
+          },
+          "out_bill_no": {
+            "type": "string"
+          },
+          "package_info": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "reward_count": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "status": {
+            "type": "string"
+          }
+        }
+      },
+      "ActivityRewardItemResponse": {
+        "type": "object",
+        "required": [
+          "id",
+          "activity_id",
+          "activity_code",
+          "activity_title",
+          "amount_fen",
+          "status",
+          "status_text",
+          "source",
+          "created_at"
+        ],
+        "properties": {
+          "activity_code": {
+            "type": "string"
+          },
+          "activity_id": {
+            "type": "string"
+          },
+          "activity_title": {
+            "type": "string"
+          },
+          "amount_fen": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "created_at": {
+            "type": "string"
+          },
+          "fail_reason": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "id": {
+            "type": "string"
+          },
+          "paid_at": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "source": {
+            "type": "string",
+            "description": "`signup` / `admin` / `key` / `invite`。"
+          },
+          "source_ref": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "status": {
+            "type": "string",
+            "description": "`pending` / `waiting_wechat` / `transferring` / `paid` / `cancelled`。"
+          },
+          "status_text": {
+            "type": "string"
+          }
+        }
+      },
+      "ActivitySignupResponse": {
+        "type": "object",
+        "required": [
+          "activity",
+          "rewards",
+          "payouts"
+        ],
+        "properties": {
+          "activity": {
+            "$ref": "#/components/schemas/ActivityDetailResponse"
+          },
+          "participation": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/ParticipationResponse"
+              }
+            ]
+          },
+          "payouts": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ActivityPayoutItemResponse"
+            }
+          },
+          "rewards": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ActivityRewardItemResponse"
+            }
+          }
+        }
+      },
+      "ActivitySummaryResponse": {
+        "type": "object",
+        "required": [
+          "id",
+          "code",
+          "title",
+          "subtitle",
+          "activity_type",
+          "status",
+          "phase",
+          "quota_used",
+          "reward_amount_fen",
+          "signup_enabled",
+          "key_enabled",
+          "my_quota",
+          "my_reward_pending_fen",
+          "my_reward_paid_fen"
+        ],
+        "properties": {
+          "activity_type": {
+            "type": "string"
+          },
+          "code": {
+            "type": "string"
+          },
+          "cover_url": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "ends_at": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "id": {
+            "type": "string"
+          },
+          "key_enabled": {
+            "type": "boolean"
+          },
+          "my_quota": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "my_reward_paid_fen": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "my_reward_pending_fen": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "phase": {
+            "type": "string"
+          },
+          "quota_per_user": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64"
+          },
+          "quota_remaining": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64"
+          },
+          "quota_total": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64"
+          },
+          "quota_used": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "reward_amount_fen": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "signup_enabled": {
+            "type": "boolean"
+          },
+          "starts_at": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "status": {
+            "type": "string"
+          },
+          "subtitle": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          }
+        }
+      },
       "AdaPayView": {
         "type": "object",
         "description": "AdaPay 配置的对外形状。\n\n私钥只给**文件路径**；`api_key` 是唯一落在配置里的密钥（渠道只在请求头 `authorization`\n里认它，没有文件形态），所以它和私钥一样处理：**回显 `***`，PUT 传 `***` 或空串保持原值**。\n路径本身也不该随便回显给非运维角色——权限码已经把它挡住了。",
@@ -32281,6 +33711,505 @@
             ]
           },
           "username": {
+            "type": "string"
+          }
+        }
+      },
+      "AdminActivityItemResponse": {
+        "type": "object",
+        "required": [
+          "id",
+          "code",
+          "title",
+          "subtitle",
+          "description",
+          "activity_type",
+          "status",
+          "phase",
+          "quota_used",
+          "reward_amount_fen",
+          "signup_enabled",
+          "key_enabled",
+          "require_realname",
+          "min_member_age_days",
+          "max_single_transfer_fen",
+          "transfer_remark",
+          "max_payouts_per_day",
+          "max_payouts_per_month",
+          "my_quota",
+          "my_reward_pending_fen",
+          "my_reward_paid_fen",
+          "created_by",
+          "created_at",
+          "updated_at",
+          "participant_count",
+          "key_total",
+          "key_used",
+          "reward_pending_count",
+          "reward_paid_count",
+          "reward_paid_fen"
+        ],
+        "properties": {
+          "activity_type": {
+            "type": "string"
+          },
+          "code": {
+            "type": "string"
+          },
+          "cover_url": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "created_at": {
+            "type": "string"
+          },
+          "created_by": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "ends_at": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "id": {
+            "type": "string"
+          },
+          "key_enabled": {
+            "type": "boolean"
+          },
+          "key_total": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "key_used": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "max_payouts_per_day": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "max_payouts_per_month": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "max_single_transfer_fen": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "min_member_age_days": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "my_quota": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "my_reward_paid_fen": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "my_reward_pending_fen": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "participant_count": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "phase": {
+            "type": "string"
+          },
+          "quota_per_user": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64"
+          },
+          "quota_remaining": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64"
+          },
+          "quota_total": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64"
+          },
+          "quota_used": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "require_realname": {
+            "type": "boolean"
+          },
+          "reward_amount_fen": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "reward_paid_count": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "reward_paid_fen": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "reward_pending_count": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "signup_enabled": {
+            "type": "boolean"
+          },
+          "starts_at": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "status": {
+            "type": "string"
+          },
+          "subtitle": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "transfer_remark": {
+            "type": "string"
+          },
+          "updated_at": {
+            "type": "string"
+          }
+        }
+      },
+      "AdminActivityListResponse": {
+        "type": "object",
+        "required": [
+          "items",
+          "total",
+          "page",
+          "page_size"
+        ],
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AdminActivityItemResponse"
+            }
+          },
+          "page": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "page_size": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "total": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      },
+      "AdminActivityQuery": {
+        "type": "object",
+        "properties": {
+          "activity_type": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "keyword": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "page": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64"
+          },
+          "page_size": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64"
+          },
+          "status": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "AdminActivityRewardItemResponse": {
+        "type": "object",
+        "required": [
+          "reward_id",
+          "username",
+          "activity_id",
+          "activity_title",
+          "amount_fen",
+          "reward_status",
+          "source",
+          "created_at"
+        ],
+        "properties": {
+          "activity_id": {
+            "type": "string"
+          },
+          "activity_title": {
+            "type": "string"
+          },
+          "amount_fen": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "created_at": {
+            "type": "string"
+          },
+          "fail_reason": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "finished_at": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "out_bill_no": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "reward_id": {
+            "type": "string"
+          },
+          "reward_status": {
+            "type": "string"
+          },
+          "source": {
+            "type": "string"
+          },
+          "transfer_status": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "username": {
+            "type": "string"
+          }
+        }
+      },
+      "AdminActivityRewardListResponse": {
+        "type": "object",
+        "required": [
+          "items",
+          "total",
+          "page",
+          "page_size",
+          "summary"
+        ],
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AdminActivityRewardItemResponse"
+            }
+          },
+          "page": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "page_size": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "summary": {
+            "$ref": "#/components/schemas/AdminActivityRewardSummaryResponse"
+          },
+          "total": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      },
+      "AdminActivityRewardSummaryResponse": {
+        "type": "object",
+        "required": [
+          "pending_count",
+          "waiting_wechat_count",
+          "transferring_count",
+          "paid_count",
+          "cancelled_count",
+          "paid_amount_fen"
+        ],
+        "properties": {
+          "cancelled_count": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "paid_amount_fen": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "paid_count": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "pending_count": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "transferring_count": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "waiting_wechat_count": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      },
+      "AdminActivityUpsertRequest": {
+        "type": "object",
+        "required": [
+          "title",
+          "signup_enabled",
+          "key_enabled",
+          "reward_amount_fen",
+          "max_payouts_per_day",
+          "max_payouts_per_month",
+          "require_realname",
+          "min_member_age_days",
+          "max_single_transfer_fen",
+          "transfer_remark"
+        ],
+        "properties": {
+          "activity_type": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "创建时可选（`general` / `invite`）；更新时忽略。"
+          },
+          "code": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "创建时必填；更新时忽略。"
+          },
+          "cover_url": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "description": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "ends_at": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "key_enabled": {
+            "type": "boolean"
+          },
+          "max_payouts_per_day": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "max_payouts_per_month": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "max_single_transfer_fen": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "min_member_age_days": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "quota_per_user": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64"
+          },
+          "quota_total": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64"
+          },
+          "require_realname": {
+            "type": "boolean"
+          },
+          "reward_amount_fen": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "signup_enabled": {
+            "type": "boolean"
+          },
+          "starts_at": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "东八区 `YYYY-MM-DD HH:MM:SS`、`YYYY-MM-DD` 或 RFC3339。"
+          },
+          "status": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "`draft` / `published` / `paused` / `ended`；缺省按当前值。"
+          },
+          "subtitle": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "title": {
+            "type": "string"
+          },
+          "transfer_remark": {
             "type": "string"
           }
         }
@@ -32948,6 +34877,129 @@
           }
         }
       },
+      "AdminKeyCreateRequest": {
+        "type": "object",
+        "required": [
+          "quota_count",
+          "count"
+        ],
+        "properties": {
+          "batch_no": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "count": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "expires_at": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "东八区 `YYYY-MM-DD HH:MM:SS`、`YYYY-MM-DD` 或 RFC3339；空表示不过期。"
+          },
+          "quota_count": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      },
+      "AdminKeyCreateResponse": {
+        "type": "object",
+        "required": [
+          "items"
+        ],
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AdminKeyItemResponse"
+            }
+          }
+        }
+      },
+      "AdminKeyItemResponse": {
+        "type": "object",
+        "required": [
+          "id",
+          "code",
+          "batch_no",
+          "quota_count",
+          "status",
+          "created_at"
+        ],
+        "properties": {
+          "batch_no": {
+            "type": "string"
+          },
+          "code": {
+            "type": "string"
+          },
+          "created_at": {
+            "type": "string"
+          },
+          "expires_at": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "id": {
+            "type": "string"
+          },
+          "quota_count": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "status": {
+            "type": "string"
+          },
+          "used_at": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "used_by": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "AdminKeyListResponse": {
+        "type": "object",
+        "required": [
+          "items",
+          "total",
+          "page",
+          "page_size"
+        ],
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AdminKeyItemResponse"
+            }
+          },
+          "page": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "page_size": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "total": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      },
       "AdminModifyCompanyInfoBody": {
         "type": "object",
         "description": "管理端改企业信息入参。",
@@ -33136,20 +35188,132 @@
           }
         }
       },
-      "AdminPayoutResponse": {
+      "AdminPageQuery": {
+        "type": "object",
+        "properties": {
+          "keyword": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "page": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64"
+          },
+          "page_size": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64"
+          },
+          "status": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "状态过滤；不同子资源含义不同（key 状态 / 奖励状态 / 转账状态）。"
+          }
+        }
+      },
+      "AdminParticipantItemResponse": {
+        "type": "object",
+        "required": [
+          "username",
+          "quota_count",
+          "first_source",
+          "reward_pending_fen",
+          "reward_paid_fen",
+          "created_at",
+          "updated_at"
+        ],
+        "properties": {
+          "created_at": {
+            "type": "string"
+          },
+          "first_source": {
+            "type": "string"
+          },
+          "quota_count": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "reward_paid_fen": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "reward_pending_fen": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "updated_at": {
+            "type": "string"
+          },
+          "username": {
+            "type": "string"
+          }
+        }
+      },
+      "AdminParticipantListResponse": {
+        "type": "object",
+        "required": [
+          "items",
+          "total",
+          "page",
+          "page_size"
+        ],
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AdminParticipantItemResponse"
+            }
+          },
+          "page": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "page_size": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "total": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      },
+      "AdminPayoutRecordResponse": {
         "type": "object",
         "required": [
           "out_bill_no",
-          "inviter",
+          "activity_id",
+          "activity_title",
+          "username",
           "amount_fen",
           "reward_count",
           "status",
+          "mch_id",
+          "app_id",
           "created_at"
         ],
         "properties": {
+          "activity_id": {
+            "type": "string"
+          },
+          "activity_title": {
+            "type": "string"
+          },
           "amount_fen": {
             "type": "integer",
             "format": "int64"
+          },
+          "app_id": {
+            "type": "string"
           },
           "created_at": {
             "type": "string"
@@ -33166,7 +35330,7 @@
               "null"
             ]
           },
-          "inviter": {
+          "mch_id": {
             "type": "string"
           },
           "out_bill_no": {
@@ -33190,6 +35354,81 @@
               "string",
               "null"
             ]
+          },
+          "username": {
+            "type": "string"
+          }
+        }
+      },
+      "AdminPayoutTriggerResponse": {
+        "type": "object",
+        "required": [
+          "triggered_users",
+          "triggered_payouts",
+          "skipped_users"
+        ],
+        "properties": {
+          "skipped_users": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "triggered_payouts": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "triggered_users": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      },
+      "AdminQuotaRequest": {
+        "type": "object",
+        "required": [
+          "username",
+          "quota_count"
+        ],
+        "properties": {
+          "note": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "补发原因（审计用）；不填记为「管理员补发」。"
+          },
+          "quota_count": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "username": {
+            "type": "string"
+          }
+        }
+      },
+      "AdminQuotaResponse": {
+        "type": "object",
+        "required": [
+          "username",
+          "quota_count",
+          "amount_fen"
+        ],
+        "properties": {
+          "amount_fen": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "quota_count": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "reward_id": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "username": {
+            "type": "string"
           }
         }
       },
@@ -33222,127 +35461,6 @@
           "username": {
             "type": "string",
             "description": "目标用户名。"
-          }
-        }
-      },
-      "AdminRewardItemResponse": {
-        "type": "object",
-        "required": [
-          "reward_id",
-          "inviter",
-          "invitee",
-          "amount_fen",
-          "reward_status",
-          "created_at"
-        ],
-        "properties": {
-          "amount_fen": {
-            "type": "integer",
-            "format": "int64"
-          },
-          "created_at": {
-            "type": "string"
-          },
-          "fail_reason": {
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "finished_at": {
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "invitee": {
-            "type": "string"
-          },
-          "inviter": {
-            "type": "string"
-          },
-          "out_bill_no": {
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "reward_id": {
-            "type": "string"
-          },
-          "reward_status": {
-            "type": "string"
-          },
-          "transfer_status": {
-            "type": [
-              "string",
-              "null"
-            ]
-          }
-        }
-      },
-      "AdminRewardListResponse": {
-        "type": "object",
-        "required": [
-          "items",
-          "total",
-          "page",
-          "page_size",
-          "summary"
-        ],
-        "properties": {
-          "items": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/AdminRewardItemResponse"
-            }
-          },
-          "page": {
-            "type": "integer",
-            "format": "int64"
-          },
-          "page_size": {
-            "type": "integer",
-            "format": "int64"
-          },
-          "summary": {
-            "$ref": "#/components/schemas/AdminRewardSummaryResponse"
-          },
-          "total": {
-            "type": "integer",
-            "format": "int64"
-          }
-        }
-      },
-      "AdminRewardSummaryResponse": {
-        "type": "object",
-        "required": [
-          "pending_count",
-          "claimed_count",
-          "paid_count",
-          "failed_count",
-          "paid_amount_fen"
-        ],
-        "properties": {
-          "claimed_count": {
-            "type": "integer",
-            "format": "int64"
-          },
-          "failed_count": {
-            "type": "integer",
-            "format": "int64"
-          },
-          "paid_amount_fen": {
-            "type": "integer",
-            "format": "int64"
-          },
-          "paid_count": {
-            "type": "integer",
-            "format": "int64"
-          },
-          "pending_count": {
-            "type": "integer",
-            "format": "int64"
           }
         }
       },
@@ -33481,6 +35599,17 @@
           "total": {
             "type": "integer",
             "format": "int64"
+          }
+        }
+      },
+      "AdminStatusRequest": {
+        "type": "object",
+        "required": [
+          "status"
+        ],
+        "properties": {
+          "status": {
+            "type": "string"
           }
         }
       },
@@ -36396,54 +38525,6 @@
           "username": {
             "type": "string",
             "description": "票据绑定的平台用户名。"
-          }
-        }
-      },
-      "ClaimResponse": {
-        "type": "object",
-        "required": [
-          "payouts"
-        ],
-        "properties": {
-          "payouts": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/ClaimedPayoutResponse"
-            }
-          }
-        }
-      },
-      "ClaimedPayoutResponse": {
-        "type": "object",
-        "required": [
-          "out_bill_no",
-          "amount_fen",
-          "state",
-          "mch_id",
-          "app_id"
-        ],
-        "properties": {
-          "amount_fen": {
-            "type": "integer",
-            "format": "int64"
-          },
-          "app_id": {
-            "type": "string"
-          },
-          "mch_id": {
-            "type": "string"
-          },
-          "out_bill_no": {
-            "type": "string"
-          },
-          "package_info": {
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "state": {
-            "type": "string"
           }
         }
       },
@@ -41411,6 +43492,264 @@
           }
         }
       },
+      "InviteAdminListResponse": {
+        "type": "object",
+        "required": [
+          "items",
+          "total",
+          "page",
+          "page_size",
+          "summary"
+        ],
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/InviteAdminRewardItemResponse"
+            }
+          },
+          "page": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "page_size": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "summary": {
+            "$ref": "#/components/schemas/InviteAdminSummaryResponse"
+          },
+          "total": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      },
+      "InviteAdminPayoutResponse": {
+        "type": "object",
+        "required": [
+          "out_bill_no",
+          "inviter",
+          "amount_fen",
+          "reward_count",
+          "status",
+          "created_at"
+        ],
+        "properties": {
+          "amount_fen": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "created_at": {
+            "type": "string"
+          },
+          "fail_reason": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "finished_at": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "inviter": {
+            "type": "string"
+          },
+          "out_bill_no": {
+            "type": "string"
+          },
+          "package_info": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "reward_count": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "status": {
+            "type": "string"
+          },
+          "transfer_bill_no": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "InviteAdminRewardItemResponse": {
+        "type": "object",
+        "required": [
+          "reward_id",
+          "inviter",
+          "invitee",
+          "amount_fen",
+          "reward_status",
+          "created_at"
+        ],
+        "properties": {
+          "amount_fen": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "created_at": {
+            "type": "string"
+          },
+          "fail_reason": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "finished_at": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "invitee": {
+            "type": "string"
+          },
+          "inviter": {
+            "type": "string"
+          },
+          "out_bill_no": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "reward_id": {
+            "type": "string"
+          },
+          "reward_status": {
+            "type": "string",
+            "description": "旧口径：`pending` / `claimed` / `paid` / `failed`。"
+          },
+          "transfer_status": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "InviteAdminRewardQuery": {
+        "type": "object",
+        "properties": {
+          "keyword": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "page": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64"
+          },
+          "page_size": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64"
+          },
+          "status": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "InviteAdminSummaryResponse": {
+        "type": "object",
+        "required": [
+          "pending_count",
+          "claimed_count",
+          "paid_count",
+          "failed_count",
+          "paid_amount_fen"
+        ],
+        "properties": {
+          "claimed_count": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "failed_count": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "paid_amount_fen": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "paid_count": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "pending_count": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      },
+      "InviteClaimResponse": {
+        "type": "object",
+        "required": [
+          "payouts"
+        ],
+        "properties": {
+          "payouts": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/InviteClaimedPayoutResponse"
+            }
+          }
+        }
+      },
+      "InviteClaimedPayoutResponse": {
+        "type": "object",
+        "required": [
+          "out_bill_no",
+          "amount_fen",
+          "state",
+          "mch_id",
+          "app_id"
+        ],
+        "properties": {
+          "amount_fen": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "app_id": {
+            "type": "string"
+          },
+          "mch_id": {
+            "type": "string"
+          },
+          "out_bill_no": {
+            "type": "string"
+          },
+          "package_info": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "state": {
+            "type": "string"
+          }
+        }
+      },
       "InviteCodeResponse": {
         "type": "object",
         "required": [
@@ -41428,6 +43767,109 @@
           },
           "invite_url": {
             "type": "string"
+          }
+        }
+      },
+      "InviteConfigResponse": {
+        "type": "object",
+        "required": [
+          "enabled",
+          "amount_fen",
+          "max_single_transfer_fen",
+          "max_rewards_per_day",
+          "max_rewards_per_month",
+          "require_invitee_realname",
+          "min_invitee_age_days",
+          "start_at",
+          "end_at",
+          "phase"
+        ],
+        "properties": {
+          "amount_fen": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "enabled": {
+            "type": "boolean"
+          },
+          "end_at": {
+            "type": "string"
+          },
+          "max_rewards_per_day": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "max_rewards_per_month": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "max_single_transfer_fen": {
+            "type": "integer",
+            "format": "int64",
+            "description": "渠道单笔上限，只读。"
+          },
+          "min_invitee_age_days": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "phase": {
+            "type": "string",
+            "description": "`draft` / `not_started` / `active` / `paused` / `ended`。"
+          },
+          "require_invitee_realname": {
+            "type": "boolean"
+          },
+          "start_at": {
+            "type": "string",
+            "description": "`YYYY-MM-DD`；空表示不限。"
+          }
+        }
+      },
+      "InviteConfigUpdateRequest": {
+        "type": "object",
+        "required": [
+          "enabled",
+          "amount_fen",
+          "max_rewards_per_day",
+          "max_rewards_per_month",
+          "require_invitee_realname",
+          "min_invitee_age_days"
+        ],
+        "properties": {
+          "amount_fen": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "enabled": {
+            "type": "boolean"
+          },
+          "end_at": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "max_rewards_per_day": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "max_rewards_per_month": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "min_invitee_age_days": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "require_invitee_realname": {
+            "type": "boolean"
+          },
+          "start_at": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "`YYYY-MM-DD` 或 RFC3339；空串表示不限。"
           }
         }
       },
@@ -41510,6 +43952,161 @@
           }
         }
       },
+      "InvitePanelResponse": {
+        "type": "object",
+        "required": [
+          "enabled",
+          "phase",
+          "amount_fen",
+          "require_invitee_realname",
+          "min_invitee_age_days",
+          "total_invited",
+          "total_rewarded_fen",
+          "available_fen",
+          "pending_fen",
+          "paid_fen",
+          "rewards",
+          "payouts"
+        ],
+        "properties": {
+          "amount_fen": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "available_fen": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "enabled": {
+            "type": "boolean"
+          },
+          "ends_at": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "min_invitee_age_days": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "paid_fen": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "payouts": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/InvitePayoutItemResponse"
+            }
+          },
+          "pending_fen": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "phase": {
+            "type": "string",
+            "description": "`draft` / `not_started` / `active` / `paused` / `ended`。"
+          },
+          "require_invitee_realname": {
+            "type": "boolean"
+          },
+          "rewards": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/InviteRewardItemResponse"
+            }
+          },
+          "starts_at": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "total_invited": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "total_rewarded_fen": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      },
+      "InvitePayoutItemResponse": {
+        "type": "object",
+        "required": [
+          "out_bill_no",
+          "amount_fen",
+          "reward_count",
+          "status",
+          "created_at"
+        ],
+        "properties": {
+          "amount_fen": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "created_at": {
+            "type": "string"
+          },
+          "fail_reason": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "out_bill_no": {
+            "type": "string"
+          },
+          "package_info": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "reward_count": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "status": {
+            "type": "string"
+          }
+        }
+      },
+      "InviteRewardItemResponse": {
+        "type": "object",
+        "required": [
+          "id",
+          "invitee",
+          "amount_fen",
+          "status",
+          "reason",
+          "created_at"
+        ],
+        "properties": {
+          "amount_fen": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "created_at": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "invitee": {
+            "type": "string"
+          },
+          "reason": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "description": "`pending` / `available` / `claimed` / `paid` / `failed`。"
+          }
+        }
+      },
       "InviteStatsResponse": {
         "type": "object",
         "required": [
@@ -41528,6 +44125,38 @@
             }
           },
           "total_invited": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      },
+      "InviteSummaryResponse": {
+        "type": "object",
+        "required": [
+          "total_invited",
+          "total_rewarded_fen",
+          "available_fen",
+          "pending_fen",
+          "paid_fen"
+        ],
+        "properties": {
+          "available_fen": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "paid_fen": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "pending_fen": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "total_invited": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "total_rewarded_fen": {
             "type": "integer",
             "format": "int64"
           }
@@ -42586,6 +45215,31 @@
           }
         }
       },
+      "MyActivityRewardsResponse": {
+        "type": "object",
+        "required": [
+          "items",
+          "payouts",
+          "summary"
+        ],
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ActivityRewardItemResponse"
+            }
+          },
+          "payouts": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ActivityPayoutItemResponse"
+            }
+          },
+          "summary": {
+            "$ref": "#/components/schemas/MyRewardSummaryResponse"
+          }
+        }
+      },
       "MyNotificationQuery": {
         "type": "object",
         "description": "我的通知列表筛选。",
@@ -42688,6 +45342,28 @@
             "type": "integer",
             "format": "int64",
             "description": "命中总数。"
+          }
+        }
+      },
+      "MyRewardSummaryResponse": {
+        "type": "object",
+        "required": [
+          "pending_fen",
+          "transferring_fen",
+          "paid_fen"
+        ],
+        "properties": {
+          "paid_fen": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "pending_fen": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "transferring_fen": {
+            "type": "integer",
+            "format": "int64"
           }
         }
       },
@@ -43525,6 +46201,34 @@
           }
         }
       },
+      "ParticipationResponse": {
+        "type": "object",
+        "required": [
+          "activity_id",
+          "quota_count",
+          "first_source",
+          "created_at",
+          "updated_at"
+        ],
+        "properties": {
+          "activity_id": {
+            "type": "string"
+          },
+          "created_at": {
+            "type": "string"
+          },
+          "first_source": {
+            "type": "string"
+          },
+          "quota_count": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "updated_at": {
+            "type": "string"
+          }
+        }
+      },
       "PaymentConfig": {
         "type": "object",
         "description": "平台资金口径。\n\n这些比例决定「一笔需求的钱怎么分」，改动会直接影响已签合同之外的**新**业务；\n已发生的交易都按当时的快照存进资金条款，不受配置变更影响。\n\n全部用**基点**（1 bps = 0.01%）而不是百分比浮点：钱的分配不能碰浮点。",
@@ -43688,47 +46392,6 @@
           "subject": {
             "type": "string",
             "description": "收银台标题。"
-          }
-        }
-      },
-      "PayoutItemResponse": {
-        "type": "object",
-        "required": [
-          "out_bill_no",
-          "amount_fen",
-          "reward_count",
-          "status",
-          "created_at"
-        ],
-        "properties": {
-          "amount_fen": {
-            "type": "integer",
-            "format": "int64"
-          },
-          "created_at": {
-            "type": "string"
-          },
-          "fail_reason": {
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "out_bill_no": {
-            "type": "string"
-          },
-          "package_info": {
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "reward_count": {
-            "type": "integer",
-            "format": "int64"
-          },
-          "status": {
-            "type": "string"
           }
         }
       },
@@ -46023,6 +48686,17 @@
           }
         }
       },
+      "RedeemKeyRequest": {
+        "type": "object",
+        "required": [
+          "code"
+        ],
+        "properties": {
+          "code": {
+            "type": "string"
+          }
+        }
+      },
       "RedeemRequest": {
         "type": "object",
         "required": [
@@ -47623,122 +50297,6 @@
           "token": {
             "type": "string",
             "description": "要撤销的令牌。"
-          }
-        }
-      },
-      "RewardItemResponse": {
-        "type": "object",
-        "required": [
-          "id",
-          "invitee",
-          "amount_fen",
-          "status",
-          "reason",
-          "created_at"
-        ],
-        "properties": {
-          "amount_fen": {
-            "type": "integer",
-            "format": "int64"
-          },
-          "created_at": {
-            "type": "string"
-          },
-          "id": {
-            "type": "string"
-          },
-          "invitee": {
-            "type": "string",
-            "description": "脱敏后的被邀请人名，如 `u***3`。"
-          },
-          "reason": {
-            "type": "string"
-          },
-          "status": {
-            "type": "string",
-            "description": "`pending` / `available` / `claimed` / `paid` / `failed`。"
-          }
-        }
-      },
-      "RewardPanelResponse": {
-        "type": "object",
-        "required": [
-          "enabled",
-          "phase",
-          "amount_fen",
-          "require_invitee_realname",
-          "min_invitee_age_days",
-          "total_invited",
-          "total_rewarded_fen",
-          "available_fen",
-          "pending_fen",
-          "paid_fen",
-          "rewards",
-          "payouts"
-        ],
-        "properties": {
-          "amount_fen": {
-            "type": "integer",
-            "format": "int64"
-          },
-          "available_fen": {
-            "type": "integer",
-            "format": "int64"
-          },
-          "enabled": {
-            "type": "boolean"
-          },
-          "ends_at": {
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "min_invitee_age_days": {
-            "type": "integer",
-            "format": "int64"
-          },
-          "paid_fen": {
-            "type": "integer",
-            "format": "int64"
-          },
-          "payouts": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/PayoutItemResponse"
-            }
-          },
-          "pending_fen": {
-            "type": "integer",
-            "format": "int64"
-          },
-          "phase": {
-            "type": "string",
-            "description": "`disabled` / `not_started` / `active` / `ended`。"
-          },
-          "require_invitee_realname": {
-            "type": "boolean"
-          },
-          "rewards": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/RewardItemResponse"
-            }
-          },
-          "starts_at": {
-            "type": [
-              "string",
-              "null"
-            ],
-            "description": "活动开始 / 结束时间（东八区 `YYYY-MM-DD HH:MM:SS`）；空表示不限。"
-          },
-          "total_invited": {
-            "type": "integer",
-            "format": "int64"
-          },
-          "total_rewarded_fen": {
-            "type": "integer",
-            "format": "int64"
           }
         }
       },

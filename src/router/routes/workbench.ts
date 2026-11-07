@@ -133,6 +133,25 @@ export const workbenchRoutes: RouteRecordRaw[] = [
         component: () => import('@/views/BadgeCenterView.vue'),
         meta: { title: '勋章与邀请', description: '查看徽章与邀请记录' },
       },
+      // 活动中心：列表 → 详情；「我的奖励」单独一条且排在 :code 前，避免被当成活动 code。
+      {
+        path: 'activities',
+        name: 'workbench-activities',
+        component: () => import('@/views/ActivityCenterView.vue'),
+        meta: { title: '活动中心', description: '浏览活动、报名与查看我的奖励' },
+      },
+      {
+        path: 'activities/rewards',
+        name: 'workbench-activity-rewards',
+        component: () => import('@/views/MyActivityRewardsView.vue'),
+        meta: { title: '我的活动奖励', description: '查看活动奖励与转账单' },
+      },
+      {
+        path: 'activities/:code',
+        name: 'workbench-activity-detail',
+        component: () => import('@/views/ActivityDetailView.vue'),
+        meta: { title: '活动详情', description: '报名、兑换名额与查看奖励' },
+      },
       {
         path: 'resource-purchases',
         name: 'workbench-resource-purchases',

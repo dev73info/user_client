@@ -102,6 +102,7 @@ describe('workbench mode switch', () => {
       '我的积分',
       '我的权益',
       '勋章与邀请',
+      '活动中心',
     ])
     expect(assetsLinks.find((link) => link.text() === '优惠券中心')?.attributes('href')).toBe(
       '/workbench/workbench-coupons',

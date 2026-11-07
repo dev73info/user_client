@@ -9,6 +9,7 @@ import { TButton, TDialog } from 'ui_73info'
 
 import type { InviteRewardItem, InviteRewardPayoutStatus } from '@/api/inviteReward'
 import { useInviteRewardClaim } from '@/composables/useInviteRewardClaim'
+import { INVITE_ACTIVITY_CODE } from '@/shared/activity'
 import { formatBackendDateTime } from '@/shared/datetime'
 import { formatFenAsCny } from '@/shared/money'
 
@@ -59,11 +60,7 @@ const phaseNotice = computed(() => {
 const canClaim = computed(() => {
   const data = overview.value
   if (!data || !data.enabled || data.phase === 'not_started') return false
-  return (
-    data.available_fen > 0 ||
-    payoutNeedsConfirm.value ||
-    payoutNeedsSync.value
-  )
+  return data.available_fen > 0 || payoutNeedsConfirm.value || payoutNeedsSync.value
 })
 const claimDisabled = computed(() => !canClaim.value || claiming.value)
 const claimLabel = computed(() => {
@@ -118,6 +115,14 @@ function goWechatLogin() {
   })
 }
 
+/** 「邀请有礼」活动详情：名额、奖励与转账单统一在活动页查看。 */
+function goActivity() {
+  void router.push({
+    name: 'workbench-activity-detail',
+    params: { code: INVITE_ACTIVITY_CODE },
+  })
+}
+
 defineExpose({ reload: load })
 </script>
 
@@ -127,6 +132,12 @@ defineExpose({ reload: load })
       <div class="wb-card-head__title-block">
         <h3 class="wb-card-head__title">邀请现金奖励</h3>
         <p class="invite-reward__window">{{ phaseNotice || activityWindow }}</p>
+        <p class="invite-reward__source">
+          由活动「邀请有礼」驱动 ·
+          <button type="button" class="invite-reward__activity-link" @click="goActivity">
+            查看活动
+          </button>
+        </p>
       </div>
       <div class="wb-card-head__actions">
         <span v-if="overview && !overview.enabled" class="invite-reward__disabled">活动未开启</span>
@@ -276,6 +287,22 @@ defineExpose({ reload: load })
   margin: 4px 0 0;
   color: var(--73-ink-muted);
   font-size: 12px;
+}
+.invite-reward__source {
+  margin: 2px 0 0;
+  color: var(--73-ink-muted);
+  font-size: 12px;
+}
+.invite-reward__activity-link {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--73-accent);
+  font-size: 12px;
+  cursor: pointer;
+}
+.invite-reward__activity-link:hover {
+  text-decoration: underline;
 }
 .invite-reward__disabled {
   color: var(--73-ink-muted);

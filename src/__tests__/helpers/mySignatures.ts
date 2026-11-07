@@ -84,6 +84,7 @@ const routeNames = [
   'mall',
   'workbench-perks',
   'workbench-badges',
+  'workbench-activities',
   'workbench-purchase-transfers',
   'workbench-messages',
   'workbench-invoices',
