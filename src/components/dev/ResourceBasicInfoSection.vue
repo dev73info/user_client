@@ -34,6 +34,10 @@ defineProps<{
   promoShareOff: boolean
   /** 付费（现金或积分）或已勾版权声明时才露出「版权声明」。 */
   isPaidPricing: boolean
+  /** 平台抽成比例（基点）；读不到为 null。 */
+  platformFeeBps: number | null
+  /** 费率读取失败：售价旁明确提示「费率暂不可用」。 */
+  platformFeeError: boolean
 }>()
 
 const emit = defineEmits<{
@@ -110,6 +114,8 @@ const promoSharePercent = defineModel<number>('promoSharePercent', { required: t
           :promo-share-error="promoShareError"
           :promo-share-display="promoShareDisplay"
           :promo-share-off="promoShareOff"
+          :platform-fee-bps="platformFeeBps"
+          :platform-fee-error="platformFeeError"
           @cash-price-input="emit('cashPriceInput', $event)"
           @points-price-input="emit('pointsPriceInput')"
         />

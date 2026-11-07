@@ -8,7 +8,17 @@ import {
   type AdapayPaymentResponse,
 } from '@/api/adapay'
 import type { RequirementItem } from '@/api/requirements'
+import {
+  getRequirementFeeTerms,
+  isFeeTermsPending,
+  type RequirementFeeTerms,
+} from '@/api/requirementFee'
 import { formatFenAsCny } from '@/shared/money'
+import {
+  formatBpsPercent,
+  stagePlatformFeeFen,
+  type FeePaymentStage,
+} from '@/shared/requirementFee'
 import { buildAdapayPaymentQuery } from '@/shared/paymentRoute'
 import {
   isRequirementFinalPayment,
@@ -81,9 +91,18 @@ export function useRequirementPayFlow(options: UseRequirementPayFlowOptions) {
   const channel = ref<AdapayBusinessPayChannel>('alipay')
   const loading = ref(false)
   const order = ref<RequirementPayOrder | null>(null)
+  /** 本单费用快照：定金 / 尾款弹窗展示本次平台服务费；自管单与旧合同为空。 */
+  const feeTerms = ref<RequirementFeeTerms | null>(null)
 
   const isFinalPayment = computed(() => isRequirementFinalPayment(requirement.value))
   const stageLabel = computed(() => requirementPayStageLabel(requirement.value))
+  const feeStage = computed<FeePaymentStage>(() => (isFinalPayment.value ? 'final' : 'deposit'))
+  const platformFeeFen = computed(() =>
+    feeTerms.value ? stagePlatformFeeFen(feeTerms.value, feeStage.value) : null,
+  )
+  const platformFeePercent = computed(() =>
+    feeTerms.value ? formatBpsPercent(feeTerms.value.platform_fee_bps) : '',
+  )
 
   /** 本次应付（**整数分**）：比例由视图注入，见 `shared/requirementPayment`。 */
   const payFen = computed(() =>
@@ -106,6 +125,27 @@ export function useRequirementPayFlow(options: UseRequirementPayFlowOptions) {
     channel.value = 'alipay'
     order.value = null
     visible.value = true
+    void loadFeeTerms(item)
+  }
+
+  /** 担保单读费率快照（只为展示平台服务费）；自管单没有费率，404 一律当作「不展示」。 */
+  async function loadFeeTerms(item: RequirementItem) {
+    feeTerms.value = null
+    if (item.payment_mode !== 'platform_guarantee') {
+      return
+    }
+    try {
+      const terms = await getRequirementFeeTerms(options.token(), item.requirement_id)
+      // 期间可能已换单或关窗：只认当前这张需求。
+      if (requirement.value?.requirement_id === item.requirement_id) {
+        feeTerms.value = terms
+      }
+    } catch (error) {
+      if (!isFeeTermsPending(error)) {
+        // 读取失败不挡支付；服务费行缺省即可，实付金额仍以服务端回执为准。
+        feeTerms.value = null
+      }
+    }
   }
 
   function close() {
@@ -212,6 +252,8 @@ export function useRequirementPayFlow(options: UseRequirementPayFlowOptions) {
     amount: amount.value,
     isFinalPayment: isFinalPayment.value,
     depositRatioPercent: options.depositRatioPercent(),
+    platformFeeFen: platformFeeFen.value,
+    platformFeePercent: platformFeePercent.value,
     onClose: close,
   }))
 

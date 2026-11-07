@@ -14,6 +14,7 @@ import {
 import type { McResourcePayload } from '@/api/mcResources'
 import BetaTag from '@/components/BetaTag.vue'
 import {
+  formatDevResourceNetLabel,
   formatDevResourcePrice,
   formatExposureStatus,
   hasDevResourcePrice,
@@ -43,8 +44,12 @@ const props = withDefaults(
     deletingId: number | null
     coverUrl: (resource: McResourcePayload) => string
     versionPrices?: Record<number, number>
+    /** 当前平台抽成比例（基点）；读不到为 null。 */
+    platformFeeBps?: number | null
+    /** 费率读取失败：预计到手列明确写「暂不可用」，不静默留空。 */
+    platformFeeError?: boolean
   }>(),
-  { versionPrices: () => ({}) },
+  { versionPrices: () => ({}), platformFeeBps: null, platformFeeError: false },
 )
 
 const emit = defineEmits<{
@@ -141,6 +146,22 @@ function handleRowClick(event: MouseEvent) {
               hasDevResourcePrice(scope.row, versionPrices)
             "
           />
+        </span>
+      </template>
+    </TTableColumn>
+    <!-- 预计到手：按当前费率对成交价做整数分估算，标「预计」，真实金额以落单快照为准。 -->
+    <TTableColumn label="预计到手" width="140" resizable>
+      <template #default="scope">
+        <span v-if="!hasDevResourcePrice(scope.row, versionPrices)" class="dev-resource-table__meta"
+          >—</span
+        >
+        <span
+          v-else-if="props.platformFeeBps == null && props.platformFeeError"
+          class="dev-resource-table__meta dev-resource-table__meta--error"
+          >费率暂不可用</span
+        >
+        <span v-else class="dev-resource-table__net">
+          {{ formatDevResourceNetLabel(scope.row, versionPrices, props.platformFeeBps) || '—' }}
         </span>
       </template>
     </TTableColumn>
@@ -298,5 +319,15 @@ function handleRowClick(event: MouseEvent) {
   display: inline-flex;
   align-items: center;
   gap: 6px;
+}
+
+.dev-resource-table__net {
+  color: var(--dev-ink);
+  font-variant-numeric: tabular-nums;
+  font-weight: 650;
+}
+
+.dev-resource-table__meta--error {
+  color: var(--73-warning);
 }
 </style>

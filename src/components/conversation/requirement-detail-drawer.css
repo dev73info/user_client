@@ -160,6 +160,23 @@
   border-top: 1px solid color-mix(in srgb, var(--73-border) 90%, transparent);
 }
 
+/* 费用行：标签偏长，单列排；金额允许换行，不做省略号（看钱不能看成省略号）。 */
+.conversation-drawer__fee {
+  grid-template-columns: minmax(0, 1fr);
+  gap: 6px;
+}
+
+.conversation-drawer__fee dd {
+  white-space: normal;
+  font-variant-numeric: tabular-nums;
+}
+
+.conversation-drawer__fee .is-emphasis dt,
+.conversation-drawer__fee .is-emphasis dd {
+  color: var(--73-success);
+  font-weight: 800;
+}
+
 .conversation-drawer__block h6 {
   margin: 0;
   color: var(--73-ink-soft);

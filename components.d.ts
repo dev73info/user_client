@@ -51,6 +51,7 @@ declare module 'vue' {
     CommunityToolbar: typeof import('./src/components/community/CommunityToolbar.vue')['default']
     ContractArchiveBanner: typeof import('./src/components/contract/ContractArchiveBanner.vue')['default']
     ContractAttachmentPanel: typeof import('./src/components/ContractAttachmentPanel.vue')['default']
+    ContractFeeCard: typeof import('./src/components/contract/ContractFeeCard.vue')['default']
     ContractMetaCard: typeof import('./src/components/contract/ContractMetaCard.vue')['default']
     ContractSignatureFacts: typeof import('./src/components/contract/ContractSignatureFacts.vue')['default']
     ContractSigningHistory: typeof import('./src/components/contract/ContractSigningHistory.vue')['default']

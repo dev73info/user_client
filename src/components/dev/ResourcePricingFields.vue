@@ -1,6 +1,12 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 import { TFormItem, TInput } from 'ui_73info'
+import {
+  RESOURCE_FEE_NOTICE_TEXT,
+  RESOURCE_FEE_UNAVAILABLE_TEXT,
+  resourceExpectedNetLabel,
+  resourceFeeHintText,
+} from '@/shared/requirementFee'
 
 /**
  * 售价（元）/ 积分售价 / 推广分成比例三格。
@@ -9,7 +15,7 @@ import { TFormItem, TInput } from 'ui_73info'
  * 规则在 `useResourcePricingFields` 里，这里只负责把控件与读数摆出来，
  * 并把「现金价输入框的底层元素」回传给父级——实时归一要改写 input 的值与光标。
  */
-defineProps<{
+const props = defineProps<{
   isApiKind: boolean
   cashPriceDisabled: boolean
   pointsPriceDisabled: boolean
@@ -20,6 +26,10 @@ defineProps<{
   promoShareDisplay: string
   /** 比例是否为 0（关闭态用弱化样式）。 */
   promoShareOff: boolean
+  /** 平台抽成比例（基点）；读不到为 null。 */
+  platformFeeBps: number | null
+  /** 费率读取失败：售价旁明确提示「费率暂不可用」。 */
+  platformFeeError: boolean
 }>()
 
 const emit = defineEmits<{
@@ -37,6 +47,17 @@ const cashPriceInputRef = ref<InstanceType<typeof TInput> | null>(null)
 function onCashPriceInput() {
   emit('cashPriceInput', cashPriceInputRef.value?.inputRef ?? null)
 }
+
+const feeHintText = computed(() => {
+  if (props.platformFeeError) {
+    return RESOURCE_FEE_UNAVAILABLE_TEXT
+  }
+  if (props.platformFeeBps == null) {
+    return ''
+  }
+  const net = resourceExpectedNetLabel(priceYuan.value, pricePoints.value, props.platformFeeBps)
+  return resourceFeeHintText(props.platformFeeBps, net)
+})
 </script>
 
 <template>
@@ -65,6 +86,21 @@ function onCashPriceInput() {
       设过现金售价，不可改为积分售价。
     </p>
   </TFormItem>
+
+  <p
+    v-if="feeHintText"
+    class="dev-field-hint dev-platform-fee-hint dev-basic-info-grid__span"
+    :class="{ 'dev-field-hint--error': props.platformFeeError }"
+    data-testid="resource-platform-fee-hint"
+  >
+    {{ feeHintText }}
+  </p>
+  <p
+    class="dev-field-hint dev-platform-fee-notice dev-basic-info-grid__span"
+    data-testid="resource-platform-fee-notice"
+  >
+    {{ RESOURCE_FEE_NOTICE_TEXT }}
+  </p>
 
   <!-- R029 推广分成比例：0～50（%），0 = 关闭；随「保存」一次提交（promo_share_bps） -->
   <TFormItem

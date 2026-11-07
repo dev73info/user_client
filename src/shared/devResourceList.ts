@@ -5,6 +5,8 @@
  * 这里不持有响应式状态，单测直接喂参数，视图与子组件只负责排版。
  */
 import type { McResourcePayload } from '@/api/mcResources'
+import { formatFenAsCny } from '@/shared/money'
+import { estimateResourceFeeFen, estimateResourceNetFen } from '@/shared/requirementFee'
 import { isApiResourceKind } from '@/shared/resourceApi'
 import { isResourceArchiveLocked, resourceTagSummary } from '@/shared/resourcePresentation'
 import { formatResourcePriceLabel, isPricedResource } from '@/shared/resourceSale'
@@ -141,4 +143,34 @@ export function formatDevResourcePrice(
     return `单版本 ${formatResourcePriceLabel(versionFen)}`
   }
   return formatResourcePriceLabel(resource.buyout_price_fen ?? 0, resource.price_points ?? 0)
+}
+
+/**
+ * 列表里的「预计到手」：按当前费率对资源标价做整数分估算。
+ *
+ * - 积分价优先（与标价同口径）；
+ * - 没有资源级标价时用版本最低价（与 `formatDevResourcePrice` 的「单版本」一致）；
+ * - 免费 / 没有费率 / 价格缺失时返回空串，表格显示 `—`。
+ */
+export function formatDevResourceNetLabel(
+  resource: McResourcePayload,
+  versionPrices: Record<number, number>,
+  platformFeeBps: number | null,
+): string {
+  if (platformFeeBps == null) {
+    return ''
+  }
+  const points = Number(resource.price_points ?? 0)
+  if (Number.isFinite(points) && points > 0) {
+    const fee = estimateResourceFeeFen(points, platformFeeBps)
+    return `${points - fee} 积分`
+  }
+  const versionFen = isApiResourceKind(resource.resource_kind)
+    ? 0
+    : (versionPrices[resource.id] ?? 0)
+  const fen = Number(resource.buyout_price_fen ?? 0) || versionFen
+  if (!Number.isFinite(fen) || fen <= 0) {
+    return ''
+  }
+  return `¥${formatFenAsCny(estimateResourceNetFen(fen, platformFeeBps))}`
 }

@@ -4,6 +4,7 @@ import { computed } from 'vue'
 import type { AdapayBusinessPayChannel } from '@/api/adapay'
 import type { RequirementItem } from '@/api/requirements'
 import type { RequirementPayOrder } from '@/composables/useRequirementPayFlow'
+import { formatFeeCny } from '@/shared/requirementFee'
 import { formatBudget } from '@/shared/requirementRowRules'
 
 /**
@@ -31,6 +32,10 @@ const props = defineProps<{
   isFinalPayment: boolean
   /** 定金占比（仅定金阶段展示）。 */
   depositRatioPercent: number
+  /** 本阶段平台服务费（分）；空值表示没有费率快照（自管单 / 旧合同），不展示该行。 */
+  platformFeeFen?: number | null
+  /** 平台服务费比例文本（如 `5` / `4.5`）。 */
+  platformFeePercent?: string
 }>()
 
 const emit = defineEmits<{
@@ -52,6 +57,13 @@ const amountText = computed(() =>
     ? formatBudget(props.amount)
     : `${formatBudget(props.amount)} · 定金占比 ${props.depositRatioPercent.toFixed(2)}%`,
 )
+
+/** 本阶段平台服务费：金额取服务端快照，弹窗只负责展示。 */
+const platformFeeText = computed(() =>
+  props.platformFeeFen == null
+    ? ''
+    : `${formatFeeCny(props.platformFeeFen)}（${props.platformFeePercent}%，从合同款中扣除，不额外向您收取）`,
+)
 </script>
 
 <template>
@@ -61,6 +73,9 @@ const amountText = computed(() =>
       <p class="pay-line"><strong>需求标题：</strong>{{ props.requirement.title }}</p>
       <p class="pay-line"><strong>需求编号：</strong>{{ props.requirement.requirement_id }}</p>
       <p class="pay-line"><strong>本次应付：</strong>{{ amountText }}</p>
+      <p v-if="platformFeeText" class="pay-line" data-testid="requirement-pay-platform-fee">
+        <strong>平台服务费（{{ props.stageLabel }}）：</strong>{{ platformFeeText }}
+      </p>
       <p class="tip">
         {{ props.order ? '订单已创建，点下列按钮查询支付结果' : '选择支付方式，付款后回来确认' }}
       </p>

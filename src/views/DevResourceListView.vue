@@ -21,6 +21,7 @@ import {
 
 import { apiUrl } from '@/api/http'
 import type { McResourcePayload } from '@/api/mcResources'
+import { getResourceSaleFee } from '@/api/resourceSale'
 import BetaTag from '@/components/BetaTag.vue'
 import DevResourceListMetaStrip from '@/components/dev/DevResourceListMetaStrip.vue'
 import DevResourcePublishVersionDialog from '@/components/dev/DevResourcePublishVersionDialog.vue'
@@ -34,6 +35,7 @@ import {
   type DevResourceCommandPayload,
 } from '@/composables/useDevResourceRowActions'
 import { DEV_RESOURCE_VISIBILITY_OPTIONS } from '@/shared/devResourceList'
+import { RESOURCE_FEE_NOTICE_TEXT } from '@/shared/requirementFee'
 import {
   resourceCoverUrl,
   RESOURCE_ARCHIVE_LOCKED_MESSAGE,
@@ -44,6 +46,9 @@ import { useAuthStore } from '@/stores/auth'
 const auth = useAuthStore()
 const transferOpen = ref(false)
 const transferResource = ref<McResourcePayload | null>(null)
+/** 平台抽成比例（基点）：「预计到手」列按它估算；读取失败时列表明确标注。 */
+const platformFeeBps = ref<number | null>(null)
+const platformFeeError = ref(false)
 
 const {
   isLoading,
@@ -102,8 +107,20 @@ function handleCommand(payload: DevResourceCommandPayload) {
 
 onMounted(async () => {
   auth.hydrate()
-  await loadResources()
+  await Promise.all([loadResources(), loadPlatformFee()])
 })
+
+/** 费率只展示用，失败不挡列表；「预计到手」列会明确写「费率暂不可用」。 */
+async function loadPlatformFee() {
+  try {
+    const fee = await getResourceSaleFee(auth.token)
+    platformFeeBps.value = fee.platform_fee_bps
+    platformFeeError.value = false
+  } catch {
+    platformFeeBps.value = null
+    platformFeeError.value = true
+  }
+}
 </script>
 
 <template>
@@ -197,6 +214,10 @@ onMounted(async () => {
         </div>
       </div>
 
+      <p class="dev-field-hint dev-platform-fee-notice" data-testid="resource-fee-notice">
+        {{ RESOURCE_FEE_NOTICE_TEXT }}
+      </p>
+
       <DevResourceTable
         :rows="paged"
         :loading="isLoading"
@@ -206,6 +227,8 @@ onMounted(async () => {
         :deleting-id="deletingResourceId"
         :cover-url="resolveCoverUrl"
         :version-prices="versionPrices"
+        :platform-fee-bps="platformFeeBps"
+        :platform-fee-error="platformFeeError"
         @edit="openEditHomepagePage"
         @command="handleCommand"
       />

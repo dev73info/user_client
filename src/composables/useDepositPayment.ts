@@ -6,7 +6,13 @@ import { TMessage } from 'ui_73info'
 import { type AdapayBusinessPayChannel } from '@/api/adapay'
 import { fetchContractSigningStatus, type ContractSigningStatus } from '@/api/contracts'
 import { getDepositRatio } from '@/api/settings'
+import {
+  getRequirementFeeTerms,
+  isFeeTermsPending,
+  type RequirementFeeTerms,
+} from '@/api/requirementFee'
 import type { RequirementPaymentMode, RequirementStatus } from '@/api/requirements'
+import { formatBpsPercent, stagePlatformFeeFen } from '@/shared/requirementFee'
 import { requirementPayFen } from '@/shared/requirementPayment'
 import { useAuthStore } from '@/stores/auth'
 
@@ -48,6 +54,8 @@ export function useDepositPayment(options: DepositPaymentOptions) {
   const depositRatioPercent = ref(20)
   const depositPolicyAccepted = ref(false)
   const contractSigningStatus = ref<ContractSigningStatus | null>(null)
+  /** 本单费用快照：弹窗展示本阶段平台服务费。自管单没有费率，不请求。 */
+  const depositFeeTerms = ref<RequirementFeeTerms | null>(null)
 
   const depositRequirement = computed<DepositRequirement | null>(() => {
     const id = String(route.query.requirement_id || '')
@@ -71,6 +79,31 @@ export function useDepositPayment(options: DepositPaymentOptions) {
       ? requirementPayFen(depositRequirement.value, depositRatioPercent.value)
       : 0,
   )
+
+  /** 本阶段平台服务费（分）：定金用定金快照，尾款用尾款快照；无快照为空。 */
+  const depositPlatformFeeFen = computed(() =>
+    depositFeeTerms.value
+      ? stagePlatformFeeFen(depositFeeTerms.value, isFinalPayment.value ? 'final' : 'deposit')
+      : null,
+  )
+  const depositPlatformFeePercent = computed(() =>
+    depositFeeTerms.value ? formatBpsPercent(depositFeeTerms.value.platform_fee_bps) : '',
+  )
+
+  /** 担保单读一次费率快照；404（旧合同）按「不展示该行」处理，不挡支付。 */
+  async function loadDepositFeeTerms(requirementId: string) {
+    depositFeeTerms.value = null
+    try {
+      const terms = await getRequirementFeeTerms(auth.token, requirementId)
+      if (depositRequirement.value?.id === requirementId) {
+        depositFeeTerms.value = terms
+      }
+    } catch (error) {
+      if (!isFeeTermsPending(error)) {
+        depositFeeTerms.value = null
+      }
+    }
+  }
 
   function isAdapayRequirement(item: DepositRequirement) {
     return item.paymentMode === 'platform_guarantee'
@@ -105,7 +138,9 @@ export function useDepositPayment(options: DepositPaymentOptions) {
     depositChannel.value = 'alipay'
     depositPolicyAccepted.value = false
     contractSigningStatus.value = null
+    depositFeeTerms.value = null
     router.push({ name: 'home', query: { modal: 'deposit', requirement_id: item.id } })
+    void loadDepositFeeTerms(item.id)
     void fetchContractSigningStatus(auth.token, item.id)
       .then((s) => {
         contractSigningStatus.value = s
@@ -125,6 +160,7 @@ export function useDepositPayment(options: DepositPaymentOptions) {
 
   function closeDepositCard() {
     depositPolicyAccepted.value = false
+    depositFeeTerms.value = null
     router.replace({ name: 'home' })
   }
 
@@ -174,6 +210,8 @@ export function useDepositPayment(options: DepositPaymentOptions) {
     isFinalPayment,
     paymentStageLabel,
     payableFen,
+    depositPlatformFeeFen,
+    depositPlatformFeePercent,
     isAdapayRequirement,
     canOpenPayment,
     updateDepositChannel,

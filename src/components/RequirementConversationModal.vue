@@ -178,6 +178,8 @@ const {
   drawerOpen: detailDrawerOpen,
   drawerLoading: detailDrawerLoading,
   drawerRequirement: detailDrawerRequirement,
+  drawerFeeTerms: detailDrawerFeeTerms,
+  drawerFeePending: detailDrawerFeePending,
   toggle: toggleDetailDrawer,
   close: closeDetailDrawer,
 } = useRequirementDetailDrawer(() => props)
@@ -319,6 +321,9 @@ function handleBackdropClick() {
           :open="detailDrawerOpen"
           :loading="detailDrawerLoading"
           :requirement="detailDrawerRequirement"
+          :fee-terms="detailDrawerFeeTerms"
+          :fee-pending="detailDrawerFeePending"
+          :fee-role="props.apiMode === 'dev' ? 'developer' : 'customer'"
           @close="closeDetailDrawer"
         />
       </section>

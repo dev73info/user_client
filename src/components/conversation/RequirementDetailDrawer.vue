@@ -3,6 +3,14 @@ import { computed } from 'vue'
 import { Close, TIcon } from 'ui_73info'
 
 import type { DrawerRequirement } from '@/composables/useRequirementDetailDrawer'
+import type { RequirementFeeTerms } from '@/api/requirementFee'
+import {
+  FEE_TERMS_PENDING_TEXT,
+  SELF_MANAGED_FEE_NOTE,
+  feeLockNote,
+  requirementFeeLines,
+  type FeeViewerRole,
+} from '@/shared/requirementFee'
 import {
   formatCnDateTime,
   formatCny,
@@ -27,6 +35,11 @@ const props = defineProps<{
   open: boolean
   loading: boolean
   requirement: DrawerRequirement | null
+  /** 费用快照：只有电签担保单有；自管单不展示金额拆分。 */
+  feeTerms?: RequirementFeeTerms | null
+  /** 担保单旧合同：快照还没生成。 */
+  feePending?: boolean
+  feeRole?: FeeViewerRole
 }>()
 
 const emit = defineEmits<{
@@ -61,6 +74,16 @@ const descriptionHtml = computed(() =>
 const acceptanceHtml = computed(() =>
   requirementDetailAcceptanceHtml(props.requirement?.acceptance_criteria),
 )
+
+const isGuarantee = computed(() => props.requirement?.payment_mode === 'platform_guarantee')
+const feeRole = computed<FeeViewerRole>(() => props.feeRole ?? 'customer')
+const feeLines = computed(() => {
+  if (!props.feeTerms || props.feePending) {
+    return []
+  }
+  return requirementFeeLines(props.feeTerms, feeRole.value)
+})
+const feeLockNoteText = computed(() => (props.feeTerms ? feeLockNote(props.feeTerms) : ''))
 </script>
 
 <template>
@@ -98,6 +121,27 @@ const acceptanceHtml = computed(() =>
                   <dd :title="field.value">{{ field.value }}</dd>
                 </div>
               </dl>
+
+              <section v-if="isGuarantee" class="conversation-drawer__block">
+                <h6>费用与结算</h6>
+                <p v-if="props.feePending" class="conversation-drawer__hint" role="status">
+                  {{ FEE_TERMS_PENDING_TEXT }}
+                </p>
+                <template v-else-if="props.feeTerms">
+                  <dl class="conversation-drawer__meta conversation-drawer__fee">
+                    <div
+                      v-for="line in feeLines"
+                      :key="line.label"
+                      :class="{ 'is-emphasis': line.emphasis }"
+                    >
+                      <dt>{{ line.label }}</dt>
+                      <dd :title="line.value">{{ line.value }}</dd>
+                    </div>
+                  </dl>
+                  <p class="conversation-drawer__hint">{{ feeLockNoteText }}</p>
+                </template>
+              </section>
+              <p v-else class="conversation-drawer__hint">{{ SELF_MANAGED_FEE_NOTE }}</p>
 
               <section class="conversation-drawer__block">
                 <h6>需求描述</h6>

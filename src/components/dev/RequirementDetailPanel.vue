@@ -1,5 +1,12 @@
 <script setup lang="ts">
 import { computed } from 'vue'
+import type { RequirementFeeTerms } from '@/api/requirementFee'
+import {
+  FEE_TERMS_PENDING_TEXT,
+  SELF_MANAGED_FEE_NOTE,
+  feeLockNote,
+  requirementFeeLines,
+} from '@/shared/requirementFee'
 import {
   requirementBudgetText,
   requirementDevelopmentCycleText,
@@ -17,6 +24,10 @@ import {
  */
 const props = defineProps<{
   requirement: RequirementDetailFacts
+  /** 费用快照：只有电签担保单有；自管单不展示金额拆分。 */
+  feeTerms?: RequirementFeeTerms | null
+  /** 担保单旧合同：快照还没生成。 */
+  feePending?: boolean
 }>()
 
 const budgetText = computed(() => requirementBudgetText(props.requirement.budget))
@@ -29,6 +40,11 @@ const descriptionHtml = computed(() =>
 const acceptanceHtml = computed(() =>
   requirementRichTextHtml(props.requirement.acceptance_criteria, '暂无验收标准'),
 )
+const isGuarantee = computed(() => props.requirement.payment_mode === 'platform_guarantee')
+const feeLines = computed(() =>
+  props.feeTerms && !props.feePending ? requirementFeeLines(props.feeTerms, 'developer') : [],
+)
+const feeLockNoteText = computed(() => (props.feeTerms ? feeLockNote(props.feeTerms) : ''))
 </script>
 
 <template>
@@ -62,6 +78,30 @@ const acceptanceHtml = computed(() =>
       <strong>{{ createdAtText }}</strong>
     </div>
   </div>
+
+  <section
+    v-if="isGuarantee"
+    class="dev-requirement-detail__section"
+    data-testid="dev-requirement-fee-terms"
+  >
+    <span class="dev-requirement-hall__review-label">费用与结算</span>
+    <p v-if="props.feePending" class="dev-field-hint">{{ FEE_TERMS_PENDING_TEXT }}</p>
+    <template v-else-if="props.feeTerms">
+      <dl class="dev-requirement-detail__fee">
+        <div
+          v-for="line in feeLines"
+          :key="line.label"
+          class="dev-requirement-detail__fee-row"
+          :class="{ 'is-emphasis': line.emphasis }"
+        >
+          <dt>{{ line.label }}</dt>
+          <dd>{{ line.value }}</dd>
+        </div>
+      </dl>
+      <p class="dev-field-hint">{{ feeLockNoteText }}</p>
+    </template>
+  </section>
+  <p v-else class="dev-field-hint">{{ SELF_MANAGED_FEE_NOTE }}</p>
 
   <section class="dev-requirement-detail__section">
     <span class="dev-requirement-hall__review-label">需求描述</span>
@@ -109,6 +149,44 @@ const acceptanceHtml = computed(() =>
 .dev-requirement-detail__section {
   display: grid;
   gap: 8px;
+}
+
+.dev-requirement-detail__fee {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding: 12px;
+  border-radius: var(--dev-radius-inner);
+  background: var(--dev-surface-strong);
+  border: 1px solid var(--dev-line);
+}
+
+.dev-requirement-detail__fee-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.dev-requirement-detail__fee-row dt {
+  min-width: 0;
+  color: var(--dev-muted);
+}
+
+.dev-requirement-detail__fee-row dd {
+  flex: 0 0 auto;
+  margin: 0;
+  color: var(--dev-ink);
+  font-variant-numeric: tabular-nums;
+  font-weight: 650;
+}
+
+.dev-requirement-detail__fee-row.is-emphasis dt,
+.dev-requirement-detail__fee-row.is-emphasis dd {
+  color: var(--73-success);
+  font-weight: 800;
 }
 
 .dev-requirement-detail__rich {

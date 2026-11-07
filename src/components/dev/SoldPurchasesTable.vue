@@ -45,6 +45,20 @@ function refundTraceText(order: ResourcePurchaseOrder): string {
   }
   return parts.join(' · ')
 }
+
+/** 平台抽成：现金单用分，积分单用积分（字段都由后端落单快照给出）。 */
+function platformFeeLabel(order: ResourcePurchaseOrder): string {
+  return isPointsPurchaseOrder(order)
+    ? `${order.platform_fee_points} 积分`
+    : `¥${fenToYuanText(order.platform_fee_fen)}`
+}
+
+/** 卖家到手：现金单与积分单各取自己的字段。 */
+function sellerNetLabel(order: ResourcePurchaseOrder): string {
+  return isPointsPurchaseOrder(order)
+    ? `${order.seller_net_points} 积分`
+    : `¥${fenToYuanText(order.seller_net_fen)}`
+}
 </script>
 
 <template>
@@ -81,6 +95,16 @@ function refundTraceText(order: ResourcePurchaseOrder): string {
             已退 ¥{{ fenToYuanText(scope.row.refunded_amount_fen) }}
           </span>
         </div>
+      </template>
+    </TTableColumn>
+    <TTableColumn label="平台抽成" min-width="120">
+      <template #default="scope">
+        <span class="sold-purchases__meta">{{ platformFeeLabel(scope.row) }}</span>
+      </template>
+    </TTableColumn>
+    <TTableColumn label="到手金额" min-width="120">
+      <template #default="scope">
+        <span class="sold-purchases__amount">{{ sellerNetLabel(scope.row) }}</span>
       </template>
     </TTableColumn>
     <TTableColumn label="状态" min-width="120">

@@ -92,6 +92,8 @@ const {
   payChannel,
   payStage,
   payFen,
+  platformFeeFen,
+  platformFeePercent,
   openPayDialog,
   updatePayChannel,
   submitPayment,
@@ -302,6 +304,8 @@ defineExpose({
     :is-escrow-payment="true"
     :deposit-ratio-percent="depositRatioPercent"
     :payable-fen="payFen"
+    :platform-fee-fen="platformFeeFen"
+    :platform-fee-percent="platformFeePercent"
     :deposit-loading="payLoading"
     :deposit-policy-accepted="depositPolicyAccepted"
     :contract-signing-status="signing"

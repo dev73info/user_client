@@ -2,6 +2,7 @@
 import { TIcon, ArrowLeft, Refresh } from 'ui_73info'
 import ContractAttachmentPanel from '@/components/ContractAttachmentPanel.vue'
 import ContractArchiveBanner from '@/components/contract/ContractArchiveBanner.vue'
+import ContractFeeCard from '@/components/contract/ContractFeeCard.vue'
 import ContractMetaCard from '@/components/contract/ContractMetaCard.vue'
 import ContractSignPanel from '@/components/contract/ContractSignPanel.vue'
 import ContractSignatureFacts from '@/components/contract/ContractSignatureFacts.vue'
@@ -33,6 +34,10 @@ const {
   requirementArchived,
   archiveBanner,
   archiveSignBlockedMessage,
+  feeTerms,
+  feePending,
+  feeRole,
+  showFeeCard,
   currentSigner,
   signerIdentityReady,
   canSignContract,
@@ -82,7 +87,6 @@ const {
           <TIcon><ArrowLeft /></TIcon>返回
         </button>
       </header>
-
       <div v-if="loading" class="status-msg">加载中…</div>
 
       <div v-else-if="!contract" class="status-msg">
@@ -109,6 +113,15 @@ const {
         />
 
         <ContractArchiveBanner v-if="archiveBanner.title" :banner="archiveBanner" />
+
+        <!-- 费用与结算：同一份费率快照，按甲方（需求方）/ 乙方（开发者）切换强调项。
+             只有电签担保需求才有平台服务费；自管模式不挂这张卡。 -->
+        <ContractFeeCard
+          v-if="showFeeCard"
+          :terms="feeTerms"
+          :role="feeRole"
+          :pending="feePending"
+        />
 
         <!-- R012：自定义合同附件。双方上传自己的合同文件或在页面内拟定条款，作为主合同的附件随卷签署；
              必须经平台放行后才能发起签署。开发者入驻协议没有附件，不展示。 -->

@@ -10,6 +10,7 @@ import {
   type PublicMcResourceVersionItem,
 } from '@/api/resources'
 import { resolveVersionPurchaseTarget } from '@/shared/resourceSale'
+import { useResourceOwnerFee } from '@/composables/useResourceOwnerFee'
 import { useAuthStore } from '@/stores/auth'
 import { useResourceFileDownload } from '@/composables/useResourceFileDownload'
 import { useResourceLike } from '@/composables/useResourceLike'
@@ -34,12 +35,7 @@ import { TButton, TLoading } from 'ui_73info'
  * 那两个地址改为轻量重定向到本面板的页内形态（见 ResourceDetailRedirectView）；
  * 所以这里不再有 page 形态：宽度跟随列表页内容区、不写 SEO；面板内不再渲染收起入口。
  *
- * 这一层只留「取数与动作编排」：取详情 / 版本、购买会话（`useResourcePurchase`）、
- * 点赞（`useResourceLike`）、下载（`useResourceFileDownload`），以及把它们接到各块视图上。
- * 视图按详情页的分块拆在 `components/resource-detail/`：
- * 封面（`ResourceDetailCover`）、摘要卡与主操作行（`ResourceDetailSummaryCard` +
- * `ResourceDetailCtaRow`）、页面内容（`ResourceDetailContentCard`），
- * 历史版本 / 评论 / 购买弹窗原本就是独立组件。
+ * 这一层只留「取数与动作编排」：取详情 / 版本、购买会话、点赞、下载，以及把它们接到各块视图上。
  */
 const props = defineProps<{
   /** 要展示的资源编号（列表页传选中项） */
@@ -104,6 +100,19 @@ const isOwner = computed(() => {
   const creator = resource.value?.creator?.trim() ?? ''
   const username = auth.username?.trim() ?? ''
   return Boolean(creator && username && creator === username)
+})
+
+/** 卖家本人看详情时的费率提示；访客不请求也不展示。 */
+const {
+  hint: ownerFeeHint,
+  feeError: ownerFeeError,
+  load: loadOwnerFee,
+} = useResourceOwnerFee({
+  isOwner: () => isOwner.value,
+  token: () => auth.token,
+  pricePoints: () => Number(resource.value?.price_points ?? 0),
+  buyoutPriceFen: () => Number(resource.value?.buyout_price_fen ?? 0),
+  versionPrices: () => versions.value.map((item) => Number(item.price_fen ?? 0)),
 })
 /**
  * 按版本售卖：资源级买断价 / 积分价都为 0，但版本列表里存在可单卖的版本。
@@ -228,6 +237,7 @@ async function loadResource() {
     resource.value = resourceDetail
     // 列表按时间倒序：`latestVersion` 取 `versions[0]`，页面展示也与设计稿一致（新版本在上）
     versions.value = [...resourceVersions].sort((a, b) => b.created_at.localeCompare(a.created_at))
+    await loadOwnerFee()
   } catch (error) {
     // 就地报错，不把整个列表页带回首页
     resource.value = null
@@ -318,6 +328,14 @@ watch(
               @primary-cta="handlePrimaryCta"
               @toggle-like="toggleResourceLike"
             />
+            <p
+              v-if="isOwner && ownerFeeHint"
+              class="resource-detail-page__owner-fee"
+              :class="{ 'is-error': ownerFeeError }"
+              data-testid="resource-owner-fee"
+            >
+              {{ ownerFeeHint }}
+            </p>
           </div>
 
           <ResourceVersionList

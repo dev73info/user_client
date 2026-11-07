@@ -1,14 +1,20 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 import { TCheckbox, TForm, TFormItem, TInput, TOption, TSelect } from 'ui_73info'
 import ResourceIconPicker from '@/components/ResourceIconPicker.vue'
+import {
+  RESOURCE_FEE_NOTICE_TEXT,
+  RESOURCE_FEE_UNAVAILABLE_TEXT,
+  resourceExpectedNetLabel,
+  resourceFeeHintText,
+} from '@/shared/requirementFee'
 import type { ResourceCreationType, ResourcePaidMode } from '@/shared/resourceCreation'
 
 /**
  * 基础信息字段；资源类型由独立区块选择，这里只按类型展示适用字段。
  * 现金价输入框的底层元素通过 `cashPriceInput` 事件回传，供实时归一使用。
  */
-defineProps<{
+const props = defineProps<{
   creationType: ResourceCreationType
   paidMode: ResourcePaidMode
   isApiKind: boolean
@@ -25,8 +31,10 @@ defineProps<{
   promoShareDisplay: string
   /** 比例是否为 0（关闭态用弱化样式）。 */
   promoShareOff: boolean
-  /** 平台抽成百分比文本（如 10 / 4.5）；未取到时为 null，不展示。 */
-  platformFeePercent: string | null
+  /** 平台抽成比例（基点，10000 = 100%）；未取到时为 null。 */
+  platformFeeBps: number | null
+  /** 费率读取失败：显示「费率暂不可用」，不要静默消失。 */
+  platformFeeError: boolean
 }>()
 
 const emit = defineEmits<{
@@ -56,6 +64,23 @@ const cashPriceInputRef = ref<InstanceType<typeof TInput> | null>(null)
 function onCashPriceInput() {
   emit('cashPriceInput', cashPriceInputRef.value?.inputRef ?? null)
 }
+
+/** 预计到手：现金价按整数分算，积分价按积分算；没有定价时只给费率与「买家支付价不变」。 */
+const expectedNetLabel = computed(() =>
+  props.platformFeeBps == null
+    ? ''
+    : resourceExpectedNetLabel(priceYuan.value, pricePoints.value, props.platformFeeBps),
+)
+
+const feeHintText = computed(() => {
+  if (props.platformFeeError) {
+    return RESOURCE_FEE_UNAVAILABLE_TEXT
+  }
+  if (props.platformFeeBps == null) {
+    return ''
+  }
+  return resourceFeeHintText(props.platformFeeBps, expectedNetLabel.value)
+})
 </script>
 
 <template>
@@ -167,12 +192,21 @@ function onCashPriceInput() {
           </TFormItem>
         </div>
 
-        <!-- 费用披露：付费 / 接口资源在售价旁写明平台抽成，避免成交后才发现 -->
+        <!-- 费用披露：付费 / 接口资源在售价旁写明平台抽成与预计到手；读取失败也要说话 -->
         <p
-          v-if="platformFeePercent && (creationType === 'paid' || isApiKind)"
+          v-if="feeHintText && (creationType === 'paid' || isApiKind)"
           class="dev-field-hint dev-platform-fee-hint"
+          :class="{ 'dev-field-hint--error': props.platformFeeError }"
+          data-testid="resource-platform-fee-hint"
         >
-          平台抽成 {{ platformFeePercent }}%（按成交价扣除）
+          {{ feeHintText }}
+        </p>
+        <p
+          v-if="creationType === 'paid' || isApiKind"
+          class="dev-field-hint dev-platform-fee-notice"
+          data-testid="resource-platform-fee-notice"
+        >
+          {{ RESOURCE_FEE_NOTICE_TEXT }}
         </p>
 
         <!-- R029 推广分成：0～50（%），0 = 关闭；拖动条 + 百分比展示，随资源一次保存（promo_share_bps） -->

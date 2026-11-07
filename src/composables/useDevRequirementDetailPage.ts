@@ -1,4 +1,10 @@
+import { ref } from 'vue'
 import { TMessage } from 'ui_73info'
+import {
+  getRequirementFeeTerms,
+  isFeeTermsPending,
+  type RequirementFeeTerms,
+} from '@/api/requirementFee'
 import { useDevOrderGate } from '@/composables/useDevOrderGate'
 import { useDevRequirementBinding } from '@/composables/useDevRequirementBinding'
 import { useDevRequirementDetail } from '@/composables/useDevRequirementDetail'
@@ -15,6 +21,9 @@ import { useDevRequirementDetail } from '@/composables/useDevRequirementDetail'
 export function useDevRequirementDetailPage() {
   const detail = useDevRequirementDetail()
   const gate = useDevOrderGate()
+  /** 费用快照：电签担保单才有；自管单平台不代收代付，不展示费率。 */
+  const feeTerms = ref<RequirementFeeTerms | null>(null)
+  const feePending = ref(false)
   const binding = useDevRequirementBinding({
     requirementId: detail.requirementId,
     requirement: detail.requirement,
@@ -44,12 +53,30 @@ export function useDevRequirementDetailPage() {
         binding.loadResources(),
       ])
       detail.requirement.value = currentRequirement
+      await loadFeeTerms(currentRequirement)
       await binding.ensureInitialBindingMode()
     } catch (error) {
       detail.requirement.value = null
+      feeTerms.value = null
+      feePending.value = false
       TMessage.error(error instanceof Error ? error.message : '加载需求详情失败')
     } finally {
       detail.loading.value = false
+    }
+  }
+
+  /** 担保单读费率快照；自管单与 404 都按「不展示金额拆分」处理。 */
+  async function loadFeeTerms(requirement: { requirement_id: string; payment_mode: string }) {
+    feeTerms.value = null
+    feePending.value = false
+    if (requirement.payment_mode !== 'platform_guarantee') {
+      return
+    }
+    try {
+      feeTerms.value = await getRequirementFeeTerms(detail.auth.token, requirement.requirement_id)
+    } catch (error) {
+      feeTerms.value = null
+      feePending.value = isFeeTermsPending(error)
     }
   }
 
@@ -57,6 +84,8 @@ export function useDevRequirementDetailPage() {
     ...detail,
     gate,
     binding,
+    feeTerms,
+    feePending,
     loadPage,
   }
 }

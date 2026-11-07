@@ -27,6 +27,7 @@ const router = useRouter()
 
 const page = useDevRequirementDetailPage()
 const { auth, loading, requirement, requirementId, loadPage } = page
+const { feeTerms, feePending } = page
 const {
   resourcesLoading,
   bindingMode,
@@ -114,7 +115,11 @@ function goSignDeveloperAgreement() {
     <div v-if="requirement" class="dev-requirement-detail__layout">
       <section class="dev-requirement-detail__left">
         <TCard class="dev-surface-card dev-requirement-detail__requirement-card">
-          <RequirementDetailPanel :requirement="requirement" />
+          <RequirementDetailPanel
+            :requirement="requirement"
+            :fee-terms="feeTerms"
+            :fee-pending="feePending"
+          />
         </TCard>
       </section>
 

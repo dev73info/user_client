@@ -1,11 +1,13 @@
 <script setup lang="ts">
 import type { PropType } from 'vue'
+import { computed } from 'vue'
 import type { ContractSigningStatus } from '@/shared/contracts'
 import { formatFenAsCny } from '@/shared/money'
+import { formatFeeCny } from '@/shared/requirementFee'
 
 type DepositPayment = Record<string, unknown> | null
 
-defineProps({
+const props = defineProps({
   visible: { type: Boolean, default: false },
   depositRequirement: {
     type: Object as PropType<{ title: string; id: string; budget?: number | null }>,
@@ -24,6 +26,10 @@ defineProps({
    * 优惠券不参与这块——契约里定金 / 尾款下单接口没有券字段，这里也不展示券。
    */
   payableFen: { type: Number, default: 0 },
+  /** 本阶段平台服务费（分）；空值表示没有费率快照（自管单 / 旧合同），不展示该行。 */
+  platformFeeFen: { type: Number as PropType<number | null>, default: null },
+  /** 平台服务费比例文本（如 `5` / `4.5`）。 */
+  platformFeePercent: { type: String, default: '' },
   depositPolicyAccepted: { type: Boolean, default: false },
   contractSigningStatus: { type: Object as PropType<ContractSigningStatus | null>, default: null },
 })
@@ -42,6 +48,13 @@ function updateChannel(channel: 'alipay' | 'wechat') {
 function updateDepositPolicyAccepted(value: boolean) {
   emit('update:depositPolicyAccepted', value)
 }
+
+/** 本阶段平台服务费行：金额与比例都取服务端快照，组件只展示。 */
+const platformFeeText = computed(() =>
+  props.platformFeeFen == null
+    ? ''
+    : `${formatFeeCny(props.platformFeeFen)}（${props.platformFeePercent}%，从合同款中扣除，不额外向您收取）`,
+)
 </script>
 
 <template>
@@ -51,6 +64,9 @@ function updateDepositPolicyAccepted(value: boolean) {
       <p class="deposit-line"><strong>需求标题：</strong>{{ depositRequirement.title }}</p>
       <p class="deposit-line"><strong>需求编号：</strong>{{ depositRequirement.id }}</p>
       <p class="deposit-line"><strong>预算：</strong>{{ formattedBudget }}</p>
+      <p v-if="platformFeeText" class="deposit-line" data-testid="deposit-platform-fee">
+        <strong>平台服务费（{{ paymentStageLabel }}）：</strong>{{ platformFeeText }}
+      </p>
       <div class="deposit-channel-row">
         <strong>支付方式：</strong>
         <div class="payment-options" role="radiogroup" aria-label="支付方式选择">

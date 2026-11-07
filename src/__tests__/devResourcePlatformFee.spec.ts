@@ -10,7 +10,10 @@ function mountSection(
     creationType: ResourceCreationType
     paidMode: ResourcePaidMode
     isApiKind: boolean
-    platformFeePercent: string | null
+    platformFeeBps: number | null
+    platformFeeError: boolean
+    priceYuan: string
+    pricePoints: string
   }> = {},
 ) {
   return shallowMount(ResourceInitBasicInfoSection, {
@@ -42,7 +45,8 @@ function mountSection(
       promoShareError: '',
       promoShareDisplay: '0%',
       promoShareOff: true,
-      platformFeePercent: '4',
+      platformFeeBps: 400,
+      platformFeeError: false,
       ...overrides,
     },
     global: {
@@ -56,30 +60,68 @@ function mountSection(
 }
 
 describe('ResourceInitBasicInfoSection：平台抽成披露', () => {
-  it('付费资源在售价旁展示抽成比例', () => {
-    const wrapper = mountSection({ creationType: 'paid', platformFeePercent: '4' })
+  it('付费资源展示抽成比例与预计到手', () => {
+    const wrapper = mountSection({
+      creationType: 'paid',
+      platformFeeBps: 400,
+      priceYuan: '100',
+    })
 
     const hint = wrapper.find('.dev-platform-fee-hint')
     expect(hint.exists()).toBe(true)
-    expect(hint.text()).toBe('平台抽成 4%（按成交价扣除）')
-    // 提示挂在售价区块之后、独占一行
+    expect(hint.text()).toBe('平台抽成 4%（按成交价扣除），买家支付价不变，预计到手 ¥96.00')
     expect(hint.classes()).toContain('dev-field-hint')
 
     wrapper.unmount()
   })
 
+  it('没有填售价时只给费率与买家价不变', () => {
+    const wrapper = mountSection({ creationType: 'paid', platformFeeBps: 400, priceYuan: '' })
+
+    expect(wrapper.find('.dev-platform-fee-hint').text()).toBe(
+      '平台抽成 4%（按成交价扣除），买家支付价不变',
+    )
+
+    wrapper.unmount()
+  })
+
   it('免费资源不展示抽成比例', () => {
-    const wrapper = mountSection({ creationType: 'free', platformFeePercent: '4' })
+    const wrapper = mountSection({ creationType: 'free', platformFeeBps: 400 })
 
     expect(wrapper.find('.dev-platform-fee-hint').exists()).toBe(false)
 
     wrapper.unmount()
   })
 
-  it('接口取不到比例时静默不展示', () => {
-    const wrapper = mountSection({ creationType: 'paid', platformFeePercent: null })
+  it('接口读取中（无比例且无错误）不展示', () => {
+    const wrapper = mountSection({ creationType: 'paid', platformFeeBps: null })
 
     expect(wrapper.find('.dev-platform-fee-hint').exists()).toBe(false)
+
+    wrapper.unmount()
+  })
+
+  it('接口失败时明确提示费率不可用，不静默消失', () => {
+    const wrapper = mountSection({
+      creationType: 'paid',
+      platformFeeBps: null,
+      platformFeeError: true,
+    })
+
+    const hint = wrapper.find('.dev-platform-fee-hint')
+    expect(hint.exists()).toBe(true)
+    expect(hint.text()).toBe('费率暂不可用，请刷新')
+    expect(hint.classes()).toContain('dev-field-hint--error')
+
+    wrapper.unmount()
+  })
+
+  it('付费资源常驻 7 天公告提示', () => {
+    const wrapper = mountSection({ creationType: 'paid' })
+
+    expect(wrapper.find('.dev-platform-fee-notice').text()).toBe(
+      '费率调整提前 7 天公告，已下单订单不受影响',
+    )
 
     wrapper.unmount()
   })

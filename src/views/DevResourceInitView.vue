@@ -18,20 +18,18 @@ import ResourceSecretPlainDialog from '@/components/dev/ResourceSecretPlainDialo
 import { useAuthStore } from '@/stores/auth'
 
 const auth = useAuthStore()
-/** 平台抽成比例（如 10 / 4.5）；接口失败时保持 null，发布流程照常。 */
-const platformFeePercent = ref<string | null>(null)
-
-/** 基点转百分比文本：1000 → 10，450 → 4.5，400 → 4。 */
-function formatPlatformFeePercent(bps: number): string {
-  return String(Number((bps / 100).toFixed(2)))
-}
+/** 平台抽成比例（基点）；接口失败时置错误标记，页面明确提示「费率暂不可用」。 */
+const platformFeeBps = ref<number | null>(null)
+const platformFeeError = ref(false)
 
 onMounted(async () => {
   try {
     const fee = await getResourceSaleFee(auth.token)
-    platformFeePercent.value = formatPlatformFeePercent(fee.platform_fee_bps)
+    platformFeeBps.value = fee.platform_fee_bps
+    platformFeeError.value = false
   } catch {
-    platformFeePercent.value = null
+    platformFeeBps.value = null
+    platformFeeError.value = true
   }
 })
 
@@ -168,7 +166,8 @@ const {
           :promo-share-error="promoShareError"
           :promo-share-display="promoShareDisplay"
           :promo-share-off="promoSharePercentValue <= 0"
-          :platform-fee-percent="platformFeePercent"
+          :platform-fee-bps="platformFeeBps"
+          :platform-fee-error="platformFeeError"
           @cash-price-input="onCashPriceInput"
           @points-price-input="onPointsPriceInput"
         />

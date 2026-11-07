@@ -8,7 +8,13 @@ import {
   type AdapayBusinessPayChannel,
 } from '@/api/adapay'
 import type { RequirementPaymentMode, RequirementStatus } from '@/api/requirements'
+import {
+  getRequirementFeeTerms,
+  isFeeTermsPending,
+  type RequirementFeeTerms,
+} from '@/api/requirementFee'
 import { buildAdapayPaymentQuery } from '@/shared/paymentRoute'
+import { formatBpsPercent, stagePlatformFeeFen } from '@/shared/requirementFee'
 import { calculateDepositFen, calculateFinalPaymentFen } from '@/shared/requirementPayment'
 
 /** 支付弹窗只需需求单的这几个字段。 */
@@ -39,6 +45,8 @@ export function useConversationPayment(readSources: () => PaymentSources) {
   const depositPolicyAccepted = ref(false)
   /** 支付弹窗里选中的渠道：与「我的需求」页同一份取值，弹窗关掉即重置回支付宝。 */
   const payChannel = ref<AdapayBusinessPayChannel>('alipay')
+  /** 本单费用快照：弹窗展示本阶段平台服务费；自管单 / 旧合同为空。 */
+  const feeTerms = ref<RequirementFeeTerms | null>(null)
 
   const payStage = computed<'deposit' | 'final'>(() =>
     readSources().requirement?.status === 'pending_final' ? 'final' : 'deposit',
@@ -58,7 +66,34 @@ export function useConversationPayment(readSources: () => PaymentSources) {
     depositPolicyAccepted.value = false
     payChannel.value = 'alipay'
     payVisible.value = true
+    feeTerms.value = null
+    void loadFeeTerms()
   }
+
+  /** 担保单读费率快照；自管单与 404 一律按「不展示服务费行」处理，不挡支付。 */
+  async function loadFeeTerms() {
+    const { token, requirement: item } = readSources()
+    if (!item || item.payment_mode !== 'platform_guarantee') {
+      return
+    }
+    try {
+      const terms = await getRequirementFeeTerms(token, item.requirement_id)
+      if (readSources().requirement?.requirement_id === item.requirement_id) {
+        feeTerms.value = terms
+      }
+    } catch (error) {
+      if (!isFeeTermsPending(error)) {
+        feeTerms.value = null
+      }
+    }
+  }
+
+  const platformFeeFen = computed(() =>
+    feeTerms.value ? stagePlatformFeeFen(feeTerms.value, payStage.value) : null,
+  )
+  const platformFeePercent = computed(() =>
+    feeTerms.value ? formatBpsPercent(feeTerms.value.platform_fee_bps) : '',
+  )
 
   function updatePayChannel(channel: AdapayBusinessPayChannel) {
     if (payChannel.value === channel) {
@@ -122,6 +157,8 @@ export function useConversationPayment(readSources: () => PaymentSources) {
     payChannel,
     payStage,
     payFen,
+    platformFeeFen,
+    platformFeePercent,
     openPayDialog,
     updatePayChannel,
     submitPayment,

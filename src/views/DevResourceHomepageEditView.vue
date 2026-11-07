@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { onMounted, ref } from 'vue'
 import { TAlert, TButton, TCard, TLoading } from 'ui_73info'
+import { getResourceSaleFee } from '@/api/resourceSale'
 import ResourceHomepageEditBar from '@/components/dev/ResourceHomepageEditBar.vue'
 import ResourceBasicInfoSection from '@/components/dev/ResourceBasicInfoSection.vue'
 import ResourceApiChannelSection from '@/components/dev/ResourceApiChannelSection.vue'
@@ -51,6 +52,20 @@ const {
 } = useResourceHomepageResource()
 
 const teams = useResourceHomepageTeams()
+/** 平台抽成比例（基点）：售价旁展示「预计到手」；读取失败明确提示。 */
+const platformFeeBps = ref<number | null>(null)
+const platformFeeError = ref(false)
+
+onMounted(async () => {
+  try {
+    const fee = await getResourceSaleFee(auth.token)
+    platformFeeBps.value = fee.platform_fee_bps
+    platformFeeError.value = false
+  } catch {
+    platformFeeBps.value = null
+    platformFeeError.value = true
+  }
+})
 const tagCatalog = useResourceTagCatalog(resource)
 /** 「页面内容」区块暴露 setContent，保存链路加载时要把发布说明灌回编辑器。 */
 const pageContentRef = ref<ResourceRichEditorHandle | null>(null)
@@ -199,6 +214,8 @@ const {
             :promo-share-display="formState.promoShareDisplay.value"
             :promo-share-off="formState.promoSharePercentValue.value <= 0"
             :is-paid-pricing="formState.isPaidPricing.value"
+            :platform-fee-bps="platformFeeBps"
+            :platform-fee-error="platformFeeError"
             @update:cover-preview="formState.handleCoverPreviewChange"
             @description-input="formState.onDescriptionInput"
             @cash-price-input="formState.onCashPriceInput"

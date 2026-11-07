@@ -14,10 +14,10 @@ import {
 import { fetchRequirementDetail, type RequirementItem } from '@/api/requirements'
 import { CONTRACT_STATUS } from '@/shared/contracts'
 import { contractStatusTone, hasInitiatedSigning } from '@/shared/contractSign'
-import { ARCHIVED_WRITE_BLOCKED_MESSAGE } from '@/shared/requirementArchive'
 import { useAuthStore } from '@/stores/auth'
 
 import { useContractSignDisplay } from './useContractSignDisplay'
+import { useContractFeeCard } from './useContractFeeCard'
 import { useContractSignNavigation } from './useContractSignNavigation'
 import { useContractSignPolling } from './useContractSignPolling'
 
@@ -83,6 +83,7 @@ export function useContractSign(options: UseContractSignOptions) {
     effectiveUntilLabel,
     developmentCycleText,
     canSubmitSign,
+    signBlockedMessage,
     showBecomeDeveloper,
   } = useContractSignDisplay({
     contract,
@@ -97,13 +98,19 @@ export function useContractSign(options: UseContractSignOptions) {
     token: () => auth.token, // 取本人实名资料用
   })
 
+  /** 费用卡：只服务电签担保需求，按甲乙双方切换强调项；自管模式不展示。 */
+  const { feeTerms, feePending, feeRole, showFeeCard, loadFeeTerms } = useContractFeeCard({
+    requirement: requirementArchive,
+    currentParty,
+    isPlatformAgreement: nav.isPlatformAgreement,
+    token: () => auth.token,
+  })
   /** 附件变更后换成后端最新那份，避免停在旧审核态。 */
   function applyUpdatedContract(updated: ContractDetail) {
     contract.value = updated
     successMsg.value = ''
     error.value = ''
   }
-
   async function loadContract() {
     loading.value = true
     error.value = ''
@@ -151,6 +158,8 @@ export function useContractSign(options: UseContractSignOptions) {
       } else {
         requirementArchive.value = null
       }
+      // 费用快照：担保单读一次；自管模式没有费率，不请求。旧合同 404 → 「费率待确认」。
+      await loadFeeTerms(rid)
     } catch (cause) {
       contract.value = null
       error.value = cause instanceof Error ? cause.message : '加载合同失败，请刷新重试'
@@ -159,22 +168,12 @@ export function useContractSign(options: UseContractSignOptions) {
     }
   }
 
-  /** 发起签署前的三道本地闸门（后端同样会拦，这里先给出可操作的中文说明）。 */
-  function signBlockedReason(): string {
-    if (requirementArchived.value) return ARCHIVED_WRITE_BLOCKED_MESSAGE
-    if (!signerIdentityReady.value) return '请先完成实名认证，签署身份必须包含真实姓名和身份证号'
-    if (!attachmentApproved.value) {
-      return attachmentGateMessage.value || '自定义合同附件待平台审核通过后才能发起签署'
-    }
-    return ''
-  }
-
+  /** 发起签署前的本地闸门：提示文案由 `useContractSignDisplay` 出。 */
   async function handleSign() {
     if (!contract.value || signing.value) return
     // R043 任务-03：平台协议要先确认重要条款提示（放行时顺手留痕一次）。
-    const blocked = signBlockedReason()
-    if (blocked) {
-      error.value = blocked
+    if (signBlockedMessage.value) {
+      error.value = signBlockedMessage.value
       return
     }
     signing.value = true
@@ -259,6 +258,10 @@ export function useContractSign(options: UseContractSignOptions) {
     noticeSigner,
     localDocumentFallback,
     requirementArchive,
+    feeTerms,
+    feePending,
+    feeRole,
+    showFeeCard,
     currentParty,
     currentSigner,
     signerIdentityReady,

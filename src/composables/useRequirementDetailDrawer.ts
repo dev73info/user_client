@@ -1,6 +1,11 @@
 import { ref, watch } from 'vue'
 
 import { listMyRequirements } from '@/api/devRequirements'
+import {
+  getRequirementFeeTerms,
+  isFeeTermsPending,
+  type RequirementFeeTerms,
+} from '@/api/requirementFee'
 import { listRequirements, type RequirementPaymentMode } from '@/api/requirements'
 
 /**
@@ -42,6 +47,9 @@ export function useRequirementDetailDrawer(readSources: () => DetailDrawerSource
   const drawerOpen = ref(false)
   const drawerLoading = ref(false)
   const drawerRequirement = ref<DrawerRequirement | null>(null)
+  /** 费用快照：只有电签担保单有；自管单不展示费率区。 */
+  const drawerFeeTerms = ref<RequirementFeeTerms | null>(null)
+  const drawerFeePending = ref(false)
 
   function close() {
     drawerOpen.value = false
@@ -103,8 +111,20 @@ export function useRequirementDetailDrawer(readSources: () => DetailDrawerSource
             acceptance_criteria: found.acceptance_criteria ?? null,
           }
         : null
+      drawerFeeTerms.value = null
+      drawerFeePending.value = false
+      if (found && found.payment_mode === 'platform_guarantee') {
+        try {
+          drawerFeeTerms.value = await getRequirementFeeTerms(token, requirementId)
+        } catch (error) {
+          drawerFeeTerms.value = null
+          drawerFeePending.value = isFeeTermsPending(error)
+        }
+      }
     } catch {
       drawerRequirement.value = null
+      drawerFeeTerms.value = null
+      drawerFeePending.value = false
     } finally {
       drawerLoading.value = false
     }
@@ -114,6 +134,8 @@ export function useRequirementDetailDrawer(readSources: () => DetailDrawerSource
     drawerOpen,
     drawerLoading,
     drawerRequirement,
+    drawerFeeTerms,
+    drawerFeePending,
     toggle,
     close,
   }
