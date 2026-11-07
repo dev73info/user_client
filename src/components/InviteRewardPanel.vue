@@ -38,7 +38,7 @@ const activityWindow = computed(() => {
     return `活动时间：${formatBackendDateTime(start)} ~ ${formatBackendDateTime(end)}`
   }
   if (end) return `活动截止：${formatBackendDateTime(end)}`
-  if (start) return `活动开始：${formatBackendDateTime(start)}`
+  if (start) return `活动时间：${formatBackendDateTime(start)} ~ 长期有效`
   return '活动时间：长期有效'
 })
 const phaseNotice = computed(() => {
