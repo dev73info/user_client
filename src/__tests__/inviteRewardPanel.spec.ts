@@ -4,6 +4,7 @@ import { reactive } from 'vue'
 
 import { HttpError } from '@/api/http'
 import InviteRewardPanel from '@/components/InviteRewardPanel.vue'
+import { payout, rewardOverview } from './fixtures/inviteReward'
 
 const mocks = vi.hoisted(() => ({
   get: vi.fn(),
@@ -52,57 +53,6 @@ vi.mock('ui_73info', () => ({
     info: mocks.info,
   },
 }))
-
-const payout = {
-  out_bill_no: 'IR20261107',
-  amount_fen: 100,
-  state: 'wait_user_confirm',
-  package_info: 'mock-package',
-  mch_id: '1743365011',
-  app_id: 'wxcca827878ec0def8',
-}
-
-function rewardOverview(overrides: Record<string, unknown> = {}) {
-  return {
-    enabled: true,
-    amount_fen: 100,
-    require_invitee_realname: true,
-    min_invitee_age_days: 0,
-    total_invited: 3,
-    total_rewarded_fen: 300,
-    available_fen: 100,
-    pending_fen: 100,
-    paid_fen: 100,
-    rewards: [
-      {
-        id: 'r1',
-        invitee: 'u***3',
-        amount_fen: 100,
-        status: 'available',
-        reason: '',
-        created_at: '2026-11-07 10:00:00',
-      },
-      {
-        id: 'r2',
-        invitee: 'z***8',
-        amount_fen: 100,
-        status: 'pending',
-        reason: '待被邀请人完成实名认证',
-        created_at: '2026-11-06 10:00:00',
-      },
-      {
-        id: 'r3',
-        invitee: 'm***1',
-        amount_fen: 100,
-        status: 'paid',
-        reason: '',
-        created_at: '2026-10-30 10:00:00',
-      },
-    ],
-    payouts: [],
-    ...overrides,
-  }
-}
 
 let wrapper: VueWrapper | undefined
 
@@ -268,5 +218,39 @@ describe('邀请现金奖励面板', () => {
       name: 'home',
       query: { modal: 'auth', mode: 'login', redirect_to: '/workbench/badges' },
     })
+  })
+
+  it('刷新页面时对处理中的转账单主动查单，并按「刷新转账状态」复用查单', async () => {
+    const creating = rewardOverview({
+      available_fen: 0,
+      payouts: [
+        {
+          out_bill_no: 'IR20261107',
+          amount_fen: 100,
+          reward_count: 1,
+          status: 'creating',
+          package_info: null,
+          created_at: '2026-11-07 10:05:00',
+        },
+      ],
+    })
+    mocks.get.mockResolvedValue(creating)
+    mocks.sync.mockResolvedValue(creating)
+
+    wrapper = mount(InviteRewardPanel)
+    await flushPromises()
+
+    // 挂载后自动查单一次，避免刷新页面后按钮永久禁用。
+    expect(mocks.sync).toHaveBeenCalledTimes(1)
+
+    const refresh = wrapper.findAll('button').find((item) => item.text() === '刷新转账状态')
+    expect(refresh).toBeDefined()
+    expect(refresh!.attributes('disabled')).toBeUndefined()
+
+    await refresh!.trigger('click')
+    await flushPromises()
+
+    expect(mocks.sync).toHaveBeenCalledTimes(2)
+    expect(mocks.claim).not.toHaveBeenCalled()
   })
 })

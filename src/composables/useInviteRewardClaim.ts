@@ -22,62 +22,11 @@ import {
 } from '@/api/inviteReward'
 import { INVITE_REWARD_WECHAT_NOT_BOUND } from '@/shared/api/errorCodes'
 import { isWechatBrowser } from '@/shared/auth/browser'
+import { invokeTransfer, waitForWeixinBridge } from '@/shared/wechat/merchantTransfer'
 import { useAuthStore } from '@/stores/auth'
 
 const CLAIM_QUERY_KEY = 'inviteReward'
 const SYNC_DELAY_MS = 10_000
-
-type WeixinBridge = {
-  invoke: (
-    method: string,
-    params: { mchId: string; appId: string; package: string },
-    callback: (result: { err_msg?: string }) => void,
-  ) => void
-}
-
-function getWeixinBridge(): WeixinBridge | null {
-  if (typeof window === 'undefined') return null
-  const bridge = (window as Window & { WeixinJSBridge?: WeixinBridge }).WeixinJSBridge
-  return bridge && typeof bridge.invoke === 'function' ? bridge : null
-}
-
-/** bridge 可能晚于页面脚本注入：等一次 `WeixinJSBridgeReady`，5 秒还没有就当不可用。 */
-function waitForWeixinBridge(timeoutMs = 5000): Promise<WeixinBridge | null> {
-  const ready = getWeixinBridge()
-  if (ready) return Promise.resolve(ready)
-
-  return new Promise((resolve) => {
-    let timer: ReturnType<typeof setTimeout> | null = null
-    let done = false
-    const finish = () => {
-      if (done) return
-      done = true
-      if (timer) clearTimeout(timer)
-      document.removeEventListener('WeixinJSBridgeReady', finish)
-      resolve(getWeixinBridge())
-    }
-    document.addEventListener('WeixinJSBridgeReady', finish, { once: true })
-    timer = setTimeout(finish, timeoutMs)
-  })
-}
-
-function invokeTransfer(
-  bridge: WeixinBridge,
-  payout: InviteRewardClaimPayout,
-): Promise<'ok' | 'cancel' | 'fail'> {
-  return new Promise((resolve) => {
-    bridge.invoke(
-      'requestMerchantTransfer',
-      { mchId: payout.mch_id, appId: payout.app_id, package: payout.package_info ?? '' },
-      (result) => {
-        const message = (result.err_msg ?? '').toLowerCase()
-        if (message.includes(':ok')) resolve('ok')
-        else if (message.includes('cancel')) resolve('cancel')
-        else resolve('fail')
-      },
-    )
-  })
-}
 
 export function useInviteRewardClaim() {
   const auth = useAuthStore()
@@ -101,6 +50,16 @@ export function useInviteRewardClaim() {
   const payoutNeedsConfirm = computed(() =>
     (overview.value?.payouts ?? []).some(
       (payout) => payout.status === 'wait_user_confirm' && Boolean(payout.package_info),
+    ),
+  )
+
+  /**
+   * 仍在渠道处理中的转账单（`creating` / `processing`）。这类单没有确认页可拉，
+   * 页面刷新后必须主动查单，否则按钮会一直禁用、奖励永远卡在「领取中」。
+   */
+  const payoutNeedsSync = computed(() =>
+    (overview.value?.payouts ?? []).some(
+      (payout) => payout.status === 'creating' || payout.status === 'processing',
     ),
   )
 
@@ -193,7 +152,11 @@ export function useInviteRewardClaim() {
     let cancelled = false
     let failed = false
     for (const payout of billable) {
-      const outcome = await invokeTransfer(bridge, payout)
+      const outcome = await invokeTransfer(bridge, {
+        mchId: payout.mch_id,
+        appId: payout.app_id,
+        package: payout.package_info ?? '',
+      })
       if (outcome === 'cancel') {
         cancelled = true
         break
@@ -214,9 +177,21 @@ export function useInviteRewardClaim() {
     if (
       !token ||
       !overview.value?.enabled ||
-      (!hasAvailable && !payoutNeedsConfirm.value) ||
+      (!hasAvailable && !payoutNeedsConfirm.value && !payoutNeedsSync.value) ||
       claiming.value
     ) {
+      return
+    }
+
+    // 有建单中 / 处理中的单先查单：直接再调 claim 只会拿到 503（锁单保护），
+    // 查单后才可能变成可确认、已到账或失败退回可领取。
+    if (payoutNeedsSync.value) {
+      claiming.value = true
+      try {
+        await syncRewards()
+      } finally {
+        claiming.value = false
+      }
       return
     }
 
@@ -242,12 +217,20 @@ export function useInviteRewardClaim() {
     }
   }
 
+  /** 页面加载 / 重新可见时，若有处理中的转账单，主动查一次渠道状态。 */
+  async function syncIfNeeded() {
+    if (!payoutNeedsSync.value || !auth.token.trim()) return
+    await syncRewards()
+  }
+
   function onVisibilityChange() {
-    if (document.visibilityState === 'visible') void load()
+    if (document.visibilityState === 'visible') {
+      void load().then(syncIfNeeded)
+    }
   }
 
   onMounted(() => {
-    void load()
+    void load().then(syncIfNeeded)
     if (typeof document !== 'undefined') {
       document.addEventListener('visibilitychange', onVisibilityChange)
     }
@@ -267,6 +250,7 @@ export function useInviteRewardClaim() {
     loadError,
     needWechatLogin,
     payoutNeedsConfirm,
+    payoutNeedsSync,
     qrOpen,
     qrImage,
     qrError,

@@ -21,6 +21,7 @@ const {
   loadError,
   needWechatLogin,
   payoutNeedsConfirm,
+  payoutNeedsSync,
   qrOpen,
   qrImage,
   qrError,
@@ -29,15 +30,25 @@ const {
 } = useInviteRewardClaim()
 
 const amountText = computed(() => formatFenAsCny(overview.value?.amount_fen))
-/** 已有待确认转账单时，即使可领取为 0 也允许再次拉起确认页。 */
+/** 有待确认单或处理中的单时，即使可领取为 0 也允许点一次（拉起确认页 / 查单）。 */
 const canClaim = computed(
-  () => (overview.value?.available_fen ?? 0) > 0 || payoutNeedsConfirm.value,
+  () =>
+    (overview.value?.available_fen ?? 0) > 0 ||
+    payoutNeedsConfirm.value ||
+    payoutNeedsSync.value,
 )
 const claimDisabled = computed(() => !canClaim.value || claiming.value)
-const claimLabel = computed(() => (payoutNeedsConfirm.value ? '继续确认收款' : '领取奖励'))
+const claimLabel = computed(() => {
+  if (payoutNeedsSync.value) return '刷新转账状态'
+  if (payoutNeedsConfirm.value) return '继续确认收款'
+  return '领取奖励'
+})
 const activePayouts = computed(() =>
   (overview.value?.payouts ?? []).filter(
-    (payout) => payout.status === 'creating' || payout.status === 'wait_user_confirm',
+    (payout) =>
+      payout.status === 'creating' ||
+      payout.status === 'wait_user_confirm' ||
+      payout.status === 'processing',
   ),
 )
 const activePayoutFen = computed(() =>
