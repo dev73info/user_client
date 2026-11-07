@@ -25,6 +25,8 @@ defineProps<{
   promoShareDisplay: string
   /** 比例是否为 0（关闭态用弱化样式）。 */
   promoShareOff: boolean
+  /** 平台抽成百分比文本（如 10 / 4.5）；未取到时为 null，不展示。 */
+  platformFeePercent: string | null
 }>()
 
 const emit = defineEmits<{
@@ -164,6 +166,14 @@ function onCashPriceInput() {
             </p>
           </TFormItem>
         </div>
+
+        <!-- 费用披露：付费 / 接口资源在售价旁写明平台抽成，避免成交后才发现 -->
+        <p
+          v-if="platformFeePercent && (creationType === 'paid' || isApiKind)"
+          class="dev-field-hint dev-platform-fee-hint"
+        >
+          平台抽成 {{ platformFeePercent }}%（按成交价扣除）
+        </p>
 
         <!-- R029 推广分成：0～50（%），0 = 关闭；拖动条 + 百分比展示，随资源一次保存（promo_share_bps） -->
         <TFormItem label="推广分成" class="dev-form-item--promo">

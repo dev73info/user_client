@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { onMounted, ref } from 'vue'
 import { TAlert, TButton, TCard } from 'ui_73info'
 import type { McResourcePayload } from '@/api/mcResources'
+import { getResourceSaleFee } from '@/api/resourceSale'
 import { useResourceTagCatalog } from '@/composables/useResourceTagCatalog'
 import { useResourceApiChannel } from '@/composables/useResourceApiChannel'
 import { useResourceInitForm } from '@/composables/useResourceInitForm'
@@ -14,6 +15,25 @@ import ResourceInitSubmitBar from '@/components/dev/ResourceInitSubmitBar.vue'
 import ResourceApiChannelSection from '@/components/dev/ResourceApiChannelSection.vue'
 import ResourceTagCatalogSection from '@/components/dev/ResourceTagCatalogSection.vue'
 import ResourceSecretPlainDialog from '@/components/dev/ResourceSecretPlainDialog.vue'
+import { useAuthStore } from '@/stores/auth'
+
+const auth = useAuthStore()
+/** 平台抽成比例（如 10 / 4.5）；接口失败时保持 null，发布流程照常。 */
+const platformFeePercent = ref<string | null>(null)
+
+/** 基点转百分比文本：1000 → 10，450 → 4.5，400 → 4。 */
+function formatPlatformFeePercent(bps: number): string {
+  return String(Number((bps / 100).toFixed(2)))
+}
+
+onMounted(async () => {
+  try {
+    const fee = await getResourceSaleFee(auth.token)
+    platformFeePercent.value = formatPlatformFeePercent(fee.platform_fee_bps)
+  } catch {
+    platformFeePercent.value = null
+  }
+})
 
 /** 免费、付费（买断 / 单版本）与接口共用的资源创建页。 */
 const tagCatalog = useResourceTagCatalog()
@@ -148,6 +168,7 @@ const {
           :promo-share-error="promoShareError"
           :promo-share-display="promoShareDisplay"
           :promo-share-off="promoSharePercentValue <= 0"
+          :platform-fee-percent="platformFeePercent"
           @cash-price-input="onCashPriceInput"
           @points-price-input="onPointsPriceInput"
         />

@@ -8880,6 +8880,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/resource/sale/fee": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 读取资源售卖平台抽成比例
+         * @description 用户端「发布资源」页展示抽成比例用，登录即可读，不需要配置权限。只返回 `platform_fee_bps`（基点，10000 = 100%），不返回收银台地址、微信 AppID、退款次数等其他售卖口径；真正扣多少以落单快照为准。
+         */
+        get: operations["resource_get_sale_fee"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/resource/sale/system": {
         parameters: {
             query?: never;
@@ -17861,6 +17881,14 @@ export interface components {
             updated_at: string;
             /** Format: int64 */
             value: number;
+        };
+        /** @description 用户面可读的平台抽成比例。 */
+        SaleFeeResponse: {
+            /**
+             * Format: int64
+             * @description 平台从每笔资源订单里抽取的比例，单位基点（10000 = 100%，默认 1000 = 10%）。
+             */
+            platform_fee_bps: number;
         };
         /** @description 保存结果：带上「需要重启」的明确提示。 */
         SaveOutcome_DatabaseView: {
@@ -45109,6 +45137,33 @@ export interface operations {
             };
             /** @description 该版本已下线 */
             410: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    resource_get_sale_fee: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 当前平台抽成比例（基点） */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SaleFeeResponse"];
+                };
+            };
+            /** @description 未登录 */
+            401: {
                 headers: {
                     [name: string]: unknown;
                 };

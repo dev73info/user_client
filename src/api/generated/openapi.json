@@ -23995,6 +23995,31 @@
         }
       }
     },
+    "/api/resource/sale/fee": {
+      "get": {
+        "tags": [
+          "resource-purchase-config"
+        ],
+        "summary": "读取资源售卖平台抽成比例",
+        "description": "用户端「发布资源」页展示抽成比例用，登录即可读，不需要配置权限。只返回 `platform_fee_bps`（基点，10000 = 100%），不返回收银台地址、微信 AppID、退款次数等其他售卖口径；真正扣多少以落单快照为准。",
+        "operationId": "resource_get_sale_fee",
+        "responses": {
+          "200": {
+            "description": "当前平台抽成比例（基点）",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SaleFeeResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "未登录"
+          }
+        }
+      }
+    },
     "/api/resource/sale/system": {
       "get": {
         "tags": [
@@ -47247,6 +47272,20 @@
           "value": {
             "type": "integer",
             "format": "int64"
+          }
+        }
+      },
+      "SaleFeeResponse": {
+        "type": "object",
+        "description": "用户面可读的平台抽成比例。",
+        "required": [
+          "platform_fee_bps"
+        ],
+        "properties": {
+          "platform_fee_bps": {
+            "type": "integer",
+            "format": "int64",
+            "description": "平台从每笔资源订单里抽取的比例，单位基点（10000 = 100%，默认 1000 = 10%）。"
           }
         }
       },

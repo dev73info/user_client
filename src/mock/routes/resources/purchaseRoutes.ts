@@ -23,6 +23,12 @@ export const purchaseRoutes: MockRoute[] = [
    * 「我的已购」永远是「还没有购买记录」，卖家「售出订单」永远是空表。
    */
   {
+    method: 'GET',
+    path: '/resource/sale/fee',
+    note: '资源售卖平台抽成比例（发布页费用披露用，只回基点）',
+    handler: () => jsonResponse({ platform_fee_bps: 1000 }),
+  },
+  {
     method: 'POST',
     path: '/resource/resources/:resourceId/purchase',
     note: '资源购买下单（mock 直接记为已支付）',

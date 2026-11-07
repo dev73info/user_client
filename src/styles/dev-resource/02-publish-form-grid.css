@@ -92,6 +92,11 @@
   min-width: 0;
 }
 
+/* 抽成披露：父容器是 flex-wrap，独占一整行，别挤进售价那一排 */
+.dev-page--publish .dev-upload-form .dev-platform-fee-hint {
+  flex: 1 1 100%;
+}
+
 /* 图标上传块走内嵌块那一档圆角（原来是 14px，不在 24/12/10 这三个令牌里） */
 .dev-page--publish .dev-icon-upload {
   display: flex;
