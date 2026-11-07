@@ -48,7 +48,7 @@ function nowText(): string {
 
 function pushMessage(
   state: ConversationState,
-  senderRole: 'user' | 'agent',
+  senderRole: 'user' | 'ai',
   content: string,
 ): AgentMessage {
   const message: AgentMessage = {
@@ -65,7 +65,7 @@ function pushMessage(
   state.conversation.last_message_at = message.created_at
   state.conversation.last_message_by = senderRole
   state.conversation.updated_at = message.created_at
-  if (senderRole === 'agent') {
+  if (senderRole === 'ai') {
     state.conversation.ai_turns += 1
   }
 
@@ -152,7 +152,7 @@ export const agentRoutes: MockRoute[] = [
       }
 
       pushMessage(state, 'user', content)
-      pushMessage(state, 'agent', AGENT_REPLY)
+      pushMessage(state, 'ai', AGENT_REPLY)
       refreshDraft(state)
       conversations.unshift(state)
 
@@ -184,7 +184,7 @@ export const agentRoutes: MockRoute[] = [
       }
 
       pushMessage(state, 'user', content)
-      pushMessage(state, 'agent', AGENT_REPLY)
+      pushMessage(state, 'ai', AGENT_REPLY)
       refreshDraft(state)
 
       return jsonResponse(detailOf(state))

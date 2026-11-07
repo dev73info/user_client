@@ -10,6 +10,7 @@
 }
 
 .publish-modal {
+  position: relative;
   width: min(920px, 100%);
   max-height: calc(100vh - 28px);
   max-height: calc(100dvh - 28px);
@@ -19,6 +20,76 @@
   box-shadow: 0 28px 68px color-mix(in srgb, var(--73-ink) 18%, transparent);
   padding: 0;
   overflow: hidden;
+}
+
+/* PC 端展开 AI 分析时加宽：左侧表单、右侧对话 */
+.publish-modal--agent {
+  width: min(1180px, 100%);
+}
+
+.publish-modal__workspace {
+  display: grid;
+  flex: 1 1 auto;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr);
+  min-height: 0;
+}
+
+.publish-modal__workspace.is-agent {
+  grid-template-columns: minmax(0, 1fr) minmax(340px, 440px);
+}
+
+.publish-modal__panel {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  border-left: 1px solid color-mix(in srgb, var(--73-border) 76%, transparent);
+}
+
+/* 移动端才显示的抽屉头：PC 端隐藏 */
+.publish-modal__drawer-head {
+  display: none;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  color: var(--73-ink);
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.publish-agent-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 26px;
+  padding: 3px 10px;
+  border: 1px solid color-mix(in srgb, var(--73-accent) 38%, transparent);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--73-accent-soft) 70%, transparent);
+  color: var(--73-accent);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1;
+  cursor: pointer;
+  transition:
+    border-color 160ms ease,
+    background-color 160ms ease,
+    color 160ms ease;
+}
+
+.publish-agent-trigger:hover,
+.publish-agent-trigger:focus-visible,
+.publish-agent-trigger.is-open {
+  border-color: color-mix(in srgb, var(--73-accent) 72%, transparent);
+  background: var(--73-accent-soft);
+  outline: none;
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--73-accent) 12%, transparent);
+}
+
+.publish-agent-trigger__icon {
+  font-size: 13px;
 }
 
 .publish-modal__head {
@@ -181,4 +252,48 @@
   font-size: 12px;
   font-weight: 500;
   line-height: 1.35;
+}
+
+/* 移动端：AI 对话整屏，表单改为侧滑抽屉（点「查看需求」打开） */
+@media (max-width: 900px) {
+  .publish-modal--agent {
+    height: calc(100vh - 28px);
+    height: calc(100dvh - 28px);
+  }
+
+  .publish-modal__workspace.is-agent {
+    position: relative;
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .publish-modal__workspace.is-agent .publish-modal__body {
+    display: none;
+  }
+
+  .publish-modal__workspace.is-agent .publish-modal__panel {
+    border-left: 0;
+  }
+
+  .publish-modal__workspace.is-agent.is-form-open .publish-modal__body {
+    display: grid;
+    position: absolute;
+    inset: 0;
+    z-index: 30;
+    padding: 14px 16px 18px;
+    background: var(--73-surface-strong);
+  }
+
+  .publish-modal__drawer-head {
+    display: flex;
+  }
+}
+
+@media (max-width: 640px) {
+  .publish-modal--agent .publish-modal__head {
+    padding: 14px 16px 12px;
+  }
+
+  .publish-modal__workspace.is-agent.is-form-open .publish-modal__body {
+    padding: 12px 14px 16px;
+  }
 }

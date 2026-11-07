@@ -12,6 +12,7 @@ import {
   AGENT_PENDING_DRAFT_KEY,
   consumePendingAgentDraft,
   draftToPublishForm,
+  requirementDraftHasContent,
   savePendingAgentDraft,
 } from '@/shared/requirementAssistant'
 
@@ -70,8 +71,17 @@ describe('需求助手接口与草稿回填', () => {
     const values = draftToPublishForm(draft as never)
     expect(values.budget).toBe('3000')
     expect(values.description).toContain('响应式官网')
+    expect(values.developmentCycleDays).toBe('')
     savePendingAgentDraft(values)
     expect(consumePendingAgentDraft()).toEqual(values)
     expect(sessionStorage.getItem(AGENT_PENDING_DRAFT_KEY)).toBeNull()
+  })
+
+  it('草稿里的开发周期按天回填，空草稿不触发回填', () => {
+    const guaranteed = { ...draft, development_cycle_days: 30 } as never
+    expect(draftToPublishForm(guaranteed).developmentCycleDays).toBe('30')
+
+    expect(requirementDraftHasContent(draft as never)).toBe(true)
+    expect(requirementDraftHasContent(null)).toBe(false)
   })
 })

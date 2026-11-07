@@ -15,6 +15,7 @@ const DRAFT_LABELS: Record<string, string> = {
   budget: '预算',
   acceptance: '验收标准',
   payment_mode: '发布方式',
+  development_cycle_days: '开发周期',
 }
 
 export type RequirementAssistantFormValues = {
@@ -23,6 +24,8 @@ export type RequirementAssistantFormValues = {
   budget: string
   acceptance: string
   paymentMode: 'platform_guarantee' | 'self_managed'
+  /** 开发周期（天）：担保需求才用得上；草稿没给就留空。 */
+  developmentCycleDays: string
 }
 
 export function requirementDraftFieldLabel(key: string): string {
@@ -74,7 +77,24 @@ export function draftToPublishForm(draft: RequirementDraft): RequirementAssistan
     acceptance: textToRichHtml(draft.acceptance_html),
     paymentMode:
       draft.payment_mode === 'platform_guarantee' ? 'platform_guarantee' : 'self_managed',
+    developmentCycleDays:
+      draft.development_cycle_days == null || draft.development_cycle_days <= 0
+        ? ''
+        : String(draft.development_cycle_days),
   }
+}
+
+/** 草稿是否已有可回填的内容（空草稿不覆盖用户手填的表单）。 */
+export function requirementDraftHasContent(draft: RequirementDraft | null): boolean {
+  if (!draft) return false
+
+  return Boolean(
+    draft.title.trim() ||
+    draft.description_html.trim() ||
+    draft.acceptance_html.trim() ||
+    draft.budget_fen != null ||
+    draft.development_cycle_days != null,
+  )
 }
 
 export function savePendingAgentDraft(values: RequirementAssistantFormValues) {
@@ -95,6 +115,8 @@ export function consumePendingAgentDraft(): RequirementAssistantFormValues | nul
       acceptance: typeof values.acceptance === 'string' ? values.acceptance : '',
       paymentMode:
         values.paymentMode === 'platform_guarantee' ? 'platform_guarantee' : 'self_managed',
+      developmentCycleDays:
+        typeof values.developmentCycleDays === 'string' ? values.developmentCycleDays : '',
     }
   } catch {
     return null

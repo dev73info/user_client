@@ -1,0 +1,206 @@
+/* AI 需求分析：面板外壳、头部、输入区 */
+
+.agent-panel {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  height: 100%;
+  background: var(--73-surface-strong);
+}
+
+.agent-panel__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex: 0 0 auto;
+  padding: 14px 18px;
+  border-bottom: 1px solid color-mix(in srgb, var(--73-border) 76%, transparent);
+  background: var(--73-app-grad-soft-13);
+}
+
+.agent-panel__title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.agent-panel__badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  width: 30px;
+  height: 30px;
+  border-radius: 9px;
+  background: var(--73-accent-soft);
+  color: var(--73-accent);
+  font-size: 16px;
+}
+
+.agent-panel__title-text {
+  min-width: 0;
+}
+
+.agent-panel__title-text h4 {
+  margin: 0;
+  color: var(--73-ink);
+  font-size: 15px;
+  line-height: 1.2;
+}
+
+.agent-panel__title-text p {
+  margin: 3px 0 0;
+  color: var(--73-ink-muted);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.agent-panel__head-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 0 0 auto;
+}
+
+.agent-panel__action {
+  display: inline-flex;
+  align-items: center;
+  min-height: 28px;
+  padding: 4px 10px;
+  border: 1px solid color-mix(in srgb, var(--73-ink-disabled) 86%, transparent);
+  border-radius: 8px;
+  background: var(--73-surface-strong);
+  color: var(--73-ink-soft);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1;
+  cursor: pointer;
+  transition:
+    border-color 160ms ease,
+    background-color 160ms ease,
+    color 160ms ease;
+}
+
+.agent-panel__action:hover,
+.agent-panel__action:focus-visible {
+  border-color: color-mix(in srgb, var(--73-accent) 50%, transparent);
+  background: var(--73-app-surface-hover);
+  color: var(--73-accent);
+  outline: none;
+}
+
+.is-mobile-only {
+  display: none;
+}
+
+.agent-panel__error {
+  margin: 0;
+  padding: 7px 18px;
+  border-top: 1px solid color-mix(in srgb, var(--73-danger-line) 80%, transparent);
+  background: var(--73-danger-soft);
+  color: var(--73-danger-text);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.agent-panel__composer {
+  display: grid;
+  flex: 0 0 auto;
+  gap: 8px;
+  padding: 12px 18px 14px;
+  border-top: 1px solid color-mix(in srgb, var(--73-border) 76%, transparent);
+  background: var(--73-surface-strong);
+}
+
+.agent-panel__composer textarea {
+  width: 100%;
+  min-height: 64px;
+  max-height: 140px;
+  padding: 9px 11px;
+  border: 1px solid color-mix(in srgb, var(--73-ink-disabled) 82%, transparent);
+  border-radius: 10px;
+  background: var(--73-surface-strong);
+  color: var(--73-ink);
+  font: inherit;
+  font-size: 13px;
+  line-height: 1.6;
+  resize: vertical;
+}
+
+.agent-panel__composer textarea:focus-visible {
+  border-color: color-mix(in srgb, var(--73-accent) 60%, transparent);
+  outline: none;
+  box-shadow: var(--73-focus-ring);
+}
+
+.agent-panel__composer-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.agent-panel__handoff,
+.agent-panel__send {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 36px;
+  padding: 0 16px;
+  border-radius: 9px;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 800;
+  cursor: pointer;
+  transition:
+    background-color 160ms ease,
+    border-color 160ms ease,
+    color 160ms ease;
+}
+
+.agent-panel__handoff {
+  border: 1px solid color-mix(in srgb, var(--73-ink-disabled) 86%, transparent);
+  background: var(--73-surface-strong);
+  color: var(--73-ink-soft);
+}
+
+.agent-panel__handoff:hover:not(:disabled) {
+  border-color: color-mix(in srgb, var(--73-accent) 50%, transparent);
+  color: var(--73-accent);
+}
+
+.agent-panel__send {
+  border: 0;
+  background: var(--73-accent);
+  color: var(--73-accent-contrast);
+  box-shadow: 0 10px 22px color-mix(in srgb, var(--73-accent) 22%, transparent);
+}
+
+.agent-panel__send:disabled,
+.agent-panel__handoff:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+@media (max-width: 900px) {
+  .is-mobile-only {
+    display: inline-flex;
+  }
+
+  .agent-panel__head {
+    padding: 12px 14px;
+  }
+
+  .agent-panel__composer {
+    padding: 10px 14px 12px;
+  }
+
+  .agent-panel__error {
+    padding-right: 14px;
+    padding-left: 14px;
+  }
+}

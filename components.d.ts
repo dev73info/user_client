@@ -171,6 +171,7 @@ declare module 'vue' {
     RealnameHero: typeof import('./src/components/RealnameHero.vue')['default']
     RealnameManualForm: typeof import('./src/components/account/RealnameManualForm.vue')['default']
     RealnameMaterialUpload: typeof import('./src/components/account/RealnameMaterialUpload.vue')['default']
+    RequirementAgentPanel: typeof import('./src/components/RequirementAgentPanel.vue')['default']
     RequirementArchiveBanner: typeof import('./src/components/dev/RequirementArchiveBanner.vue')['default']
     RequirementBindingCard: typeof import('./src/components/dev/RequirementBindingCard.vue')['default']
     RequirementBindingConfirmPanel: typeof import('./src/components/dev/RequirementBindingConfirmPanel.vue')['default']

@@ -82,3 +82,14 @@ export async function adoptRequirementDraft(
     '采纳需求草稿失败',
   )
 }
+
+/**
+ * 需求助手会话的 WebSocket 地址。
+ *
+ * 事件通道与 `support` / `tickets` 同口径：`/api/requirement-agent/conversations/ws?token=...`，
+ * 后端每轮 AI 回复或草稿更新都会推一份 `AgentConversationDetailResponse`。
+ */
+export function requirementAgentConversationWsUrl(token: string): string {
+  const protocol = window.location.protocol === 'https:' ? 'wss' : 'ws'
+  return `${protocol}://${window.location.host}/api/requirement-agent/conversations/ws?token=${encodeURIComponent(token.trim())}`
+}
