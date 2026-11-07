@@ -2165,6 +2165,66 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/audit/reviews": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 客服内容审核队列
+         * @description 需要 `audit.review.get`。每个业务实体只返回最新一条待裁决任务；只展示业务侧仍处于待审核的内容。`remaining_seconds` 为 0 表示已到自动裁决时间，为空表示没有自动裁决（REVIEW / UNKNOWN 只留人工）。
+         */
+        get: operations["audit_review_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/audit/reviews/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 内容审核详情
+         * @description 需要 `audit.review.get`。返回送审时的完整文本 / 图片快照与渠道原因。
+         */
+        get: operations["audit_review_detail"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/audit/reviews/{id}/decision": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 内容审核人工裁决
+         * @description 需要 `audit.review.decide`。`decision` 取 `approve` / `reject`；`reject` 必须带 `note`。任务已被处理、已有更新内容或业务侧已不在待审核时回 409。业务暂时不可用时退回队列，返回 502 等下一轮重试。
+         */
+        post: operations["audit_review_decide"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/audit/tasks": {
         parameters: {
             query?: never;
@@ -3405,7 +3465,7 @@ export interface paths {
         get: operations["community_post_detail"];
         put?: never;
         post?: never;
-        delete?: never;
+        delete: operations["community_post_delete"];
         options?: never;
         head?: never;
         patch: operations["community_post_update"];
@@ -12628,6 +12688,11 @@ export interface components {
             project_code: string;
             /** @description 对外可访问的站点基址。 */
             public_base_url: string;
+            /**
+             * Format: int64
+             * @description 人工复核时限（秒）：sdv 出 PASS/REJECT 后等待客服处理的时间。
+             */
+            review_window_seconds: number;
             /** @description 最后修改时间（东八区 `YYYY-MM-DD HH:MM:SS`）。 */
             updated_at: string;
             /** @description 最后修改人。 */
@@ -17622,13 +17687,11 @@ export interface components {
             review_note?: string | null;
             status: string;
         };
-        /**
-         * @description 审核决定请求体（通过 / 驳回共用）。
-         *
-         *     动作接口允许省略 body；驳回时 `note` 必填，由应用层判定。
-         */
+        /** @description 客服人工裁决请求。 */
         ReviewDecisionRequest: {
-            /** @description 审核说明：通过时可空，驳回时必须写明理由。 */
+            /** @description `approve` 或 `reject`。 */
+            decision: string;
+            /** @description 备注；`reject` 必填。 */
             note?: string | null;
         };
         /** @description 审核发票。 */
@@ -17658,6 +17721,86 @@ export interface components {
             action: string;
             /** @description 审核备注。 */
             note?: string | null;
+        };
+        /** @description 客服审核详情（带完整送审快照）。 */
+        ReviewTaskDetailView: components["schemas"]["ReviewTaskView"] & {
+            /** @description 裁决时间。 */
+            decided_at?: string | null;
+            /** @description 裁决人。 */
+            decided_by?: string | null;
+            /** @description 裁决备注。 */
+            decision_note?: string | null;
+            /** @description 错误说明。 */
+            error?: string | null;
+            /** @description 送审附加信息。 */
+            ext: unknown;
+            /** @description 完成时间。 */
+            finished_at?: string | null;
+            /** @description 标签列表。 */
+            labels: unknown;
+            /** @description 送审 media（文本与图片地址）。 */
+            media: unknown;
+            /** @description 原因列表。 */
+            reasons: unknown;
+            /** @description 风险等级。 */
+            risk_level?: string | null;
+            /**
+             * Format: double
+             * @description 评分。
+             */
+            score?: number | null;
+        };
+        /** @description 客服审核队列响应。 */
+        ReviewTaskListResponse: {
+            /** @description 当前页任务。 */
+            items: components["schemas"]["ReviewTaskView"][];
+            /**
+             * Format: int64
+             * @description 满足条件的总数（不受 `limit` 影响）。
+             */
+            total: number;
+        };
+        /** @description 客服内容审核队列项。 */
+        ReviewTaskView: {
+            /** @description 人工关口状态。 */
+            decision_state: string;
+            /**
+             * Format: int64
+             * @description 业务对象主键。
+             */
+            entity_id: number;
+            /** @description 业务编号（需求单是 `REQ-x`）。 */
+            entity_key?: string | null;
+            /** @description 正文摘要。 */
+            excerpt?: string | null;
+            /**
+             * Format: int64
+             * @description 任务主键。
+             */
+            id: number;
+            /** @description 业务类别。 */
+            kind: string;
+            /**
+             * Format: int64
+             * @description 距自动裁决的剩余秒数（无截止时间时为空）。
+             */
+            remaining_seconds?: number | null;
+            /** @description 渠道结论（`PASS` / `REJECT` / `REVIEW` / `UNKNOWN`）。 */
+            result: string;
+            /** @description 裁决截止时间（东八区 `YYYY-MM-DD HH:MM:SS`，无自动裁决时为空）。 */
+            review_deadline?: string | null;
+            /** @description 渠道状态。 */
+            status: string;
+            /** @description 提交时间。 */
+            submitted_at: string;
+            /** @description 渠道摘要。 */
+            summary?: string | null;
+            /** @description 渠道任务编号。 */
+            task_no?: string | null;
+            /** @description 标题快照。 */
+            title?: string | null;
+            /** @description 更新时间。 */
+            updated_at: string;
         };
         ReviewTransferRequest: {
             action: string;
@@ -19728,6 +19871,12 @@ export interface components {
              * @default
              */
             public_base_url: string;
+            /**
+             * Format: int64
+             * @description 人工复核时限（秒）；不传表示保持原值，范围 30 秒 ~ 24 小时。
+             * @default null
+             */
+            review_window_seconds: number | null;
         };
         /** @description 更新配置的响应。 */
         UpdateAuditConfigResponse: {
@@ -26792,6 +26941,156 @@ export interface operations {
             };
         };
     };
+    audit_review_list: {
+        parameters: {
+            query?: {
+                /** @description 条数，缺省 50，范围 1~100。 */
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 审核队列 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReviewTaskListResponse"];
+                };
+            };
+            /** @description 未登录 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 没有 audit.review.get 权限 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    audit_review_detail: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description 审核任务 ID */
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 审核详情 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReviewTaskDetailView"];
+                };
+            };
+            /** @description 未登录 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 没有 audit.review.get 权限 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 任务不存在 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    audit_review_decide: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description 审核任务 ID */
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReviewDecisionRequest"];
+            };
+        };
+        responses: {
+            /** @description 裁决后的任务 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReviewTaskDetailView"];
+                };
+            };
+            /** @description decision 不合法或驳回没写理由 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 未登录 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 没有 audit.review.decide 权限 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 任务不存在 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 任务已被处理 / 已有更新内容 */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 业务审核暂时不可用 */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     audit_task_list: {
         parameters: {
             query?: {
@@ -29947,6 +30246,50 @@ export interface operations {
                 content?: never;
             };
             429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    community_post_delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description 帖子 ID */
+                post_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };

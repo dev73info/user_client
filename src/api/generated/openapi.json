@@ -6329,6 +6329,151 @@
         }
       }
     },
+    "/api/audit/reviews": {
+      "get": {
+        "tags": [
+          "audit"
+        ],
+        "summary": "客服内容审核队列",
+        "description": "需要 `audit.review.get`。每个业务实体只返回最新一条待裁决任务；只展示业务侧仍处于待审核的内容。`remaining_seconds` 为 0 表示已到自动裁决时间，为空表示没有自动裁决（REVIEW / UNKNOWN 只留人工）。",
+        "operationId": "audit_review_list",
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "条数，缺省 50，范围 1~100。",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "审核队列",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReviewTaskListResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "未登录"
+          },
+          "403": {
+            "description": "没有 audit.review.get 权限"
+          }
+        }
+      }
+    },
+    "/api/audit/reviews/{id}": {
+      "get": {
+        "tags": [
+          "audit"
+        ],
+        "summary": "内容审核详情",
+        "description": "需要 `audit.review.get`。返回送审时的完整文本 / 图片快照与渠道原因。",
+        "operationId": "audit_review_detail",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "审核任务 ID",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "审核详情",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReviewTaskDetailView"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "未登录"
+          },
+          "403": {
+            "description": "没有 audit.review.get 权限"
+          },
+          "404": {
+            "description": "任务不存在"
+          }
+        }
+      }
+    },
+    "/api/audit/reviews/{id}/decision": {
+      "post": {
+        "tags": [
+          "audit"
+        ],
+        "summary": "内容审核人工裁决",
+        "description": "需要 `audit.review.decide`。`decision` 取 `approve` / `reject`；`reject` 必须带 `note`。任务已被处理、已有更新内容或业务侧已不在待审核时回 409。业务暂时不可用时退回队列，返回 502 等下一轮重试。",
+        "operationId": "audit_review_decide",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "审核任务 ID",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReviewDecisionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "裁决后的任务",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReviewTaskDetailView"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "decision 不合法或驳回没写理由"
+          },
+          "401": {
+            "description": "未登录"
+          },
+          "403": {
+            "description": "没有 audit.review.decide 权限"
+          },
+          "404": {
+            "description": "任务不存在"
+          },
+          "409": {
+            "description": "任务已被处理 / 已有更新内容"
+          },
+          "502": {
+            "description": "业务审核暂时不可用"
+          }
+        }
+      }
+    },
     "/api/audit/tasks": {
       "get": {
         "tags": [
@@ -9325,6 +9470,41 @@
             "description": ""
           },
           "429": {
+            "description": ""
+          },
+          "500": {
+            "description": ""
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "community"
+        ],
+        "operationId": "community_post_delete",
+        "parameters": [
+          {
+            "name": "post_id",
+            "in": "path",
+            "description": "帖子 ID",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          },
+          "401": {
+            "description": ""
+          },
+          "403": {
+            "description": ""
+          },
+          "404": {
             "description": ""
           },
           "500": {
@@ -34337,6 +34517,7 @@
           "audit_code_requirement",
           "callback_secret",
           "public_base_url",
+          "review_window_seconds",
           "callback_url",
           "updated_at"
         ],
@@ -34388,6 +34569,11 @@
           "public_base_url": {
             "type": "string",
             "description": "对外可访问的站点基址。"
+          },
+          "review_window_seconds": {
+            "type": "integer",
+            "format": "int64",
+            "description": "人工复核时限（秒）：sdv 出 PASS/REJECT 后等待客服处理的时间。"
           },
           "updated_at": {
             "type": "string",
@@ -46600,14 +46786,21 @@
       },
       "ReviewDecisionRequest": {
         "type": "object",
-        "description": "审核决定请求体（通过 / 驳回共用）。\n\n动作接口允许省略 body；驳回时 `note` 必填，由应用层判定。",
+        "description": "客服人工裁决请求。",
+        "required": [
+          "decision"
+        ],
         "properties": {
+          "decision": {
+            "type": "string",
+            "description": "`approve` 或 `reject`。"
+          },
           "note": {
             "type": [
               "string",
               "null"
             ],
-            "description": "审核说明：通过时可空，驳回时必须写明理由。"
+            "description": "备注；`reject` 必填。"
           }
         }
       },
@@ -46682,6 +46875,210 @@
               "null"
             ],
             "description": "审核备注。"
+          }
+        }
+      },
+      "ReviewTaskDetailView": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/ReviewTaskView",
+            "description": "队列项字段。"
+          },
+          {
+            "type": "object",
+            "required": [
+              "media",
+              "ext",
+              "reasons",
+              "labels"
+            ],
+            "properties": {
+              "decided_at": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "裁决时间。"
+              },
+              "decided_by": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "裁决人。"
+              },
+              "decision_note": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "裁决备注。"
+              },
+              "error": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "错误说明。"
+              },
+              "ext": {
+                "description": "送审附加信息。"
+              },
+              "finished_at": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "完成时间。"
+              },
+              "labels": {
+                "description": "标签列表。"
+              },
+              "media": {
+                "description": "送审 media（文本与图片地址）。"
+              },
+              "reasons": {
+                "description": "原因列表。"
+              },
+              "risk_level": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "风险等级。"
+              },
+              "score": {
+                "type": [
+                  "number",
+                  "null"
+                ],
+                "format": "double",
+                "description": "评分。"
+              }
+            }
+          }
+        ],
+        "description": "客服审核详情（带完整送审快照）。"
+      },
+      "ReviewTaskListResponse": {
+        "type": "object",
+        "description": "客服审核队列响应。",
+        "required": [
+          "items",
+          "total"
+        ],
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ReviewTaskView"
+            },
+            "description": "当前页任务。"
+          },
+          "total": {
+            "type": "integer",
+            "format": "int64",
+            "description": "满足条件的总数（不受 `limit` 影响）。"
+          }
+        }
+      },
+      "ReviewTaskView": {
+        "type": "object",
+        "description": "客服内容审核队列项。",
+        "required": [
+          "id",
+          "kind",
+          "entity_id",
+          "status",
+          "result",
+          "decision_state",
+          "submitted_at",
+          "updated_at"
+        ],
+        "properties": {
+          "decision_state": {
+            "type": "string",
+            "description": "人工关口状态。"
+          },
+          "entity_id": {
+            "type": "integer",
+            "format": "int64",
+            "description": "业务对象主键。"
+          },
+          "entity_key": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "业务编号（需求单是 `REQ-x`）。"
+          },
+          "excerpt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "正文摘要。"
+          },
+          "id": {
+            "type": "integer",
+            "format": "int64",
+            "description": "任务主键。"
+          },
+          "kind": {
+            "type": "string",
+            "description": "业务类别。"
+          },
+          "remaining_seconds": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "距自动裁决的剩余秒数（无截止时间时为空）。"
+          },
+          "result": {
+            "type": "string",
+            "description": "渠道结论（`PASS` / `REJECT` / `REVIEW` / `UNKNOWN`）。"
+          },
+          "review_deadline": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "裁决截止时间（东八区 `YYYY-MM-DD HH:MM:SS`，无自动裁决时为空）。"
+          },
+          "status": {
+            "type": "string",
+            "description": "渠道状态。"
+          },
+          "submitted_at": {
+            "type": "string",
+            "description": "提交时间。"
+          },
+          "summary": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "渠道摘要。"
+          },
+          "task_no": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "渠道任务编号。"
+          },
+          "title": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "标题快照。"
+          },
+          "updated_at": {
+            "type": "string",
+            "description": "更新时间。"
           }
         }
       },
@@ -51347,6 +51744,15 @@
             "type": "string",
             "description": "对外可访问的站点基址（拼回调地址与图片绝对化）。",
             "default": ""
+          },
+          "review_window_seconds": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "人工复核时限（秒）；不传表示保持原值，范围 30 秒 ~ 24 小时。",
+            "default": null
           }
         }
       },
