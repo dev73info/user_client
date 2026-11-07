@@ -186,6 +186,9 @@ export function inviteRewardOverview(identity: MockIdentity): InviteRewardOvervi
 
   return {
     enabled: true,
+    phase: 'active',
+    starts_at: '2026-11-08 00:00:00',
+    ends_at: '2026-12-31 23:59:59',
     amount_fen: REWARD_AMOUNT_FEN,
     require_invitee_realname: true,
     min_invitee_age_days: 0,

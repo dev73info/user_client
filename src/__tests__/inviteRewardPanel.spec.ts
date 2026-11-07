@@ -253,4 +253,22 @@ describe('邀请现金奖励面板', () => {
     expect(mocks.sync).toHaveBeenCalledTimes(2)
     expect(mocks.claim).not.toHaveBeenCalled()
   })
+
+  it('活动结束展示结束时间，已获得奖励仍可领取', async () => {
+    mocks.get.mockResolvedValue(
+      rewardOverview({
+        phase: 'ended',
+        ends_at: '2026-12-31 23:59:59',
+        available_fen: 100,
+      }),
+    )
+
+    wrapper = mount(InviteRewardPanel)
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('活动已于')
+    expect(wrapper.text()).toContain('12/31 23:59')
+    expect(wrapper.text()).toContain('已获得的奖励仍可领取')
+    expect(claimButton().attributes('disabled')).toBeUndefined()
+  })
 })

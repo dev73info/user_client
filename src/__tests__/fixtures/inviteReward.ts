@@ -12,6 +12,9 @@ export const payout = {
 export function rewardOverview(overrides: Record<string, unknown> = {}) {
   return {
     enabled: true,
+    phase: 'active',
+    starts_at: null,
+    ends_at: null,
     amount_fen: 100,
     require_invitee_realname: true,
     min_invitee_age_days: 0,

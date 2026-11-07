@@ -47664,6 +47664,7 @@
         "type": "object",
         "required": [
           "enabled",
+          "phase",
           "amount_fen",
           "require_invitee_realname",
           "min_invitee_age_days",
@@ -47687,6 +47688,12 @@
           "enabled": {
             "type": "boolean"
           },
+          "ends_at": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
           "min_invitee_age_days": {
             "type": "integer",
             "format": "int64"
@@ -47705,6 +47712,10 @@
             "type": "integer",
             "format": "int64"
           },
+          "phase": {
+            "type": "string",
+            "description": "`disabled` / `not_started` / `active` / `ended`。"
+          },
           "require_invitee_realname": {
             "type": "boolean"
           },
@@ -47713,6 +47724,13 @@
             "items": {
               "$ref": "#/components/schemas/RewardItemResponse"
             }
+          },
+          "starts_at": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "活动开始 / 结束时间（东八区 `YYYY-MM-DD HH:MM:SS`）；空表示不限。"
           },
           "total_invited": {
             "type": "integer",

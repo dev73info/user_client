@@ -18030,6 +18030,7 @@ export interface components {
             /** Format: int64 */
             available_fen: number;
             enabled: boolean;
+            ends_at?: string | null;
             /** Format: int64 */
             min_invitee_age_days: number;
             /** Format: int64 */
@@ -18037,8 +18038,12 @@ export interface components {
             payouts: components["schemas"]["PayoutItemResponse"][];
             /** Format: int64 */
             pending_fen: number;
+            /** @description `disabled` / `not_started` / `active` / `ended`。 */
+            phase: string;
             require_invitee_realname: boolean;
             rewards: components["schemas"]["RewardItemResponse"][];
+            /** @description 活动开始 / 结束时间（东八区 `YYYY-MM-DD HH:MM:SS`）；空表示不限。 */
+            starts_at?: string | null;
             /** Format: int64 */
             total_invited: number;
             /** Format: int64 */

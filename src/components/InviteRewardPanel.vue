@@ -29,14 +29,42 @@ const {
   claim,
 } = useInviteRewardClaim()
 
-const amountText = computed(() => formatFenAsCny(overview.value?.amount_fen))
+const phase = computed(() => overview.value?.phase ?? 'active')
+/** 活动时间：有结束时间就明确展示，用户能知道什么时候关闭。 */
+const activityWindow = computed(() => {
+  const start = overview.value?.starts_at
+  const end = overview.value?.ends_at
+  if (start && end) {
+    return `活动时间：${formatBackendDateTime(start)} ~ ${formatBackendDateTime(end)}`
+  }
+  if (end) return `活动截止：${formatBackendDateTime(end)}`
+  if (start) return `活动开始：${formatBackendDateTime(start)}`
+  return '活动时间：长期有效'
+})
+const phaseNotice = computed(() => {
+  const end = overview.value?.ends_at
+  if (phase.value === 'ended') {
+    return end
+      ? `活动已于 ${formatBackendDateTime(end)} 结束，已获得的奖励仍可领取`
+      : '活动已结束，已获得的奖励仍可领取'
+  }
+  if (phase.value === 'not_started') {
+    const start = overview.value?.starts_at
+    return start ? `活动将于 ${formatBackendDateTime(start)} 开始` : '活动尚未开始'
+  }
+  if (phase.value === 'disabled') return '活动未开启'
+  return ''
+})
 /** 有待确认单或处理中的单时，即使可领取为 0 也允许点一次（拉起确认页 / 查单）。 */
-const canClaim = computed(
-  () =>
-    (overview.value?.available_fen ?? 0) > 0 ||
+const canClaim = computed(() => {
+  const data = overview.value
+  if (!data || !data.enabled || data.phase === 'not_started') return false
+  return (
+    data.available_fen > 0 ||
     payoutNeedsConfirm.value ||
-    payoutNeedsSync.value,
-)
+    payoutNeedsSync.value
+  )
+})
 const claimDisabled = computed(() => !canClaim.value || claiming.value)
 const claimLabel = computed(() => {
   if (payoutNeedsSync.value) return '刷新转账状态'
@@ -98,9 +126,7 @@ defineExpose({ reload: load })
     <div class="wb-card-head">
       <div class="wb-card-head__title-block">
         <h3 class="wb-card-head__title">邀请现金奖励</h3>
-        <p class="wb-card-head__desc">
-          每邀请 1 位好友注册并通过实名，得 ¥{{ amountText }}；以页面展示为准
-        </p>
+        <p class="invite-reward__window">{{ phaseNotice || activityWindow }}</p>
       </div>
       <div class="wb-card-head__actions">
         <span v-if="overview && !overview.enabled" class="invite-reward__disabled">活动未开启</span>
@@ -245,6 +271,11 @@ defineExpose({ reload: load })
 .invite-reward__status.is-failed {
   background: var(--profile-danger-soft, var(--wb-tag-bg));
   color: var(--73-danger);
+}
+.invite-reward__window {
+  margin: 4px 0 0;
+  color: var(--73-ink-muted);
+  font-size: 12px;
 }
 .invite-reward__disabled {
   color: var(--73-ink-muted);
