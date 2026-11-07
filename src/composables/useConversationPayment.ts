@@ -101,6 +101,10 @@ export function useConversationPayment(readSources: () => PaymentSources) {
   const platformFeePercent = computed(() =>
     feeTerms.value ? formatBpsPercent(feeTerms.value.platform_fee_bps) : '',
   )
+  /** 弹窗展示的定金占比：有快照时用快照比例，404 才回落到当前 settings。 */
+  const depositRatioPercentForDisplay = computed(() =>
+    feeTerms.value ? feeTerms.value.deposit_ratio_bps / 100 : readSources().depositRatioPercent,
+  )
 
   function updatePayChannel(channel: AdapayBusinessPayChannel) {
     if (payChannel.value === channel) {
@@ -166,6 +170,7 @@ export function useConversationPayment(readSources: () => PaymentSources) {
     payFen,
     platformFeeFen,
     platformFeePercent,
+    depositRatioPercentForDisplay,
     openPayDialog,
     updatePayChannel,
     submitPayment,

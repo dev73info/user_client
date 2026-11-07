@@ -104,6 +104,10 @@ export function useRequirementPayFlow(options: UseRequirementPayFlowOptions) {
   const platformFeePercent = computed(() =>
     feeTerms.value ? formatBpsPercent(feeTerms.value.platform_fee_bps) : '',
   )
+  /** 弹窗展示的定金占比：有快照时用快照比例，404 才回落到当前 settings。 */
+  const depositRatioPercentForDisplay = computed(() =>
+    feeTerms.value ? feeTerms.value.deposit_ratio_bps / 100 : options.depositRatioPercent(),
+  )
 
   /**
    * 本次应付（**整数分**）：拿到快照时与平台服务费同源（定金 `deposit_fen` / 尾款
@@ -261,7 +265,7 @@ export function useRequirementPayFlow(options: UseRequirementPayFlowOptions) {
     stageLabel: stageLabel.value,
     amount: amount.value,
     isFinalPayment: isFinalPayment.value,
-    depositRatioPercent: options.depositRatioPercent(),
+    depositRatioPercent: depositRatioPercentForDisplay.value,
     platformFeeFen: platformFeeFen.value,
     platformFeePercent: platformFeePercent.value,
     onClose: close,

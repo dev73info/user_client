@@ -92,6 +92,12 @@ export function useDepositPayment(options: DepositPaymentOptions) {
   const depositPlatformFeePercent = computed(() =>
     depositFeeTerms.value ? formatBpsPercent(depositFeeTerms.value.platform_fee_bps) : '',
   )
+  /** 弹窗展示的定金占比：有快照时用快照比例，404 才回落到当前 settings。 */
+  const depositRatioPercentForDisplay = computed(() =>
+    depositFeeTerms.value
+      ? depositFeeTerms.value.deposit_ratio_bps / 100
+      : depositRatioPercent.value,
+  )
 
   /**
    * 担保单读一次费率快照；404（旧合同）按「不展示该行」处理，不挡支付。
@@ -237,6 +243,7 @@ export function useDepositPayment(options: DepositPaymentOptions) {
     payableFen,
     depositPlatformFeeFen,
     depositPlatformFeePercent,
+    depositRatioPercentForDisplay,
     isAdapayRequirement,
     canOpenPayment,
     updateDepositChannel,

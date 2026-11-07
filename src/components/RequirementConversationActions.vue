@@ -60,7 +60,7 @@ const {
   requirement,
   signing,
   breachCase,
-  depositRatioPercent,
+  depositRatioPercent: settingsDepositRatioPercent,
   isDeveloper,
   myPartySigned,
   hasContract,
@@ -94,13 +94,14 @@ const {
   payFen,
   platformFeeFen,
   platformFeePercent,
+  depositRatioPercentForDisplay,
   openPayDialog,
   updatePayChannel,
   submitPayment,
 } = useConversationPayment(() => ({
   token: props.token,
   requirement: requirement.value,
-  depositRatioPercent: depositRatioPercent.value,
+  depositRatioPercent: settingsDepositRatioPercent.value,
 }))
 
 const {
@@ -302,7 +303,7 @@ defineExpose({
     :deposit-channel="payChannel"
     :is-final-payment="payStage === 'final'"
     :is-escrow-payment="true"
-    :deposit-ratio-percent="depositRatioPercent"
+    :deposit-ratio-percent="depositRatioPercentForDisplay"
     :payable-fen="payFen"
     :platform-fee-fen="platformFeeFen"
     :platform-fee-percent="platformFeePercent"

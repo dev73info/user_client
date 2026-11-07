@@ -4,6 +4,7 @@ import { defineComponent, ref } from 'vue'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import type { RequirementFeeTerms } from '@/api/requirementFee'
+import DepositModal from '@/components/DepositModal.vue'
 import { useHomeDepositCard, type HomeDepositCardOptions } from '@/composables/useHomeDepositCard'
 import type { DepositRequirement } from '@/composables/useDepositPayment'
 
@@ -103,7 +104,17 @@ describe('首页定金弹窗：深链刷新', () => {
     expect(bindings?.platformFeeFen).toBe(1_560)
     expect(bindings?.platformFeePercent).toBe('5')
     // 快照定金 10%，不是 settings 默认的 20%
+    expect(bindings?.depositRatioPercent).toBe(10)
     expect(bindings?.payableFen).toBe(31_200)
+
+    // 弹窗文案三者一致：定金占比 10.00% / 实付 ¥312.00 / 平台服务费 ¥15.60
+    const modal = mount(DepositModal, {
+      props: { ...bindings!, visible: true },
+    })
+    expect(modal.text()).toContain('定金占比：10.00%')
+    expect(modal.text()).toContain('¥312.00')
+    expect(modal.text()).toContain('¥15.60（5%')
+    modal.unmount()
     wrapper.unmount()
   })
 

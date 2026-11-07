@@ -102,6 +102,7 @@ describe('支付弹窗：金额与平台服务费同源', () => {
 
     const modal = wrapper.findComponent(RequirementPayModal)
     expect(modal.text()).toContain('¥860.00')
+    expect(modal.text()).toContain('定金占比 10.00%')
     expect(modal.text()).toContain('平台服务费（定金）')
     expect(modal.text()).toContain('¥43.00（5%')
     wrapper.unmount()
