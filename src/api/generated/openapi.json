@@ -2316,6 +2316,106 @@
         }
       }
     },
+    "/api/admin/growth/invite-rewards": {
+      "get": {
+        "tags": [
+          "growth-admin"
+        ],
+        "summary": "邀请奖励流水",
+        "operationId": "growth_admin_invite_rewards",
+        "parameters": [
+          {
+            "name": "status",
+            "in": "query",
+            "description": "奖励状态或转账状态（`pending` / `paid` / `success` / `failed` …）。",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "keyword",
+            "in": "query",
+            "description": "按邀请人 / 被邀请人用户名或商户单号模糊搜索。",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "page_size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminRewardListResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "无权限"
+          }
+        }
+      }
+    },
+    "/api/admin/growth/invite-rewards/{out_bill_no}/sync": {
+      "post": {
+        "tags": [
+          "growth-admin"
+        ],
+        "summary": "强制查单",
+        "operationId": "growth_admin_invite_reward_sync",
+        "parameters": [
+          {
+            "name": "out_bill_no",
+            "in": "path",
+            "description": "商户转账单号",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminPayoutResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "无权限"
+          },
+          "404": {
+            "description": "转账单不存在"
+          }
+        }
+      }
+    },
     "/api/admin/growth/overview": {
       "get": {
         "tags": [
@@ -13438,6 +13538,90 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/InviteStatsResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "无权限"
+          }
+        }
+      }
+    },
+    "/api/invite/rewards": {
+      "get": {
+        "tags": [
+          "invite-reward"
+        ],
+        "summary": "我的邀请奖励",
+        "operationId": "invite_rewards",
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RewardPanelResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "无权限"
+          },
+          "404": {
+            "description": "用户不存在"
+          }
+        }
+      }
+    },
+    "/api/invite/rewards/claim": {
+      "post": {
+        "tags": [
+          "invite-reward"
+        ],
+        "summary": "领取邀请奖励",
+        "operationId": "invite_rewards_claim",
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClaimResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "无权限"
+          },
+          "409": {
+            "description": "未绑定微信 / 没有可领取奖励 / 活动未开启"
+          },
+          "502": {
+            "description": "微信支付明确拒绝"
+          },
+          "503": {
+            "description": "微信支付结果未确认，已锁单等待查单"
+          }
+        }
+      }
+    },
+    "/api/invite/rewards/sync": {
+      "post": {
+        "tags": [
+          "invite-reward"
+        ],
+        "summary": "同步我的转账单状态",
+        "operationId": "invite_rewards_sync",
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RewardPanelResponse"
                 }
               }
             }
@@ -31299,6 +31483,34 @@
         }
       }
     },
+    "/api/wechat/pay/transfer/notify": {
+      "post": {
+        "tags": [
+          "invite-reward"
+        ],
+        "summary": "微信支付商家转账回调",
+        "description": "**公开路由**：没有登录态，鉴权靠验签。验签失败 401；业务处理成功 200\n（未知单号也回 200，避免微信持续重推）。",
+        "operationId": "wechat_transfer_notify",
+        "requestBody": {
+          "content": {
+            "text/plain": {
+              "schema": {
+                "type": "string"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "处理成功"
+          },
+          "401": {
+            "description": "验签失败"
+          }
+        }
+      }
+    },
     "/auth/gitee/callback": {
       "get": {
         "tags": [
@@ -32924,6 +33136,63 @@
           }
         }
       },
+      "AdminPayoutResponse": {
+        "type": "object",
+        "required": [
+          "out_bill_no",
+          "inviter",
+          "amount_fen",
+          "reward_count",
+          "status",
+          "created_at"
+        ],
+        "properties": {
+          "amount_fen": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "created_at": {
+            "type": "string"
+          },
+          "fail_reason": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "finished_at": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "inviter": {
+            "type": "string"
+          },
+          "out_bill_no": {
+            "type": "string"
+          },
+          "package_info": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "reward_count": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "status": {
+            "type": "string"
+          },
+          "transfer_bill_no": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
       "AdminReAuthUserBody": {
         "type": "object",
         "description": "管理端重新认证入参。",
@@ -32953,6 +33222,127 @@
           "username": {
             "type": "string",
             "description": "目标用户名。"
+          }
+        }
+      },
+      "AdminRewardItemResponse": {
+        "type": "object",
+        "required": [
+          "reward_id",
+          "inviter",
+          "invitee",
+          "amount_fen",
+          "reward_status",
+          "created_at"
+        ],
+        "properties": {
+          "amount_fen": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "created_at": {
+            "type": "string"
+          },
+          "fail_reason": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "finished_at": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "invitee": {
+            "type": "string"
+          },
+          "inviter": {
+            "type": "string"
+          },
+          "out_bill_no": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "reward_id": {
+            "type": "string"
+          },
+          "reward_status": {
+            "type": "string"
+          },
+          "transfer_status": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "AdminRewardListResponse": {
+        "type": "object",
+        "required": [
+          "items",
+          "total",
+          "page",
+          "page_size",
+          "summary"
+        ],
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AdminRewardItemResponse"
+            }
+          },
+          "page": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "page_size": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "summary": {
+            "$ref": "#/components/schemas/AdminRewardSummaryResponse"
+          },
+          "total": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      },
+      "AdminRewardSummaryResponse": {
+        "type": "object",
+        "required": [
+          "pending_count",
+          "claimed_count",
+          "paid_count",
+          "failed_count",
+          "paid_amount_fen"
+        ],
+        "properties": {
+          "claimed_count": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "failed_count": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "paid_amount_fen": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "paid_count": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "pending_count": {
+            "type": "integer",
+            "format": "int64"
           }
         }
       },
@@ -36006,6 +36396,54 @@
           "username": {
             "type": "string",
             "description": "票据绑定的平台用户名。"
+          }
+        }
+      },
+      "ClaimResponse": {
+        "type": "object",
+        "required": [
+          "payouts"
+        ],
+        "properties": {
+          "payouts": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ClaimedPayoutResponse"
+            }
+          }
+        }
+      },
+      "ClaimedPayoutResponse": {
+        "type": "object",
+        "required": [
+          "out_bill_no",
+          "amount_fen",
+          "state",
+          "mch_id",
+          "app_id"
+        ],
+        "properties": {
+          "amount_fen": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "app_id": {
+            "type": "string"
+          },
+          "mch_id": {
+            "type": "string"
+          },
+          "out_bill_no": {
+            "type": "string"
+          },
+          "package_info": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "state": {
+            "type": "string"
           }
         }
       },
@@ -43253,6 +43691,47 @@
           }
         }
       },
+      "PayoutItemResponse": {
+        "type": "object",
+        "required": [
+          "out_bill_no",
+          "amount_fen",
+          "reward_count",
+          "status",
+          "created_at"
+        ],
+        "properties": {
+          "amount_fen": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "created_at": {
+            "type": "string"
+          },
+          "fail_reason": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "out_bill_no": {
+            "type": "string"
+          },
+          "package_info": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "reward_count": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "status": {
+            "type": "string"
+          }
+        }
+      },
       "PerkResponse": {
         "type": "object",
         "required": [
@@ -47144,6 +47623,104 @@
           "token": {
             "type": "string",
             "description": "要撤销的令牌。"
+          }
+        }
+      },
+      "RewardItemResponse": {
+        "type": "object",
+        "required": [
+          "id",
+          "invitee",
+          "amount_fen",
+          "status",
+          "reason",
+          "created_at"
+        ],
+        "properties": {
+          "amount_fen": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "created_at": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "invitee": {
+            "type": "string",
+            "description": "脱敏后的被邀请人名，如 `u***3`。"
+          },
+          "reason": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "description": "`pending` / `available` / `claimed` / `paid` / `failed`。"
+          }
+        }
+      },
+      "RewardPanelResponse": {
+        "type": "object",
+        "required": [
+          "enabled",
+          "amount_fen",
+          "require_invitee_realname",
+          "min_invitee_age_days",
+          "total_invited",
+          "total_rewarded_fen",
+          "available_fen",
+          "pending_fen",
+          "paid_fen",
+          "rewards",
+          "payouts"
+        ],
+        "properties": {
+          "amount_fen": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "available_fen": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "enabled": {
+            "type": "boolean"
+          },
+          "min_invitee_age_days": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "paid_fen": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "payouts": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PayoutItemResponse"
+            }
+          },
+          "pending_fen": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "require_invitee_realname": {
+            "type": "boolean"
+          },
+          "rewards": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RewardItemResponse"
+            }
+          },
+          "total_invited": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "total_rewarded_fen": {
+            "type": "integer",
+            "format": "int64"
           }
         }
       },

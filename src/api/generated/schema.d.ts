@@ -803,6 +803,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/admin/growth/invite-rewards": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 邀请奖励流水 */
+        get: operations["growth_admin_invite_rewards"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/growth/invite-rewards/{out_bill_no}/sync": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** 强制查单 */
+        post: operations["growth_admin_invite_reward_sync"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/admin/growth/overview": {
         parameters: {
             query?: never;
@@ -4893,6 +4927,57 @@ export interface paths {
         get: operations["invite_my_stats"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/invite/rewards": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 我的邀请奖励 */
+        get: operations["invite_rewards"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/invite/rewards/claim": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** 领取邀请奖励 */
+        post: operations["invite_rewards_claim"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/invite/rewards/sync": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** 同步我的转账单状态 */
+        post: operations["invite_rewards_sync"];
         delete?: never;
         options?: never;
         head?: never;
@@ -11438,6 +11523,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/wechat/pay/transfer/notify": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 微信支付商家转账回调
+         * @description **公开路由**：没有登录态，鉴权靠验签。验签失败 401；业务处理成功 200
+         *     （未知单号也回 200，避免微信持续重推）。
+         */
+        post: operations["wechat_transfer_notify"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/auth/gitee/callback": {
         parameters: {
             query?: never;
@@ -12093,6 +12199,20 @@ export interface components {
             /** @description 标题。 */
             title: string;
         };
+        AdminPayoutResponse: {
+            /** Format: int64 */
+            amount_fen: number;
+            created_at: string;
+            fail_reason?: string | null;
+            finished_at?: string | null;
+            inviter: string;
+            out_bill_no: string;
+            package_info?: string | null;
+            /** Format: int64 */
+            reward_count: number;
+            status: string;
+            transfer_bill_no?: string | null;
+        };
         /** @description 管理端重新认证入参。 */
         AdminReAuthUserBody: {
             /** @description 联系人证件号。 */
@@ -12103,6 +12223,41 @@ export interface components {
             serialNo: string;
             /** @description 目标用户名。 */
             username: string;
+        };
+        AdminRewardItemResponse: {
+            /** Format: int64 */
+            amount_fen: number;
+            created_at: string;
+            fail_reason?: string | null;
+            finished_at?: string | null;
+            invitee: string;
+            inviter: string;
+            out_bill_no?: string | null;
+            reward_id: string;
+            reward_status: string;
+            transfer_status?: string | null;
+        };
+        AdminRewardListResponse: {
+            items: components["schemas"]["AdminRewardItemResponse"][];
+            /** Format: int64 */
+            page: number;
+            /** Format: int64 */
+            page_size: number;
+            summary: components["schemas"]["AdminRewardSummaryResponse"];
+            /** Format: int64 */
+            total: number;
+        };
+        AdminRewardSummaryResponse: {
+            /** Format: int64 */
+            claimed_count: number;
+            /** Format: int64 */
+            failed_count: number;
+            /** Format: int64 */
+            paid_amount_fen: number;
+            /** Format: int64 */
+            paid_count: number;
+            /** Format: int64 */
+            pending_count: number;
         };
         /**
          * @description 管理端单个收款账户的响应。
@@ -13349,6 +13504,18 @@ export interface components {
             token: string;
             /** @description 票据绑定的平台用户名。 */
             username: string;
+        };
+        ClaimResponse: {
+            payouts: components["schemas"]["ClaimedPayoutResponse"][];
+        };
+        ClaimedPayoutResponse: {
+            /** Format: int64 */
+            amount_fen: number;
+            app_id: string;
+            mch_id: string;
+            out_bill_no: string;
+            package_info?: string | null;
+            state: string;
         };
         /** @description 客户端响应。 */
         ClientResponse: {
@@ -16255,6 +16422,17 @@ export interface components {
             /** @description 收银台标题。 */
             subject: string;
         };
+        PayoutItemResponse: {
+            /** Format: int64 */
+            amount_fen: number;
+            created_at: string;
+            fail_reason?: string | null;
+            out_bill_no: string;
+            package_info?: string | null;
+            /** Format: int64 */
+            reward_count: number;
+            status: string;
+        };
         PerkResponse: {
             created_at?: string | null;
             equipped: boolean;
@@ -17834,6 +18012,37 @@ export interface components {
             client_secret: string;
             /** @description 要撤销的令牌。 */
             token: string;
+        };
+        RewardItemResponse: {
+            /** Format: int64 */
+            amount_fen: number;
+            created_at: string;
+            id: string;
+            /** @description 脱敏后的被邀请人名，如 `u***3`。 */
+            invitee: string;
+            reason: string;
+            /** @description `pending` / `available` / `claimed` / `paid` / `failed`。 */
+            status: string;
+        };
+        RewardPanelResponse: {
+            /** Format: int64 */
+            amount_fen: number;
+            /** Format: int64 */
+            available_fen: number;
+            enabled: boolean;
+            /** Format: int64 */
+            min_invitee_age_days: number;
+            /** Format: int64 */
+            paid_fen: number;
+            payouts: components["schemas"]["PayoutItemResponse"][];
+            /** Format: int64 */
+            pending_fen: number;
+            require_invitee_realname: boolean;
+            rewards: components["schemas"]["RewardItemResponse"][];
+            /** Format: int64 */
+            total_invited: number;
+            /** Format: int64 */
+            total_rewarded_fen: number;
         };
         RewardRuleRequest: {
             code: string;
@@ -23028,6 +23237,75 @@ export interface operations {
             };
             /** @description 无权限 */
             403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    growth_admin_invite_rewards: {
+        parameters: {
+            query?: {
+                /** @description 奖励状态或转账状态（`pending` / `paid` / `success` / `failed` …）。 */
+                status?: string;
+                /** @description 按邀请人 / 被邀请人用户名或商户单号模糊搜索。 */
+                keyword?: string;
+                page?: number;
+                page_size?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminRewardListResponse"];
+                };
+            };
+            /** @description 无权限 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    growth_admin_invite_reward_sync: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description 商户转账单号 */
+                out_bill_no: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminPayoutResponse"];
+                };
+            };
+            /** @description 无权限 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 转账单不存在 */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -34344,6 +34622,112 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["InviteStatsResponse"];
+                };
+            };
+            /** @description 无权限 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    invite_rewards: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RewardPanelResponse"];
+                };
+            };
+            /** @description 无权限 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 用户不存在 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    invite_rewards_claim: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ClaimResponse"];
+                };
+            };
+            /** @description 无权限 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 未绑定微信 / 没有可领取奖励 / 活动未开启 */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 微信支付明确拒绝 */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 微信支付结果未确认，已锁单等待查单 */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    invite_rewards_sync: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RewardPanelResponse"];
                 };
             };
             /** @description 无权限 */
@@ -53045,6 +53429,35 @@ export interface operations {
             };
             /** @description 用户不存在（`USER_NOT_FOUND`） */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    wechat_transfer_notify: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "text/plain": string;
+            };
+        };
+        responses: {
+            /** @description 处理成功 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 验签失败 */
+            401: {
                 headers: {
                     [name: string]: unknown;
                 };
