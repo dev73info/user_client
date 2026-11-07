@@ -36,7 +36,14 @@ const routes = [
       : {},
 }))
 
-async function render(name: string, { isDevWorkbenchMode = false, realnameApproved = true } = {}) {
+async function render(
+  name: string,
+  {
+    isDevWorkbenchMode = false,
+    realnameApproved = true,
+    groupPanelOpen = true,
+  } = {},
+) {
   const router = createRouter({ history: createMemoryHistory(), routes })
   await router.push({ name })
   const wrapper = mount(WorkbenchIconRail, {
@@ -46,6 +53,7 @@ async function render(name: string, { isDevWorkbenchMode = false, realnameApprov
       teamInvitationCount: 2,
       realnameApproved,
       username: 'client_flow_03562487',
+      groupPanelOpen,
     },
     global: { plugins: [router] },
   })

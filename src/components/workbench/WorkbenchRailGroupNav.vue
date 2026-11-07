@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { RouterLink } from 'vue-router'
+import { Close, TIcon } from 'ui_73info'
 
 import { railGroupItemTo, type RailGroup, type RailGroupItem } from '@/shared/workbenchRailGroups'
 
@@ -16,6 +17,7 @@ defineProps<{
 
 const emit = defineEmits<{
   (event: 'navigate'): void
+  (event: 'close'): void
 }>()
 </script>
 
@@ -24,6 +26,17 @@ const emit = defineEmits<{
     <header class="workbench-rail-group__head">
       <span class="workbench-rail-group__title">工作台</span>
       <span class="workbench-rail-group__badge">{{ group.label }}</span>
+      <button
+        class="workbench-rail-group__close"
+        type="button"
+        aria-label="收起菜单列表"
+        title="收起菜单列表"
+        @click="emit('close')"
+      >
+        <TIcon :size="16">
+          <Close />
+        </TIcon>
+      </button>
     </header>
     <nav class="workbench-rail-group__list">
       <RouterLink

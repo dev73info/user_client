@@ -1,11 +1,12 @@
 /* 图标栏分组入口的版式：64px 图标栏 + 中栏导航树 + 内容画布。
-   导航树与消息中心共用 --uw-pane-width（默认 360），切页不跳宽。 */
+   导航树与消息中心共用 --uw-pane-width（这里默认 280，比消息中栏窄，避免挤掉内容区），
+   切页不跳宽。 */
 
 .user-workbench__main--rail-group {
   height: 100%;
   min-height: 0;
   display: grid;
-  grid-template-columns: var(--uw-pane-width, 360px) minmax(0, 1fr);
+  grid-template-columns: var(--uw-pane-width, 280px) minmax(0, 1fr);
   align-content: stretch;
   gap: 0;
   padding: 0;

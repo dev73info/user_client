@@ -38,6 +38,34 @@
   line-height: 1.5;
 }
 
+/* 收起操作：贴着头部右端，24~28px 方形命中区，悬停才浮出底色 */
+.workbench-rail-group__close {
+  margin-left: auto;
+  width: 26px;
+  height: 26px;
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--73-ink-muted);
+  cursor: pointer;
+  transition:
+    color 150ms ease,
+    background-color 150ms ease;
+}
+
+.workbench-rail-group__close:hover {
+  background: var(--73-bg-soft);
+  color: var(--73-ink);
+}
+
+.workbench-rail-group__close:focus-visible {
+  outline: 2px solid var(--73-accent);
+  outline-offset: 2px;
+}
+
 .workbench-rail-group__list {
   min-height: 0;
   display: flex;

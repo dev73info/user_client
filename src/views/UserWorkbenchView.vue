@@ -9,7 +9,7 @@
  * - 外壳色板 `--uw-*` → `styles/workbench-shell.css`；
  * - 菜单数据与高亮判定 → `@/shared/workbenchMenu`，文案与时间格式化 → `@/shared/workbenchDisplay`。
  */
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import { useRoute } from 'vue-router'
 
 import {
@@ -71,13 +71,18 @@ const {
   logout,
 } = useWorkbenchShell()
 
-/* 中栏只在分组页出现：列出当前分组的页面；个人主页等非分组页不占一列。 */
-const showRailGroupList = computed(() => Boolean(activeRailGroup.value) && !isChatWorkspace.value)
+/* 中栏只在分组页出现：列出当前分组的页面；个人主页等非分组页不占一列。
+   收起后这一列整个让给内容区，再点左侧分组图标可以重新打开。 */
+const railGroupListOpen = ref(true)
+const showRailGroupList = computed(
+  () => railGroupListOpen.value && Boolean(activeRailGroup.value) && !isChatWorkspace.value,
+)
 
-/* 分组菜单与消息中心共用中栏宽度：同一份本机偏好，切页不跳宽。 */
-const RAIL_GROUP_WIDTH_MIN = 220
-const RAIL_GROUP_WIDTH_MAX = 520
-const RAIL_GROUP_WIDTH_DEFAULT = 360
+/* 分组菜单与消息中心共用中栏宽度：同一份本机偏好，切页不跳宽。
+   分组导航比消息中栏窄（只放条目文字），避免把右侧内容区挤没。 */
+const RAIL_GROUP_WIDTH_MIN = 200
+const RAIL_GROUP_WIDTH_MAX = 320
+const RAIL_GROUP_WIDTH_DEFAULT = 280
 const { paneWidth } = useWorkbenchPaneWidth()
 const railGroupWidth = computed(() =>
   Math.round(
@@ -156,7 +161,9 @@ const railGroupStyle = computed<Record<string, string>>(() => {
       :team-invitation-count="teamInvitationCount"
       :realname-approved="realnameApproved"
       :username="auth.username"
+      :group-panel-open="showRailGroupList"
       @switch-mode="switchWorkbenchMode"
+      @open-group="railGroupListOpen = true"
     />
 
     <section
@@ -183,6 +190,7 @@ const railGroupStyle = computed<Record<string, string>>(() => {
         :group="activeRailGroup!"
         :is-item-active="isRailGroupItemActive"
         @navigate="closeMobileMenu"
+        @close="railGroupListOpen = false"
       />
 
       <div

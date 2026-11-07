@@ -1,11 +1,12 @@
 <script setup lang="ts">
 import { computed, ref, watch, type Component } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
+import { RouterLink, useRoute, useRouter } from 'vue-router'
 import { Bell, ChatDotRound, Suitcase, TIcon, User } from 'ui_73info'
 
+import { useRailGroupFlyout } from '@/composables/useRailGroupFlyout'
 import { useRailTooltip } from '@/composables/useRailTooltip'
 import { useWorkbenchRailGroups } from '@/composables/useWorkbenchRailGroups'
-import { railGroupItemActive } from '@/shared/workbenchRailGroups'
+import { railGroupItemActive, railGroupItemTo } from '@/shared/workbenchRailGroups'
 import { isWorkbenchChatPage } from '@/shared/workbenchChatRoute'
 
 import WorkbenchIconRailSettings from './WorkbenchIconRailSettings.vue'
@@ -35,10 +36,14 @@ const props = defineProps<{
   realnameApproved: boolean
   /** 底部头像的首字母；不传就显示占位符，避免为了一个字去读 store。 */
   username?: string
+  /** 右侧分组菜单是否展开；收起时 PC 端改为鼠标悬浮图标弹出菜单列表。 */
+  groupPanelOpen?: boolean
 }>()
 
 const emit = defineEmits<{
   'switch-mode': []
+  /** 点了某个分组图标（或悬浮层里的条目）：请外壳把中栏列表重新打开。 */
+  'open-group': [groupKey: string]
 }>()
 
 const route = useRoute()
@@ -139,6 +144,10 @@ function isActive(item: RailItem) {
 }
 
 function open(item: RailItem) {
+  // 分组图标同时兼「重新打开中栏列表」：面板收起后再点一次图标就回来。
+  if (item.groupKey) {
+    emit('open-group', item.groupKey)
+  }
   if (item.key === 'messages') {
     const remembered = lastMessagesRoute[props.isDevWorkbenchMode ? 'dev' : 'user']
     if (remembered) {
@@ -194,6 +203,38 @@ const {
   show: showTooltip,
   hide: hideTooltip,
 } = useRailTooltip()
+
+/** 中栏收起后，PC 端悬浮分组图标弹出的菜单列表（逻辑见 composable）。 */
+const {
+  flyoutGroup,
+  flyoutStyle,
+  flyoutEl,
+  flyoutItemActive,
+  hoverGroup,
+  leaveGroup,
+  cancelClose,
+  selectFlyoutItem,
+} = useRailGroupFlyout({
+  groups,
+  currentName,
+  panelOpen: computed(() => Boolean(props.groupPanelOpen)),
+  hideTooltip,
+  onOpenGroup: (groupKey) => emit('open-group', groupKey),
+})
+
+function handleItemEnter(item: RailItem, event: Event) {
+  if (item.groupKey && hoverGroup(item.groupKey, event)) {
+    return
+  }
+  showTooltip(item.label, event)
+}
+
+function handleItemLeave(item: RailItem) {
+  hideTooltip()
+  if (item.groupKey) {
+    leaveGroup()
+  }
+}
 </script>
 
 <template>
@@ -211,9 +252,9 @@ const {
         :aria-label="item.label"
         :aria-current="isActive(item) ? 'page' : undefined"
         @click="open(item)"
-        @mouseenter="showTooltip(item.label, $event)"
+        @mouseenter="handleItemEnter(item, $event)"
         @focus="showTooltip(item.label, $event)"
-        @mouseleave="hideTooltip"
+        @mouseleave="handleItemLeave(item)"
         @blur="hideTooltip"
       >
         <TIcon :size="20">
@@ -227,13 +268,43 @@ const {
 
     <Teleport to="body">
       <span
-        v-if="tooltipVisible"
+        v-if="tooltipVisible && !flyoutGroup"
         class="workbench-icon-rail__tooltip workbench-icon-rail__tooltip--floating"
         :style="tooltipStyle"
         role="tooltip"
       >
         {{ tooltipLabel }}
       </span>
+    </Teleport>
+
+    <!-- 中栏收起后，PC 端悬浮分组图标的菜单列表（触屏端由 CSS 隐藏） -->
+    <Teleport to="body">
+      <div
+        v-if="flyoutGroup"
+        ref="flyoutEl"
+        class="workbench-icon-rail__flyout"
+        :style="flyoutStyle"
+        role="menu"
+        :aria-label="flyoutGroup.label"
+        @mouseenter="cancelClose"
+        @mouseleave="leaveGroup"
+      >
+        <p class="workbench-icon-rail__flyout-title">{{ flyoutGroup.label }}</p>
+        <nav class="workbench-icon-rail__flyout-list">
+          <RouterLink
+            v-for="groupItem in flyoutGroup.items"
+            :key="groupItem.key"
+            class="workbench-icon-rail__flyout-item"
+            :class="{ active: flyoutItemActive(groupItem) }"
+            :to="railGroupItemTo(groupItem)"
+            :aria-current="flyoutItemActive(groupItem) ? 'page' : undefined"
+            @click="selectFlyoutItem"
+          >
+            <span class="workbench-icon-rail__flyout-label">{{ groupItem.label }}</span>
+            <small class="workbench-icon-rail__flyout-desc">{{ groupItem.description }}</small>
+          </RouterLink>
+        </nav>
+      </div>
     </Teleport>
 
     <div class="workbench-icon-rail__foot">
