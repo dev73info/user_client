@@ -5,9 +5,11 @@ import { TButton, TIcon, Refresh } from 'ui_73info'
 import WorkbenchBarSlot from '@/components/WorkbenchBarSlot.vue'
 import BadgeWall from '@/components/BadgeWall.vue'
 import InvitePanel from '@/components/InvitePanel.vue'
+import InviteRewardPanel from '@/components/InviteRewardPanel.vue'
 
 const badgeWallRef = ref<InstanceType<typeof BadgeWall> | null>(null)
 const invitePanelRef = ref<InstanceType<typeof InvitePanel> | null>(null)
+const inviteRewardRef = ref<InstanceType<typeof InviteRewardPanel> | null>(null)
 const badgeStats = ref<{ acquired: number; total: number; equipped: number } | null>(null)
 const invitedCount = ref<number | null>(null)
 const refreshing = ref(false)
@@ -19,7 +21,11 @@ function applyBadgeStats(acquired: number, total: number, equipped: number, fail
 async function reload() {
   refreshing.value = true
   try {
-    await Promise.all([badgeWallRef.value?.reload(), invitePanelRef.value?.reload()])
+    await Promise.all([
+      badgeWallRef.value?.reload(),
+      invitePanelRef.value?.reload(),
+      inviteRewardRef.value?.reload(),
+    ])
   } finally {
     refreshing.value = false
   }
@@ -58,6 +64,9 @@ async function reload() {
     </section>
     <section class="wallet-section">
       <InvitePanel ref="invitePanelRef" @stats="invitedCount = $event" />
+    </section>
+    <section class="wallet-section">
+      <InviteRewardPanel ref="inviteRewardRef" />
     </section>
   </main>
 </template>

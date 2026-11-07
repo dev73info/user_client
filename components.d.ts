@@ -109,6 +109,7 @@ declare module 'vue' {
     InAppLoginPanel: typeof import('./src/components/authModal/InAppLoginPanel.vue')['default']
     InviteLeaderboard: typeof import('./src/components/InviteLeaderboard.vue')['default']
     InvitePanel: typeof import('./src/components/InvitePanel.vue')['default']
+    InviteRewardPanel: typeof import('./src/components/InviteRewardPanel.vue')['default']
     InvoiceApplyDialog: typeof import('./src/components/InvoiceApplyDialog.vue')['default']
     InvoiceGroupCard: typeof import('./src/components/invoice/InvoiceGroupCard.vue')['default']
     InvoiceSummaryStrip: typeof import('./src/components/invoice/InvoiceSummaryStrip.vue')['default']

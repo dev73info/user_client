@@ -8,10 +8,13 @@
 
 import {
   badgeDefinitions,
+  claimInviteReward,
   inviteCode,
+  inviteRewardOverview,
   inviteStats,
   myBadges,
   setEquippedBadges,
+  syncInviteRewardPayouts,
 } from '../db/badges'
 import { currentMockProfile } from '../identity'
 import { defineRouteTable, type MockRoute } from '../router'
@@ -78,6 +81,32 @@ const routes: MockRoute[] = [
         my_rank: { rank: 2, count },
       })
     },
+  },
+  {
+    method: 'GET',
+    path: '/invite/rewards',
+    note: '邀请现金奖励概览：可领取 / 待实名 / 已到账三种状态各一条',
+    handler: (request) => jsonResponse(inviteRewardOverview(request.identity)),
+  },
+  {
+    method: 'POST',
+    path: '/invite/rewards/claim',
+    note: '领取邀请现金奖励：开发者身份模拟「未绑定微信」，其余身份生成一张待确认转账单',
+    handler: (request) => {
+      if (request.identity === 'dev') {
+        return jsonResponse({ code: 'WECHAT_NOT_BOUND', message: '请先用微信登录后再领取' }, 409)
+      }
+      const result = claimInviteReward(request.identity)
+      return result
+        ? jsonResponse(result)
+        : jsonResponse({ code: 'NO_REWARD_TO_CLAIM', message: '没有可领取的邀请奖励' }, 409)
+    },
+  },
+  {
+    method: 'POST',
+    path: '/invite/rewards/sync',
+    note: '同步邀请现金奖励转账单：非终态单按成功处理并返回最新概览',
+    handler: (request) => jsonResponse(syncInviteRewardPayouts(request.identity)),
   },
 ]
 
