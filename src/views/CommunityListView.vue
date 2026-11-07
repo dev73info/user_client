@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { Plus, Refresh, TButton, TEmpty, TIcon } from 'ui_73info'
 
@@ -26,6 +26,11 @@ const selectedPostId = computed(() => {
 
 /** 列表状态提到视图：分栏页顶部工具栏与左侧列表共用同一份。 */
 const list = reactive(useCommunityList())
+
+// 从详情回到列表（例如作者删除帖子后清空 post 参数）时刷新，避免已删除的帖子还挂在左栏。
+watch(selectedPostId, (current, previous) => {
+  if (previous !== null && current === null) void list.load()
+})
 
 let detailObserver: ResizeObserver | null = null
 let layoutTimer: number | null = null
