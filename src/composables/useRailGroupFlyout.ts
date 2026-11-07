@@ -23,8 +23,6 @@ export function useRailGroupFlyout(options: {
   panelOpen: Ref<boolean>
   /** 悬浮层出现时把 tooltip 收掉，避免两层叠在一起。 */
   hideTooltip: () => void
-  /** 点了悬浮层里的条目：外壳据此重新打开中栏列表。 */
-  onOpenGroup: (groupKey: string) => void
 }) {
   const route = useRoute()
 
@@ -129,12 +127,14 @@ export function useRailGroupFlyout(options: {
     return railGroupItemActive(item, options.currentName.value)
   }
 
+  /**
+   * 点了悬浮层里的条目：只收起悬浮层，由 RouterLink 自己导航。
+   *
+   * **不要**在这里重新展开中栏——悬浮菜单就是「收起中栏后的替代品」，
+   * 点一次就把面板顶回来，收起按钮等于白给；重新展开只认左侧分组图标。
+   */
   function selectFlyoutItem() {
-    const groupKey = flyoutGroupKey.value
     closeFlyout()
-    if (groupKey) {
-      options.onOpenGroup(groupKey)
-    }
   }
 
   // 面板一展开、路由一变、页面一滚，悬浮层都失去意义，直接收起。

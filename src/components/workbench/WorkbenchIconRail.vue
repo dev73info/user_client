@@ -219,7 +219,6 @@ const {
   currentName,
   panelOpen: computed(() => Boolean(props.groupPanelOpen)),
   hideTooltip,
-  onOpenGroup: (groupKey) => emit('open-group', groupKey),
 })
 
 function handleItemEnter(item: RailItem, event: Event) {

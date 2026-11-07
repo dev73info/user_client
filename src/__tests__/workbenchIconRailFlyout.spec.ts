@@ -51,7 +51,7 @@ function findGroupButton(wrapper: ReturnType<typeof mount>, label: string) {
 }
 
 describe('图标栏分组悬浮菜单（PC）', () => {
-  it('面板收起时悬浮分组图标弹出菜单列表，点条目导航并请求重新展开', async () => {
+  it('面板收起时悬浮分组图标弹出菜单列表，点条目只导航、不重新展开中栏', async () => {
     const { router, wrapper } = await render('dev-home', false)
     const groupButton = findGroupButton(wrapper, '接单与交付')
 
@@ -76,8 +76,8 @@ describe('图标栏分组悬浮菜单（PC）', () => {
     await flushPromises()
 
     expect(router.currentRoute.value.name).toBe('dev-my-requirements')
-    const openGroupEvents = wrapper.emitted('open-group') ?? []
-    expect(openGroupEvents[openGroupEvents.length - 1]).toEqual(['dev-delivery'])
+    // 悬浮菜单是「收起后的替代品」：点条目只导航，不把中栏顶回来
+    expect(wrapper.emitted('open-group')).toBeUndefined()
     expect(document.querySelector('.workbench-icon-rail__flyout')).toBeNull()
 
     wrapper.unmount()
