@@ -6,6 +6,7 @@ import { currentMockIdentity } from './identity'
 import {
   canonicalKey,
   matchRoutes,
+  type MockFormFile,
   type MockHttpMethod,
   type MockRequest,
   type MockReply,
@@ -21,6 +22,7 @@ export type DescribedRequest = {
   rawBody: string
   body: unknown
   isFormData: boolean
+  files: MockFormFile[]
 }
 
 const MOCK_HTTP_METHODS: readonly MockHttpMethod[] = ['GET', 'POST', 'PATCH', 'PUT', 'DELETE']
@@ -77,6 +79,7 @@ export async function describeRequest(
   let rawBody = ''
   let parsedBody: unknown = null
   let isFormData = false
+  const files: MockFormFile[] = []
 
   if (typeof body === 'string') {
     rawBody = body
@@ -89,6 +92,14 @@ export async function describeRequest(
     for (const [key, value] of body.entries()) {
       if (typeof value === 'string') {
         fields[key] = value
+        continue
+      }
+      if (typeof File !== 'undefined' && value instanceof File) {
+        files.push({ field: key, name: value.name, type: value.type, size: value.size })
+        continue
+      }
+      if (typeof Blob !== 'undefined' && value instanceof Blob) {
+        files.push({ field: key, name: key, type: value.type, size: value.size })
       }
     }
     parsedBody = fields
@@ -104,6 +115,7 @@ export async function describeRequest(
     rawBody,
     body: parsedBody,
     isFormData,
+    files,
   }
 }
 
@@ -177,5 +189,6 @@ export function toMockRequest(described: DescribedRequest): MockRequest {
     body: described.body,
     rawBody: described.rawBody,
     isFormData: described.isFormData,
+    files: described.files,
   }
 }

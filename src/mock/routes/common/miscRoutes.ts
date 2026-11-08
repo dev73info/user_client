@@ -32,12 +32,6 @@ export const miscRoutes: MockRoute[] = [
   },
   {
     method: 'GET',
-    path: '/ticket',
-    note: '我的工单（演示数据没有工单；形状是裸数组，兜底的 [] 也对，这里只是让名字落到表里）',
-    handler: () => jsonResponse([]),
-  },
-  {
-    method: 'GET',
     path: '/dispute/cases',
     note: '我参与的争议案件（演示数据没有案件；契约是裸数组）',
     handler: () => jsonResponse([]),

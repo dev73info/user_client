@@ -13,6 +13,14 @@ import type { MockIdentity } from './identity'
 
 export type MockHttpMethod = 'GET' | 'POST' | 'PATCH' | 'PUT' | 'DELETE'
 
+/** multipart 里的文件元信息（mock 不存文件内容，只让 handler 拿到文件名 / 类型 / 大小）。 */
+export type MockFormFile = {
+  field: string
+  name: string
+  type: string
+  size: number
+}
+
 export type MockRequest = {
   method: MockHttpMethod
   /** 归一化后的后端真实路径（含 /api 前缀），形如 /api/requirement/mine */
@@ -25,10 +33,12 @@ export type MockRequest = {
   /** Authorization 头里的令牌（已去掉 Bearer 前缀） */
   token: string
   identity: MockIdentity
-  /** 请求体：JSON 已解析；FormData 时为 null 并把 isFormData 置真 */
+  /** 请求体：JSON 已解析；FormData 时为文本字段对象并把 isFormData 置真 */
   body: unknown
   rawBody: string
   isFormData: boolean
+  /** multipart 里的文件元信息（非 multipart 时为空数组） */
+  files: MockFormFile[]
 }
 
 /** 返回 null 表示「这条路由不处理这个请求」，交给后面的路由继续匹配。 */

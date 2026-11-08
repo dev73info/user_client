@@ -12,6 +12,7 @@ import { paymentRoutes } from './payments'
 import { pointsRoutes } from './points'
 import { requirementRoutes } from './requirements'
 import { resourceRoutes } from './resources'
+import { ticketRoutes } from './ticket'
 
 /**
  * mock 路由表，按注册顺序匹配，先注册的赢。
@@ -31,6 +32,7 @@ export const mockRouteTables: readonly MockRouteTable[] = [
   activityRoutes,
   conversationRoutes,
   communityRoutes,
+  ticketRoutes,
   commonRoutes,
   authRoutes,
 ]

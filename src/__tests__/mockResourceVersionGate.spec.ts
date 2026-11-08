@@ -39,6 +39,7 @@ function requestWith(method: 'GET' | 'POST', body: unknown = null): MockRequest 
     body,
     rawBody: '',
     isFormData: false,
+    files: [],
   }
 }
 
