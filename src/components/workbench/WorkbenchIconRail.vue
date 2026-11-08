@@ -6,6 +6,7 @@ import { Bell, ChatDotRound, Suitcase, TIcon, User } from 'ui_73info'
 import { useRailGroupFlyout } from '@/composables/useRailGroupFlyout'
 import { useRailTooltip } from '@/composables/useRailTooltip'
 import { useWorkbenchRailGroups } from '@/composables/useWorkbenchRailGroups'
+import TourButton from '@/features/tour/TourButton.vue'
 import { railGroupItemActive, railGroupItemTo } from '@/shared/workbenchRailGroups'
 import { isWorkbenchChatPage } from '@/shared/workbenchChatRoute'
 
@@ -237,7 +238,7 @@ function handleItemLeave(item: RailItem) {
 </script>
 
 <template>
-  <aside class="workbench-icon-rail" aria-label="工作台快捷导航">
+  <aside class="workbench-icon-rail" aria-label="工作台快捷导航" data-tour="basic:2">
     <nav class="workbench-icon-rail__items">
       <button
         v-for="item in items"
@@ -250,6 +251,7 @@ function handleItemLeave(item: RailItem) {
         type="button"
         :aria-label="item.label"
         :aria-current="isActive(item) ? 'page' : undefined"
+        :data-tour="item.key === 'messages' ? 'basic:5' : undefined"
         @click="open(item)"
         @mouseenter="handleItemEnter(item, $event)"
         @focus="showTooltip(item.label, $event)"
@@ -307,6 +309,14 @@ function handleItemLeave(item: RailItem) {
     </Teleport>
 
     <div class="workbench-icon-rail__foot">
+      <TourButton
+        class="workbench-icon-rail__item workbench-icon-rail__guide"
+        tour="basic"
+        label="引导帮助"
+        compact
+        data-tour="basic:8"
+      />
+
       <button
         class="workbench-icon-rail__item workbench-icon-rail__switch"
         type="button"

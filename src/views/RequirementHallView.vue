@@ -130,7 +130,11 @@ const hallPageRange = computed(() => ({
 
         <!-- 骨架屏只在「第一次进页面、还没有任何内容」时出场。
              之后刷新（含切页、切筛选）都保留当前列表，避免整个容器被清空重画。 -->
-        <div v-if="showHallSkeleton" class="portal-page__card-grid requirement-hall__grid">
+        <div
+          v-if="showHallSkeleton"
+          class="portal-page__card-grid requirement-hall__grid"
+          data-tour="requirement-hall:3"
+        >
           <article
             v-for="item in HALL_PAGE_SIZE"
             :key="item"
@@ -147,6 +151,7 @@ const hallPageRange = computed(() => ({
         <div
           v-else-if="filteredRequirements.length"
           class="portal-page__card-grid requirement-hall__grid"
+          data-tour="requirement-hall:3"
         >
           <RequirementHallCard
             v-for="card in filteredRequirements"
@@ -156,7 +161,11 @@ const hallPageRange = computed(() => ({
           />
         </div>
 
-        <div v-else class="portal-page__empty portal-page__empty--stacked">
+        <div
+          v-else
+          class="portal-page__empty portal-page__empty--stacked"
+          data-tour="requirement-hall:3"
+        >
           <strong>{{ hallEmptyTitle }}</strong>
           <button
             v-if="keyword.trim() || guaranteeFilter !== 'all'"
@@ -184,7 +193,7 @@ const hallPageRange = computed(() => ({
         </div>
       </section>
 
-      <aside class="portal-page__aside">
+      <aside class="portal-page__aside" data-tour="requirement-hall:5">
         <RequirementHallAside :stats="hallStats" :deals="recentDeals" />
       </aside>
     </section>

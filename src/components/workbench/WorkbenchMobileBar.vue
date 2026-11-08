@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { Menu as MenuIcon, TIcon } from 'ui_73info'
 
+import TourButton from '@/features/tour/TourButton.vue'
 import { WORKBENCH_BAR_SLOT_ID, workbenchBarSlotCount } from '@/shared/workbenchBarSlot'
 
 /**
@@ -42,6 +43,8 @@ const emit = defineEmits<{
       </Transition>
       <span>{{ currentTitle }}</span>
     </div>
+    <!-- 图标栏在 ≤900px 整体隐藏，引导入口在移动端改挂这里，随时可以重播 -->
+    <TourButton class="user-workbench__mobile-guide" tour="basic" label="引导帮助" compact />
     <!-- 页面经 WorkbenchBarSlot 传进来的顶部读数（顶替标题）；没有时不占位 -->
     <div :id="WORKBENCH_BAR_SLOT_ID" class="user-workbench__mobile-bar-extra" />
   </div>
@@ -154,6 +157,10 @@ const emit = defineEmits<{
     color: var(--uw-blue-ink);
     font-size: 13px;
     font-weight: 600;
+  }
+
+  .user-workbench__mobile-guide {
+    flex: 0 0 auto;
   }
 
   /* 顶栏塞了读数时，「菜单」只留图标，把宽度让给读数（按钮自带 aria-label） */

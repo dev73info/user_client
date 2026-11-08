@@ -110,7 +110,7 @@ const {
       />
 
       <template v-if="filteredRequirements.length">
-        <ul class="wb-list requirement-list">
+        <ul class="wb-list requirement-list" data-tour="my-requirements:2">
           <template v-for="item in pagedRequirements" :key="item.requirement_id">
             <RequirementRow
               :item="item"

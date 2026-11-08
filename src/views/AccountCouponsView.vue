@@ -18,6 +18,7 @@ import { useAuthStore } from '@/stores/auth'
 import RealnameHero from '@/components/RealnameHero.vue'
 import AccountDialogHost from '@/components/account/AccountDialogHost.vue'
 import AccountEntryGrid from '@/components/account/AccountEntryGrid.vue'
+import TourButton from '@/features/tour/TourButton.vue'
 import { useAccountDialogRegistry } from '@/composables/useAccountDialogRegistry'
 import { useAccountEntryGroups } from '@/composables/useAccountEntryGroups'
 import { useFaceidChallenge } from '@/composables/useFaceidChallenge'
@@ -151,13 +152,14 @@ onMounted(async () => {
 
 <template>
   <main class="page-shell custom-page-shell profile-page account-coupons-page">
-    <div class="account-realname-hero">
+    <div class="account-realname-hero" data-tour="account:1">
       <RealnameHero :verification="current" :adapay-member="adapayMember" />
     </div>
 
-    <section class="wallet-section account-settings-section">
+    <section class="wallet-section account-settings-section" data-tour="account:2">
       <div class="realname-form__head">
         <h3>账号与安全</h3>
+        <TourButton tour="account" />
       </div>
       <AccountEntryGrid :groups="accountEntryGroups" @open="openAccountEntry" />
       <div v-if="providerLoadError" class="wb-empty" role="alert">
@@ -166,13 +168,17 @@ onMounted(async () => {
       </div>
     </section>
 
-    <section id="account-realname" class="account-realname-section">
+    <section id="account-realname" class="account-realname-section" data-tour="account:3">
       <div class="realname-page-shell">
         <TCard class="realname-card asign-account-card">
           <div class="realname-form__head">
             <h3>认证管理</h3>
           </div>
-          <AccountEntryGrid :groups="realnameEntryGroups" @open="openAccountEntry" />
+          <AccountEntryGrid
+            :groups="realnameEntryGroups"
+            :group-anchors="{ 收款与结算: 'account:4' }"
+            @open="openAccountEntry"
+          />
         </TCard>
 
         <!-- 十二个弹窗的唯一挂点：状态在 useAccountDialogRegistry，绑定表在宿主里 -->

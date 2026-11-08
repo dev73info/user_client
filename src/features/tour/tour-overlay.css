@@ -1,0 +1,195 @@
+/* 引导浮层：遮罩 + 挖洞高亮 + 卡片。全部取 --73-* 令牌，不写裸色值。 */
+.tour {
+  --tour-scrim: color-mix(in srgb, var(--73-ink) 62%, transparent);
+
+  position: fixed;
+  inset: 0;
+  z-index: var(--73-z-tour);
+  pointer-events: none;
+}
+
+.tour__scrim {
+  position: absolute;
+  inset: 0;
+  pointer-events: auto;
+  background: transparent;
+}
+
+.tour__scrim--solid {
+  background: var(--tour-scrim);
+}
+
+.tour__spotlight {
+  position: fixed;
+  border-radius: 12px;
+  pointer-events: none;
+  box-shadow:
+    0 0 0 2px var(--73-accent),
+    0 0 0 9999px var(--tour-scrim);
+  transition:
+    top 220ms ease,
+    left 220ms ease,
+    width 220ms ease,
+    height 220ms ease;
+}
+
+.tour__card {
+  position: fixed;
+  width: min(360px, calc(100vw - 32px));
+  max-height: calc(100vh - 32px);
+  overflow: auto;
+  padding: 18px 18px 14px;
+  border: 1px solid var(--73-border);
+  border-radius: var(--73-radius-dialog);
+  background: var(--73-surface);
+  box-shadow: var(--73-shadow-dialog);
+  color: var(--73-ink);
+  pointer-events: auto;
+  transition:
+    top 220ms ease,
+    left 220ms ease;
+}
+
+.tour__card:focus {
+  outline: none;
+}
+
+.tour__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.tour__progress {
+  font-size: var(--73-font-size-xs);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: var(--73-ink-muted);
+}
+
+.tour__icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: 0;
+  border-radius: var(--73-radius-pill);
+  background: transparent;
+  color: var(--73-ink-muted);
+  cursor: pointer;
+}
+
+.tour__icon-btn:hover {
+  background: var(--73-border-soft);
+  color: var(--73-ink);
+}
+
+.tour__title {
+  margin: 10px 0 6px;
+  font-size: var(--73-font-size-title);
+  font-weight: var(--73-font-weight-bold);
+}
+
+.tour__body {
+  margin: 0;
+  font-size: var(--73-font-size-md);
+  line-height: 1.65;
+  color: var(--73-ink-soft);
+}
+
+.tour__dots {
+  display: flex;
+  gap: 6px;
+  margin: 14px 0 12px;
+}
+
+.tour__dot {
+  width: 6px;
+  height: 6px;
+  border-radius: var(--73-radius-pill);
+  background: var(--73-border-hover);
+}
+
+.tour__dot--active {
+  width: 18px;
+  background: var(--73-accent);
+}
+
+.tour__foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.tour__tools,
+.tour__nav {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.tour__tool,
+.tour__skip,
+.tour__nav-btn {
+  min-height: 32px;
+  padding: 0 12px;
+  border: 1px solid var(--73-border);
+  border-radius: var(--73-radius-control);
+  background: var(--73-surface);
+  color: var(--73-ink-soft);
+  font-size: var(--73-font-size-sm);
+  cursor: pointer;
+}
+
+.tour__tool {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.tour__tool:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.tour__skip {
+  border-color: transparent;
+  background: transparent;
+  color: var(--73-ink-muted);
+}
+
+.tour__nav-btn--primary {
+  border-color: var(--73-accent);
+  background: var(--73-accent);
+  color: var(--73-ink-inverse);
+  font-weight: var(--73-font-weight-bold);
+}
+
+.tour__playing {
+  width: 6px;
+  height: 6px;
+  border-radius: var(--73-radius-pill);
+  background: var(--73-success);
+}
+
+@media (max-width: 640px) {
+  .tour__foot {
+    align-items: stretch;
+  }
+
+  .tour__tools,
+  .tour__nav {
+    justify-content: space-between;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tour__spotlight,
+  .tour__card {
+    transition: none;
+  }
+}

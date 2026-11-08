@@ -76,7 +76,12 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <div ref="rootRef" class="workbench-icon-rail__settings" :class="{ 'is-open': open }">
+  <div
+    ref="rootRef"
+    class="workbench-icon-rail__settings"
+    :class="{ 'is-open': open }"
+    data-tour="basic:6"
+  >
     <button
       class="workbench-icon-rail__item workbench-icon-rail__settings-trigger"
       type="button"

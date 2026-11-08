@@ -7,6 +7,8 @@ import AppSiteFooter from '@/components/app/AppSiteFooter.vue'
 import PortalTopNav from '@/components/PortalTopNav.vue'
 import PortalMobileDock from '@/components/PortalMobileDock.vue'
 import SupportChatWidget from '@/components/SupportChatWidget.vue'
+import TourOffer from '@/features/tour/TourOffer.vue'
+import TourOverlay from '@/features/tour/TourOverlay.vue'
 import MockIdentitySwitcher from '@/mock/MockIdentitySwitcher.vue'
 import { PORTAL_CONTENT_ANCHORS, scrollToPortalAnchor } from '@/utils/portalScroll'
 import { TScrollbar } from 'ui_73info'
@@ -93,6 +95,11 @@ watch(
     <!-- 全局资源下载进度浮层：切换路由不中断下载，浮层持续展示进度 -->
     <AppDownloadCard />
     <SupportChatWidget />
+
+    <!-- 语音引导：全站一份状态。Offer 负责首次提示，Overlay 负责遮罩与步骤卡片；
+         挂在 App 而不是工作台外壳，门户的需求大厅（/requirement-hall）也能用。 -->
+    <TourOffer />
+    <TourOverlay />
   </div>
 </template>
 

@@ -29,6 +29,7 @@ function handleNavClick(link: HeaderLink) {
         :to="link.to"
         active-class=""
         exact-active-class=""
+        :data-tour="link.tour"
         class="portal-nav__link"
         :class="{ active: link.active }"
         @click="handleNavClick(link)"

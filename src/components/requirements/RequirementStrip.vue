@@ -51,7 +51,7 @@ const refreshButtonLabel = computed(() => (props.loading ? '刷新中...' : '刷
 
 <template>
   <WorkbenchBarSlot>
-    <div class="wb-strip my-requirements-strip">
+    <div class="wb-strip my-requirements-strip" data-tour="my-requirements:1">
       <template v-for="(tab, index) in tabs" :key="tab.value">
         <span v-if="index > 0" class="wb-strip__divider" aria-hidden="true" />
         <button

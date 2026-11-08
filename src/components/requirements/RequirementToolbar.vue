@@ -3,6 +3,7 @@
  * 「我的需求」页的卡头 + 筛选工具栏 + 空态：只做展示与筛选交互 —— `keyword` / `selectedState`
  * 走 v-model 由外面持有，点「发布」与「清除筛选」只派发事件，不发请求、不改列表。
  */
+import TourButton from '@/features/tour/TourButton.vue'
 import type { RequirementFilterKey, RequirementFilterOption } from '@/shared/requirementStatus'
 import { RefreshLeft, Search, TButton, TIcon, TInput, TOption, TSelect } from 'ui_73info'
 
@@ -51,7 +52,8 @@ const selectedState = defineModel<RequirementFilterKey>('selectedState', { requi
       ></template>
     </TInput>
     <!-- 工具栏不放「重置」：清空筛选的入口保留在下面空态的「清除筛选」；操作槽只在收窄了结果时给条数说明，无筛选时整槽不渲染、不留空容器。 -->
-    <div class="wb-toolbar__actions">
+    <div class="wb-toolbar__actions" data-tour="my-requirements:3">
+      <TourButton tour="my-requirements" />
       <span v-if="hasActiveFilters" class="wb-toolbar__hint">
         筛选出 {{ filteredCount }} / {{ totalCount }} 条
       </span>
@@ -76,8 +78,15 @@ const selectedState = defineModel<RequirementFilterKey>('selectedState', { requi
     </div>
   </div>
 
-  <p v-if="loading && totalCount === 0" class="wb-empty" role="status">需求单加载中…</p>
-  <div v-else-if="!filteredCount" class="wb-empty" role="status">
+  <p
+    v-if="loading && totalCount === 0"
+    class="wb-empty"
+    role="status"
+    data-tour="my-requirements:2"
+  >
+    需求单加载中…
+  </p>
+  <div v-else-if="!filteredCount" class="wb-empty" role="status" data-tour="my-requirements:2">
     <span class="wb-empty__title">
       {{ totalCount ? '没有符合条件的需求单' : '还没有提交过需求单' }}
     </span>

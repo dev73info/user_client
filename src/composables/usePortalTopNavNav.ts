@@ -11,6 +11,8 @@ export type HeaderLink = {
   to?: { name: string }
   href?: string
   active?: boolean
+  /** 语音引导锚点：只有需要被引导高亮的栏目才带。 */
+  tour?: string
 }
 
 /**
@@ -49,6 +51,7 @@ export function usePortalTopNavNav() {
         label: '需求大厅',
         to: { name: 'requirement-hall' },
         active: allowActive && (currentName === 'requirement-hall' || currentName === 'payment'),
+        tour: 'basic:7',
       },
       {
         label: '社区中心',

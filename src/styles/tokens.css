@@ -138,3 +138,9 @@
   --73-app-grad-cover-06: linear-gradient(135deg, #0b1f3a, #2563eb 60%, #60a5fa); /* src/views/NotFoundView.vue */
   --73-app-grad-soft-71: linear-gradient(135deg, rgba(255, 255, 255, 0.98), rgba(248, 250, 252, 0.94)); /* src/views/TeamProfileView.vue */
 }
+
+/* 语音引导浮层：必须高于本端所有 dialog（3000）与 message（3100），
+   否则弹窗打开时引导卡片会被压到下面。首次提示卡低一档，让引导本体始终在最上。 */
+:root {
+  --73-z-tour: 4000;
+}

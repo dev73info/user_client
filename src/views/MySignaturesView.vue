@@ -6,6 +6,7 @@ import { listMyContracts, type MyContractSummary } from '@/api/contracts'
 import { LIST_PAGE_SIZES, useClientPagination } from '@/composables/useClientPagination'
 import { useAuthStore } from '@/stores/auth'
 import MySignatureRow from '@/components/contract/MySignatureRow.vue'
+import TourButton from '@/features/tour/TourButton.vue'
 import { getSignatureState, type SignatureState } from '@/utils/contractSignatures'
 
 import {
@@ -133,7 +134,7 @@ function openDetail(item: MyContractSummary) {
   <main class="page-shell custom-page-shell profile-page signatures wb-sheet" :aria-busy="loading">
     <!-- 顶部读数条：读数在最左，页面级刷新固定在右上角 -->
     <WorkbenchBarSlot>
-      <div class="wb-strip" aria-label="签署概览">
+      <div class="wb-strip" aria-label="签署概览" data-tour="signatures:4">
         <div class="wb-strip__item">
           <span class="wb-strip__label">合同总数</span>
           <span class="wb-strip__value">{{ stripValue(contracts.length) }}</span>
@@ -168,7 +169,7 @@ function openDetail(item: MyContractSummary) {
         </div>
       </div>
 
-      <div class="wb-toolbar">
+      <div class="wb-toolbar" data-tour="signatures:1">
         <TSelect v-model="selectedState" class="wb-toolbar__field" aria-label="签署状态">
           <TOption
             v-for="state in states"
@@ -193,10 +194,13 @@ function openDetail(item: MyContractSummary) {
             >筛选出 {{ filteredTotal }} / {{ contracts.length }} 份</span
           >
         </div>
+        <TourButton tour="signatures" />
       </div>
 
-      <p v-if="loading" class="wb-empty" role="status">正在加载签署记录…</p>
-      <div v-else-if="error" class="wb-empty" role="alert">
+      <p v-if="loading" class="wb-empty" role="status" data-tour="signatures:2">
+        正在加载签署记录…
+      </p>
+      <div v-else-if="error" class="wb-empty" role="alert" data-tour="signatures:2">
         <span class="wb-empty__title">加载签署记录失败</span>{{ error }}
         <div class="wb-empty__actions">
           <TButton variant="outline" @click="loadContracts">
@@ -204,7 +208,12 @@ function openDetail(item: MyContractSummary) {
           </TButton>
         </div>
       </div>
-      <div v-else-if="!filteredContracts.length" class="wb-empty" role="status">
+      <div
+        v-else-if="!filteredContracts.length"
+        class="wb-empty"
+        role="status"
+        data-tour="signatures:2"
+      >
         <span class="wb-empty__title">{{
           contracts.length ? '没有符合条件的签署记录' : '暂无签署记录'
         }}</span>
@@ -216,7 +225,7 @@ function openDetail(item: MyContractSummary) {
       </div>
       <template v-else>
         <!-- 行式与需求协作同一口径：上半信息行（标题/编号 + 右侧状态与时间），下半操作条。 -->
-        <ul class="wb-list signature-list" aria-label="我的合同列表">
+        <ul class="wb-list signature-list" aria-label="我的合同列表" data-tour="signatures:2">
           <MySignatureRow
             v-for="item in pagedContracts"
             :key="item.id"

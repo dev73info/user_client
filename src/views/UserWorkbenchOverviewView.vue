@@ -108,7 +108,7 @@ onMounted(() => {
     :aria-busy="loading"
   >
     <WorkbenchBarSlot>
-      <div class="wb-strip" aria-label="工作台概览">
+      <div class="wb-strip" aria-label="工作台概览" data-tour="basic:3">
         <div class="wb-strip__item">
           <span class="wb-strip__label">我的需求</span>
           <span class="wb-strip__value">{{ requirementStats.total }}</span>
@@ -146,6 +146,7 @@ onMounted(() => {
       role="link"
       tabindex="0"
       aria-label="进入我的主页"
+      data-tour="basic:1"
       @click="goProfile"
       @keydown="handleWelcomeKeydown"
     >
@@ -207,7 +208,11 @@ onMounted(() => {
         </div>
       </section>
 
-      <section class="overview-panel overview-shortcuts" aria-labelledby="overview-shortcuts-title">
+      <section
+        class="overview-panel overview-shortcuts"
+        aria-labelledby="overview-shortcuts-title"
+        data-tour="basic:4"
+      >
         <header class="overview-panel__head">
           <div>
             <h2 id="overview-shortcuts-title">快捷入口</h2>
@@ -234,7 +239,11 @@ onMounted(() => {
         </div>
       </section>
 
-      <section class="overview-panel overview-recent" aria-labelledby="overview-recent-title">
+      <section
+        class="overview-panel overview-recent"
+        aria-labelledby="overview-recent-title"
+        data-tour="basic:9"
+      >
         <header class="overview-panel__head">
           <div>
             <h2 id="overview-recent-title">最近需求</h2>

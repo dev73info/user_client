@@ -19,6 +19,7 @@ import {
   type SelectModelValue,
 } from 'ui_73info'
 
+import TourButton from '@/features/tour/TourButton.vue'
 import type { RequirementGuaranteeFilter } from '@/shared/requirementDisplay'
 
 defineProps<{
@@ -48,7 +49,7 @@ const keyword = defineModel<string>('keyword', { required: true })
 </script>
 
 <template>
-  <div class="requirement-hall__toolbar">
+  <div class="requirement-hall__toolbar" data-tour="requirement-hall:1">
     <TSelect
       class="requirement-hall__guarantee-select"
       :model-value="guaranteeFilter"
@@ -82,7 +83,13 @@ const keyword = defineModel<string>('keyword', { required: true })
     </TInput>
 
     <div class="portal-page__header-actions requirement-hall__header-actions">
-      <button class="requirement-hall__publish-btn" type="button" @click="emit('publish')">
+      <TourButton tour="requirement-hall" />
+      <button
+        class="requirement-hall__publish-btn"
+        type="button"
+        data-tour="requirement-hall:4"
+        @click="emit('publish')"
+      >
         <TIcon>
           <Plus />
         </TIcon>

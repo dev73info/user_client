@@ -11,14 +11,23 @@ import type { AccountEntryGroup } from '@/shared/accountEntries'
  * 全套 scoped 规则都在本文件，包括那条依赖 `.entry-row` 作祖先的 `:deep(.t73-button__label)`
  * ——它留在视图里就再也命中不了（视图里已经没有任何 `.entry-row` 节点）。
  */
-defineProps<{ groups: AccountEntryGroup[] }>()
+defineProps<{
+  groups: AccountEntryGroup[]
+  /** 分组标题 → 引导锚点，只给需要被语音引导高亮的分组用。 */
+  groupAnchors?: Record<string, string>
+}>()
 
 const emit = defineEmits<{ open: [key: string] }>()
 </script>
 
 <template>
   <div class="entry-groups">
-    <div v-for="group in groups" :key="group.title" class="entry-group">
+    <div
+      v-for="group in groups"
+      :key="group.title"
+      class="entry-group"
+      :data-tour="groupAnchors?.[group.title]"
+    >
       <p class="entry-group__title">{{ group.title }}</p>
       <div class="entry-grid">
         <TButton
