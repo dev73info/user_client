@@ -3776,6 +3776,54 @@
         }
       }
     },
+    "/api/admin/mcp-audit": {
+      "get": {
+        "tags": [
+          "ticket-admin"
+        ],
+        "summary": "工单 MCP 调用审计",
+        "description": "分页查看 MCP tools/call 的调用记录（含失败）。需要 `ticket.mcp_audit.get`。",
+        "operationId": "ticket_admin_mcp_audit",
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "page_size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "审计分页列表",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/McpAuditPageResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "没有登录或令牌无效"
+          },
+          "403": {
+            "description": "没有审计权限"
+          }
+        }
+      }
+    },
     "/api/admin/notification": {
       "get": {
         "tags": [
@@ -6639,12 +6687,20 @@
         "tags": [
           "ticket-admin"
         ],
-        "summary": "全部工单列表",
-        "description": "客服查看全部工单，可按状态、创建者、负责人、分类和关键字筛选。需要 `ticket.admin_list.get`。",
+        "summary": "全部工单分页列表",
+        "description": "客服查看全部工单，可按状态、优先级、创建者、负责人、分类、关键字、首响逾期与未指派筛选。需要 `ticket.admin_list.get`。",
         "operationId": "ticket_admin_list",
         "parameters": [
           {
             "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "priority",
             "in": "query",
             "required": false,
             "schema": {
@@ -6682,30 +6738,220 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "name": "overdue",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "name": "unassigned",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "page_size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
           }
         ],
         "responses": {
           "200": {
-            "description": "工单列表",
+            "description": "工单分页列表",
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/TicketResponse"
-                  }
+                  "$ref": "#/components/schemas/TicketPageResponse"
                 }
               }
             }
           },
           "400": {
-            "description": "状态筛选值不合法"
+            "description": "状态或优先级筛选值不合法"
           },
           "401": {
             "description": "没有登录或令牌无效"
           },
           "403": {
             "description": "没有管理端工单列表权限"
+          }
+        }
+      }
+    },
+    "/api/admin/tickets/attachments/{attachment_id}": {
+      "get": {
+        "tags": [
+          "ticket-admin"
+        ],
+        "summary": "客服下载工单附件",
+        "description": "具备 `ticket.admin_detail.get` 的客服可下载任意工单附件。",
+        "operationId": "ticket_admin_attachment_download",
+        "parameters": [
+          {
+            "name": "attachment_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "文件字节",
+            "content": {
+              "application/octet-stream": {}
+            }
+          },
+          "401": {
+            "description": "没有登录或令牌无效"
+          },
+          "403": {
+            "description": "没有管理端详情权限"
+          },
+          "404": {
+            "description": "附件不存在"
+          }
+        }
+      }
+    },
+    "/api/admin/tickets/categories": {
+      "get": {
+        "tags": [
+          "ticket-admin"
+        ],
+        "summary": "全部工单分类",
+        "description": "含停用分类。需要 `ticket.admin_category.get`。",
+        "operationId": "ticket_admin_categories",
+        "responses": {
+          "200": {
+            "description": "分类列表",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/TicketCategoryResponse"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "没有登录或令牌无效"
+          },
+          "403": {
+            "description": "没有分类权限"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "ticket-admin"
+        ],
+        "summary": "新增工单分类",
+        "description": "分类名唯一。需要 `ticket.admin_category.post`。",
+        "operationId": "ticket_admin_category_create",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateCategoryRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "创建的分类",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TicketCategoryResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "分类名不合法或已存在"
+          },
+          "401": {
+            "description": "没有登录或令牌无效"
+          },
+          "403": {
+            "description": "没有分类权限"
+          }
+        }
+      }
+    },
+    "/api/admin/tickets/categories/{name}": {
+      "patch": {
+        "tags": [
+          "ticket-admin"
+        ],
+        "summary": "编辑工单分类",
+        "description": "修改排序值或启用状态。需要 `ticket.admin_category.patch`。",
+        "operationId": "ticket_admin_category_update",
+        "parameters": [
+          {
+            "name": "name",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateCategoryRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "更新后的分类",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TicketCategoryResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "没有更新字段或分类不存在"
+          },
+          "401": {
+            "description": "没有登录或令牌无效"
+          },
+          "403": {
+            "description": "没有分类权限"
           }
         }
       }
@@ -6723,6 +6969,62 @@
             "description": "SSE 事件流",
             "content": {
               "text/event-stream": {}
+            }
+          },
+          "401": {
+            "description": "没有登录或令牌无效"
+          },
+          "403": {
+            "description": "没有管理端工单列表权限"
+          }
+        }
+      }
+    },
+    "/api/admin/tickets/stats": {
+      "get": {
+        "tags": [
+          "ticket-admin"
+        ],
+        "summary": "工单处理统计",
+        "description": "总数、各状态数量、未指派、首响逾期、满意度均值与评价数。需要 `ticket.stats.get`。",
+        "operationId": "ticket_admin_stats",
+        "responses": {
+          "200": {
+            "description": "统计结果",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TicketStatsResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "没有登录或令牌无效"
+          },
+          "403": {
+            "description": "没有统计权限"
+          }
+        }
+      }
+    },
+    "/api/admin/tickets/unread-count": {
+      "get": {
+        "tags": [
+          "ticket-admin"
+        ],
+        "summary": "客服未读工单数",
+        "description": "当前客服尚未读过的 open/processing 工单数。需要 `ticket.admin_list.get`。",
+        "operationId": "ticket_admin_unread_count",
+        "responses": {
+          "200": {
+            "description": "未读数",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UnreadCountResponse"
+                }
+              }
             }
           },
           "401": {
@@ -6771,7 +7073,7 @@
           "ticket-admin"
         ],
         "summary": "管理端工单详情",
-        "description": "客服可查看任意工单，响应包含内部留言。需要 `ticket.admin_detail.get`。",
+        "description": "客服可查看任意工单，响应包含内部备注、完整事件流与可执行动作。需要 `ticket.admin_detail.get`。",
         "operationId": "ticket_admin_detail",
         "parameters": [
           {
@@ -6858,13 +7160,101 @@
         }
       }
     },
+    "/api/admin/tickets/{ticket_id}/claim": {
+      "post": {
+        "tags": [
+          "ticket-admin"
+        ],
+        "summary": "认领工单",
+        "description": "未指派或本人负责的 open/processing 工单可认领；并发认领只有一个成功，其余 409。需要 `ticket.claim.patch`。",
+        "operationId": "ticket_admin_claim",
+        "parameters": [
+          {
+            "name": "ticket_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "认领后的工单",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TicketResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "没有登录或令牌无效"
+          },
+          "403": {
+            "description": "没有认领权限"
+          },
+          "404": {
+            "description": "工单不存在"
+          },
+          "409": {
+            "description": "已被其他客服认领"
+          }
+        }
+      }
+    },
+    "/api/admin/tickets/{ticket_id}/close": {
+      "post": {
+        "tags": [
+          "ticket-admin"
+        ],
+        "summary": "客服关闭工单",
+        "description": "open/processing/resolved 可关闭；已关闭 409。需要 `ticket.close_staff.patch`。",
+        "operationId": "ticket_admin_close",
+        "parameters": [
+          {
+            "name": "ticket_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "关闭后的工单",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TicketResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "没有登录或令牌无效"
+          },
+          "403": {
+            "description": "没有关闭权限"
+          },
+          "404": {
+            "description": "工单不存在"
+          },
+          "409": {
+            "description": "工单已关闭"
+          }
+        }
+      }
+    },
     "/api/admin/tickets/{ticket_id}/messages": {
       "post": {
         "tags": [
           "ticket-admin"
         ],
         "summary": "客服回复工单",
-        "description": "回复 open 工单后进入 processing。`internal=true` 且拥有 `ticket.reply.internal` 时写内部留言，普通用户不可见。需要 `ticket.admin_reply.post`。",
+        "description": "公开回复会把 open 推进到 processing 并写首响；`internal=true` 且拥有 `ticket.reply.internal` 时写内部备注，不改状态与首响。需要 `ticket.admin_reply.post`。",
         "operationId": "ticket_admin_reply",
         "parameters": [
           {
@@ -6904,7 +7294,183 @@
             "description": "没有登录或令牌无效"
           },
           "403": {
-            "description": "没有管理端回复权限"
+            "description": "没有管理端回复权限或内部备注权限"
+          },
+          "404": {
+            "description": "工单不存在"
+          }
+        }
+      }
+    },
+    "/api/admin/tickets/{ticket_id}/read": {
+      "patch": {
+        "tags": [
+          "ticket-admin"
+        ],
+        "summary": "客服标记工单已读",
+        "description": "记录当前客服对这条工单的已读时间。需要 `ticket.admin_list.get`。",
+        "operationId": "ticket_admin_mark_read",
+        "parameters": [
+          {
+            "name": "ticket_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "已标记"
+          },
+          "401": {
+            "description": "没有登录或令牌无效"
+          },
+          "403": {
+            "description": "没有管理端工单列表权限"
+          },
+          "404": {
+            "description": "工单不存在"
+          }
+        }
+      }
+    },
+    "/api/admin/tickets/{ticket_id}/release": {
+      "post": {
+        "tags": [
+          "ticket-admin"
+        ],
+        "summary": "释放工单",
+        "description": "只有当前负责人可以释放。需要 `ticket.release.patch`。",
+        "operationId": "ticket_admin_release",
+        "parameters": [
+          {
+            "name": "ticket_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "释放后的工单",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TicketResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "没有登录或令牌无效"
+          },
+          "403": {
+            "description": "没有释放权限"
+          },
+          "404": {
+            "description": "工单不存在"
+          },
+          "409": {
+            "description": "不是当前负责人"
+          }
+        }
+      }
+    },
+    "/api/admin/tickets/{ticket_id}/resolve": {
+      "post": {
+        "tags": [
+          "ticket-admin"
+        ],
+        "summary": "标记工单已解决",
+        "description": "open/processing 可标记为 resolved。需要 `ticket.resolve.patch`。",
+        "operationId": "ticket_admin_resolve",
+        "parameters": [
+          {
+            "name": "ticket_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "已解决的工单",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TicketResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "当前状态不允许解决"
+          },
+          "401": {
+            "description": "没有登录或令牌无效"
+          },
+          "403": {
+            "description": "没有解决权限"
+          },
+          "404": {
+            "description": "工单不存在"
+          }
+        }
+      }
+    },
+    "/api/admin/tickets/{ticket_id}/transfer": {
+      "post": {
+        "tags": [
+          "ticket-admin"
+        ],
+        "summary": "转交工单",
+        "description": "目标账号必须有 `ticket.staff.access`；无 `ticket.assign.any` 时只能转给自己。需要 `ticket.transfer.patch`。",
+        "operationId": "ticket_admin_transfer",
+        "parameters": [
+          {
+            "name": "ticket_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TransferTicketRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "转交后的工单",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TicketResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "目标账号不具备处理资格"
+          },
+          "401": {
+            "description": "没有登录或令牌无效"
+          },
+          "403": {
+            "description": "没有转交权限或试图转给他人"
           },
           "404": {
             "description": "工单不存在"
@@ -22310,6 +22876,44 @@
         }
       }
     },
+    "/api/requirement/{requirement_id}/fee-terms": {
+      "get": {
+        "tags": [
+          "requirement"
+        ],
+        "summary": "读费率披露（合同创建时锁定的快照）",
+        "description": "返回这条需求在**合同创建时**锁定并落库的费率与金额拆分，需要 `requirement.detail.get`；数据可见性与详情不同，只给需求方本人、已接单开发者，以及持有需求管理权限（`requirement.list_all.get`）的管理端，其余一律 403。金额一律整数分、比例一律基点：`platform_fee_bps` / `personal_income_tax_bps` 是合同总额口径，`deposit_ratio_bps` 是定金比例；`*_fen` 字段分别是按合同总额、定金那一笔、尾款那一笔用 `PaymentTerms::allocate_amount` 拆出来的平台服务费 / 个税 / 开发者到手。**不读当前配置**，平台之后调费率不回溯。自管模式（没有合同、没有定金、没有分账）与本次上线前已签、尚未补建快照的旧合同统一返回 404，前端按「费率待确认」展示，不阻塞旧单。",
+        "operationId": "requirement_fee_terms",
+        "parameters": [
+          {
+            "name": "requirement_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "费率披露",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FeeTermsResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "不是需求当事人，也没有需求管理权限"
+          },
+          "404": {
+            "description": "需求不存在，或还没有费率快照（自管 / 旧合同）"
+          }
+        }
+      }
+    },
     "/api/requirement/{requirement_id}/final-pay-cure": {
       "post": {
         "tags": [
@@ -31671,21 +32275,49 @@
           "ticket"
         ],
         "summary": "本人工单列表",
-        "description": "只列当前用户创建的工单；`/api/tickets` 是等价入口。需要 `ticket.list_mine.get`。",
+        "description": "只列当前用户创建的工单，返回分页信封 `{items,total,page,page_size}`；`/api/tickets` 是等价入口。需要 `ticket.list_mine.get`。",
         "operationId": "ticket_list_mine",
+        "parameters": [
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "page_size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
         "responses": {
           "200": {
-            "description": "本人工单列表",
+            "description": "本人工单分页列表",
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/TicketResponse"
-                  }
+                  "$ref": "#/components/schemas/TicketPageResponse"
                 }
               }
             }
+          },
+          "400": {
+            "description": "状态筛选值不合法"
           },
           "401": {
             "description": "没有登录或令牌无效"
@@ -31700,7 +32332,7 @@
           "ticket"
         ],
         "summary": "创建工单",
-        "description": "创建工单并写入首条公开留言；`/api/tickets` 是等价入口。需要 `ticket.create.post`。",
+        "description": "创建工单并写入首条公开留言；可用 attachment_ids 绑定已上传附件。`/api/tickets` 是等价入口。需要 `ticket.create.post`。",
         "operationId": "ticket_create",
         "requestBody": {
           "content": {
@@ -31735,13 +32367,119 @@
         }
       }
     },
+    "/api/ticket/attachments": {
+      "post": {
+        "tags": [
+          "ticket"
+        ],
+        "summary": "上传工单附件",
+        "description": "multipart/form-data，文件字段名 `file`。单文件 ≤20MB，支持 png/jpg/jpeg/gif/webp/pdf/doc/docx/xls/xlsx/ppt/pptx/txt/zip。返回的 id 可在建单或回复时绑定。需要 `ticket.attachment.upload.post`。",
+        "operationId": "ticket_attachment_upload",
+        "responses": {
+          "201": {
+            "description": "附件元信息",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TicketAttachmentResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "文件为空或格式不正确"
+          },
+          "401": {
+            "description": "没有登录或令牌无效"
+          },
+          "403": {
+            "description": "没有上传权限"
+          },
+          "413": {
+            "description": "超过 20MB"
+          },
+          "415": {
+            "description": "不支持的文件类型"
+          }
+        }
+      }
+    },
+    "/api/ticket/attachments/{attachment_id}": {
+      "get": {
+        "tags": [
+          "ticket"
+        ],
+        "summary": "下载工单附件",
+        "description": "仅上传者本人或工单创建者可下载。需要 `ticket.attachment.download.get`。",
+        "operationId": "ticket_attachment_download",
+        "parameters": [
+          {
+            "name": "attachment_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "文件字节",
+            "content": {
+              "application/octet-stream": {}
+            }
+          },
+          "401": {
+            "description": "没有登录或令牌无效"
+          },
+          "403": {
+            "description": "无权下载该附件"
+          },
+          "404": {
+            "description": "附件不存在"
+          }
+        }
+      }
+    },
+    "/api/ticket/categories": {
+      "get": {
+        "tags": [
+          "ticket"
+        ],
+        "summary": "可用工单分类",
+        "description": "返回启用中的工单分类，按排序值升序。需要 `ticket.category.get`。",
+        "operationId": "ticket_categories",
+        "responses": {
+          "200": {
+            "description": "分类列表",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/TicketCategoryResponse"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "没有登录或令牌无效"
+          },
+          "403": {
+            "description": "没有查看分类权限"
+          }
+        }
+      }
+    },
     "/api/ticket/{ticket_id}": {
       "get": {
         "tags": [
           "ticket"
         ],
         "summary": "本人工单详情",
-        "description": "只有创建者本人可读；响应永不包含内部留言。`/api/tickets/{ticket_id}` 是等价入口。需要 `ticket.detail.get`。",
+        "description": "只有创建者本人可读；响应不含内部备注。返回 ticket / messages / events / actions。`/api/tickets/{ticket_id}` 是等价入口。需要 `ticket.detail.get`。",
         "operationId": "ticket_detail",
         "parameters": [
           {
@@ -31782,7 +32520,7 @@
           "ticket"
         ],
         "summary": "关闭本人工单",
-        "description": "只有创建者本人可关闭；`/api/tickets/{ticket_id}/close` 是等价入口。需要 `ticket.close.patch`。",
+        "description": "只有创建者本人可关闭；已关闭时 409。`/api/tickets/{ticket_id}/close` 是等价入口。需要 `ticket.close.patch`。",
         "operationId": "ticket_close",
         "parameters": [
           {
@@ -31813,6 +32551,9 @@
           },
           "404": {
             "description": "工单不存在"
+          },
+          "409": {
+            "description": "工单已关闭"
           }
         }
       }
@@ -31823,7 +32564,7 @@
           "ticket"
         ],
         "summary": "回复本人工单",
-        "description": "只有创建者本人可回复；resolved 或 closed 状态会重新打开为 open。返回的详情不含内部留言。需要 `ticket.reply.post`。",
+        "description": "只有创建者本人可回复；resolved/closed 且距解决/关闭不超过 7 天会重开为 open，超期 409。返回的详情不含内部备注。需要 `ticket.reply.post`。",
         "operationId": "ticket_reply",
         "parameters": [
           {
@@ -31867,6 +32608,144 @@
           },
           "404": {
             "description": "工单不存在"
+          },
+          "409": {
+            "description": "超过 7 天重开期限"
+          }
+        }
+      }
+    },
+    "/api/ticket/{ticket_id}/read": {
+      "patch": {
+        "tags": [
+          "ticket"
+        ],
+        "summary": "标记本人工单已读",
+        "description": "只有创建者本人可标记。需要 `ticket.read.patch`。",
+        "operationId": "ticket_read",
+        "parameters": [
+          {
+            "name": "ticket_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "已标记"
+          },
+          "401": {
+            "description": "没有登录或令牌无效"
+          },
+          "403": {
+            "description": "不是工单创建者"
+          },
+          "404": {
+            "description": "工单不存在"
+          }
+        }
+      }
+    },
+    "/api/ticket/{ticket_id}/reopen": {
+      "patch": {
+        "tags": [
+          "ticket"
+        ],
+        "summary": "重开本人工单",
+        "description": "创建者可在 resolved/closed 后 7 天内重开，超过 7 天 409。需要 `ticket.reopen.patch`。",
+        "operationId": "ticket_reopen",
+        "parameters": [
+          {
+            "name": "ticket_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "重开后的工单",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TicketResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "没有登录或令牌无效"
+          },
+          "403": {
+            "description": "不是工单创建者"
+          },
+          "404": {
+            "description": "工单不存在"
+          },
+          "409": {
+            "description": "超过 7 天重开期限或状态不允许"
+          }
+        }
+      }
+    },
+    "/api/ticket/{ticket_id}/satisfaction": {
+      "post": {
+        "tags": [
+          "ticket"
+        ],
+        "summary": "评价本人工单",
+        "description": "仅创建者、仅 resolved/closed 状态可评价；1–5 星，可附评论，可修改。需要 `ticket.satisfaction.post`。",
+        "operationId": "ticket_satisfaction",
+        "parameters": [
+          {
+            "name": "ticket_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SatisfactionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "评价后的工单",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TicketResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "评分不是 1–5"
+          },
+          "401": {
+            "description": "没有登录或令牌无效"
+          },
+          "403": {
+            "description": "不是工单创建者"
+          },
+          "404": {
+            "description": "工单不存在"
+          },
+          "409": {
+            "description": "当前状态不允许评价"
           }
         }
       }
@@ -37886,7 +38765,7 @@
             "type": "integer",
             "format": "int64",
             "description": "合同签好后甲方缴付定金的期限（小时）。\n\n逾期视为甲方根本违约：解除绑定、作废合同、需求回到大厅。\n取值 1～720（1 小时 ~ 30 天），0 会让期限立刻到期，属于配置事故。",
-            "default": 48
+            "default": 168
           },
           "developer_final_cure_max": {
             "type": "integer",
@@ -39839,6 +40718,24 @@
           }
         }
       },
+      "CreateCategoryRequest": {
+        "type": "object",
+        "required": [
+          "name"
+        ],
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "sort_order": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32"
+          }
+        }
+      },
       "CreateClientRequest": {
         "type": "object",
         "description": "客户端创建请求。",
@@ -40578,6 +41475,14 @@
           "content"
         ],
         "properties": {
+          "attachment_ids": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "format": "int64"
+            },
+            "description": "先用 `POST /api/ticket/attachments` 上传，拿到的附件 id 在这里绑定。"
+          },
           "category": {
             "type": [
               "string",
@@ -43233,6 +44138,120 @@
           }
         }
       },
+      "FeeTermsResponse": {
+        "type": "object",
+        "description": "费率披露响应。\n\n金额一律**整数分**、比例一律**基点**；字段名是前端契约，改名即破坏展示。",
+        "required": [
+          "requirement_id",
+          "platform_fee_bps",
+          "personal_income_tax_bps",
+          "total_fen",
+          "deposit_fen",
+          "deposit_ratio_bps",
+          "platform_fee_fen",
+          "tax_fen",
+          "developer_net_fen",
+          "deposit_platform_fee_fen",
+          "deposit_tax_fen",
+          "deposit_developer_net_fen",
+          "final_platform_fee_fen",
+          "final_tax_fen",
+          "final_developer_net_fen",
+          "customer_breach_platform_fee_bps",
+          "customer_breach_tax_bps",
+          "snapshot_at"
+        ],
+        "properties": {
+          "customer_breach_platform_fee_bps": {
+            "type": "integer",
+            "format": "int64",
+            "description": "客户违约时罚没定金里平台拿的比例（基点）。"
+          },
+          "customer_breach_tax_bps": {
+            "type": "integer",
+            "format": "int64",
+            "description": "客户违约时平台代扣的个税（基点）。"
+          },
+          "deposit_developer_net_fen": {
+            "type": "integer",
+            "format": "int64",
+            "description": "定金那一笔：开发者到手（分）。"
+          },
+          "deposit_fen": {
+            "type": "integer",
+            "format": "int64",
+            "description": "定金（分）。"
+          },
+          "deposit_platform_fee_fen": {
+            "type": "integer",
+            "format": "int64",
+            "description": "定金那一笔：平台服务费（分）。"
+          },
+          "deposit_ratio_bps": {
+            "type": "integer",
+            "format": "int64",
+            "description": "定金比例（基点，快照）。"
+          },
+          "deposit_tax_fen": {
+            "type": "integer",
+            "format": "int64",
+            "description": "定金那一笔：个税（分）。"
+          },
+          "developer_net_fen": {
+            "type": "integer",
+            "format": "int64",
+            "description": "按合同总额拆分：开发者到手（分）。"
+          },
+          "final_developer_net_fen": {
+            "type": "integer",
+            "format": "int64",
+            "description": "尾款那一笔：开发者到手（分）。"
+          },
+          "final_platform_fee_fen": {
+            "type": "integer",
+            "format": "int64",
+            "description": "尾款那一笔：平台服务费（分）。"
+          },
+          "final_tax_fen": {
+            "type": "integer",
+            "format": "int64",
+            "description": "尾款那一笔：个税（分）。"
+          },
+          "personal_income_tax_bps": {
+            "type": "integer",
+            "format": "int64",
+            "description": "个人所得税比例（基点）。"
+          },
+          "platform_fee_bps": {
+            "type": "integer",
+            "format": "int64",
+            "description": "平台服务费比例（基点）。"
+          },
+          "platform_fee_fen": {
+            "type": "integer",
+            "format": "int64",
+            "description": "按合同总额拆分：平台服务费（分）。"
+          },
+          "requirement_id": {
+            "type": "string",
+            "description": "需求编号。"
+          },
+          "snapshot_at": {
+            "type": "string",
+            "description": "快照锁定时间（东八区 `YYYY-MM-DD HH:MM:SS`）。"
+          },
+          "tax_fen": {
+            "type": "integer",
+            "format": "int64",
+            "description": "按合同总额拆分：个税（分）。"
+          },
+          "total_fen": {
+            "type": "integer",
+            "format": "int64",
+            "description": "合同总额（分）。"
+          }
+        }
+      },
       "FileCaseRequest": {
         "type": "object",
         "description": "立案请求体。",
@@ -45051,6 +46070,82 @@
           }
         }
       },
+      "McpAuditPageResponse": {
+        "type": "object",
+        "required": [
+          "items",
+          "total",
+          "page",
+          "page_size"
+        ],
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/McpAuditRecordResponse"
+            }
+          },
+          "page": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "page_size": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "total": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      },
+      "McpAuditRecordResponse": {
+        "type": "object",
+        "required": [
+          "id",
+          "username",
+          "tool_name",
+          "success",
+          "created_at"
+        ],
+        "properties": {
+          "created_at": {
+            "type": "string"
+          },
+          "duration_ms": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32"
+          },
+          "error_code": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "success": {
+            "type": "boolean"
+          },
+          "ticket_id": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "tool_name": {
+            "type": "string"
+          },
+          "username": {
+            "type": "string"
+          }
+        }
+      },
       "MemberResponse": {
         "type": "object",
         "description": "成员。",
@@ -46232,6 +47327,25 @@
           },
           "title": {
             "type": "string"
+          }
+        }
+      },
+      "PageQuery": {
+        "type": "object",
+        "properties": {
+          "page": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64"
+          },
+          "page_size": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64"
           }
         }
       },
@@ -48963,6 +50077,13 @@
           "content"
         ],
         "properties": {
+          "attachment_ids": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
           "content": {
             "type": "string"
           },
@@ -50476,6 +51597,25 @@
           }
         }
       },
+      "SatisfactionRequest": {
+        "type": "object",
+        "required": [
+          "rating"
+        ],
+        "properties": {
+          "comment": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "rating": {
+            "type": "integer",
+            "format": "int32",
+            "description": "1–5 星。"
+          }
+        }
+      },
       "SaveOutcome_DatabaseView": {
         "type": "object",
         "description": "保存结果：带上「需要重启」的明确提示。",
@@ -50947,7 +52087,7 @@
                 "type": "integer",
                 "format": "int64",
                 "description": "合同签好后甲方缴付定金的期限（小时）。\n\n逾期视为甲方根本违约：解除绑定、作废合同、需求回到大厅。\n取值 1～720（1 小时 ~ 30 天），0 会让期限立刻到期，属于配置事故。",
-                "default": 48
+                "default": 168
               },
               "developer_final_cure_max": {
                 "type": "integer",
@@ -53865,13 +55005,130 @@
           }
         }
       },
+      "TicketActionsResponse": {
+        "type": "object",
+        "required": [
+          "can_reply",
+          "can_close",
+          "can_reopen",
+          "can_rate",
+          "can_claim",
+          "can_release",
+          "can_transfer",
+          "can_resolve",
+          "can_assign"
+        ],
+        "properties": {
+          "can_assign": {
+            "type": "boolean"
+          },
+          "can_claim": {
+            "type": "boolean"
+          },
+          "can_close": {
+            "type": "boolean"
+          },
+          "can_rate": {
+            "type": "boolean"
+          },
+          "can_release": {
+            "type": "boolean"
+          },
+          "can_reopen": {
+            "type": "boolean"
+          },
+          "can_reply": {
+            "type": "boolean"
+          },
+          "can_resolve": {
+            "type": "boolean"
+          },
+          "can_transfer": {
+            "type": "boolean"
+          }
+        }
+      },
+      "TicketAttachmentResponse": {
+        "type": "object",
+        "required": [
+          "id",
+          "file_name",
+          "size_bytes",
+          "url",
+          "created_at"
+        ],
+        "properties": {
+          "content_type": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "created_at": {
+            "type": "string"
+          },
+          "file_name": {
+            "type": "string"
+          },
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "size_bytes": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "url": {
+            "type": "string"
+          }
+        }
+      },
+      "TicketCategoryResponse": {
+        "type": "object",
+        "required": [
+          "name",
+          "sort_order",
+          "active",
+          "created_at",
+          "updated_at"
+        ],
+        "properties": {
+          "active": {
+            "type": "boolean"
+          },
+          "created_at": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "sort_order": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "updated_at": {
+            "type": "string"
+          }
+        }
+      },
       "TicketDetailResponse": {
         "type": "object",
         "required": [
           "ticket",
-          "messages"
+          "messages",
+          "events",
+          "actions"
         ],
         "properties": {
+          "actions": {
+            "$ref": "#/components/schemas/TicketActionsResponse"
+          },
+          "events": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TicketEventResponse"
+            }
+          },
           "messages": {
             "type": "array",
             "items": {
@@ -53880,6 +55137,60 @@
           },
           "ticket": {
             "$ref": "#/components/schemas/TicketResponse"
+          }
+        }
+      },
+      "TicketEventResponse": {
+        "type": "object",
+        "required": [
+          "id",
+          "ticket_id",
+          "event_type",
+          "created_at"
+        ],
+        "properties": {
+          "actor": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "actor_role": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "created_at": {
+            "type": "string"
+          },
+          "event_type": {
+            "type": "string"
+          },
+          "from_value": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "note": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "ticket_id": {
+            "type": "string"
+          },
+          "to_value": {
+            "type": [
+              "string",
+              "null"
+            ]
           }
         }
       },
@@ -53910,9 +55221,41 @@
               "null"
             ]
           },
+          "overdue": {
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "page": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64"
+          },
+          "page_size": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64"
+          },
+          "priority": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
           "status": {
             "type": [
               "string",
+              "null"
+            ]
+          },
+          "unassigned": {
+            "type": [
+              "boolean",
               "null"
             ]
           }
@@ -53927,9 +55270,16 @@
           "sender_role",
           "content",
           "internal",
+          "attachments",
           "created_at"
         ],
         "properties": {
+          "attachments": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TicketAttachmentResponse"
+            }
+          },
           "content": {
             "type": "string"
           },
@@ -53954,6 +55304,35 @@
           }
         }
       },
+      "TicketPageResponse": {
+        "type": "object",
+        "required": [
+          "items",
+          "total",
+          "page",
+          "page_size"
+        ],
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TicketResponse"
+            }
+          },
+          "page": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "page_size": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "total": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      },
       "TicketResponse": {
         "type": "object",
         "required": [
@@ -53963,6 +55342,10 @@
           "subject",
           "priority",
           "status",
+          "first_response_overdue",
+          "reopen_count",
+          "source",
+          "unread_count",
           "created_at",
           "updated_at"
         ],
@@ -53979,11 +55362,32 @@
               "null"
             ]
           },
+          "closed_at": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
           "created_at": {
             "type": "string"
           },
           "creator": {
             "type": "string"
+          },
+          "first_response_at": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "first_response_due_at": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "first_response_overdue": {
+            "type": "boolean"
           },
           "id": {
             "type": "integer",
@@ -54001,7 +55405,51 @@
               "null"
             ]
           },
+          "last_staff_reply_at": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "last_user_reply_at": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
           "priority": {
+            "type": "string"
+          },
+          "reopen_count": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "resolved_at": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "satisfaction_comment": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "satisfaction_rated_at": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "satisfaction_rating": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32"
+          },
+          "source": {
             "type": "string"
           },
           "status": {
@@ -54013,8 +55461,83 @@
           "ticket_id": {
             "type": "string"
           },
+          "unread_count": {
+            "type": "integer",
+            "format": "int64",
+            "description": "当前查看者的未读消息数（列表/详情按查看者计算）。"
+          },
           "updated_at": {
             "type": "string"
+          }
+        }
+      },
+      "TicketStatsResponse": {
+        "type": "object",
+        "required": [
+          "total",
+          "open",
+          "processing",
+          "resolved",
+          "closed",
+          "unassigned",
+          "overdue",
+          "satisfaction_count"
+        ],
+        "properties": {
+          "avg_first_response_seconds": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "format": "double",
+            "description": "首响平均用时（秒）。"
+          },
+          "avg_resolution_seconds": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "format": "double",
+            "description": "解决/关闭平均用时（秒）。"
+          },
+          "closed": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "open": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "overdue": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "processing": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "resolved": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "satisfaction_avg": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "format": "double"
+          },
+          "satisfaction_count": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "total": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "unassigned": {
+            "type": "integer",
+            "format": "int64"
           }
         }
       },
@@ -54682,6 +56205,17 @@
           }
         }
       },
+      "TransferTicketRequest": {
+        "type": "object",
+        "required": [
+          "assigned_to"
+        ],
+        "properties": {
+          "assigned_to": {
+            "type": "string"
+          }
+        }
+      },
       "TurnstileView": {
         "type": "object",
         "description": "Turnstile 配置的对外形状（服务端密钥掩码）。",
@@ -55017,6 +56551,24 @@
           "image_url": {
             "type": "string",
             "description": "背景地址；传空串表示清空背景。"
+          }
+        }
+      },
+      "UpdateCategoryRequest": {
+        "type": "object",
+        "properties": {
+          "active": {
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "sort_order": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32"
           }
         }
       },
@@ -56388,6 +57940,31 @@
           "username": {
             "type": "string",
             "description": "用户名。"
+          }
+        }
+      },
+      "UserTicketListQuery": {
+        "type": "object",
+        "properties": {
+          "page": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64"
+          },
+          "page_size": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64"
+          },
+          "status": {
+            "type": [
+              "string",
+              "null"
+            ]
           }
         }
       },

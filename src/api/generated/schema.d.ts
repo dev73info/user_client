@@ -1265,6 +1265,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/admin/mcp-audit": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 工单 MCP 调用审计
+         * @description 分页查看 MCP tools/call 的调用记录（含失败）。需要 `ticket.mcp_audit.get`。
+         */
+        get: operations["ticket_admin_mcp_audit"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/admin/notification": {
         parameters: {
             query?: never;
@@ -2221,8 +2241,8 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * 全部工单列表
-         * @description 客服查看全部工单，可按状态、创建者、负责人、分类和关键字筛选。需要 `ticket.admin_list.get`。
+         * 全部工单分页列表
+         * @description 客服查看全部工单，可按状态、优先级、创建者、负责人、分类、关键字、首响逾期与未指派筛选。需要 `ticket.admin_list.get`。
          */
         get: operations["ticket_admin_list"];
         put?: never;
@@ -2231,6 +2251,70 @@ export interface paths {
         options?: never;
         head?: never;
         patch?: never;
+        trace?: never;
+    };
+    "/api/admin/tickets/attachments/{attachment_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 客服下载工单附件
+         * @description 具备 `ticket.admin_detail.get` 的客服可下载任意工单附件。
+         */
+        get: operations["ticket_admin_attachment_download"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/tickets/categories": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 全部工单分类
+         * @description 含停用分类。需要 `ticket.admin_category.get`。
+         */
+        get: operations["ticket_admin_categories"];
+        put?: never;
+        /**
+         * 新增工单分类
+         * @description 分类名唯一。需要 `ticket.admin_category.post`。
+         */
+        post: operations["ticket_admin_category_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/tickets/categories/{name}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * 编辑工单分类
+         * @description 修改排序值或启用状态。需要 `ticket.admin_category.patch`。
+         */
+        patch: operations["ticket_admin_category_update"];
         trace?: never;
     };
     "/api/admin/tickets/events": {
@@ -2245,6 +2329,46 @@ export interface paths {
          * @description SSE 长连接，沿用旧路径的兼容入口。需要 `ticket.admin_list.get`；每次创建、回复、关闭或更新后推送 `ticket.updated`，数据只含 `ticket_id`，客户端据此刷新。新客户端请使用 WebSocket `/api/admin/tickets/ws`。
          */
         get: operations["ticket_admin_events"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/tickets/stats": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 工单处理统计
+         * @description 总数、各状态数量、未指派、首响逾期、满意度均值与评价数。需要 `ticket.stats.get`。
+         */
+        get: operations["ticket_admin_stats"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/tickets/unread-count": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 客服未读工单数
+         * @description 当前客服尚未读过的 open/processing 工单数。需要 `ticket.admin_list.get`。
+         */
+        get: operations["ticket_admin_unread_count"];
         put?: never;
         post?: never;
         delete?: never;
@@ -2282,7 +2406,7 @@ export interface paths {
         };
         /**
          * 管理端工单详情
-         * @description 客服可查看任意工单，响应包含内部留言。需要 `ticket.admin_detail.get`。
+         * @description 客服可查看任意工单，响应包含内部备注、完整事件流与可执行动作。需要 `ticket.admin_detail.get`。
          */
         get: operations["ticket_admin_detail"];
         put?: never;
@@ -2297,6 +2421,46 @@ export interface paths {
         patch: operations["ticket_admin_update"];
         trace?: never;
     };
+    "/api/admin/tickets/{ticket_id}/claim": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 认领工单
+         * @description 未指派或本人负责的 open/processing 工单可认领；并发认领只有一个成功，其余 409。需要 `ticket.claim.patch`。
+         */
+        post: operations["ticket_admin_claim"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/tickets/{ticket_id}/close": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 客服关闭工单
+         * @description open/processing/resolved 可关闭；已关闭 409。需要 `ticket.close_staff.patch`。
+         */
+        post: operations["ticket_admin_close"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/admin/tickets/{ticket_id}/messages": {
         parameters: {
             query?: never;
@@ -2308,9 +2472,89 @@ export interface paths {
         put?: never;
         /**
          * 客服回复工单
-         * @description 回复 open 工单后进入 processing。`internal=true` 且拥有 `ticket.reply.internal` 时写内部留言，普通用户不可见。需要 `ticket.admin_reply.post`。
+         * @description 公开回复会把 open 推进到 processing 并写首响；`internal=true` 且拥有 `ticket.reply.internal` 时写内部备注，不改状态与首响。需要 `ticket.admin_reply.post`。
          */
         post: operations["ticket_admin_reply"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/tickets/{ticket_id}/read": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * 客服标记工单已读
+         * @description 记录当前客服对这条工单的已读时间。需要 `ticket.admin_list.get`。
+         */
+        patch: operations["ticket_admin_mark_read"];
+        trace?: never;
+    };
+    "/api/admin/tickets/{ticket_id}/release": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 释放工单
+         * @description 只有当前负责人可以释放。需要 `ticket.release.patch`。
+         */
+        post: operations["ticket_admin_release"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/tickets/{ticket_id}/resolve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 标记工单已解决
+         * @description open/processing 可标记为 resolved。需要 `ticket.resolve.patch`。
+         */
+        post: operations["ticket_admin_resolve"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/tickets/{ticket_id}/transfer": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 转交工单
+         * @description 目标账号必须有 `ticket.staff.access`；无 `ticket.assign.any` 时只能转给自己。需要 `ticket.transfer.patch`。
+         */
+        post: operations["ticket_admin_transfer"];
         delete?: never;
         options?: never;
         head?: never;
@@ -8311,6 +8555,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/requirement/{requirement_id}/fee-terms": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 读费率披露（合同创建时锁定的快照）
+         * @description 返回这条需求在**合同创建时**锁定并落库的费率与金额拆分，需要 `requirement.detail.get`；数据可见性与详情不同，只给需求方本人、已接单开发者，以及持有需求管理权限（`requirement.list_all.get`）的管理端，其余一律 403。金额一律整数分、比例一律基点：`platform_fee_bps` / `personal_income_tax_bps` 是合同总额口径，`deposit_ratio_bps` 是定金比例；`*_fen` 字段分别是按合同总额、定金那一笔、尾款那一笔用 `PaymentTerms::allocate_amount` 拆出来的平台服务费 / 个税 / 开发者到手。**不读当前配置**，平台之后调费率不回溯。自管模式（没有合同、没有定金、没有分账）与本次上线前已签、尚未补建快照的旧合同统一返回 404，前端按「费率待确认」展示，不阻塞旧单。
+         */
+        get: operations["requirement_fee_terms"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/requirement/{requirement_id}/final-pay-cure": {
         parameters: {
             query?: never;
@@ -11506,15 +11770,75 @@ export interface paths {
         };
         /**
          * 本人工单列表
-         * @description 只列当前用户创建的工单；`/api/tickets` 是等价入口。需要 `ticket.list_mine.get`。
+         * @description 只列当前用户创建的工单，返回分页信封 `{items,total,page,page_size}`；`/api/tickets` 是等价入口。需要 `ticket.list_mine.get`。
          */
         get: operations["ticket_list_mine"];
         put?: never;
         /**
          * 创建工单
-         * @description 创建工单并写入首条公开留言；`/api/tickets` 是等价入口。需要 `ticket.create.post`。
+         * @description 创建工单并写入首条公开留言；可用 attachment_ids 绑定已上传附件。`/api/tickets` 是等价入口。需要 `ticket.create.post`。
          */
         post: operations["ticket_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/ticket/attachments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 上传工单附件
+         * @description multipart/form-data，文件字段名 `file`。单文件 ≤20MB，支持 png/jpg/jpeg/gif/webp/pdf/doc/docx/xls/xlsx/ppt/pptx/txt/zip。返回的 id 可在建单或回复时绑定。需要 `ticket.attachment.upload.post`。
+         */
+        post: operations["ticket_attachment_upload"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/ticket/attachments/{attachment_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 下载工单附件
+         * @description 仅上传者本人或工单创建者可下载。需要 `ticket.attachment.download.get`。
+         */
+        get: operations["ticket_attachment_download"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/ticket/categories": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 可用工单分类
+         * @description 返回启用中的工单分类，按排序值升序。需要 `ticket.category.get`。
+         */
+        get: operations["ticket_categories"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -11530,7 +11854,7 @@ export interface paths {
         };
         /**
          * 本人工单详情
-         * @description 只有创建者本人可读；响应永不包含内部留言。`/api/tickets/{ticket_id}` 是等价入口。需要 `ticket.detail.get`。
+         * @description 只有创建者本人可读；响应不含内部备注。返回 ticket / messages / events / actions。`/api/tickets/{ticket_id}` 是等价入口。需要 `ticket.detail.get`。
          */
         get: operations["ticket_detail"];
         put?: never;
@@ -11556,7 +11880,7 @@ export interface paths {
         head?: never;
         /**
          * 关闭本人工单
-         * @description 只有创建者本人可关闭；`/api/tickets/{ticket_id}/close` 是等价入口。需要 `ticket.close.patch`。
+         * @description 只有创建者本人可关闭；已关闭时 409。`/api/tickets/{ticket_id}/close` 是等价入口。需要 `ticket.close.patch`。
          */
         patch: operations["ticket_close"];
         trace?: never;
@@ -11572,9 +11896,69 @@ export interface paths {
         put?: never;
         /**
          * 回复本人工单
-         * @description 只有创建者本人可回复；resolved 或 closed 状态会重新打开为 open。返回的详情不含内部留言。需要 `ticket.reply.post`。
+         * @description 只有创建者本人可回复；resolved/closed 且距解决/关闭不超过 7 天会重开为 open，超期 409。返回的详情不含内部备注。需要 `ticket.reply.post`。
          */
         post: operations["ticket_reply"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/ticket/{ticket_id}/read": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * 标记本人工单已读
+         * @description 只有创建者本人可标记。需要 `ticket.read.patch`。
+         */
+        patch: operations["ticket_read"];
+        trace?: never;
+    };
+    "/api/ticket/{ticket_id}/reopen": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * 重开本人工单
+         * @description 创建者可在 resolved/closed 后 7 天内重开，超过 7 天 409。需要 `ticket.reopen.patch`。
+         */
+        patch: operations["ticket_reopen"];
+        trace?: never;
+    };
+    "/api/ticket/{ticket_id}/satisfaction": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 评价本人工单
+         * @description 仅创建者、仅 resolved/closed 状态可评价；1–5 星，可附评论，可修改。需要 `ticket.satisfaction.post`。
+         */
+        post: operations["ticket_satisfaction"];
         delete?: never;
         options?: never;
         head?: never;
@@ -13839,7 +14223,7 @@ export interface components {
              *
              *     逾期视为甲方根本违约：解除绑定、作废合同、需求回到大厅。
              *     取值 1～720（1 小时 ~ 30 天），0 会让期限立刻到期，属于配置事故。
-             * @default 48
+             * @default 168
              */
             deposit_pay_hours: number;
             /**
@@ -14583,6 +14967,11 @@ export interface components {
             /** @description 备注。 */
             note?: string | null;
         };
+        CreateCategoryRequest: {
+            name: string;
+            /** Format: int32 */
+            sort_order?: number | null;
+        };
         /** @description 客户端创建请求。 */
         CreateClientRequest: {
             /** @description 应用名。 */
@@ -14841,6 +15230,8 @@ export interface components {
             title?: string;
         };
         CreateTicketRequest: {
+            /** @description 先用 `POST /api/ticket/attachments` 上传，拿到的附件 id 在这里绑定。 */
+            attachment_ids?: number[];
             category?: string | null;
             content: string;
             priority?: string | null;
@@ -15911,6 +16302,97 @@ export interface components {
             /** @description 事由：`force_majeure` / `requirement_change` / `third_party`。 */
             reason: string;
         };
+        /**
+         * @description 费率披露响应。
+         *
+         *     金额一律**整数分**、比例一律**基点**；字段名是前端契约，改名即破坏展示。
+         */
+        FeeTermsResponse: {
+            /**
+             * Format: int64
+             * @description 客户违约时罚没定金里平台拿的比例（基点）。
+             */
+            customer_breach_platform_fee_bps: number;
+            /**
+             * Format: int64
+             * @description 客户违约时平台代扣的个税（基点）。
+             */
+            customer_breach_tax_bps: number;
+            /**
+             * Format: int64
+             * @description 定金那一笔：开发者到手（分）。
+             */
+            deposit_developer_net_fen: number;
+            /**
+             * Format: int64
+             * @description 定金（分）。
+             */
+            deposit_fen: number;
+            /**
+             * Format: int64
+             * @description 定金那一笔：平台服务费（分）。
+             */
+            deposit_platform_fee_fen: number;
+            /**
+             * Format: int64
+             * @description 定金比例（基点，快照）。
+             */
+            deposit_ratio_bps: number;
+            /**
+             * Format: int64
+             * @description 定金那一笔：个税（分）。
+             */
+            deposit_tax_fen: number;
+            /**
+             * Format: int64
+             * @description 按合同总额拆分：开发者到手（分）。
+             */
+            developer_net_fen: number;
+            /**
+             * Format: int64
+             * @description 尾款那一笔：开发者到手（分）。
+             */
+            final_developer_net_fen: number;
+            /**
+             * Format: int64
+             * @description 尾款那一笔：平台服务费（分）。
+             */
+            final_platform_fee_fen: number;
+            /**
+             * Format: int64
+             * @description 尾款那一笔：个税（分）。
+             */
+            final_tax_fen: number;
+            /**
+             * Format: int64
+             * @description 个人所得税比例（基点）。
+             */
+            personal_income_tax_bps: number;
+            /**
+             * Format: int64
+             * @description 平台服务费比例（基点）。
+             */
+            platform_fee_bps: number;
+            /**
+             * Format: int64
+             * @description 按合同总额拆分：平台服务费（分）。
+             */
+            platform_fee_fen: number;
+            /** @description 需求编号。 */
+            requirement_id: string;
+            /** @description 快照锁定时间（东八区 `YYYY-MM-DD HH:MM:SS`）。 */
+            snapshot_at: string;
+            /**
+             * Format: int64
+             * @description 按合同总额拆分：个税（分）。
+             */
+            tax_fen: number;
+            /**
+             * Format: int64
+             * @description 合同总额（分）。
+             */
+            total_fen: number;
+        };
         /** @description 立案请求体。 */
         FileCaseRequest: {
             /**
@@ -16619,6 +17101,27 @@ export interface components {
              */
             last_read_message_id: number;
         };
+        McpAuditPageResponse: {
+            items: components["schemas"]["McpAuditRecordResponse"][];
+            /** Format: int64 */
+            page: number;
+            /** Format: int64 */
+            page_size: number;
+            /** Format: int64 */
+            total: number;
+        };
+        McpAuditRecordResponse: {
+            created_at: string;
+            /** Format: int32 */
+            duration_ms?: number | null;
+            error_code?: string | null;
+            /** Format: int64 */
+            id: number;
+            success: boolean;
+            ticket_id?: string | null;
+            tool_name: string;
+            username: string;
+        };
         /** @description 成员。 */
         MemberResponse: {
             /** @description 加入时间。 */
@@ -17088,6 +17591,12 @@ export interface components {
             status: string;
             target_id: string;
             title: string;
+        };
+        PageQuery: {
+            /** Format: int64 */
+            page?: number | null;
+            /** Format: int64 */
+            page_size?: number | null;
         };
         ParticipationResponse: {
             activity_id: string;
@@ -18257,6 +18766,7 @@ export interface components {
             note?: string | null;
         };
         ReplyTicketRequest: {
+            attachment_ids?: number[];
             content: string;
             internal?: boolean | null;
         };
@@ -18866,6 +19376,14 @@ export interface components {
              */
             platform_fee_bps: number;
         };
+        SatisfactionRequest: {
+            comment?: string | null;
+            /**
+             * Format: int32
+             * @description 1–5 星。
+             */
+            rating: number;
+        };
         /** @description 保存结果：带上「需要重启」的明确提示。 */
         SaveOutcome_DatabaseView: {
             /** @description 数据库配置的对外形状（连接串里的密码掩码）。 */
@@ -19152,7 +19670,7 @@ export interface components {
                  *
                  *     逾期视为甲方根本违约：解除绑定、作废合同、需求回到大厅。
                  *     取值 1～720（1 小时 ~ 30 天），0 会让期限立刻到期，属于配置事故。
-                 * @default 48
+                 * @default 168
                  */
                 deposit_pay_hours: number;
                 /**
@@ -20446,18 +20964,69 @@ export interface components {
             /** @description 需求编号。 */
             requirement_id: string;
         };
+        TicketActionsResponse: {
+            can_assign: boolean;
+            can_claim: boolean;
+            can_close: boolean;
+            can_rate: boolean;
+            can_release: boolean;
+            can_reopen: boolean;
+            can_reply: boolean;
+            can_resolve: boolean;
+            can_transfer: boolean;
+        };
+        TicketAttachmentResponse: {
+            content_type?: string | null;
+            created_at: string;
+            file_name: string;
+            /** Format: int64 */
+            id: number;
+            /** Format: int64 */
+            size_bytes: number;
+            url: string;
+        };
+        TicketCategoryResponse: {
+            active: boolean;
+            created_at: string;
+            name: string;
+            /** Format: int32 */
+            sort_order: number;
+            updated_at: string;
+        };
         TicketDetailResponse: {
+            actions: components["schemas"]["TicketActionsResponse"];
+            events: components["schemas"]["TicketEventResponse"][];
             messages: components["schemas"]["TicketMessageResponse"][];
             ticket: components["schemas"]["TicketResponse"];
+        };
+        TicketEventResponse: {
+            actor?: string | null;
+            actor_role?: string | null;
+            created_at: string;
+            event_type: string;
+            from_value?: string | null;
+            /** Format: int64 */
+            id: number;
+            note?: string | null;
+            ticket_id: string;
+            to_value?: string | null;
         };
         TicketListQuery: {
             assigned_to?: string | null;
             category?: string | null;
             creator?: string | null;
             keyword?: string | null;
+            overdue?: boolean | null;
+            /** Format: int64 */
+            page?: number | null;
+            /** Format: int64 */
+            page_size?: number | null;
+            priority?: string | null;
             status?: string | null;
+            unassigned?: boolean | null;
         };
         TicketMessageResponse: {
+            attachments: components["schemas"]["TicketAttachmentResponse"][];
             content: string;
             created_at: string;
             /** Format: int64 */
@@ -20467,20 +21036,78 @@ export interface components {
             sender_role: string;
             ticket_id: string;
         };
+        TicketPageResponse: {
+            items: components["schemas"]["TicketResponse"][];
+            /** Format: int64 */
+            page: number;
+            /** Format: int64 */
+            page_size: number;
+            /** Format: int64 */
+            total: number;
+        };
         TicketResponse: {
             assigned_to?: string | null;
             category?: string | null;
+            closed_at?: string | null;
             created_at: string;
             creator: string;
+            first_response_at?: string | null;
+            first_response_due_at?: string | null;
+            first_response_overdue: boolean;
             /** Format: int64 */
             id: number;
             last_replied_at?: string | null;
             last_replied_by?: string | null;
+            last_staff_reply_at?: string | null;
+            last_user_reply_at?: string | null;
             priority: string;
+            /** Format: int32 */
+            reopen_count: number;
+            resolved_at?: string | null;
+            satisfaction_comment?: string | null;
+            satisfaction_rated_at?: string | null;
+            /** Format: int32 */
+            satisfaction_rating?: number | null;
+            source: string;
             status: string;
             subject: string;
             ticket_id: string;
+            /**
+             * Format: int64
+             * @description 当前查看者的未读消息数（列表/详情按查看者计算）。
+             */
+            unread_count: number;
             updated_at: string;
+        };
+        TicketStatsResponse: {
+            /**
+             * Format: double
+             * @description 首响平均用时（秒）。
+             */
+            avg_first_response_seconds?: number | null;
+            /**
+             * Format: double
+             * @description 解决/关闭平均用时（秒）。
+             */
+            avg_resolution_seconds?: number | null;
+            /** Format: int64 */
+            closed: number;
+            /** Format: int64 */
+            open: number;
+            /** Format: int64 */
+            overdue: number;
+            /** Format: int64 */
+            processing: number;
+            /** Format: int64 */
+            resolved: number;
+            /** Format: double */
+            satisfaction_avg?: number | null;
+            /** Format: int64 */
+            satisfaction_count: number;
+            /** Format: int64 */
+            total: number;
+            /** Format: int64 */
+            unassigned: number;
         };
         /** @description 打赏设置响应。 */
         TipConfigResponse: {
@@ -20731,6 +21358,9 @@ export interface components {
             status: string;
             to_username: string;
         };
+        TransferTicketRequest: {
+            assigned_to: string;
+        };
         /** @description Turnstile 配置的对外形状（服务端密钥掩码）。 */
         TurnstileView: {
             /** @description 未配密钥时是否旁路。 */
@@ -20895,6 +21525,11 @@ export interface components {
             focus?: string | null;
             /** @description 背景地址；传空串表示清空背景。 */
             image_url: string;
+        };
+        UpdateCategoryRequest: {
+            active?: boolean | null;
+            /** Format: int32 */
+            sort_order?: number | null;
         };
         /** @description 客户端更新请求。 */
         UpdateClientRequest: {
@@ -21365,6 +22000,13 @@ export interface components {
             roles: string[];
             /** @description 用户名。 */
             username: string;
+        };
+        UserTicketListQuery: {
+            /** Format: int64 */
+            page?: number | null;
+            /** Format: int64 */
+            page_size?: number | null;
+            status?: string | null;
         };
         /** @description 邀请成员 / 转移所有权：都只需要一个用户名。 */
         UsernameRequest: {
@@ -25213,6 +25855,43 @@ export interface operations {
             };
         };
     };
+    ticket_admin_mcp_audit: {
+        parameters: {
+            query?: {
+                page?: number;
+                page_size?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 审计分页列表 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["McpAuditPageResponse"];
+                };
+            };
+            /** @description 没有登录或令牌无效 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 没有审计权限 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     admin_list: {
         parameters: {
             query?: {
@@ -27992,10 +28671,15 @@ export interface operations {
         parameters: {
             query?: {
                 status?: string;
+                priority?: string;
                 creator?: string;
                 assigned_to?: string;
                 keyword?: string;
                 category?: string;
+                overdue?: boolean;
+                unassigned?: boolean;
+                page?: number;
+                page_size?: number;
             };
             header?: never;
             path?: never;
@@ -28003,16 +28687,16 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description 工单列表 */
+            /** @description 工单分页列表 */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["TicketResponse"][];
+                    "application/json": components["schemas"]["TicketPageResponse"];
                 };
             };
-            /** @description 状态筛选值不合法 */
+            /** @description 状态或优先级筛选值不合法 */
             400: {
                 headers: {
                     [name: string]: unknown;
@@ -28027,6 +28711,175 @@ export interface operations {
                 content?: never;
             };
             /** @description 没有管理端工单列表权限 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    ticket_admin_attachment_download: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                attachment_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 文件字节 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/octet-stream": unknown;
+                };
+            };
+            /** @description 没有登录或令牌无效 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 没有管理端详情权限 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 附件不存在 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    ticket_admin_categories: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 分类列表 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TicketCategoryResponse"][];
+                };
+            };
+            /** @description 没有登录或令牌无效 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 没有分类权限 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    ticket_admin_category_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateCategoryRequest"];
+            };
+        };
+        responses: {
+            /** @description 创建的分类 */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TicketCategoryResponse"];
+                };
+            };
+            /** @description 分类名不合法或已存在 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 没有登录或令牌无效 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 没有分类权限 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    ticket_admin_category_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                name: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateCategoryRequest"];
+            };
+        };
+        responses: {
+            /** @description 更新后的分类 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TicketCategoryResponse"];
+                };
+            };
+            /** @description 没有更新字段或分类不存在 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 没有登录或令牌无效 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 没有分类权限 */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -28051,6 +28904,74 @@ export interface operations {
                 };
                 content: {
                     "text/event-stream": unknown;
+                };
+            };
+            /** @description 没有登录或令牌无效 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 没有管理端工单列表权限 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    ticket_admin_stats: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 统计结果 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TicketStatsResponse"];
+                };
+            };
+            /** @description 没有登录或令牌无效 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 没有统计权限 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    ticket_admin_unread_count: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 未读数 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnreadCountResponse"];
                 };
             };
             /** @description 没有登录或令牌无效 */
@@ -28200,6 +29121,106 @@ export interface operations {
             };
         };
     };
+    ticket_admin_claim: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ticket_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 认领后的工单 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TicketResponse"];
+                };
+            };
+            /** @description 没有登录或令牌无效 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 没有认领权限 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 工单不存在 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 已被其他客服认领 */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    ticket_admin_close: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ticket_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 关闭后的工单 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TicketResponse"];
+                };
+            };
+            /** @description 没有登录或令牌无效 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 没有关闭权限 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 工单不存在 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 工单已关闭 */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     ticket_admin_reply: {
         parameters: {
             query?: never;
@@ -28238,7 +29259,202 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description 没有管理端回复权限 */
+            /** @description 没有管理端回复权限或内部备注权限 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 工单不存在 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    ticket_admin_mark_read: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ticket_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 已标记 */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 没有登录或令牌无效 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 没有管理端工单列表权限 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 工单不存在 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    ticket_admin_release: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ticket_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 释放后的工单 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TicketResponse"];
+                };
+            };
+            /** @description 没有登录或令牌无效 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 没有释放权限 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 工单不存在 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 不是当前负责人 */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    ticket_admin_resolve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ticket_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 已解决的工单 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TicketResponse"];
+                };
+            };
+            /** @description 当前状态不允许解决 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 没有登录或令牌无效 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 没有解决权限 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 工单不存在 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    ticket_admin_transfer: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ticket_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TransferTicketRequest"];
+            };
+        };
+        responses: {
+            /** @description 转交后的工单 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TicketResponse"];
+                };
+            };
+            /** @description 目标账号不具备处理资格 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 没有登录或令牌无效 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 没有转交权限或试图转给他人 */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -44318,6 +45534,42 @@ export interface operations {
             };
         };
     };
+    requirement_fee_terms: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                requirement_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 费率披露 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FeeTermsResponse"];
+                };
+            };
+            /** @description 不是需求当事人，也没有需求管理权限 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 需求不存在，或还没有费率快照（自管 / 旧合同） */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     requirement_final_pay_cure: {
         parameters: {
             query?: never;
@@ -54179,21 +55431,32 @@ export interface operations {
     };
     ticket_list_mine: {
         parameters: {
-            query?: never;
+            query?: {
+                status?: string;
+                page?: number;
+                page_size?: number;
+            };
             header?: never;
             path?: never;
             cookie?: never;
         };
         requestBody?: never;
         responses: {
-            /** @description 本人工单列表 */
+            /** @description 本人工单分页列表 */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["TicketResponse"][];
+                    "application/json": components["schemas"]["TicketPageResponse"];
                 };
+            };
+            /** @description 状态筛选值不合法 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description 没有登录或令牌无效 */
             401: {
@@ -54248,6 +55511,138 @@ export interface operations {
                 content?: never;
             };
             /** @description 没有创建工单权限 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    ticket_attachment_upload: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 附件元信息 */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TicketAttachmentResponse"];
+                };
+            };
+            /** @description 文件为空或格式不正确 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 没有登录或令牌无效 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 没有上传权限 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 超过 20MB */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 不支持的文件类型 */
+            415: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    ticket_attachment_download: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                attachment_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 文件字节 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/octet-stream": unknown;
+                };
+            };
+            /** @description 没有登录或令牌无效 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 无权下载该附件 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 附件不存在 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    ticket_categories: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 分类列表 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TicketCategoryResponse"][];
+                };
+            };
+            /** @description 没有登录或令牌无效 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 没有查看分类权限 */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -54340,6 +55735,13 @@ export interface operations {
                 };
                 content?: never;
             };
+            /** @description 工单已关闭 */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
         };
     };
     ticket_reply: {
@@ -54389,6 +55791,165 @@ export interface operations {
             };
             /** @description 工单不存在 */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 超过 7 天重开期限 */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    ticket_read: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ticket_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 已标记 */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 没有登录或令牌无效 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 不是工单创建者 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 工单不存在 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    ticket_reopen: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ticket_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 重开后的工单 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TicketResponse"];
+                };
+            };
+            /** @description 没有登录或令牌无效 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 不是工单创建者 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 工单不存在 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 超过 7 天重开期限或状态不允许 */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    ticket_satisfaction: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ticket_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SatisfactionRequest"];
+            };
+        };
+        responses: {
+            /** @description 评价后的工单 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TicketResponse"];
+                };
+            };
+            /** @description 评分不是 1–5 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 没有登录或令牌无效 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 不是工单创建者 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 工单不存在 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 当前状态不允许评价 */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };
