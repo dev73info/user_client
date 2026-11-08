@@ -108,19 +108,27 @@ export function ticketSatisfactionStars(rating?: number | null): string {
 const TICKET_EVENT_LABELS: Record<string, string> = {
   created: '创建工单',
   status_change: '状态变更',
+  status_changed: '状态变更',
   assigned: '分配负责人',
   claimed: '认领',
   released: '释放',
   transferred: '转交',
   replied: '回复',
   message: '回复',
+  user_reply: '用户回复',
+  staff_reply: '客服回复',
+  internal_note: '内部备注',
   first_response: '首次响应',
   resolved: '标记已解决',
   closed: '关闭工单',
+  closed_by_user: '用户关闭',
+  closed_by_staff: '客服关闭',
   reopened: '重新打开',
   rated: '满意度评价',
   satisfaction: '满意度评价',
 }
+
+const TICKET_STATUS_VALUES = new Set(['open', 'processing', 'resolved', 'closed'])
 
 export function ticketEventLabel(eventType: string): string {
   return TICKET_EVENT_LABELS[eventType] ?? eventType
@@ -134,9 +142,15 @@ export type TicketTimelineEntry = {
 }
 
 function eventDetail(event: TicketEvent): string | undefined {
-  const change =
-    event.from_value && event.to_value ? `${event.from_value} → ${event.to_value}` : ''
-  return [change, event.note].filter(Boolean).join(' · ') || undefined
+  const parts: string[] = []
+  // 状态值翻成中文；客服回复常常 from === to，不要显示「processing → processing」。
+  if (event.from_value && event.to_value && event.from_value !== event.to_value) {
+    const translate = (value: string) =>
+      TICKET_STATUS_VALUES.has(value) ? ticketStatusLabel(value) : value
+    parts.push(`${translate(event.from_value)} → ${translate(event.to_value)}`)
+  }
+  if (event.note) parts.push(event.note)
+  return parts.join(' · ') || undefined
 }
 
 /**
