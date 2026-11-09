@@ -14032,74 +14032,6 @@
         }
       }
     },
-    "/api/conversation/resource/{resource_id}": {
-      "get": {
-        "tags": [
-          "conversation"
-        ],
-        "summary": "按资源打开插件咨询会话",
-        "description": "插件购买者从资源详情页联系作者用。会话不存在时**补建**；一个买家对一个资源只有一个会话。只有仍持有有效购买权益的买家能打开，作者与未购买者回 403。",
-        "operationId": "conversation_detail_by_resource",
-        "parameters": [
-          {
-            "name": "limit",
-            "in": "query",
-            "description": "每页条数；不传表示一次取全部（legacy 口径）。",
-            "required": false,
-            "schema": {
-              "type": [
-                "integer",
-                "null"
-              ],
-              "format": "int64"
-            }
-          },
-          {
-            "name": "before_id",
-            "in": "query",
-            "description": "只取编号小于它（更早）的消息。",
-            "required": false,
-            "schema": {
-              "type": [
-                "integer",
-                "null"
-              ],
-              "format": "int64"
-            }
-          },
-          {
-            "name": "resource_id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "format": "int64"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "会话详情",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ConversationDetailResponse"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "没有登录或令牌无效"
-          },
-          "403": {
-            "description": "没有购买该资源，或调用者是资源作者"
-          },
-          "404": {
-            "description": "资源不存在，或资源会话未启用"
-          }
-        }
-      }
-    },
     "/api/conversation/{conversation_id}": {
       "get": {
         "tags": [
@@ -40928,7 +40860,6 @@
         "required": [
           "id",
           "conversation_id",
-          "scene",
           "requirement_id",
           "requirement_title",
           "customer",
@@ -41021,7 +40952,7 @@
           },
           "requirement_id": {
             "type": "string",
-            "description": "需求编号；资源会话为空串。"
+            "description": "需求编号。"
           },
           "requirement_status": {
             "type": "string",
@@ -41029,19 +40960,7 @@
           },
           "requirement_title": {
             "type": "string",
-            "description": "绑定对象标题：需求标题或资源标题。"
-          },
-          "resource_id": {
-            "type": [
-              "integer",
-              "null"
-            ],
-            "format": "int64",
-            "description": "资源编号；需求会话为 `null`。"
-          },
-          "scene": {
-            "type": "string",
-            "description": "会话场景：`requirement`（需求沟通）或 `resource`（插件咨询）。"
+            "description": "需求标题。"
           },
           "status": {
             "type": "string",
@@ -48175,13 +48094,13 @@
           "customer_breach_platform_fee_bps": {
             "type": "integer",
             "format": "int64",
-            "description": "客户违约（无正当理由取消）时，被罚没的定金里平台拿的比例（基点）。\n\n余额给开发者——定金罚则的意义是补偿被放鸽子的那方，不是平台创收。",
-            "default": 2000
+            "description": "客户违约（无正当理由取消）时，被罚没的定金里平台拿的比例（基点）。\n\n余额给开发者——定金罚则的意义是补偿被放鸽子的那方，不是平台创收。\n\n**当前实际语义（重要）**：定金在支付成功时已按 `platform_fee_bps` 做了正常分账，\n客户违约时 `forfeit_deposit` 只会沿用那笔成功分账（不再重分、也不产生\n`kind = 'forfeit'` 的底账），因此本字段对绝大多数订单**不生效**；只有定金\n未经正常分账（分账失败等兜底情形）时才会按它拆分罚没款。\n\n为避免“改了值却静默不起作用”，启动校验要求它等于 `platform_fee_bps`；\n两者不一致直接启动失败。确实要按不同比例罚没，必须先让定金在支付时不分账\n（需要渠道能力与资金流程改动），不能只改这个配置。",
+            "default": 500
           },
           "customer_breach_tax_bps": {
             "type": "integer",
             "format": "int64",
-            "description": "客户违约时平台代扣的个税比例（基点），与平台分成一起进平台账户。",
+            "description": "客户违约时平台代扣的个税比例（基点），与平台分成一起进平台账户。\n\n与 [`Self::customer_breach_platform_fee_bps`] 同样受「定金支付时已正常分账」的限制：\n只有定金未经正常分账的兜底情形才会生效。启动校验目前只保证平台分成比例与\n`platform_fee_bps` 一致；本字段若与 `personal_income_tax_bps` 不同，同样不会生效，\n改动前请先确认资金流程。",
             "default": 0
           },
           "deposit_ratio_bps": {
@@ -53271,13 +53190,13 @@
               "customer_breach_platform_fee_bps": {
                 "type": "integer",
                 "format": "int64",
-                "description": "客户违约（无正当理由取消）时，被罚没的定金里平台拿的比例（基点）。\n\n余额给开发者——定金罚则的意义是补偿被放鸽子的那方，不是平台创收。",
-                "default": 2000
+                "description": "客户违约（无正当理由取消）时，被罚没的定金里平台拿的比例（基点）。\n\n余额给开发者——定金罚则的意义是补偿被放鸽子的那方，不是平台创收。\n\n**当前实际语义（重要）**：定金在支付成功时已按 `platform_fee_bps` 做了正常分账，\n客户违约时 `forfeit_deposit` 只会沿用那笔成功分账（不再重分、也不产生\n`kind = 'forfeit'` 的底账），因此本字段对绝大多数订单**不生效**；只有定金\n未经正常分账（分账失败等兜底情形）时才会按它拆分罚没款。\n\n为避免“改了值却静默不起作用”，启动校验要求它等于 `platform_fee_bps`；\n两者不一致直接启动失败。确实要按不同比例罚没，必须先让定金在支付时不分账\n（需要渠道能力与资金流程改动），不能只改这个配置。",
+                "default": 500
               },
               "customer_breach_tax_bps": {
                 "type": "integer",
                 "format": "int64",
-                "description": "客户违约时平台代扣的个税比例（基点），与平台分成一起进平台账户。",
+                "description": "客户违约时平台代扣的个税比例（基点），与平台分成一起进平台账户。\n\n与 [`Self::customer_breach_platform_fee_bps`] 同样受「定金支付时已正常分账」的限制：\n只有定金未经正常分账的兜底情形才会生效。启动校验目前只保证平台分成比例与\n`platform_fee_bps` 一致；本字段若与 `personal_income_tax_bps` 不同，同样不会生效，\n改动前请先确认资金流程。",
                 "default": 0
               },
               "deposit_ratio_bps": {

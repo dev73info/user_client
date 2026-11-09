@@ -5123,26 +5123,6 @@ export interface paths {
         patch: operations["conversation_update_thread_preference"];
         trace?: never;
     };
-    "/api/conversation/resource/{resource_id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * 按资源打开插件咨询会话
-         * @description 插件购买者从资源详情页联系作者用。会话不存在时**补建**；一个买家对一个资源只有一个会话。只有仍持有有效购买权益的买家能打开，作者与未购买者回 403。
-         */
-        get: operations["conversation_detail_by_resource"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/api/conversation/{conversation_id}": {
         parameters: {
             query?: never;
@@ -15076,19 +15056,12 @@ export interface components {
             last_message_by?: string | null;
             /** @description 最后一条消息的正文。 */
             last_message_content?: string | null;
-            /** @description 需求编号；资源会话为空串。 */
+            /** @description 需求编号。 */
             requirement_id: string;
             /** @description 需求状态：`in_development` / `completed` … */
             requirement_status: string;
-            /** @description 绑定对象标题：需求标题或资源标题。 */
+            /** @description 需求标题。 */
             requirement_title: string;
-            /**
-             * Format: int64
-             * @description 资源编号；需求会话为 `null`。
-             */
-            resource_id?: number | null;
-            /** @description 会话场景：`requirement`（需求沟通）或 `resource`（插件咨询）。 */
-            scene: string;
             /** @description 会话状态：`open` / `closed`。 */
             status: string;
             /**
@@ -17976,12 +17949,26 @@ export interface components {
              * @description 客户违约（无正当理由取消）时，被罚没的定金里平台拿的比例（基点）。
              *
              *     余额给开发者——定金罚则的意义是补偿被放鸽子的那方，不是平台创收。
-             * @default 2000
+             *
+             *     **当前实际语义（重要）**：定金在支付成功时已按 `platform_fee_bps` 做了正常分账，
+             *     客户违约时 `forfeit_deposit` 只会沿用那笔成功分账（不再重分、也不产生
+             *     `kind = 'forfeit'` 的底账），因此本字段对绝大多数订单**不生效**；只有定金
+             *     未经正常分账（分账失败等兜底情形）时才会按它拆分罚没款。
+             *
+             *     为避免“改了值却静默不起作用”，启动校验要求它等于 `platform_fee_bps`；
+             *     两者不一致直接启动失败。确实要按不同比例罚没，必须先让定金在支付时不分账
+             *     （需要渠道能力与资金流程改动），不能只改这个配置。
+             * @default 500
              */
             customer_breach_platform_fee_bps: number;
             /**
              * Format: int64
              * @description 客户违约时平台代扣的个税比例（基点），与平台分成一起进平台账户。
+             *
+             *     与 [`Self::customer_breach_platform_fee_bps`] 同样受「定金支付时已正常分账」的限制：
+             *     只有定金未经正常分账的兜底情形才会生效。启动校验目前只保证平台分成比例与
+             *     `platform_fee_bps` 一致；本字段若与 `personal_income_tax_bps` 不同，同样不会生效，
+             *     改动前请先确认资金流程。
              * @default 0
              */
             customer_breach_tax_bps: number;
@@ -20249,12 +20236,26 @@ export interface components {
                  * @description 客户违约（无正当理由取消）时，被罚没的定金里平台拿的比例（基点）。
                  *
                  *     余额给开发者——定金罚则的意义是补偿被放鸽子的那方，不是平台创收。
-                 * @default 2000
+                 *
+                 *     **当前实际语义（重要）**：定金在支付成功时已按 `platform_fee_bps` 做了正常分账，
+                 *     客户违约时 `forfeit_deposit` 只会沿用那笔成功分账（不再重分、也不产生
+                 *     `kind = 'forfeit'` 的底账），因此本字段对绝大多数订单**不生效**；只有定金
+                 *     未经正常分账（分账失败等兜底情形）时才会按它拆分罚没款。
+                 *
+                 *     为避免“改了值却静默不起作用”，启动校验要求它等于 `platform_fee_bps`；
+                 *     两者不一致直接启动失败。确实要按不同比例罚没，必须先让定金在支付时不分账
+                 *     （需要渠道能力与资金流程改动），不能只改这个配置。
+                 * @default 500
                  */
                 customer_breach_platform_fee_bps: number;
                 /**
                  * Format: int64
                  * @description 客户违约时平台代扣的个税比例（基点），与平台分成一起进平台账户。
+                 *
+                 *     与 [`Self::customer_breach_platform_fee_bps`] 同样受「定金支付时已正常分账」的限制：
+                 *     只有定金未经正常分账的兜底情形才会生效。启动校验目前只保证平台分成比例与
+                 *     `platform_fee_bps` 一致；本字段若与 `personal_income_tax_bps` 不同，同样不会生效，
+                 *     改动前请先确认资金流程。
                  * @default 0
                  */
                 customer_breach_tax_bps: number;
@@ -36680,54 +36681,6 @@ export interface operations {
                 content?: never;
             };
             /** @description 需求不存在 */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    conversation_detail_by_resource: {
-        parameters: {
-            query?: {
-                /** @description 每页条数；不传表示一次取全部（legacy 口径）。 */
-                limit?: number | null;
-                /** @description 只取编号小于它（更早）的消息。 */
-                before_id?: number | null;
-            };
-            header?: never;
-            path: {
-                resource_id: number;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description 会话详情 */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ConversationDetailResponse"];
-                };
-            };
-            /** @description 没有登录或令牌无效 */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description 没有购买该资源，或调用者是资源作者 */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description 资源不存在，或资源会话未启用 */
             404: {
                 headers: {
                     [name: string]: unknown;
