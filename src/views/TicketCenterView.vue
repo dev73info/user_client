@@ -1,11 +1,12 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
+import { onMounted } from 'vue'
 
-import type { TicketAttachment } from '@/api/tickets'
 import TicketAttachments from '@/components/ticket/TicketAttachments.vue'
 import TicketComposer from '@/components/ticket/TicketComposer.vue'
 import TicketProgress from '@/components/ticket/TicketProgress.vue'
+import TicketReplyBox from '@/components/ticket/TicketReplyBox.vue'
 import TicketSatisfactionDialog from '@/components/ticket/TicketSatisfactionDialog.vue'
+import TicketSatisfactionSummary from '@/components/ticket/TicketSatisfactionSummary.vue'
 import { useTicketActions } from '@/composables/useTicketActions'
 import { useTicketList } from '@/composables/useTicketList'
 import { useTicketRealtime } from '@/composables/useTicketRealtime'
@@ -13,9 +14,7 @@ import {
   TICKET_PRIORITY_FILTER_OPTIONS,
   TICKET_STATUS_FILTER_OPTIONS,
   formatTicketTime,
-  hasTicketSatisfaction,
   ticketPriorityLabel,
-  ticketSatisfactionStars,
   ticketStatusLabel,
   type TicketStatusFilter,
 } from '@/shared/ticketDisplay'
@@ -58,7 +57,6 @@ const {
   reopening,
   rating,
   createError,
-  replyError,
   actionError,
   composeOpen,
   satisfactionOpen,
@@ -72,10 +70,6 @@ const {
   downloadAttachment,
 } = actions
 
-const replyContent = ref('')
-const replyAttachments = ref<TicketAttachment[]>([])
-const replyUploading = ref(false)
-
 onMounted(() => {
   auth.hydrate()
   void loadTickets()
@@ -84,33 +78,6 @@ onMounted(() => {
 
 function onStatusChange(event: Event) {
   setStatus((event.target as HTMLSelectElement).value as TicketStatusFilter)
-}
-
-async function uploadReplyFile(file: File) {
-  replyError.value = ''
-  replyUploading.value = true
-  try {
-    const uploaded = await uploadAttachment(file)
-    replyAttachments.value = [...replyAttachments.value, uploaded]
-  } catch (err) {
-    replyError.value = err instanceof Error && err.message ? err.message : '上传附件失败'
-  } finally {
-    replyUploading.value = false
-  }
-}
-
-function removeReplyAttachment(attachment: TicketAttachment) {
-  replyAttachments.value = replyAttachments.value.filter((item) => item.id !== attachment.id)
-}
-
-async function sendReply() {
-  const ok = await submitReply(
-    replyContent.value,
-    replyAttachments.value.map((item) => item.id),
-  )
-  if (!ok) return
-  replyContent.value = ''
-  replyAttachments.value = []
 }
 </script>
 
@@ -257,34 +224,11 @@ async function sendReply() {
 
           <TicketProgress :ticket="detail.ticket" :events="detail.events" />
 
-          <section v-if="hasTicketSatisfaction(detail.ticket)" class="ticket-satisfaction-view">
-            <div class="ticket-satisfaction-view__head">
-              <strong>满意度</strong>
-              <span class="ticket-satisfaction-view__stars">
-                {{ ticketSatisfactionStars(detail.ticket.satisfaction_rating) }}
-              </span>
-              <TButton
-                v-if="detail.actions.can_rate"
-                variant="text"
-                tone="accent"
-                size="sm"
-                @click="satisfactionOpen = true"
-              >
-                修改评价
-              </TButton>
-            </div>
-            <p v-if="detail.ticket.satisfaction_comment" class="ticket-item__meta">
-              {{ detail.ticket.satisfaction_comment }}
-            </p>
-          </section>
-          <section v-else-if="detail.actions.can_rate" class="ticket-satisfaction-view">
-            <div class="ticket-satisfaction-view__head">
-              <strong>满意度</strong>
-              <TButton variant="outline" size="sm" @click="satisfactionOpen = true"
-                >评价工单</TButton
-              >
-            </div>
-          </section>
+          <TicketSatisfactionSummary
+            :ticket="detail.ticket"
+            :can-rate="detail.actions.can_rate"
+            @rate="satisfactionOpen = true"
+          />
 
           <ul class="ticket-messages">
             <li v-for="message in detail.messages" :key="message.id">
@@ -301,25 +245,14 @@ async function sendReply() {
             </li>
           </ul>
 
-          <div v-if="detail.actions.can_reply" class="ticket-reply">
-            <textarea v-model="replyContent" rows="3" placeholder="补充说明或回复客服" />
-            <TicketAttachments
-              :attachments="replyAttachments"
-              :uploading="replyUploading"
-              @upload="uploadReplyFile"
-              @remove="removeReplyAttachment"
-              @download="downloadAttachment"
-            />
-            <p v-if="replyError" role="alert">{{ replyError }}</p>
-            <p v-else-if="actionError" role="alert">{{ actionError }}</p>
-            <TButton variant="solid" tone="accent" :loading="replying" @click="sendReply">
-              发送回复
-            </TButton>
-          </div>
-          <div v-else class="ticket-reply ticket-reply--blocked">
-            <p v-if="actionError" role="alert">{{ actionError }}</p>
-            <span class="ticket-item__meta">当前不可回复</span>
-          </div>
+          <TicketReplyBox
+            :can-reply="detail.actions.can_reply"
+            :replying="replying"
+            :action-error="actionError"
+            :submit-reply="submitReply"
+            :upload-attachment="uploadAttachment"
+            :download-attachment="downloadAttachment"
+          />
         </template>
         <div v-else class="wb-empty">选择一条工单查看详情</div>
       </section>
