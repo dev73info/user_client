@@ -12476,6 +12476,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/conversation/resource/{resource_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 按资源打开插件咨询会话
+         * @description 插件购买者从资源详情页联系作者用。会话不存在时**补建**；一个买家对一个资源只有一个会话。只有仍持有有效购买权益的买家能打开，作者与未购买者回 403。
+         */
+        get: operations["conversation_detail_by_resource"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -15056,12 +15076,19 @@ export interface components {
             last_message_by?: string | null;
             /** @description 最后一条消息的正文。 */
             last_message_content?: string | null;
-            /** @description 需求编号。 */
+            /** @description 需求编号；资源会话为空串。 */
             requirement_id: string;
             /** @description 需求状态：`in_development` / `completed` … */
             requirement_status: string;
-            /** @description 需求标题。 */
+            /** @description 绑定对象标题：需求标题或资源标题。 */
             requirement_title: string;
+            /**
+             * Format: int64
+             * @description 资源编号；需求会话为 `null`。
+             */
+            resource_id?: number | null;
+            /** @description 会话场景：`requirement`（需求沟通）或 `resource`（插件咨询）。 */
+            scene: string;
             /** @description 会话状态：`open` / `closed`。 */
             status: string;
             /**
@@ -57548,6 +57575,54 @@ export interface operations {
             };
             /** @description 邀请码无效 */
             400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    conversation_detail_by_resource: {
+        parameters: {
+            query?: {
+                /** @description 每页条数；不传表示一次取全部（legacy 口径）。 */
+                limit?: number | null;
+                /** @description 只取编号小于它（更早）的消息。 */
+                before_id?: number | null;
+            };
+            header?: never;
+            path: {
+                resource_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 会话详情 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConversationDetailResponse"];
+                };
+            };
+            /** @description 没有登录或令牌无效 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 没有购买该资源，或调用者是资源作者 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 资源不存在，或资源会话未启用 */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };

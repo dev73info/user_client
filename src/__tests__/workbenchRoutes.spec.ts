@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
+import type { RequirementConversation } from '@/shared/conversations'
 import { overviewItem, type MenuRouteContext, type WorkbenchMenuItem } from '@/shared/workbenchMenu'
 import {
   compactRouteTitle,
@@ -190,17 +191,44 @@ describe('两种工作台各自的路由名', () => {
 })
 
 describe('会话链接与高亮', () => {
-  it('链接带上需求号作为查询参数', () => {
-    expect(conversationLink('dev-messages', 'REQ-001')).toEqual({
+  it('需求会话链接带上需求号作为查询参数', () => {
+    expect(
+      conversationLink('dev-messages', {
+        conversation_id: 'conv-1',
+        requirement_id: 'REQ-001',
+        scene: 'requirement',
+      } as RequirementConversation),
+    ).toEqual({
       name: 'dev-messages',
       query: { requirement_id: 'REQ-001' },
     })
   })
 
-  it('停在消息中心且需求号一致才高亮', () => {
-    expect(isConversationRouteActive('REQ-001', 'REQ-001', true)).toBe(true)
-    expect(isConversationRouteActive('REQ-001', 'REQ-002', true)).toBe(false)
-    expect(isConversationRouteActive('REQ-001', 'REQ-001', false)).toBe(false)
+  it('插件咨询链接带上会话编号作为查询参数', () => {
+    expect(
+      conversationLink('dev-messages', {
+        conversation_id: 'conv-2',
+        requirement_id: '',
+        scene: 'resource',
+        resource_id: 7,
+      } as RequirementConversation),
+    ).toEqual({
+      name: 'dev-messages',
+      query: { conversation_id: 'conv-2' },
+    })
+  })
+
+  it('停在消息中心且会话键一致才高亮', () => {
+    expect(isConversationRouteActive('requirement:REQ-001', 'requirement:REQ-001', true)).toBe(true)
+    expect(isConversationRouteActive('requirement:REQ-001', 'requirement:REQ-002', true)).toBe(
+      false,
+    )
+    expect(isConversationRouteActive('conversation:conv-2', 'conversation:conv-2', true)).toBe(
+      true,
+    )
+    expect(isConversationRouteActive('requirement:REQ-001', 'requirement:REQ-001', false)).toBe(
+      false,
+    )
     // 地址栏里的 query 可能是数组（同名参数出现多次），此时不算命中
     expect(isConversationRouteActive('REQ-001', ['REQ-001'], true)).toBe(false)
   })

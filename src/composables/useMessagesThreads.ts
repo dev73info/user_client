@@ -39,7 +39,11 @@ export function useMessagesThreads(options: {
 
   const validConversations = computed(() =>
     options.conversations.value.filter((item): item is RequirementConversation =>
-      Boolean(item && item.conversation_id && item.requirement_id),
+      Boolean(
+        item &&
+          item.conversation_id &&
+          (item.scene === 'resource' || item.requirement_id),
+      ),
     ),
   )
   const validRequirements = computed(() =>
@@ -100,6 +104,7 @@ export function useMessagesThreads(options: {
 
       return [
         item.requirementId,
+        item.metaLabel,
         item.title,
         item.statusLabel,
         item.modeLabel,

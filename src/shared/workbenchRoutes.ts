@@ -1,3 +1,4 @@
+import type { RequirementConversation } from '@/shared/conversations'
 import { overviewItem, type MenuRouteContext, type WorkbenchMenuItem } from './workbenchMenu'
 
 /**
@@ -123,20 +124,32 @@ export function resolveWorkbenchTitle(options: {
 
 /* ---------- 会话链接 ---------- */
 
-export function conversationLink(routeName: string, requirementId: string) {
+/** 会话行点进消息中心时写哪条 query：需求会话写需求号，插件咨询写会话号。 */
+export function conversationQuery(item: RequirementConversation) {
+  return item.scene === 'resource'
+    ? { conversation_id: item.conversation_id }
+    : { requirement_id: item.requirement_id }
+}
+
+export function conversationLink(routeName: string, item: RequirementConversation) {
   return {
     name: routeName,
-    query: {
-      requirement_id: requirementId,
-    },
+    query: conversationQuery(item),
   }
 }
 
-/** 会话行的高亮：停在消息中心、且地址栏里的需求号就是这一条。 */
+/** 会话行的业务键：需求行按需求编号、插件咨询按会话编号（与消息中心列表同一口径）。 */
+export function conversationSelectionKey(item: RequirementConversation): string {
+  return item.scene === 'resource'
+    ? `conversation:${item.conversation_id}`
+    : `requirement:${item.requirement_id}`
+}
+
+/** 会话行的高亮：停在消息中心、且地址栏里的业务键就是这一条。 */
 export function isConversationRouteActive(
-  requirementId: string,
-  activeRequirementId: unknown,
+  selectionKey: string,
+  activeSelectionKey: unknown,
   isMessagesRoute: boolean,
 ): boolean {
-  return isMessagesRoute && activeRequirementId === requirementId
+  return isMessagesRoute && activeSelectionKey === selectionKey
 }

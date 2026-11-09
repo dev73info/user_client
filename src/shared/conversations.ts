@@ -2,6 +2,9 @@ import { subscribeJsonEventStream } from '@/shared/api/sse'
 
 export type ConversationConsent = 'pending' | 'approved' | 'rejected'
 
+/** 会话场景：需求沟通 / 插件（资源）咨询。 */
+export type ConversationScene = 'requirement' | 'resource'
+
 /**
  * 现任开发者视角下的一段历史沟通（接手前由别人负责、或中间接手的开发者那段）：
  * 默认对他隐藏，需要前任开发者与客户各投一票才公开。
@@ -45,7 +48,13 @@ export type ConversationHistoryDisclosureBrief = {
 export type RequirementConversation = {
   id: number
   conversation_id: string
+  /** 会话场景；旧 mock / 旧数据缺省按需求会话理解。 */
+  scene?: ConversationScene
+  /** 需求编号；资源会话为空串。 */
   requirement_id: string
+  /** 资源编号；需求会话为 null / undefined。 */
+  resource_id?: number | null
+  /** 绑定对象标题：需求标题或资源标题。 */
   requirement_title: string
   customer: string
   customer_avatar_url?: string | null

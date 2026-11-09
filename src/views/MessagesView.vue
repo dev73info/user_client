@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import WorkbenchBarSlot from '@/components/WorkbenchBarSlot.vue'
 import RequirementConversationModal from '@/components/RequirementConversationModal.vue'
+import ResourceConversationModal from '@/components/ResourceConversationModal.vue'
 import MessagesOverviewStrip from '@/components/messages/MessagesOverviewStrip.vue'
 import MessagesDevPanel from '@/components/messages/MessagesDevPanel.vue'
 import MessagesPortalPanel from '@/components/messages/MessagesPortalPanel.vue'
@@ -33,6 +34,7 @@ const {
   recentConversationCount,
   hasActiveThreadFilters,
   threadEmptyTitle,
+  activeThread,
   activeRequirementId,
   activeTitle,
   token,
@@ -55,7 +57,7 @@ const {
     <!-- 顶部读数条：页面级刷新只留这一个入口（读数条右侧 __action 槽），卡片头不再重复给一颗 -->
     <WorkbenchBarSlot>
       <MessagesOverviewStrip
-        v-if="!activeRequirementId"
+        v-if="!activeThread"
         :dev="isDevWorkbench"
         :loading="loading"
         :conversation-count="activeConversationCount"
@@ -65,8 +67,22 @@ const {
       />
     </WorkbenchBarSlot>
 
+    <!-- 插件咨询：购买者 ↔ 作者，共用消息流 / 已读 / 实时推送，只是绑定对象换成资源 -->
+    <ResourceConversationModal
+      v-if="activeThread?.scene === 'resource'"
+      display-mode="inline"
+      :visible="true"
+      :token="token"
+      :conversation-id="activeThread.conversationId"
+      :resource-id="activeThread.resourceId"
+      :current-username="username"
+      :title="activeThread.title"
+      @updated="applyConversationDetail"
+      @close="closeConversation"
+    />
+
     <RequirementConversationModal
-      v-if="activeRequirementId"
+      v-else-if="activeRequirementId"
       display-mode="inline"
       :visible="true"
       :token="token"
