@@ -4,6 +4,7 @@ import type { PublicMcResourceVersionItem } from '@/api/resources'
 import type { ContractSigningStatus } from '@/shared/contracts'
 import type { InvoiceAvailabilityFacts } from '@/shared/invoiceAvailability'
 import { requirementLockRemainingDays } from '@/shared/requirementArchive'
+import { isRequirementResourceClaimed } from '@/shared/requirementResourceClaim'
 import { requirementStatusLabel } from '@/shared/requirementStatus'
 
 /**
@@ -252,6 +253,17 @@ export function nextResourceVisibility(item: RequirementItem): 'public' | 'priva
 export function canToggleRequirementResourceVisibility(item: RequirementItem) {
   return hasBoundResource(item) && item.status === 'completed'
 }
+
+/**
+ * 交付资源「设为公开」是否被 claim 前置挡住：未转为我的资源前后端会 409，
+ * 「设为私有」任何时候都允许。判据与资源侧的 `isResourceSaleLockedByRequirement` 同源。
+ */
+export function isResourceVisibilityToggleLocked(item: RequirementItem) {
+  return nextResourceVisibility(item) === 'public' && !isRequirementResourceClaimed(item)
+}
+
+/** 公开被 claim 前置挡住时的状态提示（按钮 title，不写解释性长文案）。 */
+export const RESOURCE_VISIBILITY_CLAIM_HINT = '转为我的资源后可设为公开'
 export function toggleResourceVisibilityLabel(item: RequirementItem) {
   if (currentResourceVisibility(item) === 'review') return '审核中'
   return nextResourceVisibility(item) === 'public' ? '公开' : '私有'

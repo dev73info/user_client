@@ -17,6 +17,7 @@ import {
   hasBoundResource,
   isAdapayRequirement,
   isRequirementContractSigned,
+  isResourceVisibilityToggleLocked,
   isSelfManagedRequirement,
   lockRemainingText,
   nextResourceVisibility,
@@ -261,6 +262,29 @@ describe('资源可见性与版本删除草稿', () => {
     expect(nextResourceVisibility(requirement({ resource_visibility: 'public' }))).toBe('private')
     expect(nextResourceVisibility(requirement({ resource_visibility: 'review' }))).toBe('private')
     expect(nextResourceVisibility(requirement({ resource_visibility: null }))).toBe('private')
+  })
+
+  it('未转为我的资源前不能设为公开；claim 后恢复，私有任何时候可切', () => {
+    // 未 claim + 当前私有 → 下一档是公开，锁住
+    expect(isResourceVisibilityToggleLocked(requirement({ resource_visibility: 'private' }))).toBe(
+      true,
+    )
+    // claim 后公开入口恢复
+    expect(
+      isResourceVisibilityToggleLocked(
+        requirement({
+          resource_visibility: 'private',
+          resource_claimed_at: '2026-10-09 11:20:00',
+        }),
+      ),
+    ).toBe(false)
+    // 当前公开 / 审核中 → 下一档是私有，不受 claim 限制
+    expect(isResourceVisibilityToggleLocked(requirement({ resource_visibility: 'public' }))).toBe(
+      false,
+    )
+    expect(isResourceVisibilityToggleLocked(requirement({ resource_visibility: 'review' }))).toBe(
+      false,
+    )
   })
 
   it('拒绝原因草稿按版本 id 取，没写过就是空串', () => {

@@ -61,6 +61,14 @@ export type McResourcePayload = {
   ownership_type: 'individual' | 'team'
   team_id?: number | null
   requirement_id: string | null
+  /**
+   * 资源所属需求的交付资源是否已被需求方「转为我的资源」。
+   * 未 claim 前定制单已定价，资源锁定售价与公开申请；claim 后 creator 已切成需求方、按普通资源售卖。
+   * 旧后端不返回该字段时按 false 处理（保持锁定）。
+   */
+  requirement_claimed?: boolean
+  /** claim 时间（东八区 `YYYY-MM-DD HH:MM:SS`）；未 claim 为 null / 缺省。 */
+  requirement_claimed_at?: string | null
   delete_request_status?: 'pending' | 'rejected' | null
   delete_requested_at?: string | null
   delete_reviewed_at?: string | null

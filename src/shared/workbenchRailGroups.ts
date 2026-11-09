@@ -46,6 +46,13 @@ export function buildRailGroups(realnameApproved: boolean): RailGroup[] {
       name: 'workbench-requirements',
       description: '查看支付、交付与验收进度',
     },
+    {
+      key: 'resources',
+      label: '我的资源',
+      name: 'workbench-resources',
+      description: '管理已转为我的资源的定制交付',
+      activeNames: ['workbench-resource-homepage-edit', 'workbench-resource-versions'],
+    },
     ...(realnameApproved
       ? [
           {

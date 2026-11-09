@@ -4,6 +4,8 @@ export type ResourcePresentationInput = {
   platform: string
   visibility: 'draft' | 'review' | 'published' | 'rejected'
   requirement_id?: string | null
+  /** 绑定需求单的定制资源是否已被需求方「转为我的资源」。 */
+  requirement_claimed?: boolean | null
   cover_url?: string | null
   tag_selections: Array<{ tag_names: string[] }>
   /** R014：资源所属需求已进入超期锁定 / 已清除（锁定期内只能下载历史版本，不能编辑 / 发版 / 删除）。 */
@@ -58,6 +60,25 @@ export function resourceCoverUrl(
 
 export function canDeleteResource(resource: ResourcePresentationInput): boolean {
   return !resource.requirement_id
+}
+
+/**
+ * 绑定需求单的定制资源在需求方「转为我的资源」前锁定售价与公开申请：
+ * 定制单里已经定了价，归属也还在交付方名下；claim 后 creator 切到需求方，按普通资源售卖。
+ *
+ * 契约缺 `requirement_claimed`（旧后端 / 旧数据）时按未 claim 处理，保持锁定。
+ */
+export function isResourceSaleLockedByRequirement(
+  resource: Pick<ResourcePresentationInput, 'requirement_id' | 'requirement_claimed'>,
+): boolean {
+  return Boolean(resource.requirement_id) && resource.requirement_claimed !== true
+}
+
+/** 已转为需求方资源的定制交付：需求方「我的资源」只列这一类。 */
+export function isClaimedCustomResource(
+  resource: Pick<ResourcePresentationInput, 'requirement_id' | 'requirement_claimed'>,
+): boolean {
+  return Boolean(resource.requirement_id) && resource.requirement_claimed === true
 }
 
 /**

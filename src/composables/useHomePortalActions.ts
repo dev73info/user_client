@@ -146,7 +146,11 @@ export function useHomePortalActions(options: HomePortalActionsOptions) {
           resourceId: target.id,
           rootSlug: routeParams.rootSlug,
           entrySlug: routeParams.entrySlug,
-          sale: resourceListingSaleOf(target.buyout_price_fen, target.price_points),
+          sale: resourceListingSaleOf(
+            target.buyout_price_fen,
+            target.price_points,
+            target.min_version_price_fen,
+          ),
         }),
       )
       return

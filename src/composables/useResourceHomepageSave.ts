@@ -32,7 +32,7 @@ export function useResourceHomepageSave(options: {
   form: ResourceHomepageFormState
   isApiKind: Ref<boolean>
   effectiveOriginType: Ref<'original' | 'repost'>
-  boundToRequirement: Ref<boolean>
+  saleLockedByRequirement: Ref<boolean>
   pointsLockedBySavedCash: Ref<boolean>
   selectedCoverFile: Ref<File | null>
   tagCatalog: Pick<
@@ -88,7 +88,7 @@ export function useResourceHomepageSave(options: {
       pricePoints: form.pricePoints,
       promoSharePercent: form.promoSharePercent,
       pointsLockedBySavedCash: options.pointsLockedBySavedCash.value,
-      boundToRequirement: options.boundToRequirement.value,
+      saleLockedByRequirement: options.saleLockedByRequirement.value,
       copyrightDeclared: form.copyrightDeclared,
       visibility: resource.value.visibility,
     }

@@ -44,7 +44,7 @@ const {
   loadGeneration,
   resourceVisibilityLabel,
   archiveLocked,
-  boundToRequirement,
+  saleLockedByRequirement,
   canPreview,
   previewBlockReason,
   userClientPreviewUrl,
@@ -71,7 +71,7 @@ const tagCatalog = useResourceTagCatalog(resource)
 const pageContentRef = ref<ResourceRichEditorHandle | null>(null)
 const formState = useResourceHomepageForm({
   resource,
-  boundToRequirement,
+  saleLockedByRequirement,
   currentEntry: tagCatalog.currentEntry,
   currentEntryLabel: tagCatalog.currentEntryLabel,
   selectedTagCount: tagCatalog.selectedTagCount,
@@ -94,7 +94,7 @@ const { saving, saveHomepage } = useResourceHomepageSave({
   form: formState.form,
   isApiKind: formState.isApiKind,
   effectiveOriginType: formState.effectiveOriginType,
-  boundToRequirement,
+  saleLockedByRequirement,
   pointsLockedBySavedCash: formState.pointsLockedBySavedCash,
   selectedCoverFile: formState.selectedCoverFile,
   tagCatalog,
@@ -209,7 +209,7 @@ const {
             :cash-price-disabled="formState.cashPriceDisabled.value"
             :points-price-disabled="formState.pointsPriceDisabled.value"
             :points-locked-by-saved-cash="formState.pointsLockedBySavedCash.value"
-            :bound-to-requirement="boundToRequirement"
+            :sale-locked-by-requirement="saleLockedByRequirement"
             :promo-share-error="formState.promoShareError.value"
             :promo-share-display="formState.promoShareDisplay.value"
             :promo-share-off="formState.promoSharePercentValue.value <= 0"

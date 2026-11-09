@@ -24,9 +24,10 @@ describe('buildRailGroups', () => {
     expect(buildRailGroups(true).map((group) => group.label)).toEqual(['订单与合同', '资产与权益'])
   })
 
-  it('订单与合同按成交动线排：需求 → 合同 → 发票 → 已购 → 过户', () => {
+  it('订单与合同按成交动线排：需求 → 我的资源 → 合同 → 发票 → 已购 → 过户', () => {
     expect(buildRailGroups(true)[0]?.items.map((item) => item.label)).toEqual([
       '我的需求',
+      '我的资源',
       '我的合同',
       '我的发票',
       '我的已购',

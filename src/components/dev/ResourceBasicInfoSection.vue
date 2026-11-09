@@ -28,7 +28,8 @@ defineProps<{
   cashPriceDisabled: boolean
   pointsPriceDisabled: boolean
   pointsLockedBySavedCash: boolean
-  boundToRequirement: boolean
+  /** 绑定需求单且需求方尚未「转为我的资源」：售价锁定。 */
+  saleLockedByRequirement: boolean
   promoShareError: string
   promoShareDisplay: string
   promoShareOff: boolean
@@ -110,7 +111,7 @@ const promoSharePercent = defineModel<number>('promoSharePercent', { required: t
           :cash-price-disabled="cashPriceDisabled"
           :points-price-disabled="pointsPriceDisabled"
           :points-locked-by-saved-cash="pointsLockedBySavedCash"
-          :bound-to-requirement="boundToRequirement"
+          :sale-locked-by-requirement="saleLockedByRequirement"
           :promo-share-error="promoShareError"
           :promo-share-display="promoShareDisplay"
           :promo-share-off="promoShareOff"
