@@ -29,9 +29,7 @@ describe('requestAuthenticatorLogin', () => {
     ] as const) {
       const deps = buildDeps(Object.assign(new Error(message), { status }))
 
-      await expect(requestAuthenticatorLogin(deps, 'totp_smoke', '123456')).rejects.toThrow(
-        message,
-      )
+      await expect(requestAuthenticatorLogin(deps, 'totp_smoke', '123456')).rejects.toThrow(message)
     }
   })
 

@@ -197,9 +197,7 @@ export function useAccountDialogRegistry(deps: AccountDialogDeps) {
   }
   const securityEntry: AccountEntryGroupsOptions['security'] = {
     profileEmail,
-    twoFactorEnabled: computed(
-      () => twoFactor.twoFactorEnabled.value || totp.totpEnabled.value,
-    ),
+    twoFactorEnabled: computed(() => twoFactor.twoFactorEnabled.value || totp.totpEnabled.value),
     wechatBound: provider.wechatBound,
     wechatBindingLoading: provider.wechatBindingLoading,
     providerBindingLoading: provider.providerBindingLoading,

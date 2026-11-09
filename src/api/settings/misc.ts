@@ -1,10 +1,6 @@
 import { authHeader, requestJson } from '@/api/http'
 
-import type {
-  ActivityCampaignClaimResp,
-  DepositRatioResp,
-  DepositRatioResponse,
-} from './types'
+import type { ActivityCampaignClaimResp, DepositRatioResp, DepositRatioResponse } from './types'
 
 /**
  * 定金比例（用户面只读端点 `GET /api/payment/deposit-ratio`）。

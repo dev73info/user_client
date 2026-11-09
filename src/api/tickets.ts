@@ -119,7 +119,11 @@ export async function listTickets(
   token: string,
   params: TicketListParams = {},
 ): Promise<TicketPage> {
-  return requestJson<TicketPage>(ticketListPath(params), { headers: authHeaders(token) }, '加载工单失败')
+  return requestJson<TicketPage>(
+    ticketListPath(params),
+    { headers: authHeaders(token) },
+    '加载工单失败',
+  )
 }
 
 export async function getTicketDetail(token: string, ticketId: string): Promise<TicketDetail> {
@@ -209,10 +213,7 @@ export async function listTicketCategories(token: string): Promise<TicketCategor
   )
 }
 
-export async function uploadTicketAttachment(
-  token: string,
-  file: File,
-): Promise<TicketAttachment> {
+export async function uploadTicketAttachment(token: string, file: File): Promise<TicketAttachment> {
   const formData = new FormData()
   formData.append('file', file)
 
@@ -228,10 +229,7 @@ export async function uploadTicketAttachment(
 }
 
 /** 附件下载需要 Bearer，不能裸开 `<a href>`；调用方拿 Blob 后自行触发下载。 */
-export async function downloadTicketAttachment(
-  token: string,
-  attachmentId: number,
-): Promise<Blob> {
+export async function downloadTicketAttachment(token: string, attachmentId: number): Promise<Blob> {
   return requestBlob(
     `/ticket/attachments/${encodeURIComponent(String(attachmentId))}`,
     { headers: authHeaders(token) },

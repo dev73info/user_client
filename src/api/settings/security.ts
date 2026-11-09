@@ -148,10 +148,7 @@ export async function setupProfileTotp(token: string): Promise<TotpSetupResponse
   )
 }
 
-export async function enableProfileTotp(
-  token: string,
-  code: string,
-): Promise<TotpSwitchResponse> {
+export async function enableProfileTotp(token: string, code: string): Promise<TotpSwitchResponse> {
   return requestJson<TotpSwitchResponse>(
     '/settings/profile/totp/enable',
     {
@@ -166,10 +163,7 @@ export async function enableProfileTotp(
   )
 }
 
-export async function disableProfileTotp(
-  token: string,
-  code: string,
-): Promise<TotpSwitchResponse> {
+export async function disableProfileTotp(token: string, code: string): Promise<TotpSwitchResponse> {
   return requestJson<TotpSwitchResponse>(
     '/settings/profile/totp/disable',
     {

@@ -78,9 +78,27 @@ export const MOCK_TICKET_CREATOR = currentMockProfile().username
 export const MOCK_TICKET_STAFF = 'support_demo'
 
 export const ticketCategories = [
-  { name: '账号', sort_order: 1, active: true, created_at: '2026-10-01 10:00:00', updated_at: '2026-10-01 10:00:00' },
-  { name: '支付', sort_order: 2, active: true, created_at: '2026-10-01 10:00:00', updated_at: '2026-10-01 10:00:00' },
-  { name: '资源', sort_order: 3, active: true, created_at: '2026-10-01 10:00:00', updated_at: '2026-10-01 10:00:00' },
+  {
+    name: '账号',
+    sort_order: 1,
+    active: true,
+    created_at: '2026-10-01 10:00:00',
+    updated_at: '2026-10-01 10:00:00',
+  },
+  {
+    name: '支付',
+    sort_order: 2,
+    active: true,
+    created_at: '2026-10-01 10:00:00',
+    updated_at: '2026-10-01 10:00:00',
+  },
+  {
+    name: '资源',
+    sort_order: 3,
+    active: true,
+    created_at: '2026-10-01 10:00:00',
+    updated_at: '2026-10-01 10:00:00',
+  },
 ]
 
 export const ticketAttachments: MockTicketAttachment[] = [

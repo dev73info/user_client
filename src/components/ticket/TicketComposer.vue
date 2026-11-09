@@ -85,12 +85,7 @@ function submit() {
 </script>
 
 <template>
-  <TDialog
-    :open="open"
-    title="新建工单"
-    width="560px"
-    @update:open="emit('update:open', $event)"
-  >
+  <TDialog :open="open" title="新建工单" width="560px" @update:open="emit('update:open', $event)">
     <div class="ticket-compose">
       <label>
         标题
@@ -108,7 +103,11 @@ function submit() {
       <label>
         优先级
         <select v-model="priority">
-          <option v-for="option in TICKET_PRIORITY_OPTIONS" :key="option.value" :value="option.value">
+          <option
+            v-for="option in TICKET_PRIORITY_OPTIONS"
+            :key="option.value"
+            :value="option.value"
+          >
             {{ option.label }}
           </option>
         </select>

@@ -1,7 +1,11 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch, type Ref } from 'vue'
 import { useRoute } from 'vue-router'
 
-import { railGroupItemActive, type RailGroup, type RailGroupItem } from '@/shared/workbenchRailGroups'
+import {
+  railGroupItemActive,
+  type RailGroup,
+  type RailGroupItem,
+} from '@/shared/workbenchRailGroups'
 
 /**
  * 图标栏分组图标的 PC 悬浮菜单：中栏列表收起后，鼠标停在分组图标上约 120ms，
@@ -138,7 +142,10 @@ export function useRailGroupFlyout(options: {
   }
 
   // 面板一展开、路由一变、页面一滚，悬浮层都失去意义，直接收起。
-  watch(() => options.panelOpen.value, (open) => open && closeFlyout())
+  watch(
+    () => options.panelOpen.value,
+    (open) => open && closeFlyout(),
+  )
   watch(() => route.fullPath, closeFlyout)
 
   onMounted(() => {

@@ -134,11 +134,7 @@ export function createAuthActions(session: AuthSession) {
   ): Promise<LoginResult> {
     loading.value = true
     try {
-      const payload = await loginWithAuthenticatorApi(
-        usernameInput,
-        codeInput,
-        turnstileToken,
-      )
+      const payload = await loginWithAuthenticatorApi(usernameInput, codeInput, turnstileToken)
       await finishLogin(payload)
       return { requiresTwoFactor: false }
     } finally {

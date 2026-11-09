@@ -35,9 +35,9 @@ function mountForm(overrides: Record<string, unknown> = {}) {
 describe('AccountForm：TOTP 登录分支', () => {
   it('默认展示「使用 Authenticator 登录」，点击回传开启', async () => {
     const wrapper = mountForm()
-    const toggle = wrapper.findAll('button').find((item) =>
-      item.text().includes('使用 Authenticator 登录'),
-    )
+    const toggle = wrapper
+      .findAll('button')
+      .find((item) => item.text().includes('使用 Authenticator 登录'))
     expect(toggle).toBeTruthy()
 
     await toggle!.trigger('click')
@@ -49,9 +49,9 @@ describe('AccountForm：TOTP 登录分支', () => {
     const wrapper = mountForm({ loginAuthenticatorMode: true, authAuthenticatorCode: '123456' })
 
     expect(wrapper.find('input[type="password"]').exists()).toBe(false)
-    const codeInput = wrapper.findAll('input').find(
-      (input) => input.attributes('placeholder') === '输入 6 位动态码',
-    )
+    const codeInput = wrapper
+      .findAll('input')
+      .find((input) => input.attributes('placeholder') === '输入 6 位动态码')
     expect(codeInput).toBeTruthy()
     expect(codeInput!.attributes('value')).toBe('123456')
 

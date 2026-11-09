@@ -167,14 +167,17 @@ export function buildTicketTimeline(
     at: event.created_at,
     detail: eventDetail(event),
   }))
-  const hasType = (matcher: RegExp) =>
-    events.some((event) => matcher.test(event.event_type))
+  const hasType = (matcher: RegExp) => events.some((event) => matcher.test(event.event_type))
 
   if (!hasType(/^created$/)) {
     entries.push({ key: 'milestone-created', label: '创建工单', at: ticket.created_at })
   }
   if (ticket.first_response_at && !hasType(/first_response/)) {
-    entries.push({ key: 'milestone-first-response', label: '首次响应', at: ticket.first_response_at })
+    entries.push({
+      key: 'milestone-first-response',
+      label: '首次响应',
+      at: ticket.first_response_at,
+    })
   }
   if (ticket.resolved_at && !hasType(/resolved/)) {
     entries.push({ key: 'milestone-resolved', label: '标记已解决', at: ticket.resolved_at })

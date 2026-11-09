@@ -96,9 +96,7 @@ watch(
       >
         {{ props.setupLoading ? '生成中...' : '生成绑定二维码' }}
       </button>
-      <button v-else class="ghost small" type="button" @click="emit('start-disable')">
-        停用
-      </button>
+      <button v-else class="ghost small" type="button" @click="emit('start-disable')">停用</button>
     </div>
 
     <template v-if="props.setup">
@@ -123,7 +121,12 @@ watch(
           :disabled="props.enableSubmitting"
           @input="emit('update:bind-code', ($event.target as HTMLInputElement).value)"
         />
-        <button class="ghost small" type="button" :disabled="props.enableSubmitting" @click="emit('cancel-setup')">
+        <button
+          class="ghost small"
+          type="button"
+          :disabled="props.enableSubmitting"
+          @click="emit('cancel-setup')"
+        >
           取消
         </button>
         <button

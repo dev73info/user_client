@@ -108,9 +108,7 @@ export function useAuthSubmit({
         }
         if (loginRequiresTwoFactor.value && twoFactorCode.length !== 6) {
           TMessage.error(
-            loginTwoFactorDelivery.value === 'totp'
-              ? '请输入 6 位动态码'
-              : '请输入 6 位邮箱验证码',
+            loginTwoFactorDelivery.value === 'totp' ? '请输入 6 位动态码' : '请输入 6 位邮箱验证码',
           )
           return false
         }
@@ -223,11 +221,7 @@ export function useAuthSubmit({
         TMessage.error('请输入 6 位动态码')
         return false
       }
-      await auth.loginWithAuthenticator(
-        username,
-        code,
-        authTurnstileToken.value || undefined,
-      )
+      await auth.loginWithAuthenticator(username, code, authTurnstileToken.value || undefined)
       TMessage.success('登录成功')
       return true
     } catch (err) {

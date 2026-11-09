@@ -35,10 +35,10 @@ const lastReplyText = computed(() => {
         ticketStatusLabel(ticket.status)
       }}</span>
       <span class="ticket-progress__tag">{{ ticketPriorityLabel(ticket.priority) }}</span>
-      <span class="ticket-progress__tag">
-        负责人：{{ ticket.assigned_to || '未分配' }}
-      </span>
-      <span v-if="ticket.first_response_overdue" class="ticket-progress__overdue">首次响应逾期</span>
+      <span class="ticket-progress__tag"> 负责人：{{ ticket.assigned_to || '未分配' }} </span>
+      <span v-if="ticket.first_response_overdue" class="ticket-progress__overdue"
+        >首次响应逾期</span
+      >
       <span v-if="(ticket.reopen_count ?? 0) > 0" class="ticket-progress__tag">
         重开 {{ ticket.reopen_count }} 次
       </span>

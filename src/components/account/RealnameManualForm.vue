@@ -79,7 +79,11 @@ function onProvinceChange() {
         />
       </TFormItem>
       <TFormItem label="经办人姓名" required>
-        <TInput v-model="form.operatorName" :disabled="props.disabled" placeholder="请输入经办人姓名" />
+        <TInput
+          v-model="form.operatorName"
+          :disabled="props.disabled"
+          placeholder="请输入经办人姓名"
+        />
       </TFormItem>
       <TFormItem label="经办人身份证号" required>
         <TInput
@@ -194,7 +198,11 @@ function onProvinceChange() {
 
     <template v-else>
       <TFormItem label="姓名" required>
-        <TInput v-model="form.realName" :disabled="props.disabled" placeholder="请输入身份证上的姓名" />
+        <TInput
+          v-model="form.realName"
+          :disabled="props.disabled"
+          placeholder="请输入身份证上的姓名"
+        />
       </TFormItem>
       <TFormItem label="身份证号" required>
         <TInput

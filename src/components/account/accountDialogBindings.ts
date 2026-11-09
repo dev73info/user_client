@@ -1,9 +1,6 @@
 import type { Component } from 'vue'
 
-import type {
-  AccountDialogDomains,
-  AccountDialogKey,
-} from '@/composables/useAccountDialogRegistry'
+import type { AccountDialogDomains, AccountDialogKey } from '@/composables/useAccountDialogRegistry'
 import type { RealnameAuthMode } from '@/composables/useRealnameFormDraft'
 
 import CloseSettleDialog from './CloseSettleDialog.vue'

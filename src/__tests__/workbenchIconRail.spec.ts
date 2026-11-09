@@ -38,11 +38,7 @@ const routes = [
 
 async function render(
   name: string,
-  {
-    isDevWorkbenchMode = false,
-    realnameApproved = true,
-    groupPanelOpen = true,
-  } = {},
+  { isDevWorkbenchMode = false, realnameApproved = true, groupPanelOpen = true } = {},
 ) {
   const router = createRouter({ history: createMemoryHistory(), routes })
   await router.push({ name })

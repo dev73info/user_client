@@ -17,7 +17,12 @@ const group: RailGroup = {
   label: '订单与合同',
   icon: Grid,
   items: [
-    { key: 'requirements', label: '我的需求', name: 'workbench-requirements', description: '查看进度' },
+    {
+      key: 'requirements',
+      label: '我的需求',
+      name: 'workbench-requirements',
+      description: '查看进度',
+    },
     { key: 'invoices', label: '我的发票', name: 'workbench-invoices', description: '下载发票' },
   ],
 }

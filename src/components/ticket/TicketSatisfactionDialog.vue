@@ -42,12 +42,7 @@ function submit() {
 </script>
 
 <template>
-  <TDialog
-    :open="open"
-    title="评价工单"
-    width="420px"
-    @update:open="emit('update:open', $event)"
-  >
+  <TDialog :open="open" title="评价工单" width="420px" @update:open="emit('update:open', $event)">
     <div class="ticket-satisfaction">
       <div class="ticket-satisfaction__stars" role="radiogroup" aria-label="满意度">
         <button

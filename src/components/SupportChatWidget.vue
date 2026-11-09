@@ -60,7 +60,12 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <div v-if="channelEnabled" class="support-widget" :class="{ 'is-open': opened }" :style="widgetStyle">
+  <div
+    v-if="channelEnabled"
+    class="support-widget"
+    :class="{ 'is-open': opened }"
+    :style="widgetStyle"
+  >
     <Transition name="support-pop">
       <SupportChatPanel
         v-if="opened"
@@ -101,7 +106,9 @@ onBeforeUnmount(() => {
         <span class="support-fab__sprite support-fab__sprite--idle"></span>
         <span class="support-fab__sprite support-fab__sprite--wave"></span>
         <span v-if="opened" class="support-fab__close">×</span>
-        <span v-else-if="unread > 0" class="support-fab__badge">{{ unread > 99 ? '99+' : unread }}</span>
+        <span v-else-if="unread > 0" class="support-fab__badge">{{
+          unread > 99 ? '99+' : unread
+        }}</span>
       </span>
       <span class="support-fab__text">在线客服</span>
     </button>

@@ -67,12 +67,7 @@ describe('登录表单：TOTP 两步验证与免密登录', () => {
     state.authEmailCode.value = '123456'
     mocks.login.mockResolvedValue({ requiresTwoFactor: false })
     expect(await submit.submitAuth()).toBe(true)
-    expect(mocks.login).toHaveBeenLastCalledWith(
-      'totp_smoke',
-      'Test@123456',
-      '123456',
-      undefined,
-    )
+    expect(mocks.login).toHaveBeenLastCalledWith('totp_smoke', 'Test@123456', '123456', undefined)
   })
 
   it('202 delivery=email 时沿用「请查收邮箱」提示', async () => {
@@ -98,10 +93,6 @@ describe('登录表单：TOTP 两步验证与免密登录', () => {
     state.authAuthenticatorCode.value = '654321'
     mocks.loginWithAuthenticator.mockResolvedValue({ requiresTwoFactor: false })
     expect(await submit.submitAuth()).toBe(true)
-    expect(mocks.loginWithAuthenticator).toHaveBeenCalledWith(
-      'totp_smoke',
-      '654321',
-      undefined,
-    )
+    expect(mocks.loginWithAuthenticator).toHaveBeenCalledWith('totp_smoke', '654321', undefined)
   })
 })

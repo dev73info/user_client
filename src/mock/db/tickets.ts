@@ -90,11 +90,7 @@ export function toTicketDetail(ticket: MockTicket) {
   }
 }
 
-export function listMockTickets(query: {
-  status?: string
-  page?: number
-  page_size?: number
-}) {
+export function listMockTickets(query: { status?: string; page?: number; page_size?: number }) {
   const filtered =
     query.status && query.status !== 'all'
       ? mockTickets.filter((item) => item.status === query.status)

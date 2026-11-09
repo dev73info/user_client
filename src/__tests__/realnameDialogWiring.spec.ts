@@ -172,7 +172,9 @@ describe('材料认证弹窗', () => {
     await nextTick()
 
     // 手动路径不收证件照片，OCR 的上传位全部让位给文字字段
-    expect(document.querySelectorAll('.t73-dialog .realname-consent-upload__native')).toHaveLength(0)
+    expect(document.querySelectorAll('.t73-dialog .realname-consent-upload__native')).toHaveLength(
+      0,
+    )
     await fillInput('请输入身份证上的姓名', '张三')
     await fillInput('请输入身份证号', '110101199001011234')
     await fillInput('请输入本人手机号', '13800000000')

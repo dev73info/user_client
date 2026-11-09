@@ -83,11 +83,20 @@ export function seedMockTickets(creator: string): MockTicket[] {
       created_at: datetime(-3, 9, 10),
       updated_at: datetime(-1, 10, 0),
       messages: [
-        msg('TK-20261106-0001', creator, 'user', '充值后余额没有到账，订单号 20261106-001。', datetime(-3, 9, 10)),
+        msg(
+          'TK-20261106-0001',
+          creator,
+          'user',
+          '充值后余额没有到账，订单号 20261106-001。',
+          datetime(-3, 9, 10),
+        ),
         msg('TK-20261106-0001', creator, 'user', '补充：是微信支付。', datetime(-3, 9, 30)),
       ],
       events: [
-        ev('TK-20261106-0001', 'created', datetime(-3, 9, 10), { actor: creator, actor_role: 'user' }),
+        ev('TK-20261106-0001', 'created', datetime(-3, 9, 10), {
+          actor: creator,
+          actor_role: 'user',
+        }),
         ev('TK-20261106-0001', 'assigned', datetime(-3, 10, 0), {
           actor: STAFF,
           actor_role: 'staff',
@@ -128,11 +137,27 @@ export function seedMockTickets(creator: string): MockTicket[] {
       created_at: datetime(-5, 11, 0),
       updated_at: datetime(-1, 15, 0),
       messages: [
-        msg('TK-20261104-0002', creator, 'user', '登录时一直收不到短信验证码。', datetime(-5, 11, 0), [1]),
-        msg('TK-20261104-0002', STAFF, 'staff', '已切换备用通道重发，请再试一次。', datetime(-5, 12, 0)),
+        msg(
+          'TK-20261104-0002',
+          creator,
+          'user',
+          '登录时一直收不到短信验证码。',
+          datetime(-5, 11, 0),
+          [1],
+        ),
+        msg(
+          'TK-20261104-0002',
+          STAFF,
+          'staff',
+          '已切换备用通道重发，请再试一次。',
+          datetime(-5, 12, 0),
+        ),
       ],
       events: [
-        ev('TK-20261104-0002', 'created', datetime(-5, 11, 0), { actor: creator, actor_role: 'user' }),
+        ev('TK-20261104-0002', 'created', datetime(-5, 11, 0), {
+          actor: creator,
+          actor_role: 'user',
+        }),
         ev('TK-20261104-0002', 'first_response', datetime(-5, 12, 0), {
           actor: STAFF,
           actor_role: 'staff',
@@ -173,10 +198,19 @@ export function seedMockTickets(creator: string): MockTicket[] {
       updated_at: datetime(-2, 18, 0),
       messages: [
         msg('TK-20261106-0003', creator, 'user', '资源下载链接打开是 404。', datetime(-4, 8, 0)),
-        msg('TK-20261106-0003', STAFF, 'staff', '链接已重新生成，请从资源详情页重新下载。', datetime(-4, 9, 0)),
+        msg(
+          'TK-20261106-0003',
+          STAFF,
+          'staff',
+          '链接已重新生成，请从资源详情页重新下载。',
+          datetime(-4, 9, 0),
+        ),
       ],
       events: [
-        ev('TK-20261106-0003', 'created', datetime(-4, 8, 0), { actor: creator, actor_role: 'user' }),
+        ev('TK-20261106-0003', 'created', datetime(-4, 8, 0), {
+          actor: creator,
+          actor_role: 'user',
+        }),
         ev('TK-20261106-0003', 'first_response', datetime(-4, 9, 0), {
           actor: STAFF,
           actor_role: 'staff',
@@ -220,17 +254,38 @@ export function seedMockTickets(creator: string): MockTicket[] {
       created_at: datetime(-12, 10, 0),
       updated_at: datetime(-9, 16, 30),
       messages: [
-        msg('TK-20261028-0004', creator, 'user', '想确认保证金退还的到账时间。', datetime(-12, 10, 0)),
-        msg('TK-20261028-0004', STAFF, 'staff', '已提交出款，按银行处理时间 1-3 个工作日到账。', datetime(-12, 11, 0)),
+        msg(
+          'TK-20261028-0004',
+          creator,
+          'user',
+          '想确认保证金退还的到账时间。',
+          datetime(-12, 10, 0),
+        ),
+        msg(
+          'TK-20261028-0004',
+          STAFF,
+          'staff',
+          '已提交出款，按银行处理时间 1-3 个工作日到账。',
+          datetime(-12, 11, 0),
+        ),
       ],
       events: [
-        ev('TK-20261028-0004', 'created', datetime(-12, 10, 0), { actor: creator, actor_role: 'user' }),
+        ev('TK-20261028-0004', 'created', datetime(-12, 10, 0), {
+          actor: creator,
+          actor_role: 'user',
+        }),
         ev('TK-20261028-0004', 'first_response', datetime(-12, 11, 0), {
           actor: STAFF,
           actor_role: 'staff',
         }),
-        ev('TK-20261028-0004', 'resolved', datetime(-9, 15, 0), { actor: STAFF, actor_role: 'staff' }),
-        ev('TK-20261028-0004', 'closed', datetime(-9, 16, 0), { actor: STAFF, actor_role: 'staff' }),
+        ev('TK-20261028-0004', 'resolved', datetime(-9, 15, 0), {
+          actor: STAFF,
+          actor_role: 'staff',
+        }),
+        ev('TK-20261028-0004', 'closed', datetime(-9, 16, 0), {
+          actor: STAFF,
+          actor_role: 'staff',
+        }),
         ev('TK-20261028-0004', 'rated', datetime(-9, 16, 30), {
           actor: creator,
           actor_role: 'user',

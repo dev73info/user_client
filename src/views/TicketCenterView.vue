@@ -28,14 +28,48 @@ const actions = useTicketActions(list)
 const { realtimeWarning, connect } = useTicketRealtime((id) => list.handleTicketUpdated(id))
 
 const {
-  tickets, page, pageCount, status, keyword, priority, loading, loadError, selectedId,
-  detail, detailLoading, detailError, filtered, stats, hasFilters, loadTickets, loadDetail,
-  selectTicket, setStatus, setPage, resetFilters,
+  tickets,
+  page,
+  pageCount,
+  status,
+  keyword,
+  priority,
+  loading,
+  loadError,
+  selectedId,
+  detail,
+  detailLoading,
+  detailError,
+  filtered,
+  stats,
+  hasFilters,
+  loadTickets,
+  loadDetail,
+  selectTicket,
+  setStatus,
+  setPage,
+  resetFilters,
 } = list
 const {
-  categories, creating, replying, closing, reopening, rating, createError, replyError,
-  actionError, composeOpen, satisfactionOpen, openCompose, submitCreate, submitReply,
-  submitClose, submitReopen, submitSatisfaction, uploadAttachment, downloadAttachment,
+  categories,
+  creating,
+  replying,
+  closing,
+  reopening,
+  rating,
+  createError,
+  replyError,
+  actionError,
+  composeOpen,
+  satisfactionOpen,
+  openCompose,
+  submitCreate,
+  submitReply,
+  submitClose,
+  submitReopen,
+  submitSatisfaction,
+  uploadAttachment,
+  downloadAttachment,
 } = actions
 
 const replyContent = ref('')
@@ -70,7 +104,10 @@ function removeReplyAttachment(attachment: TicketAttachment) {
 }
 
 async function sendReply() {
-  const ok = await submitReply(replyContent.value, replyAttachments.value.map((item) => item.id))
+  const ok = await submitReply(
+    replyContent.value,
+    replyAttachments.value.map((item) => item.id),
+  )
   if (!ok) return
   replyContent.value = ''
   replyAttachments.value = []
@@ -80,10 +117,18 @@ async function sendReply() {
 <template>
   <main class="page-shell custom-page-shell profile-page ticket-page">
     <section class="wb-strip ticket-strip" aria-label="工单概览">
-      <div class="wb-strip__item"><span>全部工单</span><strong>{{ stats.total }}</strong></div>
-      <div class="wb-strip__item"><span>处理中</span><strong>{{ stats.pending }}</strong></div>
-      <div class="wb-strip__item"><span>已结束</span><strong>{{ stats.resolved }}</strong></div>
-      <div class="wb-strip__item"><span>未读</span><strong>{{ stats.unread }}</strong></div>
+      <div class="wb-strip__item">
+        <span>全部工单</span><strong>{{ stats.total }}</strong>
+      </div>
+      <div class="wb-strip__item">
+        <span>处理中</span><strong>{{ stats.pending }}</strong>
+      </div>
+      <div class="wb-strip__item">
+        <span>已结束</span><strong>{{ stats.resolved }}</strong>
+      </div>
+      <div class="wb-strip__item">
+        <span>未读</span><strong>{{ stats.unread }}</strong>
+      </div>
       <div class="wb-strip__item wb-strip__action">
         <span v-if="realtimeWarning" class="ticket-realtime">{{ realtimeWarning }}</span>
         <TButton variant="outline" :loading="loading" @click="loadTickets">刷新</TButton>
@@ -104,7 +149,9 @@ async function sendReply() {
             placeholder="搜索标题、编号或分类"
             aria-label="搜索工单"
           >
-            <template #prefix><TIcon><Search /></TIcon></template>
+            <template #prefix
+              ><TIcon><Search /></TIcon
+            ></template>
           </TInput>
           <select :value="status" @change="onStatusChange">
             <option v-for="o in TICKET_STATUS_FILTER_OPTIONS" :key="o.value" :value="o.value">
@@ -120,7 +167,8 @@ async function sendReply() {
         </div>
         <p v-if="loading" class="wb-empty" role="status">正在加载工单…</p>
         <div v-else-if="loadError" class="wb-empty" role="alert">
-          <span>{{ loadError }}</span><TButton variant="outline" @click="loadTickets">重试</TButton>
+          <span>{{ loadError }}</span
+          ><TButton variant="outline" @click="loadTickets">重试</TButton>
         </div>
         <div v-else-if="!filtered.length" class="wb-empty">
           {{ tickets.length ? '本页没有符合条件的工单' : '还没有工单，遇到问题可以在这里提交' }}
@@ -147,7 +195,9 @@ async function sendReply() {
               <span class="ticket-item__meta">
                 {{ ticket.ticket_id }} · {{ ticketPriorityLabel(ticket.priority) }}
               </span>
-              <span class="ticket-item__meta">更新于 {{ formatTicketTime(ticket.updated_at) }}</span>
+              <span class="ticket-item__meta"
+                >更新于 {{ formatTicketTime(ticket.updated_at) }}</span
+              >
             </button>
           </li>
         </ul>
@@ -156,7 +206,12 @@ async function sendReply() {
             上一页
           </TButton>
           <span class="ticket-pager__text">{{ page }} / {{ pageCount }}</span>
-          <TButton variant="outline" size="sm" :disabled="page >= pageCount" @click="setPage(page + 1)">
+          <TButton
+            variant="outline"
+            size="sm"
+            :disabled="page >= pageCount"
+            @click="setPage(page + 1)"
+          >
             下一页
           </TButton>
         </div>
@@ -166,7 +221,9 @@ async function sendReply() {
         <p v-if="detailLoading" class="wb-empty" role="status">正在加载详情…</p>
         <div v-else-if="detailError" class="wb-empty" role="alert">
           <span>{{ detailError }}</span>
-          <TButton v-if="selectedId" variant="outline" @click="loadDetail(selectedId)">重试</TButton>
+          <TButton v-if="selectedId" variant="outline" @click="loadDetail(selectedId)"
+            >重试</TButton
+          >
         </div>
         <template v-else-if="detail">
           <div class="ticket-head">
@@ -223,7 +280,9 @@ async function sendReply() {
           <section v-else-if="detail.actions.can_rate" class="ticket-satisfaction-view">
             <div class="ticket-satisfaction-view__head">
               <strong>满意度</strong>
-              <TButton variant="outline" size="sm" @click="satisfactionOpen = true">评价工单</TButton>
+              <TButton variant="outline" size="sm" @click="satisfactionOpen = true"
+                >评价工单</TButton
+              >
             </div>
           </section>
 
