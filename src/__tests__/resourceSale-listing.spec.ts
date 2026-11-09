@@ -10,6 +10,7 @@ import {
   isFreeListingResource,
   isPointsListingResource,
   isPointsPurchaseOrder,
+  isPricedResource,
   isPurchaseRequiredError,
   needsPurchase,
   parseResourceListingSale,
@@ -31,6 +32,13 @@ describe('resourceSale 售卖与退款口径', () => {
     expect(isPointsListingResource(100, 0)).toBe(false)
     expect(isPointsListingResource(100, 50)).toBe(false)
     expect(isPointsListingResource(0, 0)).toBe(false)
+    // 按版本售卖：资源级买断价为 0、但最低版本价 > 0，算现金付费、不能落免费厅
+    expect(isFreeListingResource(0, 0, 1990)).toBe(false)
+    expect(isCashPaidListingResource(0, 0, 1990)).toBe(true)
+    expect(isPricedResource(0, 0, 1990)).toBe(true)
+    expect(isFreeListingResource(0, 0, 0)).toBe(true)
+    // 版本价与积分价互斥的口径不受影响：积分标价仍归免费厅
+    expect(isCashPaidListingResource(0, 50, 1990)).toBe(false)
     expect(parseResourceListingSale('paid')).toBe('paid')
     expect(parseResourceListingSale('free')).toBe('free')
     expect(parseResourceListingSale('all')).toBe(null)

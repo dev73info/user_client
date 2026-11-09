@@ -30,6 +30,8 @@ export type PortalNoticeResource = {
   buyout_price_fen: number
   price_fen: number
   price_points: number
+  /** 最低可购版本价（分）：按版本售卖的资源要落付费厅，不能只看资源级买断价。 */
+  min_version_price_fen?: number
 }
 
 export type PortalNoticeSources = {
@@ -72,7 +74,11 @@ export function buildPortalNotices(sources: PortalNoticeSources): PortalNotice[]
             resourceId: resource.id,
             rootSlug: sources.resourceRoute.rootSlug,
             entrySlug: sources.resourceRoute.entrySlug,
-            sale: resourceListingSaleOf(resource.buyout_price_fen, resource.price_points),
+            sale: resourceListingSaleOf(
+              resource.buyout_price_fen,
+              resource.price_points,
+              resource.min_version_price_fen,
+            ),
           })
         : { name: 'resources', query: { sale: 'free' } },
     })
