@@ -4019,6 +4019,377 @@
         }
       }
     },
+    "/api/admin/payment/daily-diffs/{id}": {
+      "patch": {
+        "tags": [
+          "payment-admin"
+        ],
+        "summary": "更新日结差异",
+        "description": "标记差异已处理 / 忽略、指派处理人、写备注；已关账的日期只读；需要 `payment.daily_settlement.update.patch`。",
+        "operationId": "payment_admin_update_daily_diff",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "差异主键",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateDailyDiffRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "更新后的差异",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DailyDiffResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "没有该接口权限"
+          },
+          "404": {
+            "description": "差异不存在"
+          },
+          "409": {
+            "description": "该日期已关账"
+          }
+        }
+      }
+    },
+    "/api/admin/payment/daily-settlement": {
+      "get": {
+        "tags": [
+          "payment-admin"
+        ],
+        "summary": "支付日结汇总",
+        "description": "查看某一天（Asia/Shanghai）的实收 / 退款 / 分账 / 出款 / 托管动作 / 回调事件汇总与差异清单；金额单位分；需要 `payment.daily_settlement.get`。",
+        "operationId": "payment_admin_daily_settlement",
+        "parameters": [
+          {
+            "name": "date",
+            "in": "query",
+            "description": "自然日，`YYYY-MM-DD`（东八区）。",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "日结汇总",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DailySettlementResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "日期格式不合法"
+          },
+          "403": {
+            "description": "没有该接口权限"
+          }
+        }
+      }
+    },
+    "/api/admin/payment/daily-settlement/close": {
+      "post": {
+        "tags": [
+          "payment-admin"
+        ],
+        "summary": "支付日结关账",
+        "description": "写入关账人 / 时间 / 备注；还有未处理且未忽略的差异时拒绝；关账后当天只读；需要 `payment.daily_settlement.close.post`。",
+        "operationId": "payment_admin_daily_settlement_close",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CloseDailySettlementRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "关账后的日结汇总",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DailySettlementResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "日期格式不合法"
+          },
+          "403": {
+            "description": "没有该接口权限"
+          },
+          "409": {
+            "description": "已关账，或仍有未处理差异"
+          }
+        }
+      }
+    },
+    "/api/admin/payment/daily-settlement/refresh": {
+      "post": {
+        "tags": [
+          "payment-admin"
+        ],
+        "summary": "刷新支付日结差异",
+        "description": "按当天回调事件与本地底账重新生成未处理差异（已处理 / 已忽略的保留）；已关账的日期拒绝刷新；需要 `payment.daily_settlement.refresh.post`。",
+        "operationId": "payment_admin_daily_settlement_refresh",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RefreshDailySettlementRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "刷新后的日结汇总",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DailySettlementResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "日期格式不合法"
+          },
+          "403": {
+            "description": "没有该接口权限"
+          },
+          "409": {
+            "description": "该日期已关账"
+          }
+        }
+      }
+    },
+    "/api/admin/payment/events": {
+      "get": {
+        "tags": [
+          "payment-admin"
+        ],
+        "summary": "支付回调事件列表",
+        "description": "按类别、处理状态、支付单号与日期范围（Asia/Shanghai 自然日）分页查看回调事件；需要 `payment.event.list.get`。",
+        "operationId": "payment_admin_list_events",
+        "parameters": [
+          {
+            "name": "kind",
+            "in": "query",
+            "description": "事件类别：`payment` / `refund` / `settlement` / `payout` / `unknown`。",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          {
+            "name": "processed",
+            "in": "query",
+            "description": "处理状态：`true` 只看已处理，`false` 只看未处理。",
+            "required": false,
+            "schema": {
+              "type": [
+                "boolean",
+                "null"
+              ]
+            }
+          },
+          {
+            "name": "order_no",
+            "in": "query",
+            "description": "我方支付单号（精确匹配）。",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          {
+            "name": "date_from",
+            "in": "query",
+            "description": "起始日期（含），`YYYY-MM-DD`（东八区）。",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          {
+            "name": "date_to",
+            "in": "query",
+            "description": "结束日期（含），`YYYY-MM-DD`（东八区）。",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "description": "页码，从 1 开始。",
+            "required": false,
+            "schema": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "format": "int64"
+            }
+          },
+          {
+            "name": "page_size",
+            "in": "query",
+            "description": "每页条数（上限 100）。",
+            "required": false,
+            "schema": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "回调事件分页",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaymentEventPageResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "事件类别或日期格式不合法"
+          },
+          "403": {
+            "description": "没有该接口权限"
+          }
+        }
+      }
+    },
+    "/api/admin/payment/events/{event_id}": {
+      "get": {
+        "tags": [
+          "payment-admin"
+        ],
+        "summary": "支付回调事件详情",
+        "description": "按上游事件 ID 读取单条回调事件，含原始 JSON；需要 `payment.event.detail.get`。",
+        "operationId": "payment_admin_get_event",
+        "parameters": [
+          {
+            "name": "event_id",
+            "in": "path",
+            "description": "上游事件 ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "回调事件详情",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaymentEventDetailResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "没有该接口权限"
+          },
+          "404": {
+            "description": "事件不存在"
+          }
+        }
+      }
+    },
+    "/api/admin/payment/events/{event_id}/replay": {
+      "post": {
+        "tags": [
+          "payment-admin"
+        ],
+        "summary": "重放支付回调事件",
+        "description": "按落库的原始事件再走一次业务消费，仅支持未处理的支付 / 分账事件；重放会写 `payment_audit_log`，需要 `payment.event.replay.post`。",
+        "operationId": "payment_admin_replay_event",
+        "parameters": [
+          {
+            "name": "event_id",
+            "in": "path",
+            "description": "上游事件 ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "重放结论",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaymentEventReplayResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "没有该接口权限"
+          },
+          "404": {
+            "description": "事件不存在"
+          },
+          "409": {
+            "description": "事件已处理，或该类别不可重放"
+          }
+        }
+      }
+    },
     "/api/admin/payment/finance-overview": {
       "get": {
         "tags": [
@@ -13661,6 +14032,74 @@
         }
       }
     },
+    "/api/conversation/resource/{resource_id}": {
+      "get": {
+        "tags": [
+          "conversation"
+        ],
+        "summary": "按资源打开插件咨询会话",
+        "description": "插件购买者从资源详情页联系作者用。会话不存在时**补建**；一个买家对一个资源只有一个会话。只有仍持有有效购买权益的买家能打开，作者与未购买者回 403。",
+        "operationId": "conversation_detail_by_resource",
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "每页条数；不传表示一次取全部（legacy 口径）。",
+            "required": false,
+            "schema": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "format": "int64"
+            }
+          },
+          {
+            "name": "before_id",
+            "in": "query",
+            "description": "只取编号小于它（更早）的消息。",
+            "required": false,
+            "schema": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "format": "int64"
+            }
+          },
+          {
+            "name": "resource_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "会话详情",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConversationDetailResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "没有登录或令牌无效"
+          },
+          "403": {
+            "description": "没有购买该资源，或调用者是资源作者"
+          },
+          "404": {
+            "description": "资源不存在，或资源会话未启用"
+          }
+        }
+      }
+    },
     "/api/conversation/{conversation_id}": {
       "get": {
         "tags": [
@@ -14832,7 +15271,7 @@
           "dispute"
         ],
         "summary": "立案",
-        "description": "由需求当事人之一发起，需要 `dispute.case.file.post`。同一条需求同时只能有一条在办案件，重复立案回 409；不是当事人回 403；需求当前状态不允许开这类案件回 409。",
+        "description": "由需求当事人之一发起，需要 `dispute.case.file.post`。同一条需求同时只能有一条在办案件，重复立案回 409；不是当事人回 403；需求当前状态不允许开这类案件回 409。`mutual_unbind` 不接受：解除合作请走 `POST /api/requirement/{id}/termination`。",
         "operationId": "dispute_file",
         "requestBody": {
           "content": {
@@ -14856,7 +15295,7 @@
             }
           },
           "400": {
-            "description": "案件类型 / 诉求说明不合法"
+            "description": "案件类型 / 诉求说明不合法（含 mutual_unbind）"
           },
           "403": {
             "description": "不是这条需求的当事人，或没有该接口权限"
@@ -39514,6 +39953,23 @@
           }
         }
       },
+      "CloseDailySettlementRequest": {
+        "type": "object",
+        "description": "关账请求。",
+        "required": [
+          "date"
+        ],
+        "properties": {
+          "date": {
+            "type": "string",
+            "description": "自然日，`YYYY-MM-DD`（东八区）。"
+          },
+          "note": {
+            "type": "string",
+            "description": "关账备注。"
+          }
+        }
+      },
       "CommentRequest": {
         "type": "object",
         "description": "发表 / 修改评论的请求体。",
@@ -40472,6 +40928,7 @@
         "required": [
           "id",
           "conversation_id",
+          "scene",
           "requirement_id",
           "requirement_title",
           "customer",
@@ -40564,7 +41021,7 @@
           },
           "requirement_id": {
             "type": "string",
-            "description": "需求编号。"
+            "description": "需求编号；资源会话为空串。"
           },
           "requirement_status": {
             "type": "string",
@@ -40572,7 +41029,19 @@
           },
           "requirement_title": {
             "type": "string",
-            "description": "需求标题。"
+            "description": "绑定对象标题：需求标题或资源标题。"
+          },
+          "resource_id": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "资源编号；需求会话为 `null`。"
+          },
+          "scene": {
+            "type": "string",
+            "description": "会话场景：`requirement`（需求沟通）或 `resource`（插件咨询）。"
           },
           "status": {
             "type": "string",
@@ -42395,6 +42864,207 @@
           },
           "refund_cap_time": {
             "type": "string"
+          }
+        }
+      },
+      "DailyCloseResponse": {
+        "type": "object",
+        "description": "关账记录。",
+        "required": [
+          "date",
+          "closed_by",
+          "closed_at",
+          "note"
+        ],
+        "properties": {
+          "closed_at": {
+            "type": "string",
+            "description": "关账时间（东八区）。"
+          },
+          "closed_by": {
+            "type": "string",
+            "description": "关账人。"
+          },
+          "date": {
+            "type": "string",
+            "description": "自然日。"
+          },
+          "note": {
+            "type": "string",
+            "description": "关账备注。"
+          }
+        }
+      },
+      "DailyDiffResponse": {
+        "type": "object",
+        "description": "一条日结差异。",
+        "required": [
+          "id",
+          "date",
+          "kind",
+          "ref_no",
+          "expected_fen",
+          "actual_fen",
+          "diff_fen",
+          "note",
+          "handled",
+          "ignored",
+          "updated_time"
+        ],
+        "properties": {
+          "actual_fen": {
+            "type": "integer",
+            "format": "int64",
+            "description": "本地金额（分）。"
+          },
+          "assignee": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "指派人。"
+          },
+          "date": {
+            "type": "string",
+            "description": "自然日。"
+          },
+          "diff_fen": {
+            "type": "integer",
+            "format": "int64",
+            "description": "差额（分）。"
+          },
+          "expected_fen": {
+            "type": "integer",
+            "format": "int64",
+            "description": "渠道（或预期）金额（分）。"
+          },
+          "handled": {
+            "type": "boolean",
+            "description": "是否已处理。"
+          },
+          "id": {
+            "type": "integer",
+            "format": "int64",
+            "description": "主键。"
+          },
+          "ignored": {
+            "type": "boolean",
+            "description": "是否忽略。"
+          },
+          "kind": {
+            "type": "string",
+            "description": "差异类别。"
+          },
+          "note": {
+            "type": "string",
+            "description": "说明。"
+          },
+          "ref_no": {
+            "type": "string",
+            "description": "关联单号。"
+          },
+          "updated_time": {
+            "type": "string",
+            "description": "最后更新时间（东八区）。"
+          }
+        }
+      },
+      "DailySettlementQuery": {
+        "type": "object",
+        "description": "日结查询参数。",
+        "required": [
+          "date"
+        ],
+        "properties": {
+          "date": {
+            "type": "string",
+            "description": "自然日，`YYYY-MM-DD`（东八区）。"
+          }
+        }
+      },
+      "DailySettlementResponse": {
+        "type": "object",
+        "description": "日结汇总响应。",
+        "required": [
+          "date",
+          "received_fen",
+          "refunded_fen",
+          "settled_fen",
+          "settlement_failed_count",
+          "payout_fen",
+          "custody_op_count",
+          "event_total",
+          "event_unprocessed",
+          "event_unknown",
+          "diffs"
+        ],
+        "properties": {
+          "closed": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/DailyCloseResponse",
+                "description": "关账记录；未关账为空。"
+              }
+            ]
+          },
+          "custody_op_count": {
+            "type": "integer",
+            "format": "int64",
+            "description": "当日托管动作数。"
+          },
+          "date": {
+            "type": "string",
+            "description": "自然日。"
+          },
+          "diffs": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DailyDiffResponse"
+            },
+            "description": "差异清单。"
+          },
+          "event_total": {
+            "type": "integer",
+            "format": "int64",
+            "description": "当日回调事件总数。"
+          },
+          "event_unknown": {
+            "type": "integer",
+            "format": "int64",
+            "description": "当日无法归类事件数。"
+          },
+          "event_unprocessed": {
+            "type": "integer",
+            "format": "int64",
+            "description": "当日未处理事件数。"
+          },
+          "payout_fen": {
+            "type": "integer",
+            "format": "int64",
+            "description": "当日出款成功（分）。"
+          },
+          "received_fen": {
+            "type": "integer",
+            "format": "int64",
+            "description": "当日实收（分）。"
+          },
+          "refunded_fen": {
+            "type": "integer",
+            "format": "int64",
+            "description": "当日退款成功（分）。"
+          },
+          "settled_fen": {
+            "type": "integer",
+            "format": "int64",
+            "description": "当日分账成功（分）。"
+          },
+          "settlement_failed_count": {
+            "type": "integer",
+            "format": "int64",
+            "description": "当日分账失败笔数（`payment_settlement.status = failed`）。"
           }
         }
       },
@@ -47543,6 +48213,257 @@
         },
         "additionalProperties": false
       },
+      "PaymentEventDetailResponse": {
+        "type": "object",
+        "description": "回调事件详情（含原始 JSON）。",
+        "required": [
+          "id",
+          "event_id",
+          "provider",
+          "kind",
+          "succeeded",
+          "processed",
+          "created_time"
+        ],
+        "properties": {
+          "amount_fen": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "上游声明金额（分）。"
+          },
+          "created_time": {
+            "type": "string",
+            "description": "落库时间（东八区）。"
+          },
+          "event_id": {
+            "type": "string",
+            "description": "上游事件 ID。"
+          },
+          "id": {
+            "type": "integer",
+            "format": "int64",
+            "description": "自增主键。"
+          },
+          "kind": {
+            "type": "string",
+            "description": "事件类别。"
+          },
+          "order_no": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "我方支付单号。"
+          },
+          "processed": {
+            "type": "boolean",
+            "description": "业务侧是否已消费。"
+          },
+          "processed_time": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "业务侧消费时间（东八区）；未处理为空。"
+          },
+          "provider": {
+            "type": "string",
+            "description": "供应商标识。"
+          },
+          "provider_object_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "上游对象 ID。"
+          },
+          "raw": {
+            "description": "上游原文 JSON。"
+          },
+          "succeeded": {
+            "type": "boolean",
+            "description": "上游是否判定成功。"
+          }
+        }
+      },
+      "PaymentEventPageResponse": {
+        "type": "object",
+        "description": "回调事件分页响应。",
+        "required": [
+          "total",
+          "page",
+          "page_size",
+          "items"
+        ],
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PaymentEventResponse"
+            },
+            "description": "当前页事件。"
+          },
+          "page": {
+            "type": "integer",
+            "format": "int64",
+            "description": "当前页码。"
+          },
+          "page_size": {
+            "type": "integer",
+            "format": "int64",
+            "description": "每页条数。"
+          },
+          "total": {
+            "type": "integer",
+            "format": "int64",
+            "description": "总条数。"
+          }
+        }
+      },
+      "PaymentEventQuery": {
+        "type": "object",
+        "description": "回调事件查询。",
+        "properties": {
+          "date_from": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "起始日期（含），`YYYY-MM-DD`（东八区）。"
+          },
+          "date_to": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "结束日期（含），`YYYY-MM-DD`（东八区）。"
+          },
+          "kind": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "事件类别：`payment` / `refund` / `settlement` / `payout` / `unknown`。"
+          },
+          "order_no": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "我方支付单号（精确匹配）。"
+          },
+          "page": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "页码，从 1 开始。"
+          },
+          "page_size": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "每页条数（上限 100）。"
+          },
+          "processed": {
+            "type": [
+              "boolean",
+              "null"
+            ],
+            "description": "处理状态：`true` 只看已处理，`false` 只看未处理。"
+          }
+        }
+      },
+      "PaymentEventReplayResponse": {
+        "type": "object",
+        "description": "重放结果。",
+        "required": [
+          "event_id",
+          "outcome"
+        ],
+        "properties": {
+          "event_id": {
+            "type": "string",
+            "description": "事件 ID。"
+          },
+          "outcome": {
+            "type": "string",
+            "description": "本次重放的处理结论。"
+          }
+        }
+      },
+      "PaymentEventResponse": {
+        "type": "object",
+        "description": "回调事件列表项（不含原始 JSON）。",
+        "required": [
+          "id",
+          "event_id",
+          "provider",
+          "kind",
+          "succeeded",
+          "processed",
+          "created_time"
+        ],
+        "properties": {
+          "amount_fen": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "上游声明金额（分）。"
+          },
+          "created_time": {
+            "type": "string",
+            "description": "落库时间（东八区）。"
+          },
+          "event_id": {
+            "type": "string",
+            "description": "上游事件 ID。"
+          },
+          "id": {
+            "type": "integer",
+            "format": "int64",
+            "description": "自增主键。"
+          },
+          "kind": {
+            "type": "string",
+            "description": "事件类别。"
+          },
+          "order_no": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "我方支付单号。"
+          },
+          "processed": {
+            "type": "boolean",
+            "description": "业务侧是否已消费。"
+          },
+          "provider": {
+            "type": "string",
+            "description": "供应商标识。"
+          },
+          "provider_object_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "上游对象 ID。"
+          },
+          "succeeded": {
+            "type": "boolean",
+            "description": "上游是否判定成功。"
+          }
+        }
+      },
       "PaymentOrderResponse": {
         "type": "object",
         "description": "支付单响应。\n\n字段名与 legacy 的支付订单接口对齐（`order_no` / `amount` / `status`），\n金额按元返回，内部一律分——口径转换只在这一层发生。",
@@ -49939,6 +50860,19 @@
           }
         }
       },
+      "RefreshDailySettlementRequest": {
+        "type": "object",
+        "description": "刷新日结差异请求。",
+        "required": [
+          "date"
+        ],
+        "properties": {
+          "date": {
+            "type": "string",
+            "description": "自然日，`YYYY-MM-DD`（东八区）。"
+          }
+        }
+      },
       "RefundRequest": {
         "type": "object",
         "description": "退款请求体（对应 legacy `ResourceRefundRequest`）。",
@@ -50496,6 +51430,13 @@
             "type": "string",
             "description": "业务编号。"
           },
+          "resource_claimed_at": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "需求方「转为我的资源」的时间；未转换或未绑定资源时为 `null`。\n\n前端据此判断定制交付资源是否已解锁售卖与公开，不能只看 `bound_resource_id`。"
+          },
           "review_note": {
             "type": [
               "string",
@@ -50622,6 +51563,7 @@
           "id",
           "creator",
           "ownership_type",
+          "requirement_claimed",
           "platform",
           "title",
           "author",
@@ -50920,6 +51862,17 @@
           "requirement_archive_locked": {
             "type": "boolean",
             "description": "关联需求是否已锁定（需求模块未接入，恒为 false）。"
+          },
+          "requirement_claimed": {
+            "type": "boolean",
+            "description": "关联需求是否已由需求方「转为我的资源」（未绑定需求时恒为 false）。\n\n未转换前资源保持锁定：不能定价售卖，也不能申请公开。前端按它决定「锁定」而不是只看\n`requirement_id` 是否为空。"
+          },
+          "requirement_claimed_at": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "需求方「转为我的资源」的时间；未转换或未绑定需求时为空。"
           },
           "requirement_id": {
             "type": [
@@ -56847,6 +57800,40 @@
               "null"
             ],
             "format": "double"
+          }
+        }
+      },
+      "UpdateDailyDiffRequest": {
+        "type": "object",
+        "description": "更新差异请求。字段不传表示保持原值；`assignee` 传空串表示清空。",
+        "properties": {
+          "assignee": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "指派人（空串表示清空）。"
+          },
+          "handled": {
+            "type": [
+              "boolean",
+              "null"
+            ],
+            "description": "标记已处理。"
+          },
+          "ignored": {
+            "type": [
+              "boolean",
+              "null"
+            ],
+            "description": "标记忽略。"
+          },
+          "note": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "备注。"
           }
         }
       },

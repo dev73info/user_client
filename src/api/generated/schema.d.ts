@@ -1345,6 +1345,146 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/admin/payment/daily-diffs/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * 更新日结差异
+         * @description 标记差异已处理 / 忽略、指派处理人、写备注；已关账的日期只读；需要 `payment.daily_settlement.update.patch`。
+         */
+        patch: operations["payment_admin_update_daily_diff"];
+        trace?: never;
+    };
+    "/api/admin/payment/daily-settlement": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 支付日结汇总
+         * @description 查看某一天（Asia/Shanghai）的实收 / 退款 / 分账 / 出款 / 托管动作 / 回调事件汇总与差异清单；金额单位分；需要 `payment.daily_settlement.get`。
+         */
+        get: operations["payment_admin_daily_settlement"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/payment/daily-settlement/close": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 支付日结关账
+         * @description 写入关账人 / 时间 / 备注；还有未处理且未忽略的差异时拒绝；关账后当天只读；需要 `payment.daily_settlement.close.post`。
+         */
+        post: operations["payment_admin_daily_settlement_close"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/payment/daily-settlement/refresh": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 刷新支付日结差异
+         * @description 按当天回调事件与本地底账重新生成未处理差异（已处理 / 已忽略的保留）；已关账的日期拒绝刷新；需要 `payment.daily_settlement.refresh.post`。
+         */
+        post: operations["payment_admin_daily_settlement_refresh"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/payment/events": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 支付回调事件列表
+         * @description 按类别、处理状态、支付单号与日期范围（Asia/Shanghai 自然日）分页查看回调事件；需要 `payment.event.list.get`。
+         */
+        get: operations["payment_admin_list_events"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/payment/events/{event_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 支付回调事件详情
+         * @description 按上游事件 ID 读取单条回调事件，含原始 JSON；需要 `payment.event.detail.get`。
+         */
+        get: operations["payment_admin_get_event"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/payment/events/{event_id}/replay": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 重放支付回调事件
+         * @description 按落库的原始事件再走一次业务消费，仅支持未处理的支付 / 分账事件；重放会写 `payment_audit_log`，需要 `payment.event.replay.post`。
+         */
+        post: operations["payment_admin_replay_event"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/admin/payment/finance-overview": {
         parameters: {
             query?: never;
@@ -4983,6 +5123,26 @@ export interface paths {
         patch: operations["conversation_update_thread_preference"];
         trace?: never;
     };
+    "/api/conversation/resource/{resource_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 按资源打开插件咨询会话
+         * @description 插件购买者从资源详情页联系作者用。会话不存在时**补建**；一个买家对一个资源只有一个会话。只有仍持有有效购买权益的买家能打开，作者与未购买者回 403。
+         */
+        get: operations["conversation_detail_by_resource"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/conversation/{conversation_id}": {
         parameters: {
             query?: never;
@@ -5350,7 +5510,7 @@ export interface paths {
         put?: never;
         /**
          * 立案
-         * @description 由需求当事人之一发起，需要 `dispute.case.file.post`。同一条需求同时只能有一条在办案件，重复立案回 409；不是当事人回 403；需求当前状态不允许开这类案件回 409。
+         * @description 由需求当事人之一发起，需要 `dispute.case.file.post`。同一条需求同时只能有一条在办案件，重复立案回 409；不是当事人回 403；需求当前状态不允许开这类案件回 409。`mutual_unbind` 不接受：解除合作请走 `POST /api/requirement/{id}/termination`。
          */
         post: operations["dispute_file"];
         delete?: never;
@@ -14539,6 +14699,13 @@ export interface components {
             /** @description 回调地址。 */
             redirect_uris: string[];
         };
+        /** @description 关账请求。 */
+        CloseDailySettlementRequest: {
+            /** @description 自然日，`YYYY-MM-DD`（东八区）。 */
+            date: string;
+            /** @description 关账备注。 */
+            note?: string;
+        };
         /** @description 发表 / 修改评论的请求体。 */
         CommentRequest: {
             /** @description 正文；与 legacy 同一个字段名。 */
@@ -14909,12 +15076,19 @@ export interface components {
             last_message_by?: string | null;
             /** @description 最后一条消息的正文。 */
             last_message_content?: string | null;
-            /** @description 需求编号。 */
+            /** @description 需求编号；资源会话为空串。 */
             requirement_id: string;
             /** @description 需求状态：`in_development` / `completed` … */
             requirement_status: string;
-            /** @description 需求标题。 */
+            /** @description 绑定对象标题：需求标题或资源标题。 */
             requirement_title: string;
+            /**
+             * Format: int64
+             * @description 资源编号；需求会话为 `null`。
+             */
+            resource_id?: number | null;
+            /** @description 会话场景：`requirement`（需求沟通）或 `resource`（插件咨询）。 */
+            scene: string;
             /** @description 会话状态：`open` / `closed`。 */
             status: string;
             /**
@@ -15512,6 +15686,114 @@ export interface components {
             payer: string;
             payment_order_no: string;
             refund_cap_time: string;
+        };
+        /** @description 关账记录。 */
+        DailyCloseResponse: {
+            /** @description 关账时间（东八区）。 */
+            closed_at: string;
+            /** @description 关账人。 */
+            closed_by: string;
+            /** @description 自然日。 */
+            date: string;
+            /** @description 关账备注。 */
+            note: string;
+        };
+        /** @description 一条日结差异。 */
+        DailyDiffResponse: {
+            /**
+             * Format: int64
+             * @description 本地金额（分）。
+             */
+            actual_fen: number;
+            /** @description 指派人。 */
+            assignee?: string | null;
+            /** @description 自然日。 */
+            date: string;
+            /**
+             * Format: int64
+             * @description 差额（分）。
+             */
+            diff_fen: number;
+            /**
+             * Format: int64
+             * @description 渠道（或预期）金额（分）。
+             */
+            expected_fen: number;
+            /** @description 是否已处理。 */
+            handled: boolean;
+            /**
+             * Format: int64
+             * @description 主键。
+             */
+            id: number;
+            /** @description 是否忽略。 */
+            ignored: boolean;
+            /** @description 差异类别。 */
+            kind: string;
+            /** @description 说明。 */
+            note: string;
+            /** @description 关联单号。 */
+            ref_no: string;
+            /** @description 最后更新时间（东八区）。 */
+            updated_time: string;
+        };
+        /** @description 日结查询参数。 */
+        DailySettlementQuery: {
+            /** @description 自然日，`YYYY-MM-DD`（东八区）。 */
+            date: string;
+        };
+        /** @description 日结汇总响应。 */
+        DailySettlementResponse: {
+            closed?: null | components["schemas"]["DailyCloseResponse"];
+            /**
+             * Format: int64
+             * @description 当日托管动作数。
+             */
+            custody_op_count: number;
+            /** @description 自然日。 */
+            date: string;
+            /** @description 差异清单。 */
+            diffs: components["schemas"]["DailyDiffResponse"][];
+            /**
+             * Format: int64
+             * @description 当日回调事件总数。
+             */
+            event_total: number;
+            /**
+             * Format: int64
+             * @description 当日无法归类事件数。
+             */
+            event_unknown: number;
+            /**
+             * Format: int64
+             * @description 当日未处理事件数。
+             */
+            event_unprocessed: number;
+            /**
+             * Format: int64
+             * @description 当日出款成功（分）。
+             */
+            payout_fen: number;
+            /**
+             * Format: int64
+             * @description 当日实收（分）。
+             */
+            received_fen: number;
+            /**
+             * Format: int64
+             * @description 当日退款成功（分）。
+             */
+            refunded_fen: number;
+            /**
+             * Format: int64
+             * @description 当日分账成功（分）。
+             */
+            settled_fen: number;
+            /**
+             * Format: int64
+             * @description 当日分账失败笔数（`payment_settlement.status = failed`）。
+             */
+            settlement_failed_count: number;
         };
         /** @description 需求概览响应（字段与 legacy `UserDashboardOverviewResponse` 一致）。 */
         DashboardResponse: {
@@ -17733,6 +18015,118 @@ export interface components {
              */
             platform_settle_account_id: string | null;
         };
+        /** @description 回调事件详情（含原始 JSON）。 */
+        PaymentEventDetailResponse: {
+            /**
+             * Format: int64
+             * @description 上游声明金额（分）。
+             */
+            amount_fen?: number | null;
+            /** @description 落库时间（东八区）。 */
+            created_time: string;
+            /** @description 上游事件 ID。 */
+            event_id: string;
+            /**
+             * Format: int64
+             * @description 自增主键。
+             */
+            id: number;
+            /** @description 事件类别。 */
+            kind: string;
+            /** @description 我方支付单号。 */
+            order_no?: string | null;
+            /** @description 业务侧是否已消费。 */
+            processed: boolean;
+            /** @description 业务侧消费时间（东八区）；未处理为空。 */
+            processed_time?: string | null;
+            /** @description 供应商标识。 */
+            provider: string;
+            /** @description 上游对象 ID。 */
+            provider_object_id?: string | null;
+            /** @description 上游原文 JSON。 */
+            raw?: unknown;
+            /** @description 上游是否判定成功。 */
+            succeeded: boolean;
+        };
+        /** @description 回调事件分页响应。 */
+        PaymentEventPageResponse: {
+            /** @description 当前页事件。 */
+            items: components["schemas"]["PaymentEventResponse"][];
+            /**
+             * Format: int64
+             * @description 当前页码。
+             */
+            page: number;
+            /**
+             * Format: int64
+             * @description 每页条数。
+             */
+            page_size: number;
+            /**
+             * Format: int64
+             * @description 总条数。
+             */
+            total: number;
+        };
+        /** @description 回调事件查询。 */
+        PaymentEventQuery: {
+            /** @description 起始日期（含），`YYYY-MM-DD`（东八区）。 */
+            date_from?: string | null;
+            /** @description 结束日期（含），`YYYY-MM-DD`（东八区）。 */
+            date_to?: string | null;
+            /** @description 事件类别：`payment` / `refund` / `settlement` / `payout` / `unknown`。 */
+            kind?: string | null;
+            /** @description 我方支付单号（精确匹配）。 */
+            order_no?: string | null;
+            /**
+             * Format: int64
+             * @description 页码，从 1 开始。
+             */
+            page?: number | null;
+            /**
+             * Format: int64
+             * @description 每页条数（上限 100）。
+             */
+            page_size?: number | null;
+            /** @description 处理状态：`true` 只看已处理，`false` 只看未处理。 */
+            processed?: boolean | null;
+        };
+        /** @description 重放结果。 */
+        PaymentEventReplayResponse: {
+            /** @description 事件 ID。 */
+            event_id: string;
+            /** @description 本次重放的处理结论。 */
+            outcome: string;
+        };
+        /** @description 回调事件列表项（不含原始 JSON）。 */
+        PaymentEventResponse: {
+            /**
+             * Format: int64
+             * @description 上游声明金额（分）。
+             */
+            amount_fen?: number | null;
+            /** @description 落库时间（东八区）。 */
+            created_time: string;
+            /** @description 上游事件 ID。 */
+            event_id: string;
+            /**
+             * Format: int64
+             * @description 自增主键。
+             */
+            id: number;
+            /** @description 事件类别。 */
+            kind: string;
+            /** @description 我方支付单号。 */
+            order_no?: string | null;
+            /** @description 业务侧是否已消费。 */
+            processed: boolean;
+            /** @description 供应商标识。 */
+            provider: string;
+            /** @description 上游对象 ID。 */
+            provider_object_id?: string | null;
+            /** @description 上游是否判定成功。 */
+            succeeded: boolean;
+        };
         /**
          * @description 支付单响应。
          *
@@ -18708,6 +19102,11 @@ export interface components {
             /** Format: int64 */
             product_id: number;
         };
+        /** @description 刷新日结差异请求。 */
+        RefreshDailySettlementRequest: {
+            /** @description 自然日，`YYYY-MM-DD`（东八区）。 */
+            date: string;
+        };
         /** @description 退款请求体（对应 legacy `ResourceRefundRequest`）。 */
         RefundRequest: {
             /**
@@ -18956,6 +19355,12 @@ export interface components {
             payment_mode: string;
             /** @description 业务编号。 */
             requirement_id: string;
+            /**
+             * @description 需求方「转为我的资源」的时间；未转换或未绑定资源时为 `null`。
+             *
+             *     前端据此判断定制交付资源是否已解锁售卖与公开，不能只看 `bound_resource_id`。
+             */
+            resource_claimed_at?: string | null;
             /** @description 审核备注。 */
             review_note?: string | null;
             /** @description 审核时间。 */
@@ -19131,6 +19536,15 @@ export interface components {
             requirement_archive_cleared: boolean;
             /** @description 关联需求是否已锁定（需求模块未接入，恒为 false）。 */
             requirement_archive_locked: boolean;
+            /**
+             * @description 关联需求是否已由需求方「转为我的资源」（未绑定需求时恒为 false）。
+             *
+             *     未转换前资源保持锁定：不能定价售卖，也不能申请公开。前端按它决定「锁定」而不是只看
+             *     `requirement_id` 是否为空。
+             */
+            requirement_claimed: boolean;
+            /** @description 需求方「转为我的资源」的时间；未转换或未绑定需求时为空。 */
+            requirement_claimed_at?: string | null;
             /** @description 关联需求编号（未绑定需求时为空）。 */
             requirement_id?: string | null;
             /** @description 资源类别。 */
@@ -21630,6 +22044,17 @@ export interface components {
             fen_per_credit?: number | null;
             /** Format: double */
             min_credit_for_dev?: number | null;
+        };
+        /** @description 更新差异请求。字段不传表示保持原值；`assignee` 传空串表示清空。 */
+        UpdateDailyDiffRequest: {
+            /** @description 指派人（空串表示清空）。 */
+            assignee?: string | null;
+            /** @description 标记已处理。 */
+            handled?: boolean | null;
+            /** @description 标记忽略。 */
+            ignored?: boolean | null;
+            /** @description 备注。 */
+            note?: string | null;
         };
         /** @description 换绑邮箱请求体。 */
         UpdateEmailRequest: {
@@ -26046,6 +26471,311 @@ export interface operations {
             };
             /** @description 没有该接口权限 */
             403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    payment_admin_update_daily_diff: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description 差异主键 */
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateDailyDiffRequest"];
+            };
+        };
+        responses: {
+            /** @description 更新后的差异 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DailyDiffResponse"];
+                };
+            };
+            /** @description 没有该接口权限 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 差异不存在 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 该日期已关账 */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    payment_admin_daily_settlement: {
+        parameters: {
+            query: {
+                /** @description 自然日，`YYYY-MM-DD`（东八区）。 */
+                date: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 日结汇总 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DailySettlementResponse"];
+                };
+            };
+            /** @description 日期格式不合法 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 没有该接口权限 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    payment_admin_daily_settlement_close: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CloseDailySettlementRequest"];
+            };
+        };
+        responses: {
+            /** @description 关账后的日结汇总 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DailySettlementResponse"];
+                };
+            };
+            /** @description 日期格式不合法 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 没有该接口权限 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 已关账，或仍有未处理差异 */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    payment_admin_daily_settlement_refresh: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RefreshDailySettlementRequest"];
+            };
+        };
+        responses: {
+            /** @description 刷新后的日结汇总 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DailySettlementResponse"];
+                };
+            };
+            /** @description 日期格式不合法 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 没有该接口权限 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 该日期已关账 */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    payment_admin_list_events: {
+        parameters: {
+            query?: {
+                /** @description 事件类别：`payment` / `refund` / `settlement` / `payout` / `unknown`。 */
+                kind?: string | null;
+                /** @description 处理状态：`true` 只看已处理，`false` 只看未处理。 */
+                processed?: boolean | null;
+                /** @description 我方支付单号（精确匹配）。 */
+                order_no?: string | null;
+                /** @description 起始日期（含），`YYYY-MM-DD`（东八区）。 */
+                date_from?: string | null;
+                /** @description 结束日期（含），`YYYY-MM-DD`（东八区）。 */
+                date_to?: string | null;
+                /** @description 页码，从 1 开始。 */
+                page?: number | null;
+                /** @description 每页条数（上限 100）。 */
+                page_size?: number | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 回调事件分页 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaymentEventPageResponse"];
+                };
+            };
+            /** @description 事件类别或日期格式不合法 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 没有该接口权限 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    payment_admin_get_event: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description 上游事件 ID */
+                event_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 回调事件详情 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaymentEventDetailResponse"];
+                };
+            };
+            /** @description 没有该接口权限 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 事件不存在 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    payment_admin_replay_event: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description 上游事件 ID */
+                event_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 重放结论 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaymentEventReplayResponse"];
+                };
+            };
+            /** @description 没有该接口权限 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 事件不存在 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 事件已处理，或该类别不可重放 */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -35952,6 +36682,54 @@ export interface operations {
             };
         };
     };
+    conversation_detail_by_resource: {
+        parameters: {
+            query?: {
+                /** @description 每页条数；不传表示一次取全部（legacy 口径）。 */
+                limit?: number | null;
+                /** @description 只取编号小于它（更早）的消息。 */
+                before_id?: number | null;
+            };
+            header?: never;
+            path: {
+                resource_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 会话详情 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConversationDetailResponse"];
+                };
+            };
+            /** @description 没有登录或令牌无效 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 没有购买该资源，或调用者是资源作者 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 资源不存在，或资源会话未启用 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     conversation_detail: {
         parameters: {
             query?: {
@@ -37202,7 +37980,7 @@ export interface operations {
                     "application/json": components["schemas"]["CaseDetailResponse"];
                 };
             };
-            /** @description 案件类型 / 诉求说明不合法 */
+            /** @description 案件类型 / 诉求说明不合法（含 mutual_unbind） */
             400: {
                 headers: {
                     [name: string]: unknown;
