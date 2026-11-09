@@ -15,15 +15,29 @@ export type MessageFilter = 'all' | 'active' | 'pending'
 /** 会话行的状态色调：决定左侧色条与状态胶囊的颜色。
  *  四档只对 requirementStatusLabel 里已有的状态值分组，不新增业务语义。 */
 export type ThreadTone = 'attention' | 'active' | 'done' | 'closed'
-
 export type MessageThread = {
   key: string
-  kind: 'conversation' | 'pending'
+  kind: 'conversation' | 'pending' | 'resource'
+  /** 需求沟通 / 插件咨询：决定打开哪套弹窗与路由 query。 */
+  scene: 'requirement' | 'resource'
   requirementId: string
+  /** 已开启会话的编号；「会话待开启」行没有。 */
+  conversationId?: string
+  /** 资源（插件）编号；只有插件咨询行有。 */
+  resourceId?: number
+  /**
+   * 选中的业务键：需求行按需求编号、插件咨询按会话编号。
+   *
+   * 与 `key` 分开是因为「会话待开启」行和它补建后的会话行要算同一行：
+   * 两者都按 `requirement:<id>` 命中路由 query。
+   */
+  selectionKey: string
   title: string
   statusLabel: string
   tone: ThreadTone
   modeLabel: string
+  /** 列表行第二段的「编号 · 模式」整串（需求/插件两种口径都在这里拼）。 */
+  metaLabel: string
   partnerLabel: string
   lastLabel: string
   description: string
@@ -38,7 +52,6 @@ export type MessageThread = {
 export function hasBoundResource(item: RequirementItem) {
   return item.bound_resource_id != null
 }
-
 /** 状态文案走全站统一口径；`deposit_paid` 一码两义，拿到支付模式就传进去（见 `requirementStatusLabel`）。 */
 export function formatRequirementStatus(
   status: RequirementStatus,
@@ -147,6 +160,10 @@ export function buildConversationThread(
   context: { requirementById: Record<string, RequirementItem>; username: string },
   pinned = false,
 ): MessageThread {
+  if (item.scene === 'resource') {
+    return buildResourceConversationThread(item, context.username)
+  }
+
   const requirement = context.requirementById[item.requirement_id]
   const statusLabel = requirement
     ? formatRequirementStatus(requirement.status, requirement.payment_mode)
@@ -158,14 +175,19 @@ export function buildConversationThread(
     : item.status === 'open'
       ? 'active'
       : 'closed'
+  const modeLabel = formatPaymentMode(requirement)
   return {
     key: `conversation-${item.conversation_id}`,
     kind: 'conversation',
+    scene: 'requirement',
     requirementId: item.requirement_id,
+    conversationId: item.conversation_id,
+    selectionKey: `requirement:${item.requirement_id}`,
     title: item.requirement_title || requirement?.title || item.requirement_id,
     statusLabel,
     tone,
-    modeLabel: formatPaymentMode(requirement),
+    modeLabel,
+    metaLabel: `${item.requirement_id} · ${modeLabel}`,
     partnerLabel: partnerLabel(item, context.username),
     lastLabel: lastMessageLabel(item, context.username),
     description: latestMessagePreview(item),
@@ -176,16 +198,54 @@ export function buildConversationThread(
   }
 }
 
+/**
+ * 插件咨询会话 → 列表行。
+ *
+ * 会话本身没有需求状态，列表按「沟通中 / 已关闭」两档展示；对方称谓换成作者 / 买家。
+ */
+export function buildResourceConversationThread(
+  item: RequirementConversation,
+  username: string,
+): MessageThread {
+  const isOpen = item.status === 'open'
+  return {
+    key: `resource-conversation-${item.conversation_id}`,
+    kind: 'resource',
+    scene: 'resource',
+    requirementId: '',
+    conversationId: item.conversation_id,
+    resourceId: item.resource_id ?? undefined,
+    selectionKey: `conversation:${item.conversation_id}`,
+    title: item.requirement_title || `插件 #${item.resource_id ?? ''}`,
+    statusLabel: isOpen ? '沟通中' : '已关闭',
+    tone: isOpen ? 'active' : 'closed',
+    modeLabel: '插件咨询',
+    metaLabel: `插件咨询 · #${item.resource_id ?? '-'}`,
+    partnerLabel:
+      username === item.customer ? `作者：${item.developer}` : `买家：${item.customer}`,
+    lastLabel: lastMessageLabel(item, username),
+    description: latestMessagePreview(item),
+    actionLabel: item.last_message_at ? '查看沟通' : '联系作者',
+    unreadCount: item.unread_count ?? 0,
+    pinned: false,
+    sortTime: parseTime(item.last_message_at ?? item.updated_at ?? item.created_at),
+  }
+}
+
 /** 已接取但本地还没拿到会话记录的需求 → 「会话待开启」行，打开后会自动同步。 */
 export function buildPendingThread(item: RequirementItem, pinned = false): MessageThread {
+  const modeLabel = formatPaymentMode(item)
   return {
     key: `pending-${item.requirement_id}`,
     kind: 'pending',
+    scene: 'requirement',
     requirementId: item.requirement_id,
+    selectionKey: `requirement:${item.requirement_id}`,
     title: item.title,
     statusLabel: formatRequirementStatus(item.status, item.payment_mode),
     tone: threadToneOf(item.status),
-    modeLabel: formatPaymentMode(item),
+    modeLabel,
+    metaLabel: `${item.requirement_id} · ${modeLabel}`,
     partnerLabel: '会话待开启',
     lastLabel: '打开后创建沟通会话',
     description: '需求已接取但本地尚未拿到会话记录，打开后会自动同步。',

@@ -1,7 +1,9 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import type { PublicMcResourceItem } from '@/api/resources'
+import ResourceConversationModal from '@/components/ResourceConversationModal.vue'
 import ResourceDetailCtaRow from '@/components/resource-detail/ResourceDetailCtaRow.vue'
+import { useAuthStore } from '@/stores/auth'
 
 /**
  * 资源详情摘要卡：标题行（可见性 / 价格 / 原创转载标签 + 作者 / 开发者）、
@@ -30,6 +32,13 @@ const emit = defineEmits<{
   'primary-cta': []
   'toggle-like': []
 }>()
+
+const auth = useAuthStore()
+/** 「联系作者」只给已购买家；作者本人不需要联系自己。 */
+const canContactAuthor = computed(
+  () => Boolean(props.resource.purchased_by_me) && props.resource.creator !== auth.username,
+)
+const contactOpen = ref(false)
 
 const tagNames = computed(
   () => props.resource.tag_selections.flatMap((item) => item.tag_names) ?? [],
@@ -219,8 +228,20 @@ const resourceSummaryText = computed(() => {
       :is-api-resource="props.isApiResource"
       :purchase-submitting="props.purchaseSubmitting"
       :like-submitting="props.likeSubmitting"
+      :can-contact-author="canContactAuthor"
       @primary-cta="emit('primary-cta')"
       @toggle-like="emit('toggle-like')"
+      @contact-author="contactOpen = true"
+    />
+
+    <!-- 插件咨询：购买者给作者发消息，复用需求会话那套消息流 / 已读 / 实时推送 -->
+    <ResourceConversationModal
+      :visible="contactOpen"
+      :token="auth.token"
+      :resource-id="props.resource.id"
+      :title="props.resource.title"
+      :current-username="auth.username"
+      @close="contactOpen = false"
     />
   </div>
 </template>

@@ -47,11 +47,12 @@ export function conversationMeta(item: RequirementConversation): string {
 
 /** 会话行第二行的前半段：按「我在这一单里是哪一方」改称谓，都不是就并列两方账号。 */
 export function partnerLabel(item: RequirementConversation, username: string): string {
+  const isResource = item.scene === 'resource'
   if (username === item.customer) {
-    return `开发者：${item.developer}`
+    return isResource ? `作者：${item.developer}` : `开发者：${item.developer}`
   }
   if (username === item.developer) {
-    return `用户：${item.customer}`
+    return isResource ? `买家：${item.customer}` : `用户：${item.customer}`
   }
   return `${item.customer} / ${item.developer}`
 }

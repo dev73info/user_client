@@ -57,9 +57,15 @@ const route = useRoute()
 const { isItemActive, isOverviewActive } = useWorkbenchMenuRoute()
 
 const isMessagesRoute = computed(() => isMessagesRouteName(route.name))
-const activeRequirementId = computed(() => {
+const activeSelectionKey = computed(() => {
   const requirementId = route.query.requirement_id
-  return typeof requirementId === 'string' ? requirementId : ''
+  if (typeof requirementId === 'string' && requirementId) {
+    return `requirement:${requirementId}`
+  }
+  const conversationId = route.query.conversation_id
+  return typeof conversationId === 'string' && conversationId
+    ? `conversation:${conversationId}`
+    : ''
 })
 const messagesOpen = computed(() => props.openGroupKeys.includes(MESSAGES_GROUP_KEY))
 
@@ -107,7 +113,7 @@ function isGroupActive(group: WorkbenchMenuGroup) {
       :unread-message-count="props.unreadMessageCount"
       :route-name="props.messagesRouteName"
       :is-messages-route="isMessagesRoute"
-      :active-requirement-id="activeRequirementId"
+      :active-selection-key="activeSelectionKey"
       :username="props.username"
       @toggle="emit('toggle-messages')"
       @open-all="emit('open-all-messages')"
@@ -135,7 +141,7 @@ function isGroupActive(group: WorkbenchMenuGroup) {
         :unread-message-count="props.unreadMessageCount"
         :route-name="props.messagesRouteName"
         :is-messages-route="isMessagesRoute"
-        :active-requirement-id="activeRequirementId"
+        :active-selection-key="activeSelectionKey"
         :username="props.username"
         @toggle="emit('toggle-messages')"
         @open-all="emit('open-all-messages')"

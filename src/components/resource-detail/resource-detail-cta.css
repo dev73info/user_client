@@ -51,6 +51,26 @@
   opacity: 0.78;
 }
 
+/* 已购买家联系作者：次要按钮，与主购买按钮并排但不抢主操作 */
+.resource-detail-page__contact-btn {
+  min-height: 44px;
+  padding: 0 16px;
+  border: 1px solid color-mix(in srgb, var(--73-accent) 28%, transparent);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--73-surface-strong) 96%, transparent);
+  color: var(--73-accent);
+  font-weight: 700;
+  cursor: pointer;
+  transition:
+    border-color 180ms ease,
+    background-color 180ms ease;
+}
+
+.resource-detail-page__contact-btn:hover {
+  border-color: color-mix(in srgb, var(--73-accent) 48%, transparent);
+  background: color-mix(in srgb, var(--73-accent-soft) 42%, var(--73-surface-strong));
+}
+
 /* BUG-020：接口资源的引导文案。接口资源没有平台内购买入口（后端会以 409 拒掉），
    这里只说明「到开发者站点下单」，不做成按钮，避免用户点进一个必然失败的支付流程。
    色值取本文件的 `--rdp-*` 色板（同 `raw-color` 门禁口径，不在这里新写裸色值）。 */
@@ -169,7 +189,8 @@
     flex-direction: column;
   }
 
-  .resource-detail-page__primary-btn {
+  .resource-detail-page__primary-btn,
+  .resource-detail-page__contact-btn {
     width: 100%;
   }
 }

@@ -114,7 +114,7 @@ const emit = defineEmits<{
             <span class="dev-chip" :class="toneChipClass(item.tone)">{{ item.statusLabel }}</span>
           </div>
           <div class="dev-stack-item__meta dev-messages__thread-sub">
-            {{ item.requirementId }} · {{ item.modeLabel }}
+            {{ item.metaLabel }}
           </div>
           <p class="dev-messages__thread-desc">{{ item.description }}</p>
         </div>

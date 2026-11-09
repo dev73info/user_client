@@ -125,7 +125,7 @@ const emit = defineEmits<{
               >{{ item.unreadCount > 99 ? '99+' : item.unreadCount }}</em
             >
           </span>
-          <span class="wb-item__meta">{{ item.requirementId }} · {{ item.modeLabel }}</span>
+          <span class="wb-item__meta">{{ item.metaLabel }}</span>
           <span class="wb-item__meta messages-thread-row__preview">{{ item.description }}</span>
         </div>
         <div class="wb-item__side">

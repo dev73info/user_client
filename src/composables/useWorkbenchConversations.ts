@@ -8,7 +8,7 @@ import {
   sortConversationsByRecency,
   unreadCountText,
 } from '@/shared/workbenchDisplay'
-import { isMessagesRouteName } from '@/shared/workbenchRoutes'
+import { conversationSelectionKey, isMessagesRouteName } from '@/shared/workbenchRoutes'
 import { useAuthStore } from '@/stores/auth'
 
 import { TMessage } from 'ui_73info'
@@ -50,15 +50,23 @@ export function useWorkbenchConversations() {
   /** 角标读数：超过 99 收成 99+，免得把菜单标题挤走 */
   const unreadBadgeText = computed(() => unreadCountText(unreadMessageCount.value))
 
-  /** 地址栏里那个需求号（`?requirement_id=`）：会话行据此判高亮，顶栏据此取会话名。 */
-  const activeRequirementId = computed(() => {
+  /** 地址栏里的会话键（需求号 / 插件咨询的会话号）：会话行据此判高亮，顶栏据此取会话名。 */
+  const activeSelectionKey = computed(() => {
     const requirementId = route.query.requirement_id
-    return typeof requirementId === 'string' ? requirementId : ''
+    if (typeof requirementId === 'string' && requirementId) {
+      return `requirement:${requirementId}`
+    }
+    const conversationId = route.query.conversation_id
+    return typeof conversationId === 'string' && conversationId
+      ? `conversation:${conversationId}`
+      : ''
   })
 
   const activeConversation = computed(
     () =>
-      conversations.value.find((item) => item.requirement_id === activeRequirementId.value) ?? null,
+      conversations.value.find(
+        (item) => conversationSelectionKey(item) === activeSelectionKey.value,
+      ) ?? null,
   )
 
   /**

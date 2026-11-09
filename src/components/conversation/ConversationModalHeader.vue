@@ -10,19 +10,24 @@ import type { RealtimeStatus } from '@/composables/useRequirementConversationSes
  * emit，实时状态与「最近 …」的字样由父组件的派生文案传进来；内嵌形态下整块仍由
  * `WorkbenchBarSlot` 搬进工作台顶栏（那一层留在父组件，这里只管头本身）。
  */
-defineProps<{
-  closeActionLabel: string
-  peerInitial: string
-  conversationTitle: string
-  peerLabel: string
-  realtimeStatus: RealtimeStatus
-  realtimeError: string
-  /** 只有断线重连才有文案，正常时是空串（那一行就不渲染）。 */
-  realtimeStatusLabel: string
-  /** 需求详情抽屉是否已经打开（详情按钮的高亮与 aria-expanded）。 */
-  detailOpen: boolean
-  loading: boolean
-}>()
+withDefaults(
+  defineProps<{
+    closeActionLabel: string
+    peerInitial: string
+    conversationTitle: string
+    peerLabel: string
+    realtimeStatus: RealtimeStatus
+    realtimeError: string
+    /** 只有断线重连才有文案，正常时是空串（那一行就不渲染）。 */
+    realtimeStatusLabel: string
+    /** 需求详情抽屉是否已经打开（详情按钮的高亮与 aria-expanded）。 */
+    detailOpen: boolean
+    loading: boolean
+    /** 是否有「业务对象详情」可打开；插件咨询没有需求详情，隐藏入口。 */
+    detailAvailable?: boolean
+  }>(),
+  { detailAvailable: true },
+)
 
 const emit = defineEmits<{
   close: []
@@ -45,20 +50,25 @@ const emit = defineEmits<{
       </TIcon>
     </button>
 
-    <div class="conversation-modal__avatar" aria-hidden="true" @click="emit('toggle-detail')">
+    <div
+      class="conversation-modal__avatar"
+      aria-hidden="true"
+      @click="detailAvailable !== false && emit('toggle-detail')"
+    >
       {{ peerInitial }}
     </div>
 
-    <!-- 点头像或标题区打开需求详情（移动端顶栏里不放详情按钮，只靠这里进入） -->
+    <!-- 点头像或标题区打开需求详情（移动端顶栏里不放详情按钮，只靠这里进入）；
+         插件咨询没有业务对象详情，`detailAvailable=false` 时这两处都不再是按钮。 -->
     <div
       class="conversation-modal__identity"
-      role="button"
-      tabindex="0"
-      :aria-expanded="detailOpen"
-      title="查看需求详情"
-      @click="emit('toggle-detail')"
-      @keydown.enter.prevent="emit('toggle-detail')"
-      @keydown.space.prevent="emit('toggle-detail')"
+      :role="detailAvailable === false ? undefined : 'button'"
+      :tabindex="detailAvailable === false ? undefined : 0"
+      :aria-expanded="detailAvailable === false ? undefined : detailOpen"
+      :title="detailAvailable === false ? undefined : '查看需求详情'"
+      @click="detailAvailable !== false && emit('toggle-detail')"
+      @keydown.enter.prevent="detailAvailable !== false && emit('toggle-detail')"
+      @keydown.space.prevent="detailAvailable !== false && emit('toggle-detail')"
     >
       <h3>{{ conversationTitle }}</h3>
       <!-- 副信息一行只报「对方是谁」。实时状态、最近一条消息都不放在这里：
@@ -79,6 +89,7 @@ const emit = defineEmits<{
 
     <div class="conversation-modal__header-actions">
       <button
+        v-if="detailAvailable !== false"
         class="conversation-modal__icon-btn"
         type="button"
         :class="{ 'is-active': detailOpen }"
