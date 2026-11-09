@@ -110,6 +110,18 @@ function historyDisclosureVoteHint(
 }
 
 /**
+ * 争议按案件合并的组键。
+ *
+ * 后端争议通知的 `biz_no` 是需求单号，本地案件卡也带 `requirement_id`，两边用同一条
+ * `dispute:{需求号}`。同一案件的立案 / 介入 / 裁决 / 结案是同一件事的连续状态，
+ * 合并成一张卡：本地卡展示当前状态，收件箱那条补上已读态与跳转。
+ */
+function disputeGroupKey(requirementId: string | null | undefined): string | undefined {
+  const value = (requirementId ?? '').trim()
+  return value ? `dispute:${value}` : undefined
+}
+
+/**
  * 争议案件卡片：只读。
  *
  * 为什么要进通知页：案件状态的每一次变化都只落在需求会话里的一张卡片上，而结单之后双方本来就
@@ -130,6 +142,7 @@ function buildAfterSalesCard(row: AfterSalesCaseSummary): NotificationCard {
     meta: `${row.created_time} 由 ${row.filed_by} 发起`,
     createdAt: row.created_time,
     sortTime: parseNoticeTime(row.created_time),
+    groupKey: disputeGroupKey(row.requirement_id),
     canVote: false,
   }
 }
@@ -159,13 +172,21 @@ function buildCommentWarningCard(warning: CommunityCommentWarning): Notification
 /**
  * 后端收件箱卡片：标题 / 正文直接取后端成品文案。
  *
- * `biz_no` 里带命名空间的（`comment:` / `community_post:` / `resource:`）作为跨来源去重键；
- * 需求单号这类裸业务号不做去重键——同一张需求单会有立案、介入、裁决、结案多条事件，
- * 按需求号合并会把过程通知吞掉。
+ * 去重键分两类：
+ * - 争议事件（`dispute_*`）用案件级键 `dispute:{需求号}`，与本地案件卡合并成一条；
+ * - `biz_no` 里带命名空间的（`comment:` / `community_post:` / `resource:`）是事件级键，
+ *   与本地来源按「分组键 + 同一时间」匹配。
+ * 需求单号这类裸业务号不单独做键——需求事件（交付/验收等）本来就是各自独立的一条。
  */
 function buildInboxCard(item: BackendNotification, isDevWorkbench: boolean): NotificationCard {
   const kind = notificationKindOf(item.kind)
-  const groupKey = (item.biz_no ?? '').trim()
+  const bizNo = (item.biz_no ?? '').trim()
+  const event = (item.event ?? '').trim()
+  const groupKey = event.startsWith('dispute_')
+    ? disputeGroupKey(bizNo)
+    : bizNo.includes(':')
+      ? bizNo
+      : undefined
   return {
     key: `notification-${item.notification_id}`,
     kind,
@@ -180,7 +201,7 @@ function buildInboxCard(item: BackendNotification, isDevWorkbench: boolean): Not
     notificationId: item.notification_id,
     read: item.read,
     link: resolveNotificationLink(item.link, isDevWorkbench),
-    groupKey: groupKey.includes(':') ? groupKey : undefined,
+    groupKey,
     canVote: false,
   }
 }

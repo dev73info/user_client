@@ -54,6 +54,7 @@ import NotificationCardItem from '@/components/notification/NotificationCardItem
 import NotificationsOverviewStrip from '@/components/notification/NotificationsOverviewStrip.vue'
 import NotificationsPager from '@/components/notification/NotificationsPager.vue'
 import NotificationCenterView from '@/views/NotificationCenterView.vue'
+import { afterSalesCase } from './helpers/notifications'
 
 function inboxItem(overrides: Partial<BackendNotification> = {}): BackendNotification {
   return {
@@ -91,7 +92,12 @@ type ViewState = {
   unreadCount: number
   markingId: string | null
   markingAll: boolean
-  displayCards: Array<{ notificationId?: string; read?: boolean; title: string }>
+  displayCards: Array<{
+    notificationId?: string
+    notificationIds?: string[]
+    read?: boolean
+    title: string
+  }>
 }
 
 function state(wrapper: VueWrapper): ViewState {
@@ -135,6 +141,57 @@ describe('站内通知：已读', () => {
     expect(mocks.markRead).toHaveBeenCalledWith('test-token', 'NTF-1')
     expect(state(wrapper).unreadCount).toBe(0)
     expect(stripValues(wrapper)).toEqual(['1', '0', '0'])
+    expect(wrapper.find('.notifications-unread').exists()).toBe(false)
+    wrapper.unmount()
+  })
+
+  it('同一案件合并卡：点一次「标为已读」把全部未读事件一起标掉', async () => {
+    mocks.afterSales.mockResolvedValue([afterSalesCase()])
+    mocks.inbox.mockResolvedValue({
+      items: [
+        inboxItem({
+          notification_id: 'NTF-D3',
+          kind: 'breach',
+          event: 'dispute_decided',
+          title: '争议已裁决',
+          link: '/workbench/requirements/REQ-1',
+          biz_no: 'REQ-1',
+          read: false,
+          created_time: '2026-04-03 10:00:00',
+        }),
+        inboxItem({
+          notification_id: 'NTF-D2',
+          kind: 'breach',
+          event: 'dispute_escalated',
+          title: '平台已介入争议处理',
+          link: '/workbench/requirements/REQ-1',
+          biz_no: 'REQ-1',
+          read: false,
+          created_time: '2026-04-02 10:00:00',
+        }),
+      ],
+      total: 2,
+      page: 1,
+      page_size: 100,
+      unread_count: 2,
+    })
+    const wrapper = mountView()
+    await flushPromises()
+
+    // 本地案件卡与两条 dispute_* 通知合成一条
+    const cards = wrapper.findAllComponents(NotificationCardItem)
+    expect(cards).toHaveLength(1)
+    expect(cards[0]?.props('card').key).toBe('after-sales-AFTERSALES_1_abc')
+    expect(cards[0]?.props('card').notificationIds).toEqual(['NTF-D3', 'NTF-D2'])
+    expect(stripValues(wrapper)).toEqual(['1', '2', '0'])
+
+    cards[0]!.vm.$emit('read')
+    await flushPromises()
+
+    expect(mocks.markRead).toHaveBeenCalledTimes(2)
+    expect(mocks.markRead).toHaveBeenNthCalledWith(1, 'test-token', 'NTF-D3')
+    expect(mocks.markRead).toHaveBeenNthCalledWith(2, 'test-token', 'NTF-D2')
+    expect(state(wrapper).unreadCount).toBe(0)
     expect(wrapper.find('.notifications-unread').exists()).toBe(false)
     wrapper.unmount()
   })

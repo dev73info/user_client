@@ -63,9 +63,14 @@ export function useNotificationInbox() {
     }
   }
 
-  /** 单条标记已读：只改这一条与未读数，不整页重拉。 */
-  async function markRead(notificationId: string) {
-    if (!notificationId || markingId.value !== null) {
+  /**
+   * 标记一组通知已读：只改这几条与未读数，不整页重拉。
+   *
+   * 一张卡可能合并了同一案件的多条后端通知（立案 / 介入 / 裁决 / 结案），点一次要一起标掉，
+   * 否则卡上还挂着下一条未读、未读角标也归不了零。只对本地确实是未读的单号发请求。
+   */
+  async function markReadMany(notificationIds: string[]) {
+    if (markingId.value !== null) {
       return
     }
     auth.hydrate()
@@ -73,14 +78,35 @@ export function useNotificationInbox() {
       return
     }
 
-    markingId.value = notificationId
+    const pending = notificationIds.filter((id) =>
+      items.value.some((row) => row.notification_id === id && !row.read),
+    )
+    if (pending.length === 0) {
+      return
+    }
+
+    markingId.value = notificationIds[0] ?? pending[0] ?? null
     try {
-      await markMyNotificationRead(auth.token, notificationId)
-      const item = items.value.find((row) => row.notification_id === notificationId)
-      if (item) {
-        item.read = true
+      const results = await Promise.allSettled(
+        pending.map((id) => markMyNotificationRead(auth.token, id)),
+      )
+      let marked = 0
+      results.forEach((result, index) => {
+        if (result.status !== 'fulfilled') {
+          return
+        }
+        const item = items.value.find((row) => row.notification_id === pending[index])
+        if (item) {
+          item.read = true
+        }
+        marked += 1
+      })
+      if (marked > 0) {
+        setUnread(unreadCount.value - marked)
       }
-      setUnread(unreadCount.value - 1)
+      if (marked < pending.length) {
+        TMessage.warning('部分通知未能标记已读，请重试')
+      }
     } catch (failure) {
       TMessage.warning(failure instanceof Error ? failure.message : '标记已读失败')
     } finally {
@@ -122,7 +148,7 @@ export function useNotificationInbox() {
     markingAll,
     load,
     reset,
-    markRead,
+    markReadMany,
     markAllRead,
   }
 }

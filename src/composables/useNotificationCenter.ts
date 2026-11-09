@@ -229,13 +229,21 @@ export function useNotificationCenter() {
     }
   }
 
-  /** 单条已读：只有后端来源、且确实是未读时才发请求。 */
+  /** 标记这张卡已读：合并进同一张卡的所有后端通知一起标（同一案件可能有多条事件）。 */
   function markRead(card: NotificationCard) {
-    const notificationId = card.notificationId
-    if (!notificationId || card.read !== false) {
+    if (card.read !== false) {
       return
     }
-    void inbox.markRead(notificationId)
+    const ids =
+      card.notificationIds && card.notificationIds.length > 0
+        ? card.notificationIds
+        : card.notificationId
+          ? [card.notificationId]
+          : []
+    if (ids.length === 0) {
+      return
+    }
+    void inbox.markReadMany(ids)
   }
 
   const markAllRead = inbox.markAllRead

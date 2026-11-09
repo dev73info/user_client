@@ -1,6 +1,7 @@
 import type { AfterSalesCaseSummary } from '@/api/afterSales'
 import type { CommunityCommentWarning } from '@/api/community'
 import type { ConversationHistoryDisclosure } from '@/api/conversations'
+import type { BackendNotification } from '@/api/notifications'
 import type { NotificationCard } from '@/shared/notifications'
 
 /** 几类来源的字段很多，测试只关心被聚合层读到的那些，用工厂补齐其余字段，别在用例里铺一整份对象。 */
@@ -56,6 +57,25 @@ export function commentWarning(
     operator: 'admin',
     username: 'cust',
     created_at: '2026-05-01 10:00:00',
+    ...overrides,
+  }
+}
+
+/** 后端通知：只关心映射与去重读到的字段，其余补齐。 */
+export function inboxItem(overrides: Partial<BackendNotification> = {}): BackendNotification {
+  return {
+    notification_id: 'NTF-1',
+    recipient: 'cust',
+    kind: 'requirement',
+    event: 'requirement_delivered',
+    title: '开发者已提交交付',
+    body: '需求 REQ-1 已提交交付，请在验收期内确认。',
+    link: '/workbench/requirements/REQ-1',
+    biz_no: 'REQ-1',
+    read: false,
+    email_sent: true,
+    created_time: '2026-11-08 10:00:00',
+    read_time: null,
     ...overrides,
   }
 }

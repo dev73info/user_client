@@ -80,6 +80,14 @@ function accentClass(card: NotificationCard): string {
 
 const isUnread = computed(() => props.card.read === false)
 const markable = computed(() => isUnread.value && Boolean(props.card.notificationId))
+
+/** 合并卡可能带多个单号：只要正在标记的单号落在这张卡上，就显示 loading。 */
+const marking = computed(
+  () =>
+    Boolean(props.markingId) &&
+    (props.markingId === props.card.notificationId ||
+      (props.card.notificationIds ?? []).includes(props.markingId!)),
+)
 </script>
 
 <template>
@@ -110,12 +118,7 @@ const markable = computed(() => isUnread.value && Boolean(props.card.notificatio
         {{ card.meta }}
       </span>
       <div v-if="card.canVote || card.link || markable" class="notifications-card__actions">
-        <TButton
-          v-if="markable"
-          variant="text"
-          :loading="markingId === card.notificationId"
-          @click.stop="emit('read')"
-        >
+        <TButton v-if="markable" variant="text" :loading="marking" @click.stop="emit('read')">
           标为已读
         </TButton>
         <TButton v-if="card.link" variant="outline" @click.stop="emit('open')"> 查看 </TButton>
