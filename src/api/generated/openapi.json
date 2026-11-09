@@ -15405,26 +15405,14 @@
         "tags": [
           "notification"
         ],
-        "summary": "我的通知",
-        "description": "按登录态取本人的通知列表；`?unread=true` 只回未读，`?limit=20` 限制条数。",
+        "summary": "我的通知（分页）",
+        "description": "按登录态取本人的通知分页；`page` 从 1 开始，`page_size` 默认 20、上限 100；`kind` 可筛 `requirement` / `payment` / `system`（不填=全部）；`unread_only=true` 只看未读。响应里的 `total` 是当前筛选总数，`unread_count` 是本人全部未读数。",
         "operationId": "list_mine",
         "parameters": [
           {
-            "name": "unread",
+            "name": "page",
             "in": "query",
-            "description": "只要未读：`?unread=true`。",
-            "required": false,
-            "schema": {
-              "type": [
-                "boolean",
-                "null"
-              ]
-            }
-          },
-          {
-            "name": "limit",
-            "in": "query",
-            "description": "取多少条。",
+            "description": "第几页，从 1 开始（默认 1）。",
             "required": false,
             "schema": {
               "type": [
@@ -15433,18 +15421,52 @@
               ],
               "format": "int64"
             }
+          },
+          {
+            "name": "page_size",
+            "in": "query",
+            "description": "每页多少条（默认 20，最大 100）。",
+            "required": false,
+            "schema": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "format": "int64"
+            }
+          },
+          {
+            "name": "kind",
+            "in": "query",
+            "description": "分类筛选：`requirement` / `payment` / `system`（不填=全部）。",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          {
+            "name": "unread_only",
+            "in": "query",
+            "description": "只看未读。",
+            "required": false,
+            "schema": {
+              "type": [
+                "boolean",
+                "null"
+              ]
+            }
           }
         ],
         "responses": {
           "200": {
-            "description": "通知列表",
+            "description": "通知分页",
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/NotificationResponse"
-                  }
+                  "$ref": "#/components/schemas/NotificationPageResponse"
                 }
               }
             }
@@ -39569,6 +39591,7 @@
           "id",
           "comment_type",
           "comment_id",
+          "username",
           "comment_snapshot",
           "reason",
           "operator",
@@ -39597,6 +39620,10 @@
           },
           "reason": {
             "type": "string"
+          },
+          "username": {
+            "type": "string",
+            "description": "被警告的评论作者。"
           }
         }
       },
@@ -46371,22 +46398,37 @@
       },
       "MyNotificationQuery": {
         "type": "object",
-        "description": "我的通知列表筛选。",
+        "description": "我的通知列表筛选。\n\n`unread` 是旧参数名，继续接受（等价于 `unread_only`），前端迁移期间不会 400。",
         "properties": {
-          "limit": {
+          "kind": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "分类筛选：`requirement` / `payment` / `system`（不填=全部）。"
+          },
+          "page": {
             "type": [
               "integer",
               "null"
             ],
             "format": "int64",
-            "description": "取多少条。"
+            "description": "第几页，从 1 开始（默认 1）。"
           },
-          "unread": {
+          "page_size": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "每页多少条（默认 20，最大 100）。"
+          },
+          "unread_only": {
             "type": [
               "boolean",
               "null"
             ],
-            "description": "只要未读：`?unread=true`。"
+            "description": "只看未读。"
           }
         }
       },
@@ -46493,6 +46535,46 @@
           "transferring_fen": {
             "type": "integer",
             "format": "int64"
+          }
+        }
+      },
+      "NotificationPageResponse": {
+        "type": "object",
+        "description": "我的通知分页响应。",
+        "required": [
+          "items",
+          "total",
+          "page",
+          "page_size",
+          "unread_count"
+        ],
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/NotificationResponse"
+            },
+            "description": "当前页通知。"
+          },
+          "page": {
+            "type": "integer",
+            "format": "int64",
+            "description": "当前页码（从 1 开始）。"
+          },
+          "page_size": {
+            "type": "integer",
+            "format": "int64",
+            "description": "每页条数。"
+          },
+          "total": {
+            "type": "integer",
+            "format": "int64",
+            "description": "当前筛选条件下的总条数（分页用）。"
+          },
+          "unread_count": {
+            "type": "integer",
+            "format": "int64",
+            "description": "本人全部未读数（红点用，不受筛选条件影响）。"
           }
         }
       },

@@ -5630,8 +5630,8 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * 我的通知
-         * @description 按登录态取本人的通知列表；`?unread=true` 只回未读，`?limit=20` 限制条数。
+         * 我的通知（分页）
+         * @description 按登录态取本人的通知分页；`page` 从 1 开始，`page_size` 默认 20、上限 100；`kind` 可筛 `requirement` / `payment` / `system`（不填=全部）；`unread_only=true` 只看未读。响应里的 `total` 是当前筛选总数，`unread_count` 是本人全部未读数。
          */
         get: operations["list_mine"];
         put?: never;
@@ -14585,6 +14585,8 @@ export interface components {
             id: number;
             operator: string;
             reason: string;
+            /** @description 被警告的评论作者。 */
+            username: string;
         };
         CommunityCommentLikePayload: {
             /** Format: int64 */
@@ -17207,15 +17209,26 @@ export interface components {
             payouts: components["schemas"]["ActivityPayoutItemResponse"][];
             summary: components["schemas"]["MyRewardSummaryResponse"];
         };
-        /** @description 我的通知列表筛选。 */
+        /**
+         * @description 我的通知列表筛选。
+         *
+         *     `unread` 是旧参数名，继续接受（等价于 `unread_only`），前端迁移期间不会 400。
+         */
         MyNotificationQuery: {
+            /** @description 分类筛选：`requirement` / `payment` / `system`（不填=全部）。 */
+            kind?: string | null;
             /**
              * Format: int64
-             * @description 取多少条。
+             * @description 第几页，从 1 开始（默认 1）。
              */
-            limit?: number | null;
-            /** @description 只要未读：`?unread=true`。 */
-            unread?: boolean | null;
+            page?: number | null;
+            /**
+             * Format: int64
+             * @description 每页多少条（默认 20，最大 100）。
+             */
+            page_size?: number | null;
+            /** @description 只看未读。 */
+            unread_only?: boolean | null;
         };
         /** @description 本人支付单列表的筛选条件。 */
         MyOrderListQuery: {
@@ -17265,6 +17278,31 @@ export interface components {
             pending_fen: number;
             /** Format: int64 */
             transferring_fen: number;
+        };
+        /** @description 我的通知分页响应。 */
+        NotificationPageResponse: {
+            /** @description 当前页通知。 */
+            items: components["schemas"]["NotificationResponse"][];
+            /**
+             * Format: int64
+             * @description 当前页码（从 1 开始）。
+             */
+            page: number;
+            /**
+             * Format: int64
+             * @description 每页条数。
+             */
+            page_size: number;
+            /**
+             * Format: int64
+             * @description 当前筛选条件下的总条数（分页用）。
+             */
+            total: number;
+            /**
+             * Format: int64
+             * @description 本人全部未读数（红点用，不受筛选条件影响）。
+             */
+            unread_count: number;
         };
         /** @description 通知响应。 */
         NotificationResponse: {
@@ -37760,10 +37798,14 @@ export interface operations {
     list_mine: {
         parameters: {
             query?: {
-                /** @description 只要未读：`?unread=true`。 */
-                unread?: boolean | null;
-                /** @description 取多少条。 */
-                limit?: number | null;
+                /** @description 第几页，从 1 开始（默认 1）。 */
+                page?: number | null;
+                /** @description 每页多少条（默认 20，最大 100）。 */
+                page_size?: number | null;
+                /** @description 分类筛选：`requirement` / `payment` / `system`（不填=全部）。 */
+                kind?: string | null;
+                /** @description 只看未读。 */
+                unread_only?: boolean | null;
             };
             header?: never;
             path?: never;
@@ -37771,13 +37813,13 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description 通知列表 */
+            /** @description 通知分页 */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["NotificationResponse"][];
+                    "application/json": components["schemas"]["NotificationPageResponse"];
                 };
             };
         };
