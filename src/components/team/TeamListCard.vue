@@ -23,6 +23,7 @@ defineProps<{
 
 const emit = defineEmits<{
   (e: 'create'): void
+  (e: 'team-resources'): void
   (e: 'open', teamId: number): void
   (e: 'delete', team: TeamResponse): void
   (e: 'leave', team: TeamResponse): void
@@ -44,6 +45,9 @@ const hasActiveFilters = computed(() =>
         <h3 class="dev-section-title">我的团队</h3>
       </div>
       <div class="dev-card-head__actions">
+        <button type="button" class="dev-btn dev-btn--ghost" @click="emit('team-resources')">
+          团队资源
+        </button>
         <button class="dev-btn dev-btn--primary" type="button" @click="emit('create')">
           <TIcon>
             <Plus />

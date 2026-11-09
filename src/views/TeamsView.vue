@@ -11,6 +11,7 @@
  * - 排序、筛选、邀请时间等纯函数 → `@/shared/teamDisplay`。
  */
 import { TButton, TIcon, Refresh } from 'ui_73info'
+import { useRouter } from 'vue-router'
 
 import WorkbenchBarSlot from '@/components/WorkbenchBarSlot.vue'
 import TeamCreateDialog from '@/components/team/TeamCreateDialog.vue'
@@ -21,6 +22,7 @@ import { useTeams } from '@/composables/useTeams'
 import { useAuthStore } from '@/stores/auth'
 
 const auth = useAuthStore()
+const router = useRouter()
 
 const {
   teams,
@@ -54,6 +56,11 @@ const {
 /** 读数条上的刷新：团队与邀请一起重取，按钮的转圈等两边都回来。 */
 async function reloadAll() {
   await Promise.all([loadTeams(), loadInvitations()])
+}
+
+/** 团队资源不做图标栏条目，入口并在本页卡头，跨团队资源项目走独立路由。 */
+function goTeamResources() {
+  router.push({ name: 'workbench-team-resources' })
 }
 </script>
 
@@ -107,6 +114,7 @@ async function reloadAll() {
       :deleting-id="deletingId"
       :current-username="auth.username"
       @create="openCreateModal"
+      @team-resources="goTeamResources"
       @open="goDetail"
       @delete="handleDelete"
       @leave="handleLeave"

@@ -92,6 +92,11 @@ async function render() {
         path: '/workbench/teams/:teamId',
         component: { template: '<div />' },
       },
+      {
+        name: 'workbench-team-resources',
+        path: '/workbench/developer/team-resources',
+        component: { template: '<div />' },
+      },
     ],
   })
   await router.push('/workbench/teams')
@@ -187,6 +192,17 @@ describe('团队列表页接线', () => {
 
     expect(mocks.create).toHaveBeenCalledWith('test-token', { name: '七星团队', description: '' })
     expect(router.currentRoute.value.fullPath).toBe('/workbench/teams/9')
+    wrapper.unmount()
+  })
+
+  it('卡头的「团队资源」进跨团队资源项目页', async () => {
+    const { wrapper, router } = await render()
+
+    // 只取卡头那一个 ghost：团队行里的「退出」也是 ghost，不在卡头作用域内
+    await wrapper.find('.dev-card-head__actions .dev-btn--ghost').trigger('click')
+    await flushPromises()
+
+    expect(router.currentRoute.value.fullPath).toBe('/workbench/developer/team-resources')
     wrapper.unmount()
   })
 
