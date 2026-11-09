@@ -103,6 +103,10 @@ export function resolveResourceTarget(resource: PublicMcResourceItem): RouteLoca
     resourceId: resource.id,
     rootSlug,
     entrySlug,
-    sale: resourceListingSaleOf(resource.buyout_price_fen, resource.price_points),
+    sale: resourceListingSaleOf(
+      resource.buyout_price_fen,
+      resource.price_points,
+      resource.min_version_price_fen,
+    ),
   })
 }

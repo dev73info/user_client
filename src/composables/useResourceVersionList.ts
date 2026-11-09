@@ -13,6 +13,7 @@ import {
 import { useClientPagination } from '@/composables/useClientPagination'
 import { buildUnifiedAuthUrl } from '@/config/runtime'
 import { isResourceArchiveLocked } from '@/shared/resourcePresentation'
+import { resourceWorkspaceListRouteName } from '@/shared/resourceWorkspace'
 import { useAuthStore } from '@/stores/auth'
 
 import { TMessage } from 'ui_73info'
@@ -129,7 +130,7 @@ export function useResourceVersionList() {
     const resourceId = Number(route.params.resourceId)
     if (!Number.isInteger(resourceId) || resourceId <= 0) {
       TMessage.warning('资源编号无效')
-      router.replace({ name: 'dev-resource-list' })
+      router.replace({ name: resourceWorkspaceListRouteName(route.meta) })
       return
     }
 
@@ -157,7 +158,7 @@ export function useResourceVersionList() {
             ? error.message
             : '加载版本管理失败'
       TMessage.error(message)
-      router.replace({ name: 'dev-resource-list' })
+      router.replace({ name: resourceWorkspaceListRouteName(route.meta) })
     } finally {
       loading.value = false
     }

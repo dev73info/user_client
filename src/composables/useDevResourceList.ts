@@ -31,8 +31,13 @@ async function loadCurrentVersionPrices(token: string, resources: McResourcePayl
   return Object.fromEntries(entries) as Record<number, number>
 }
 
-/** 开发者资源列表、前端筛选分页与当前单版本售价。 */
-export function useDevResourceList() {
+/**
+ * 开发者资源列表、前端筛选分页与当前单版本售价。
+ *
+ * `keep` 用于同一套取数逻辑复用到需求方「我的资源」（只留已 claim 的定制交付）；
+ * 不传 = 开发者资源项目的全量口径。
+ */
+export function useDevResourceList(options?: { keep?: (item: McResourcePayload) => boolean }) {
   const auth = useAuthStore()
   const isLoading = ref(false)
   const resources = ref<McResourcePayload[]>([])
@@ -61,7 +66,9 @@ export function useDevResourceList() {
     isLoading.value = true
     try {
       const all = await listMcResources(auth.token)
-      const own = all.filter((item) => item.ownership_type !== 'team')
+      const own = all.filter(
+        (item) => item.ownership_type !== 'team' && (options?.keep?.(item) ?? true),
+      )
       versionPrices.value = await loadCurrentVersionPrices(auth.token, own)
       resources.value = own
     } catch (error) {

@@ -43,8 +43,6 @@ export function useMessagesPage() {
   const conversations = ref<RequirementConversation[]>([])
   const requirements = ref<RequirementItem[]>([])
   const threadPreferences = useMessagesThreadPreferences(() => auth.token)
-  const activeRequirementId = ref('')
-  const activeTitle = ref('')
   let stopRealtimeEvents: (() => void) | null = null
 
   const username = computed(() => auth.username)
@@ -55,6 +53,32 @@ export function useMessagesPage() {
     preferences: threadPreferences.preferences,
   })
 
+  /**
+   * 当前选中的业务键：需求行按 `requirement_id`，插件咨询按 `conversation_id`。
+   *
+   * 地址栏 query 是唯一真源（三个入口各有路由名，刷新与分享都靠它复原现场）。
+   */
+  const activeSelectionKey = computed(() => {
+    const requirementId =
+      typeof route.query.requirement_id === 'string' ? route.query.requirement_id : ''
+    if (requirementId) {
+      return `requirement:${requirementId}`
+    }
+    const conversationId =
+      typeof route.query.conversation_id === 'string' ? route.query.conversation_id : ''
+    return conversationId ? `conversation:${conversationId}` : ''
+  })
+  const activeThread = computed<MessageThread | null>(
+    () =>
+      threads.allThreads.value.find((item) => item.selectionKey === activeSelectionKey.value) ??
+      null,
+  )
+  /** 需求会话弹窗的入参；插件咨询走 `activeThread`。 */
+  const activeRequirementId = computed(() =>
+    activeThread.value?.scene === 'requirement' ? activeThread.value.requirementId : '',
+  )
+  const activeTitle = computed(() => activeThread.value?.title ?? '')
+
   // 消息中心有三个入口，页面内切换会话时保持停留在当前入口，避免把开发者带回用户工作台。
   const MESSAGES_ROUTE_NAMES = ['messages', 'workbench', 'workbench-messages', 'dev-messages']
   const currentMessagesRouteName = computed(() =>
@@ -63,43 +87,22 @@ export function useMessagesPage() {
       : 'workbench-messages',
   )
 
-  function showThread(item: MessageThread) {
-    activeRequirementId.value = item.requirementId
-    activeTitle.value = item.title
-  }
-
   function openThread(item: MessageThread) {
+    // 已经选中这条会话：不重复 push 同一个 query
     if (
       MESSAGES_ROUTE_NAMES.includes(String(route.name ?? '')) &&
-      route.query.requirement_id === item.requirementId
+      activeSelectionKey.value === item.selectionKey
     ) {
-      showThread(item)
       return
     }
 
     void router.push({
       name: currentMessagesRouteName.value,
-      query: {
-        requirement_id: item.requirementId,
-      },
+      query:
+        item.scene === 'resource'
+          ? { conversation_id: item.conversationId ?? '' }
+          : { requirement_id: item.requirementId },
     })
-  }
-
-  function openThreadFromRoute() {
-    const requirementId =
-      typeof route.query.requirement_id === 'string' ? route.query.requirement_id : ''
-    if (!requirementId) {
-      activeRequirementId.value = ''
-      activeTitle.value = ''
-      return
-    }
-
-    const thread = threads.allThreads.value.find((item) => item.requirementId === requirementId)
-    if (!thread) {
-      return
-    }
-
-    showThread(thread)
   }
 
   function closeConversation() {
@@ -126,10 +129,12 @@ export function useMessagesPage() {
   /** 会话有更新（实时推送或弹窗里发完消息）：就地把这一行换掉，没有再补到最前面。 */
   function applyConversationDetail(payload: RequirementConversationDetail) {
     const nextConversation = payload.conversation
-    // 删除过的会话收到新消息后自动回到列表（与后端同一口径）
-    threadPreferences.clearHidden(nextConversation.requirement_id)
+    // 删除过的会话收到新消息后自动回到列表（与后端同一口径）；插件咨询没有偏好
+    if (nextConversation.requirement_id) {
+      threadPreferences.clearHidden(nextConversation.requirement_id)
+    }
     const index = conversations.value.findIndex(
-      (item) => item.requirement_id === nextConversation.requirement_id,
+      (item) => item.conversation_id === nextConversation.conversation_id,
     )
     if (index >= 0) {
       conversations.value = conversations.value.map((item, itemIndex) =>
@@ -141,10 +146,21 @@ export function useMessagesPage() {
     conversations.value = [nextConversation, ...conversations.value]
   }
 
+  /** 置顶 / 取消置顶：插件咨询没有偏好能力，直接忽略。 */
+  function setThreadPinned(thread: MessageThread, pinned: boolean) {
+    if (thread.scene === 'resource') {
+      return Promise.resolve()
+    }
+    return threadPreferences.setPinned(thread, pinned)
+  }
+
   /** 删除当前打开的会话时收起右侧面板，再执行删除。 */
   function removeThread(thread: MessageThread) {
+    if (thread.scene === 'resource') {
+      return Promise.resolve()
+    }
     return threadPreferences.remove(thread, () => {
-      if (activeRequirementId.value === thread.requirementId) {
+      if (activeSelectionKey.value === thread.selectionKey) {
         closeConversation()
       }
     })
@@ -164,10 +180,7 @@ export function useMessagesPage() {
     }
 
     stopRealtimeEvents = subscribeRequirementConversationEvents(auth.token, {
-      onUpdate: (payload) => {
-        applyConversationDetail(payload)
-        openThreadFromRoute()
-      },
+      onUpdate: applyConversationDetail,
     })
   }
 
@@ -194,7 +207,6 @@ export function useMessagesPage() {
       ])
       requirements.value = nextRequirements
       conversations.value = nextConversations
-      openThreadFromRoute()
       if (showSuccess) {
         TMessage.success('消息已刷新')
       }
@@ -222,13 +234,6 @@ export function useMessagesPage() {
   })
 
   watch(
-    () => route.query.requirement_id,
-    () => {
-      openThreadFromRoute()
-    },
-  )
-
-  watch(
     () => auth.token,
     () => {
       connectRealtime()
@@ -241,6 +246,8 @@ export function useMessagesPage() {
     // 列表与筛选分页（useMessagesThreads）
     ...threads,
     // 内嵌会话
+    activeThread,
+    activeSelectionKey,
     activeRequirementId,
     activeTitle,
     token: computed(() => auth.token),
@@ -253,7 +260,7 @@ export function useMessagesPage() {
     refresh,
     openThread,
     closeConversation,
-    setThreadPinned: threadPreferences.setPinned,
+    setThreadPinned,
     removeThread,
     applyConversationDetail,
   }

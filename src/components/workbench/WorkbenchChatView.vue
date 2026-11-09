@@ -3,6 +3,7 @@ import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { ChatDotRound, TIcon } from 'ui_73info'
 
 import RequirementConversationModal from '@/components/RequirementConversationModal.vue'
+import ResourceConversationModal from '@/components/ResourceConversationModal.vue'
 import WorkbenchChatInbox from '@/components/workbench/WorkbenchChatInbox.vue'
 import WorkbenchPaneResizer from '@/components/workbench/WorkbenchPaneResizer.vue'
 import { useMessagesPage } from '@/composables/useMessagesPage'
@@ -31,7 +32,7 @@ const {
   isDevWorkbench,
   loading,
   allThreads,
-  activeRequirementId,
+  activeThread,
   token,
   username,
   openThread,
@@ -51,6 +52,7 @@ const visibleThreads = computed(() => {
     [
       thread.title,
       thread.requirementId,
+      thread.metaLabel,
       thread.partnerLabel,
       thread.description,
       thread.statusLabel,
@@ -62,16 +64,14 @@ const visibleThreads = computed(() => {
 })
 
 const selectedThread = computed<MessageThread | null>(() => {
-  const active =
-    allThreads.value.find((thread) => thread.requirementId === activeRequirementId.value) ?? null
-  if (active) {
-    return active
+  if (activeThread.value) {
+    return activeThread.value
   }
   return isMobile.value ? null : (visibleThreads.value[0] ?? null)
 })
 
-const selectedRequirementId = computed(() => selectedThread.value?.requirementId ?? '')
-const isConversationOpen = computed(() => selectedRequirementId.value !== '')
+const selectedThreadKey = computed(() => selectedThread.value?.selectionKey ?? '')
+const isConversationOpen = computed(() => selectedThreadKey.value !== '')
 /** 本页的会话列表宽度：共用值按会话区的上下限夹取（未拖动过时用默认 360） */
 const inboxWidth = computed(() => normalizeInboxWidth(paneWidth.value ?? INBOX_WIDTH_DEFAULT))
 const workbenchChatStyle = computed<Record<string, string>>(() => ({
@@ -197,7 +197,7 @@ function resizeInboxByKeyboard(event: KeyboardEvent) {
       <WorkbenchChatInbox
         v-model:keyword="keyword"
         :threads="visibleThreads"
-        :selected-requirement-id="selectedRequirementId"
+        :selected-thread-key="selectedThreadKey"
         :loading="loading"
         @select="selectThread"
         @pin="setThreadPinned"
@@ -219,8 +219,21 @@ function resizeInboxByKeyboard(event: KeyboardEvent) {
     />
 
     <section class="workbench-chat__pane">
+      <ResourceConversationModal
+        v-if="selectedThread?.scene === 'resource'"
+        display-mode="inline"
+        :visible="true"
+        :token="token"
+        :conversation-id="selectedThread.conversationId"
+        :resource-id="selectedThread.resourceId"
+        :current-username="username"
+        :title="selectedThread.title"
+        @updated="applyConversationDetail"
+        @close="closeConversation"
+      />
+
       <RequirementConversationModal
-        v-if="selectedThread"
+        v-else-if="selectedThread"
         display-mode="inline"
         :visible="true"
         :token="token"

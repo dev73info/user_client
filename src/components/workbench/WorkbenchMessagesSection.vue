@@ -5,7 +5,11 @@ import { ChatDotRound } from 'ui_73info'
 import type { RequirementConversation } from '@/api/conversations'
 import { MOBILE_MENU_BREAKPOINT_PX } from '@/composables/useWorkbenchMobileMenu'
 import { conversationMeta, partnerLabel, unreadCountText } from '@/shared/workbenchDisplay'
-import { conversationLink, isConversationRouteActive } from '@/shared/workbenchRoutes'
+import {
+  conversationLink,
+  conversationSelectionKey,
+  isConversationRouteActive,
+} from '@/shared/workbenchRoutes'
 
 import WorkbenchMenuItem from './WorkbenchMenuItem.vue'
 import WorkbenchSubmenu from './WorkbenchSubmenu.vue'
@@ -30,8 +34,8 @@ const props = defineProps<{
   /** 消息中心在当前工作台的那条路由名（用户端 / 开发者端各一条）。 */
   routeName: string
   isMessagesRoute: boolean
-  /** 地址栏里的 `?requirement_id=`：会话行据此判高亮。 */
-  activeRequirementId: string
+  /** 地址栏里的会话键（`requirement:<id>` / `conversation:<id>`）：会话行据此判高亮。 */
+  activeSelectionKey: string
   username: string
 }>()
 
@@ -96,12 +100,12 @@ onBeforeUnmount(() => {
         v-for="item in props.conversations"
         :key="item.conversation_id"
         variant="conversation"
-        :to="conversationLink(props.routeName, item.requirement_id)"
+        :to="conversationLink(props.routeName, item)"
         :label="item.requirement_title || item.requirement_id"
         :active="
           isConversationRouteActive(
-            item.requirement_id,
-            props.activeRequirementId,
+            conversationSelectionKey(item),
+            props.activeSelectionKey,
             props.isMessagesRoute,
           )
         "

@@ -40,9 +40,18 @@ export function useConversationIdentity(readSources: () => IdentitySources) {
     return null
   })
 
+  /** 资源（插件）咨询：双方称谓换成「作者 / 买家」。 */
+  const isResourceConversation = computed(
+    () => readSources().conversation?.scene === 'resource',
+  )
+
   const conversationTitle = computed(() => {
     const { title, conversation } = readSources()
-    return title || conversation?.requirement_title || '需求沟通'
+    return (
+      title ||
+      conversation?.requirement_title ||
+      (isResourceConversation.value ? '插件咨询' : '需求沟通')
+    )
   })
 
   const participantLabel = computed(() => {
@@ -52,10 +61,14 @@ export function useConversationIdentity(readSources: () => IdentitySources) {
     }
 
     if (currentUsername === conversation.customer) {
-      return `开发者：${conversation.developer}`
+      return isResourceConversation.value
+        ? `作者：${conversation.developer}`
+        : `开发者：${conversation.developer}`
     }
     if (currentUsername === conversation.developer) {
-      return `用户：${conversation.customer}`
+      return isResourceConversation.value
+        ? `买家：${conversation.customer}`
+        : `用户：${conversation.customer}`
     }
     return `${conversation.customer} / ${conversation.developer}`
   })

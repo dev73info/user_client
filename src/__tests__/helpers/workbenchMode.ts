@@ -13,6 +13,10 @@ import UserWorkbenchView from '@/views/UserWorkbenchView.vue'
 export const USER_ROUTE_NAMES = [
   'workbench',
   'workbench-requirements',
+  // 需求方「我的资源」：列表 + 复用的主页编辑 / 版本管理页。
+  'workbench-resources',
+  'workbench-resource-homepage-edit',
+  'workbench-resource-versions',
   'workbench-account',
   'workbench-authorized-apps',
   'workbench-tickets',

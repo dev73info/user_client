@@ -6,7 +6,8 @@ import type { MessageThread } from '@/shared/messagesThreads'
 
 const props = defineProps<{
   threads: MessageThread[]
-  selectedRequirementId: string
+  /** 当前选中的业务键（需求行 `requirement:<id>` / 插件咨询 `conversation:<id>`）。 */
+  selectedThreadKey: string
   loading: boolean
 }>()
 
@@ -68,7 +69,7 @@ let suppressNextClick = false
 
 /** 头像取对方名的首字（「开发者：bob」取 bob）；未开启会话没有对方，退回需求标题首字。 */
 function avatarText(thread: MessageThread) {
-  const partner = thread.kind === 'conversation' ? thread.partnerLabel.replace(/^.*?：/, '') : ''
+  const partner = thread.kind !== 'pending' ? thread.partnerLabel.replace(/^.*?：/, '') : ''
   const source = partner.trim() || thread.title
   return Array.from(source)[0]?.toUpperCase() || '聊'
 }
@@ -109,6 +110,10 @@ function clampMenuPosition(x: number, y: number) {
 }
 
 function openThreadMenu(thread: MessageThread, x: number, y: number, byLongPress = false) {
+  // 插件咨询目前不支持置顶 / 删除（偏好按需求编号存），不给菜单入口
+  if (thread.scene === 'resource') {
+    return
+  }
   const position = clampMenuPosition(x, y)
   menuThread.value = thread
   menuX.value = position.x
@@ -270,12 +275,12 @@ onBeforeUnmount(() => {
           :key="thread.key"
           class="workbench-inbox__row"
           :class="{
-            'is-active': thread.requirementId === selectedRequirementId,
+            'is-active': thread.selectionKey === selectedThreadKey,
             'has-unread': thread.unreadCount > 0,
             'is-pinned': thread.pinned,
           }"
           type="button"
-          :aria-current="thread.requirementId === selectedRequirementId ? 'true' : undefined"
+          :aria-current="thread.selectionKey === selectedThreadKey ? 'true' : undefined"
           @click="onRowClick(thread)"
           @contextmenu.prevent="openThreadMenu(thread, $event.clientX, $event.clientY)"
           @pointerdown="onRowPointerDown(thread, $event)"

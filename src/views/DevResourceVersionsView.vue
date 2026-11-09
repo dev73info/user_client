@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { computed } from 'vue'
+
 import WorkbenchBarSlot from '@/components/WorkbenchBarSlot.vue'
 import ResourceVersionCreateDialog from '@/components/dev/ResourceVersionCreateDialog.vue'
 import ResourceVersionDeleteDialog from '@/components/dev/ResourceVersionDeleteDialog.vue'
@@ -9,6 +11,7 @@ import { useResourceVersionDialogs } from '@/composables/useResourceVersionDialo
 import { useResourceVersionList } from '@/composables/useResourceVersionList'
 import { useResourceVersionSaleFlow } from '@/composables/useResourceVersionSaleFlow'
 import {
+  isResourceSaleLockedByRequirement,
   RESOURCE_ARCHIVE_LOCKED_MESSAGE,
   RESOURCE_ARCHIVE_LOCKED_TITLE,
 } from '@/shared/resourcePresentation'
@@ -59,6 +62,13 @@ const {
   formatCreatedAt,
   downloadVersion,
 } = useResourceVersionList()
+
+/** 未 claim 的交付资源删除版本才需要需求方审核；claim 后资源归需求方本人，直接删除。 */
+const requirementReviewId = computed(() =>
+  resource.value && isResourceSaleLockedByRequirement(resource.value)
+    ? resource.value.requirement_id
+    : null,
+)
 
 const versionSaleFlow = useResourceVersionSaleFlow({
   resource,
@@ -263,7 +273,7 @@ function handleVersionAction(command: string, version: McResourceVersionPayload)
     <ResourceVersionDeleteDialog
       v-model:open="deleteVersionDialogVisible"
       :target="deleteVersionTarget"
-      :requirement-id="resource?.requirement_id ?? null"
+      :requirement-id="requirementReviewId"
       :submitting="deletingVersionId != null"
       :file-name-of="versionFileName"
       @close="closeDeleteVersionDialog"

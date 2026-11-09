@@ -197,9 +197,36 @@ export const workbenchRoutes: RouteRecordRaw[] = [
         },
       },
       {
-        // 「我的定制」已并入「我的需求」：旧路径保留为跳转，避免站外旧链接 404。
+        // 需求方「我的资源」：只列本人名下、已转为我的资源的定制交付。
+        // 复用开发者资源项目那一套列表 / 主页编辑 / 版本管理组件，不要求开发者权限。
         path: 'resources',
-        redirect: { name: 'workbench-requirements' },
+        name: 'workbench-resources',
+        component: () => import('@/views/MyResourcesView.vue'),
+        meta: {
+          title: '我的资源',
+          description: '管理已转为我的资源的定制交付',
+          resourceWorkspace: 'mine',
+        },
+      },
+      {
+        path: 'resources/:resourceId(\\d+)/homepage',
+        name: 'workbench-resource-homepage-edit',
+        component: () => import('@/views/DevResourceHomepageEditView.vue'),
+        meta: {
+          title: '我的资源 / 编辑资源主页',
+          description: '维护资源介绍、展示内容和售卖信息',
+          resourceWorkspace: 'mine',
+        },
+      },
+      {
+        path: 'resources/:resourceId(\\d+)/versions',
+        name: 'workbench-resource-versions',
+        component: () => import('@/views/DevResourceVersionsView.vue'),
+        meta: {
+          title: '我的资源 / 版本管理',
+          description: '维护资源版本与文件',
+          resourceWorkspace: 'mine',
+        },
       },
       {
         path: 'realname',

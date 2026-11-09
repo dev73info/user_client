@@ -136,6 +136,29 @@ describe('ResourceDetailRedirectView', () => {
     wrapper.unmount()
   })
 
+  it('买断价 0、按版本售卖的资源落付费厅（详情响应的 min_version_price_fen 作第三参）', async () => {
+    mocks.getResource.mockResolvedValue(
+      resource({
+        tag_selections: [
+          tagSelection({ root: '矿物', entry: '矿石', aliases: ['mineral', 'ore'] }),
+        ],
+        buyout_price_fen: 0,
+        price_points: 0,
+        min_version_price_fen: 500,
+      }),
+    )
+
+    const wrapper = await mountView({ resourceSlug: 'dev-flow--55' })
+
+    expect(mocks.replace).toHaveBeenCalledWith({
+      name: 'resource-catalog',
+      params: { rootSlug: 'mineral', entrySlug: 'ore' },
+      query: { sale: 'paid', resource: '55' },
+    })
+
+    wrapper.unmount()
+  })
+
   it('三段式旧地址自带分类段时沿用地址里的 slug，不按标签重推', async () => {
     mocks.getResource.mockResolvedValue(
       resource({

@@ -26,11 +26,14 @@ const props = defineProps<{
   purchaseSubmitting: boolean
   /** 点赞请求进行中 */
   likeSubmitting: boolean
+  /** 当前登录买家已持有有效购买权益：显示「联系作者」。 */
+  canContactAuthor: boolean
 }>()
 
 const emit = defineEmits<{
   'primary-cta': []
   'toggle-like': []
+  'contact-author': []
 }>()
 
 const downloadStore = useDownloadStore()
@@ -65,6 +68,15 @@ const likeCountLabel = computed(() => props.resource.like_count ?? 0)
       <p v-else class="resource-detail-page__api-hint">
         {{ API_RESOURCE_PURCHASE_HINT }}
       </p>
+      <!-- 只有已购买家能联系作者；会话本身走需求会话那套消息流与实时推送 -->
+      <button
+        v-if="props.canContactAuthor"
+        class="resource-detail-page__contact-btn"
+        type="button"
+        @click="emit('contact-author')"
+      >
+        联系作者
+      </button>
       <div
         v-if="downloadStore.state.active"
         class="resource-detail-page__download-progress"

@@ -10,9 +10,11 @@ import {
 } from '@/shared/resourceNavigation'
 import {
   isResourceArchiveLocked,
+  isResourceSaleLockedByRequirement,
   resourceVisibilityLabel as visibilityLabel,
 } from '@/shared/resourcePresentation'
 import { savedTagPathSegment } from '@/shared/resourceTagPath'
+import { resourceWorkspaceListRouteName } from '@/shared/resourceWorkspace'
 
 /** 资源主页编辑页的资源状态、预览可见性与预览地址。 */
 export function useResourceHomepageResource() {
@@ -31,8 +33,13 @@ export function useResourceHomepageResource() {
   const archiveLocked = computed(() =>
     resource.value ? isResourceArchiveLocked(resource.value) : false,
   )
-  /** 绑定定制交付的资源不能改售价（定制单里已定价）。 */
-  const boundToRequirement = computed(() => Boolean(resource.value?.requirement_id))
+  /**
+   * 绑定定制交付、且需求方还没「转为我的资源」时不能改售价 / 申请公开
+   * （定制单里已定价，归属仍在交付方名下）。
+   */
+  const saleLockedByRequirement = computed(() =>
+    resource.value ? isResourceSaleLockedByRequirement(resource.value) : false,
+  )
   const canPreview = computed(() => canPreviewResource(resource.value))
   const previewBlockReason = computed(() =>
     canPreview.value ? '' : `${resourceVisibilityLabel.value}，暂不可预览`,
@@ -67,7 +74,7 @@ export function useResourceHomepageResource() {
       router.back()
       return
     }
-    router.push({ name: 'dev-resource-list' })
+    router.push({ name: resourceWorkspaceListRouteName(route.meta) })
   }
 
   return {
@@ -79,7 +86,7 @@ export function useResourceHomepageResource() {
     loadGeneration,
     resourceVisibilityLabel,
     archiveLocked,
-    boundToRequirement,
+    saleLockedByRequirement,
     canPreview,
     previewBlockReason,
     userClientPreviewUrl,

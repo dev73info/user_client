@@ -2,20 +2,17 @@ import { computed, ref } from 'vue'
 
 import {
   reviewRequirementResourceDelete as reviewRequirementResourceDeleteApi,
-  updateRequirementResourceVisibility as updateRequirementResourceVisibilityApi,
   updateRequirementSubscription as updateRequirementSubscriptionApi,
   type RequirementItem,
   type RequirementPendingResourceVersionDeleteRequest,
 } from '@/api/requirements'
 import type { PublicMcResourceVersionItem } from '@/api/resources'
 import { useResourceDownload } from '@/composables/useResourceDownload'
+import { useRequirementResourceVisibilityToggle } from '@/composables/useRequirementResourceVisibilityToggle'
 import { isRequirementArchived } from '@/shared/requirementArchive'
 import {
-  canToggleRequirementResourceVisibility,
   hasBoundResource,
   hasPendingResourceVersionDeleteReview,
-  isSelfManagedRequirement,
-  nextResourceVisibility,
   pendingResourceVersionDeleteRequests,
   pendingVersionRejectNote,
 } from '@/shared/requirementRowRules'
@@ -41,10 +38,11 @@ type UseRequirementRowOperationsOptions = {
  */
 export function useRequirementRowOperations(options: UseRequirementRowOperationsOptions) {
   const { downloadResourceVersion } = useResourceDownload()
+  const { resourceVisibilityLoadingId, toggleRequirementResourceVisibility } =
+    useRequirementResourceVisibilityToggle(options)
 
-  // ---- 订阅状态变化 / 资源公开私有：两个独立的 loading id，同一行互不牵连 ----
+  // ---- 订阅状态变化：与资源公开私有是两个独立的 loading id，同一行互不牵连 ----
   const requirementSubscriptionLoadingId = ref<string | null>(null)
-  const resourceVisibilityLoadingId = ref<string | null>(null)
 
   function versionsOf(item: RequirementItem) {
     return options.versionsFor(item) ?? []
@@ -69,35 +67,6 @@ export function useRequirementRowOperations(options: UseRequirementRowOperations
       TMessage.error(err instanceof Error ? err.message : '更新需求订阅失败')
     } finally {
       requirementSubscriptionLoadingId.value = null
-    }
-  }
-
-  async function toggleRequirementResourceVisibility(item: RequirementItem) {
-    if (!options.isAuthed() || !hasBoundResource(item)) {
-      return
-    }
-
-    if (!canToggleRequirementResourceVisibility(item)) {
-      TMessage.warning(
-        isSelfManagedRequirement(item)
-          ? '需求完成后才能设置资源为公开或私有'
-          : '需求必须在已付尾款后，才能设置资源为公开或私有',
-      )
-      return
-    }
-
-    const visibility = nextResourceVisibility(item)
-    resourceVisibilityLoadingId.value = item.requirement_id
-    try {
-      await updateRequirementResourceVisibilityApi(options.token(), item.requirement_id, {
-        visibility,
-      })
-      TMessage.success(visibility === 'public' ? '关联资源已提交公开审核' : '关联资源已设为私有')
-      await options.reload()
-    } catch (err) {
-      TMessage.error(err instanceof Error ? err.message : '更新资源可见性失败')
-    } finally {
-      resourceVisibilityLoadingId.value = null
     }
   }
 
