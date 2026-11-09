@@ -3,15 +3,15 @@ import type { NotificationCard, NotificationKind } from './types'
 /** 各类别的条数：读数条与筛选胶囊的计数都取这里，避免两处各算一遍。 */
 export function countByKind(cards: NotificationCard[]): Record<NotificationKind, number> {
   return {
-    'history-disclosure': cards.filter((card) => card.kind === 'history-disclosure').length,
-    'after-sales': cards.filter((card) => card.kind === 'after-sales').length,
-    'comment-warning': cards.filter((card) => card.kind === 'comment-warning').length,
+    requirement: cards.filter((card) => card.kind === 'requirement').length,
+    payment: cards.filter((card) => card.kind === 'payment').length,
+    system: cards.filter((card) => card.kind === 'system').length,
   }
 }
 
 /** 还在等我投票的公开申请数。 */
 export function pendingVoteCount(cards: NotificationCard[]): number {
-  return cards.filter((card) => card.kind === 'history-disclosure' && card.canVote).length
+  return cards.filter((card) => card.source === 'history-disclosure' && card.canVote).length
 }
 
 /** 还在等我动手的通知数：公开申请里轮到我投的那一票，读数条「待我处理」用。 */

@@ -28,7 +28,7 @@ async function render(name: string, groupPanelOpen: boolean) {
     props: {
       isDevWorkbenchMode: true,
       unreadCount: 0,
-      teamInvitationCount: 0,
+      notificationUnreadCount: 0,
       realnameApproved: true,
       username: 'dev_flow_03562487',
       groupPanelOpen,

@@ -50,7 +50,7 @@ async function render(
     props: {
       isDevWorkbenchMode,
       unreadCount: 3,
-      teamInvitationCount: 2,
+      notificationUnreadCount: 2,
       realnameApproved,
       username: 'client_flow_03562487',
       groupPanelOpen,

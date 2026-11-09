@@ -135,6 +135,7 @@ export function useWorkbenchShell() {
     unreadMessageCount: conversations.unreadMessageCount,
     teamInvitationCount: badges.teamInvitationCount,
     devActiveOrderCount: badges.devActiveOrderCount,
+    notificationUnreadCount: badges.notificationUnreadCount,
     // 外壳自身
     auth,
     currentTitle,

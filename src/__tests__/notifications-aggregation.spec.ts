@@ -14,14 +14,20 @@ describe('system notification aggregation', () => {
     })
 
     // 三类时间格式统一在聚合层解析后再排序：五月 → 四月 → 三月
-    expect(kinds(cards)).toEqual(['comment-warning', 'after-sales', 'history-disclosure'])
+    // kind 是筛选桶：评论警告归「系统」，争议与公开申请都归「需求」
+    expect(kinds(cards)).toEqual(['system', 'requirement', 'requirement'])
+    expect(cards.map((card) => card.source)).toEqual([
+      'comment-warning',
+      'after-sales',
+      'history-disclosure',
+    ])
     expect(keys(cards)).toEqual([
       'comment-warning-2',
       'after-sales-AFTERSALES_1_abc',
       'history-disclosure-3',
     ])
     expect(cards[0]?.kindLabel).toBe('评论警告')
-    expect(cards[1]?.kindLabel).toBe('解除合作案件')
+    expect(cards[1]?.kindLabel).toBe('争议')
     expect(cards[2]?.kindLabel).toBe('公开申请')
   })
 

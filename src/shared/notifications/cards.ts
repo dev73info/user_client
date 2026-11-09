@@ -1,16 +1,27 @@
 import type { ConversationHistoryDisclosure } from '@/api/conversations'
 import type { AfterSalesCaseSummary } from '@/api/afterSales'
 import type { CommunityCommentWarning } from '@/api/community'
+import type { BackendNotification } from '@/api/notifications'
 
+import { dedupeNotificationCards } from './dedupe'
+import {
+  backendKindLabel,
+  notificationEventLabel,
+  notificationKindOf,
+  resolveNotificationLink,
+} from './events'
 import { parseNoticeTime } from './time'
-import { NOTIFICATION_KIND_LABELS } from './types'
 import type { NotificationCard, NotificationSources } from './types'
 
 /**
- * 把三类来源合成一张按时间倒序的通知列表。
+ * 把四类来源合成一张按时间倒序的通知列表。
  *
+ * 前三支是本地聚合（公开申请 / 争议案件 / 评论警告），第四支是后端收件箱。
  * 时间串都是东八区墙钟串，统一交给 `parseNoticeTime` 解析；解析失败的排在最后而不是排到最前——
  * 解析不出来当成「很早」，不要因为格式异常把一条旧通知顶到最上面。
+ *
+ * 本地卡排在前面：与收件箱重复时保留字段更全的本地卡（评论警告带评论快照与原因），
+ * 再把收件箱那条的已读态并过去（见 `dedupeNotificationCards`）。
  */
 export function buildNotificationCards(sources: NotificationSources): NotificationCard[] {
   const cards = [
@@ -19,9 +30,12 @@ export function buildNotificationCards(sources: NotificationSources): Notificati
     ),
     ...(sources.afterSales ?? []).map(buildAfterSalesCard),
     ...(sources.commentWarnings ?? []).map(buildCommentWarningCard),
+    ...(sources.inbox ?? []).map((item) => buildInboxCard(item, sources.isDevWorkbench === true)),
   ]
 
-  return cards.sort((left, right) => right.sortTime - left.sortTime)
+  return dedupeNotificationCards(cards).sort(
+    (left, right) => right.sortTime - left.sortTime || left.key.localeCompare(right.key),
+  )
 }
 
 function buildHistoryDisclosureCard(
@@ -31,8 +45,9 @@ function buildHistoryDisclosureCard(
   const title = disclosure.requirement_title || disclosure.requirement_id
   return {
     key: `history-disclosure-${disclosure.id}`,
-    kind: 'history-disclosure',
-    kindLabel: NOTIFICATION_KIND_LABELS['history-disclosure'],
+    kind: 'requirement',
+    source: 'history-disclosure',
+    kindLabel: '公开申请',
     title,
     body: [
       `${disclosure.requirement_id} · 前任开发者 ${disclosure.previous_developer}，现任开发者 ${disclosure.current_developer}`,
@@ -95,20 +110,21 @@ function historyDisclosureVoteHint(
 }
 
 /**
- * 解除合作案件卡片：只读。
+ * 争议案件卡片：只读。
  *
  * 为什么要进通知页：案件状态的每一次变化都只落在需求会话里的一张卡片上，而结单之后双方本来就
  * 不太会再去盯需求列表——会话未读是个角标，很容易被忽略过去。这里给它第二个可见面。
  *
  * 卡片不带动作：发起、接受/不接受、撤回都在需求列表的解除合作弹窗里做，这里再摆一套按钮就是
- * 两份规则（只读，说明现状）。
+ * 两份规则（只读，说明现状）。筛选上归到「需求」：争议都挂在某张需求单上。
  */
 function buildAfterSalesCard(row: AfterSalesCaseSummary): NotificationCard {
   const claim = row.claim_amount_fen > 0 ? `主张金额 ${row.claim_amount} 元` : '不主张资金'
   return {
     key: `after-sales-${row.case_no}`,
-    kind: 'after-sales',
-    kindLabel: NOTIFICATION_KIND_LABELS['after-sales'],
+    kind: 'requirement',
+    source: 'after-sales',
+    kindLabel: '争议',
     title: row.requirement_id,
     body: [`${row.case_no} · ${row.kind_label}`, `诉求：${claim} · 当前状态：${row.status_label}`],
     meta: `${row.created_time} 由 ${row.filed_by} 发起`,
@@ -118,17 +134,53 @@ function buildAfterSalesCard(row: AfterSalesCaseSummary): NotificationCard {
   }
 }
 
-/** 评论警告只读：源评论可能已删除，卡片直接展示保留的快照，不依赖原评论是否还存在。 */
+/**
+ * 评论警告只读：源评论可能已删除，卡片直接展示保留的快照，不依赖原评论是否还存在。
+ *
+ * `groupKey` 与后端 `comment_warned` 通知的 `biz_no` 同构（`comment:{类型}-{评论 id}`）：
+ * 同一次警告在两个来源里都出现时，按「分组键 + 同一时间」去重。
+ */
 function buildCommentWarningCard(warning: CommunityCommentWarning): NotificationCard {
   return {
     key: `comment-warning-${warning.id}`,
-    kind: 'comment-warning',
-    kindLabel: NOTIFICATION_KIND_LABELS['comment-warning'],
+    kind: 'system',
+    source: 'comment-warning',
+    kindLabel: '评论警告',
     title: `评论 #${warning.comment_id}`,
     body: [`评论快照：${warning.comment_snapshot}`, `警告原因：${warning.reason}`],
     meta: `${warning.created_at} 由 ${warning.operator} 发出警告`,
     createdAt: warning.created_at,
     sortTime: parseNoticeTime(warning.created_at),
+    groupKey: `comment:${warning.comment_type}-${warning.comment_id}`,
+    canVote: false,
+  }
+}
+
+/**
+ * 后端收件箱卡片：标题 / 正文直接取后端成品文案。
+ *
+ * `biz_no` 里带命名空间的（`comment:` / `community_post:` / `resource:`）作为跨来源去重键；
+ * 需求单号这类裸业务号不做去重键——同一张需求单会有立案、介入、裁决、结案多条事件，
+ * 按需求号合并会把过程通知吞掉。
+ */
+function buildInboxCard(item: BackendNotification, isDevWorkbench: boolean): NotificationCard {
+  const kind = notificationKindOf(item.kind)
+  const groupKey = (item.biz_no ?? '').trim()
+  return {
+    key: `notification-${item.notification_id}`,
+    kind,
+    source: 'inbox',
+    kindLabel: notificationEventLabel(item.event) ?? backendKindLabel(item.kind),
+    title: item.title,
+    body: item.body.trim() ? [item.body] : [],
+    meta: item.created_time,
+    createdAt: item.created_time,
+    sortTime: parseNoticeTime(item.created_time),
+    event: item.event,
+    notificationId: item.notification_id,
+    read: item.read,
+    link: resolveNotificationLink(item.link, isDevWorkbench),
+    groupKey: groupKey.includes(':') ? groupKey : undefined,
     canVote: false,
   }
 }

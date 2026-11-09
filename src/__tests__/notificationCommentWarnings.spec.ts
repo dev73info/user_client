@@ -5,6 +5,7 @@ const mocks = vi.hoisted(() => ({
   disclosures: vi.fn(),
   afterSales: vi.fn(),
   warnings: vi.fn(),
+  inbox: vi.fn(),
 }))
 
 vi.mock('vue-router', () => ({
@@ -20,6 +21,11 @@ vi.mock('@/api/conversations', () => ({
 }))
 vi.mock('@/api/afterSales', () => ({ listMyAfterSalesCases: mocks.afterSales }))
 vi.mock('@/api/community', () => ({ listMyCommunityCommentWarnings: mocks.warnings }))
+vi.mock('@/api/notifications', () => ({
+  listAllMyNotifications: mocks.inbox,
+  markMyNotificationRead: vi.fn(),
+  markAllMyNotificationsRead: vi.fn(),
+}))
 
 import NotificationCardItem from '@/components/notification/NotificationCardItem.vue'
 import NotificationCenterView from '@/views/NotificationCenterView.vue'
@@ -49,6 +55,13 @@ beforeEach(() => {
   mocks.disclosures.mockResolvedValue([])
   mocks.afterSales.mockResolvedValue([])
   mocks.warnings.mockResolvedValue([])
+  mocks.inbox.mockResolvedValue({
+    items: [],
+    total: 0,
+    page: 1,
+    page_size: 100,
+    unread_count: 0,
+  })
 })
 
 describe('评论警告通知', () => {
@@ -62,12 +75,7 @@ describe('评论警告通知', () => {
     expect(wrapper.text()).toContain('警告原因：包含广告联系方式')
     expect(wrapper.text()).toContain('2026-05-01 10:00:00 由 admin 发出警告')
     const chips = wrapper.findAll('.wb-chip')
-    expect(chips.map((chip) => chip.text())).toEqual([
-      '全部2',
-      '公开申请1',
-      '解除合作案件0',
-      '评论警告1',
-    ])
+    expect(chips.map((chip) => chip.text())).toEqual(['全部2', '需求1', '资金0', '系统1'])
 
     await chips[3]!.trigger('click')
     const cards = wrapper.findAllComponents(NotificationCardItem)

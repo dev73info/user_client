@@ -7,6 +7,7 @@ import {
   type ConversationHistoryDisclosure,
 } from '@/api/conversations'
 import { useClientPagination } from '@/composables/useClientPagination'
+import { useNotificationInbox } from '@/composables/useNotificationInbox'
 import { describeBackendError } from '@/shared/backendErrorText'
 import {
   NOTIFICATION_KIND_LABELS,
@@ -23,23 +24,28 @@ import { TMessage } from 'ui_73info'
 /**
  * 「系统通知」页的数据层（R047 从 `views/NotificationCenterView.vue` 拆出）。
  *
- * 页面把三类系统消息统一成同一种卡片：历史沟通公开申请、解除合作案件、本人评论警告。
- * 三支请求并行发、各自结算——某一支挂了只提示那一类，其余照常显示。
- * 评论警告接口失败时保留持续可见的错误与重试入口，不把失败当成零条通知。
+ * 页面把四类系统消息统一成同一种卡片：历史沟通公开申请、解除合作案件、本人评论警告，
+ * 以及后端站内通知收件箱（`/notification`，状态与已读动作见 `useNotificationInbox`）。
+ * 四支请求并行发、各自结算——某一支挂了只提示那一类，其余照常显示。
+ * 评论警告与收件箱失败时保留持续可见的错误与重试入口，不把失败当成零条通知。
+ *
+ * 收件箱一次取全（服务端分页只作为取数手段）：统一排序要求后端通知与本地三支放在一起排，
+ * 只取当前页会把页边界算错。合并后筛选与分页都在前端做。
  *
  * 卡片映射与排序在 `shared/notifications` 里（纯函数），这里只管请求、结算、筛选与分页；
- * 卡片上的动作（公开申请投票）在 `useNotificationCardActions` 里。
+ * 公开申请的表决在 `useNotificationCardActions` 里。
  */
 
 /** 筛选胶囊的取值：全部 + 三个类别。 */
 export type NotificationKindFilter = 'all' | NotificationKind
 
-/** 胶囊顺序保留原两类，评论警告追加为只读类别。 */
-const KIND_ORDER: NotificationKind[] = ['history-disclosure', 'after-sales', 'comment-warning']
+/** 胶囊顺序：需求 → 资金 → 系统。 */
+const KIND_ORDER: NotificationKind[] = ['requirement', 'payment', 'system']
 
 export function useNotificationCenter() {
   const route = useRoute()
   const auth = useAuthStore()
+  const inbox = useNotificationInbox()
 
   const isDevWorkbench = computed(() =>
     route.matched.some((record) => Boolean(record.meta.devArea)),
@@ -61,11 +67,14 @@ export function useNotificationCenter() {
       disclosures: disclosures.value,
       afterSales: afterSales.value,
       commentWarnings: commentWarnings.value,
+      inbox: inbox.items.value,
+      isDevWorkbench: isDevWorkbench.value,
       username: auth.username,
     }),
   )
+  const loadFailed = computed(() => Boolean(commentWarningsError.value || inbox.error.value))
   const cardsTotal = computed<number | null>(() =>
-    commentWarningsError.value && cards.value.length === 0 ? null : cards.value.length,
+    loadFailed.value && cards.value.length === 0 ? null : cards.value.length,
   )
 
   /** 各类别的条数：顶栏读数条与筛选胶囊上的数字共用一份。 */
@@ -87,7 +96,7 @@ export function useNotificationCenter() {
   const pendingActions = computed(() => pendingActionCount(cards.value))
   const filtersActive = computed(() => keyword.value.trim() !== '' || kindFilter.value !== 'all')
 
-  /* 两类各是一次全量取回（都不分页），所以筛选与分页都在前端做（与我的合同同一套页码口径）。 */
+  /* 四支来源都一次全量取回，筛选与分页都在前端做（与我的合同同一套页码口径）。 */
   const {
     page,
     pageSize,
@@ -123,15 +132,14 @@ export function useNotificationCenter() {
   async function loadNotifications(showSuccess = false) {
     auth.hydrate()
     if (!hasToken()) {
-      disclosures.value = []
-      afterSales.value = []
-      commentWarnings.value = []
-      commentWarningsError.value = ''
+      clearLocalSources()
+      inbox.reset()
     }
 
     loading.value = true
-    // 三支都需要令牌，未登录时直接跳过，避免明知会 401 还发一次。
+    // 四支都需要令牌，未登录时直接跳过，避免明知会 401 还发一次。
     const authed = hasToken()
+    const inboxPromise = inbox.load()
     const [disclosuresResult, afterSalesResult, commentWarningsResult] = await Promise.allSettled([
       authed
         ? listConversationHistoryDisclosures(auth.token)
@@ -141,6 +149,7 @@ export function useNotificationCenter() {
         ? listMyCommunityCommentWarnings(auth.token)
         : Promise.resolve<CommunityCommentWarning[]>([]),
     ])
+    await inboxPromise
 
     if (disclosuresResult.status === 'fulfilled') {
       disclosures.value = disclosuresResult.value
@@ -173,12 +182,19 @@ export function useNotificationCenter() {
     }
 
     loading.value = false
-    if (showSuccess && !commentWarningsError.value) {
+    if (showSuccess && !loadFailed.value) {
       TMessage.success('系统通知已刷新')
     }
   }
 
-  /** 警告接口的局部重试：不影响其他两类卡片，也不在失败时清掉已有警告。 */
+  function clearLocalSources() {
+    disclosures.value = []
+    afterSales.value = []
+    commentWarnings.value = []
+    commentWarningsError.value = ''
+  }
+
+  /** 警告接口的局部重试：不影响其他三类卡片，也不在失败时清掉已有警告。 */
   async function loadCommentWarnings() {
     if (commentWarningsLoading.value) return
     auth.hydrate()
@@ -198,6 +214,11 @@ export function useNotificationCenter() {
     }
   }
 
+  /** 收件箱的局部重试：不清掉已取得的本地卡片，也不把失败当成零条。 */
+  async function loadInbox() {
+    await inbox.load()
+  }
+
   /** 投票后只重拉公开申请那一支：另几类不会因为这一票而变化。 */
   async function loadDisclosures() {
     if (!hasToken()) return
@@ -208,12 +229,23 @@ export function useNotificationCenter() {
     }
   }
 
+  /** 单条已读：只有后端来源、且确实是未读时才发请求。 */
+  function markRead(card: NotificationCard) {
+    const notificationId = card.notificationId
+    if (!notificationId || card.read !== false) {
+      return
+    }
+    void inbox.markRead(notificationId)
+  }
+
+  const markAllRead = inbox.markAllRead
+
   function emptyTitle() {
     if (keyword.value.trim()) {
       return '没有匹配的系统通知'
     }
     if (kindFilter.value !== 'all') {
-      return `暂无${NOTIFICATION_KIND_LABELS[kindFilter.value]}`
+      return `暂无${NOTIFICATION_KIND_LABELS[kindFilter.value]}通知`
     }
     return '暂无系统通知'
   }
@@ -228,8 +260,13 @@ export function useNotificationCenter() {
     loading,
     cards,
     cardsTotal,
+    unreadCount: inbox.unreadCount,
     commentWarningsError,
     commentWarningsLoading,
+    inboxError: inbox.error,
+    inboxLoading: inbox.loading,
+    markingId: inbox.markingId,
+    markingAll: inbox.markingAll,
     kindFilters,
     kindFilter,
     keyword,
@@ -244,6 +281,9 @@ export function useNotificationCenter() {
     resetFilters,
     loadNotifications,
     loadCommentWarnings,
+    loadInbox,
     loadDisclosures,
+    markRead,
+    markAllRead,
   }
 }

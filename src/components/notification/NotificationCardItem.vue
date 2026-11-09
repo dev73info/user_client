@@ -1,48 +1,97 @@
 <script setup lang="ts">
-import type { NotificationCard, NotificationKind } from '@/shared/notifications'
-import { ChatDotRound, Clock, Service, Warning, TButton, TIcon } from 'ui_73info'
+import { computed, type Component } from 'vue'
+import {
+  notificationEventIconKey,
+  type NotificationCard,
+  type NotificationIconKey,
+} from '@/shared/notifications'
+import {
+  Bell,
+  Box,
+  ChatDotRound,
+  Clock,
+  Document,
+  Money,
+  Postcard,
+  RefreshLeft,
+  Service,
+  TButton,
+  TIcon,
+  Tickets,
+  Warning,
+} from 'ui_73info'
 
 /**
  * 一条系统通知（`<li class="wb-item">` 那一层）。
  *
- * 三类来源在后端字段与可做的动作上都不同，但卡片形状统一：左侧类别图标 + 中间标题与正文行 +
+ * 来源不同、字段不同，但卡片形状统一：左侧类别图标 + 中间标题与正文行 +
  * 右侧时间与动作。类别色由 `--nc-accent` 决定（色条、图标底、类别徽标共用同一支颜色），
  * 这个变量由页面根元素上的 `--nc-*` 令牌提供，组件自己不带色值。
  *
+ * 收件箱来源按 event 换图标；本地三支沿用原来的三种图标。
  * 卡片的点击只留给动作按钮，不再整块可点。
  */
-defineProps<{
+const props = defineProps<{
   card: NotificationCard
   /** 正在投票的公开申请 id：非空时投票按钮整体禁用 */
   votingId: number | null
+  /** 正在标记已读的通知单号：对应卡片上的按钮显示 loading */
+  markingId?: string | null
 }>()
 
 const emit = defineEmits<{
   vote: [decision: 'approved' | 'rejected']
+  read: []
+  open: []
 }>()
 
-/** 每个类别一个图标，配色由卡片的 `--nc-accent` 决定。 */
-function kindIcon(kind: NotificationKind) {
-  switch (kind) {
-    case 'history-disclosure':
-      return ChatDotRound
-    case 'after-sales':
-      return Service
-    case 'comment-warning':
-      return Warning
-  }
+/** 图标键 → 组件：收件箱按事件细分，本地三支按来源。 */
+const ICONS: Record<NotificationIconKey, Component> = {
+  'history-disclosure': ChatDotRound,
+  'after-sales': Service,
+  'comment-warning': Warning,
+  requirement: Document,
+  payment: Money,
+  refund: RefreshLeft,
+  invoice: Postcard,
+  dispute: Service,
+  comment: Warning,
+  community: ChatDotRound,
+  resource: Box,
+  ticket: Tickets,
+  support: Service,
+  system: Bell,
 }
+
+const icon = computed<Component>(() => {
+  if (props.card.source !== 'inbox') {
+    return ICONS[props.card.source]
+  }
+  return ICONS[notificationEventIconKey(props.card.event, props.card.kind)]
+})
+
+/** 类别色：本地三支沿用原来的颜色；收件箱按筛选类别取色。 */
+function accentClass(card: NotificationCard): string {
+  if (card.source !== 'inbox') {
+    return `notifications-card--${card.source}`
+  }
+  return `notifications-card--kind-${card.kind}`
+}
+
+const isUnread = computed(() => props.card.read === false)
+const markable = computed(() => isUnread.value && Boolean(props.card.notificationId))
 </script>
 
 <template>
-  <li class="wb-item notifications-card" :class="`notifications-card--${card.kind}`">
+  <li class="wb-item notifications-card" :class="[accentClass(card), { 'is-unread': isUnread }]">
     <span class="notifications-card__icon">
-      <TIcon :icon="kindIcon(card.kind)" />
+      <TIcon :icon="icon" />
     </span>
     <div class="wb-item__main notifications-card__main">
       <div class="notifications-card__head">
         <strong class="wb-item__title">{{ card.title }}</strong>
         <span class="notifications-kind">{{ card.kindLabel }}</span>
+        <span v-if="isUnread" class="notifications-unread" aria-label="未读">未读</span>
       </div>
       <span
         v-for="(line, index) in card.body"
@@ -60,22 +109,33 @@ function kindIcon(kind: NotificationKind) {
         <TIcon :icon="Clock" />
         {{ card.meta }}
       </span>
-      <div v-if="card.canVote" class="notifications-card__actions">
+      <div v-if="card.canVote || card.link || markable" class="notifications-card__actions">
         <TButton
-          variant="outline"
-          :disabled="votingId !== null"
-          @click.stop="emit('vote', 'rejected')"
+          v-if="markable"
+          variant="text"
+          :loading="markingId === card.notificationId"
+          @click.stop="emit('read')"
         >
-          拒绝
+          标为已读
         </TButton>
-        <TButton
-          variant="solid"
-          tone="accent"
-          :disabled="votingId !== null"
-          @click.stop="emit('vote', 'approved')"
-        >
-          同意公开
-        </TButton>
+        <TButton v-if="card.link" variant="outline" @click.stop="emit('open')"> 查看 </TButton>
+        <template v-if="card.canVote">
+          <TButton
+            variant="outline"
+            :disabled="votingId !== null"
+            @click.stop="emit('vote', 'rejected')"
+          >
+            拒绝
+          </TButton>
+          <TButton
+            variant="solid"
+            tone="accent"
+            :disabled="votingId !== null"
+            @click.stop="emit('vote', 'approved')"
+          >
+            同意公开
+          </TButton>
+        </template>
       </div>
     </div>
   </li>
@@ -107,6 +167,18 @@ function kindIcon(kind: NotificationKind) {
   --nc-accent: var(--nc-accent-comment-warning);
 }
 
+.notifications-card--kind-requirement {
+  --nc-accent: var(--nc-accent-kind-requirement);
+}
+
+.notifications-card--kind-payment {
+  --nc-accent: var(--nc-accent-kind-payment);
+}
+
+.notifications-card--kind-system {
+  --nc-accent: var(--nc-accent-kind-system);
+}
+
 /* 左侧 3px 类别色条：不增加一列布局，只做视觉锚点，扫列表时先按颜色分出类别 */
 .notifications-card::before {
   content: '';
@@ -115,6 +187,11 @@ function kindIcon(kind: NotificationKind) {
   width: 3px;
   background: var(--nc-accent);
   opacity: 0.8;
+}
+
+/* 未读：淡淡一层类别色底，扫列表时不用逐条找「未读」两个字 */
+.notifications-card.is-unread {
+  background: color-mix(in srgb, var(--nc-accent) 5%, var(--nc-surface));
 }
 
 .notifications-card__icon {
@@ -161,6 +238,26 @@ function kindIcon(kind: NotificationKind) {
   font-weight: 700;
   line-height: 1;
   white-space: nowrap;
+}
+
+/* 未读小标：实心圆点 + 两个字，颜色跟类别走 */
+.notifications-unread {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--nc-accent);
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.notifications-unread::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--nc-accent);
 }
 
 .notifications-card__line {

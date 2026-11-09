@@ -54,6 +54,7 @@ export function commentWarning(
     comment_snapshot: '含有联系方式的测试评论',
     reason: '包含广告联系方式',
     operator: 'admin',
+    username: 'cust',
     created_at: '2026-05-01 10:00:00',
     ...overrides,
   }

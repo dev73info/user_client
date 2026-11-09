@@ -66,6 +66,7 @@ const {
   unreadMessageCount,
   teamInvitationCount,
   devActiveOrderCount,
+  notificationUnreadCount,
   auth,
   currentTitle,
   logout,
@@ -158,7 +159,7 @@ const railGroupStyle = computed<Record<string, string>>(() => {
       v-if="usesIconShell"
       :is-dev-workbench-mode="isDevWorkbenchMode"
       :unread-count="unreadMessageCount"
-      :team-invitation-count="teamInvitationCount"
+      :notification-unread-count="notificationUnreadCount"
       :realname-approved="realnameApproved"
       :username="auth.username"
       :group-panel-open="showRailGroupList"

@@ -19,7 +19,11 @@ describe('notification filtering and counts', () => {
   })
 
   it('类别筛选与关键字搜索覆盖标题、正文与弱信息行', () => {
-    expect(kinds(filterNotificationCards(cards, 'after-sales', ''))).toEqual(['after-sales'])
+    // 公开申请与争议都归「需求」；评论警告归「系统」
+    expect(kinds(filterNotificationCards(cards, 'requirement', ''))).toEqual([
+      'requirement',
+      'requirement',
+    ])
     expect(kinds(filterNotificationCards(cards, 'all', ''))).toEqual(kinds(cards))
     // 搜正文里的词：用户记得的多半是「正文里提过什么」，只搜标题会搜不到
     expect(keys(filterNotificationCards(cards, 'all', '主张金额'))).toEqual([
@@ -30,26 +34,18 @@ describe('notification filtering and counts', () => {
       'after-sales-AFTERSALES_1_abc',
     )
     // 类别与关键字同时生效
-    expect(filterNotificationCards(cards, 'history-disclosure', '主张金额')).toEqual([])
+    expect(filterNotificationCards(cards, 'payment', '主张金额')).toEqual([])
     // 大小写不敏感 + 首尾空格不影响结果
     expect(keys(filterNotificationCards(cards, 'all', '  CUST  '))).toContain(
       'after-sales-AFTERSALES_1_abc',
     )
-    expect(kinds(filterNotificationCards(cards, 'comment-warning', ''))).toEqual([
-      'comment-warning',
-    ])
-    expect(keys(filterNotificationCards(cards, 'comment-warning', '广告'))).toEqual([
-      'comment-warning-2',
-    ])
+    expect(kinds(filterNotificationCards(cards, 'system', ''))).toEqual(['system'])
+    expect(keys(filterNotificationCards(cards, 'system', '广告'))).toEqual(['comment-warning-2'])
     expect(keys(filterNotificationCards(cards, 'all', '测试评论'))).toContain('comment-warning-2')
   })
 
   it('读数条与筛选胶囊的计数取自同一处', () => {
-    expect(countByKind(cards)).toEqual({
-      'history-disclosure': 1,
-      'after-sales': 1,
-      'comment-warning': 1,
-    })
+    expect(countByKind(cards)).toEqual({ requirement: 2, payment: 0, system: 1 })
     // 还在等我投票的公开申请
     expect(pendingVoteCount(cards)).toBe(1)
     expect(

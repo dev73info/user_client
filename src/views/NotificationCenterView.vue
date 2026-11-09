@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useRouter } from 'vue-router'
 import NotificationCardItem from '@/components/notification/NotificationCardItem.vue'
 import NotificationsEmptyState from '@/components/notification/NotificationsEmptyState.vue'
 import NotificationsOverviewStrip from '@/components/notification/NotificationsOverviewStrip.vue'
@@ -7,22 +8,29 @@ import NotificationsToolbar from '@/components/notification/NotificationsToolbar
 import WorkbenchBarSlot from '@/components/WorkbenchBarSlot.vue'
 import { useNotificationCardActions } from '@/composables/useNotificationCardActions'
 import { useNotificationCenter } from '@/composables/useNotificationCenter'
+import type { NotificationCard } from '@/shared/notifications'
 import { Bell, TButton, TIcon } from 'ui_73info'
 
-/* 「系统通知」：公开申请、解除合作案件与本人评论警告统一成同一种消息卡片。
-   数据、筛选与动作在 composables 里（useNotificationCenter / useNotificationCardActions），
+/* 「系统通知」：公开申请、争议案件、本人评论警告与后端站内通知统一成同一种消息卡片。
+   数据、筛选、已读与动作在 composables 里（useNotificationCenter / useNotificationCardActions），
    本文件只摆版面：读数条 → 卡头 → 提示条 → 工具栏 → 列表 / 空态 / 分页。
 
    两个工作台共用这一页（用户端 workbench-notifications / 开发者端 dev-notifications），
    与消息中心同一办法：页面根元素按 isDevWorkbench 在两套统一层之间切，
    不写「近似」对方的覆盖样式；类别色由根元素上的 --nc-* 令牌下发，各构件只引用变量。 */
+const router = useRouter()
 const {
   isDevWorkbench,
   loading,
   cards,
   cardsTotal,
+  unreadCount,
   commentWarningsError,
   commentWarningsLoading,
+  inboxError,
+  inboxLoading,
+  markingId,
+  markingAll,
   kindFilters,
   kindFilter,
   keyword,
@@ -37,12 +45,21 @@ const {
   resetFilters,
   loadNotifications,
   loadCommentWarnings,
+  loadInbox,
   loadDisclosures,
+  markRead,
+  markAllRead,
 } = useNotificationCenter()
 
 const { votingId, vote } = useNotificationCardActions({
   refreshDisclosures: loadDisclosures,
 })
+
+function openCard(card: NotificationCard) {
+  if (card.link) {
+    void router.push(card.link)
+  }
+}
 </script>
 
 <template>
@@ -59,8 +76,11 @@ const { votingId, vote } = useNotificationCardActions({
       <NotificationsOverviewStrip
         :loading="loading"
         :total="cardsTotal"
+        :unread="unreadCount"
         :pending="pendingActions"
+        :marking-all="markingAll"
         @refresh="loadNotifications(true)"
+        @mark-all-read="markAllRead"
       />
     </WorkbenchBarSlot>
 
@@ -98,9 +118,17 @@ const { votingId, vote } = useNotificationCardActions({
         </TButton>
       </section>
 
+      <section v-if="inboxError" class="wb-empty notifications-load-error" role="alert">
+        <div class="notifications-load-error__copy">
+          <strong>站内通知加载失败</strong>
+          <p>{{ inboxError }}</p>
+        </div>
+        <TButton variant="outline" :loading="inboxLoading" @click="loadInbox"> 重新加载 </TButton>
+      </section>
+
       <p v-if="loading && !cards.length" class="wb-empty" role="status">系统通知加载中…</p>
       <NotificationsEmptyState
-        v-else-if="!filteredCards.length && !commentWarningsError"
+        v-else-if="!filteredCards.length && !commentWarningsError && !inboxError"
         :title="emptyTitle()"
         :active="filtersActive"
         @reset="resetFilters"
@@ -112,7 +140,10 @@ const { votingId, vote } = useNotificationCardActions({
             :key="card.key"
             :card="card"
             :voting-id="votingId"
+            :marking-id="markingId"
             @vote="vote(card, $event)"
+            @read="markRead(card)"
+            @open="openCard(card)"
           />
         </ul>
         <NotificationsPager
@@ -127,12 +158,15 @@ const { votingId, vote } = useNotificationCardActions({
 
 <style scoped>
 /* 类别色与中性色都在这里下发：根元素定义 --nc-*，各构件只引用变量、不写色值。
-   变量值与原页面逐条一致（含 color-mix 的合成基色），换名不改色。 */
+   本地三支沿用原来的颜色；收件箱按筛选类别取色（需求 / 资金 / 系统）。 */
 .notifications-page {
   --nc-accent-default: var(--73-ink-muted);
   --nc-accent-history-disclosure: var(--73-accent);
   --nc-accent-after-sales: var(--73-danger);
   --nc-accent-comment-warning: var(--73-warning);
+  --nc-accent-kind-requirement: var(--73-accent);
+  --nc-accent-kind-payment: var(--73-success);
+  --nc-accent-kind-system: var(--73-warning);
   --nc-surface: var(--73-surface-strong);
   --nc-text-sub: var(--profile-text-sub, var(--73-ink-muted));
   --nc-text-muted: var(--profile-text-sub, var(--73-ink-placeholder));

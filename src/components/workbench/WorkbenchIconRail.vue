@@ -32,7 +32,8 @@ type RailItem = {
 const props = defineProps<{
   isDevWorkbenchMode: boolean
   unreadCount: number
-  teamInvitationCount: number
+  /** 未读站内通知数：铃铛角标。 */
+  notificationUnreadCount: number
   /** 「我的合同」要实名通过才进分组，与侧边栏同一口径。 */
   realnameApproved: boolean
   /** 底部头像的首字母；不传就显示占位符，避免为了一个字去读 store。 */
@@ -192,7 +193,7 @@ function badgeFor(key: string) {
     return props.unreadCount
   }
   if (key === 'notifications') {
-    return props.teamInvitationCount
+    return props.notificationUnreadCount
   }
   return 0
 }

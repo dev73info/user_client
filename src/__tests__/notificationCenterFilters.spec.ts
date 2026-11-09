@@ -8,6 +8,9 @@ const mocks = vi.hoisted(() => ({
   respondDisclosure: vi.fn(),
   afterSales: vi.fn(),
   warnings: vi.fn(),
+  inbox: vi.fn(),
+  markRead: vi.fn(),
+  markAllRead: vi.fn(),
 }))
 
 // 用户工作台这一侧：matched 里没有 devArea，资源过户整类不出现、两份过户列表也不该被请求
@@ -48,6 +51,11 @@ vi.mock('@/api/afterSales', () => ({
 }))
 vi.mock('@/api/community', () => ({
   listMyCommunityCommentWarnings: mocks.warnings,
+}))
+vi.mock('@/api/notifications', () => ({
+  listAllMyNotifications: mocks.inbox,
+  markMyNotificationRead: mocks.markRead,
+  markAllMyNotificationsRead: mocks.markAllRead,
 }))
 
 import type { NotificationCard } from '@/shared/notifications'
@@ -106,16 +114,24 @@ beforeEach(() => {
   mocks.afterSales.mockResolvedValue([])
   mocks.warnings.mockResolvedValue([])
   mocks.respondDisclosure.mockResolvedValue({})
+  mocks.inbox.mockResolvedValue({
+    items: [],
+    total: 0,
+    page: 1,
+    page_size: 100,
+    unread_count: 0,
+  })
 })
 
 describe('系统通知：渲染与筛选', () => {
-  it('三支请求都发、用户端不拉过户', async () => {
+  it('四支请求都发、用户端不拉过户', async () => {
     const wrapper = mountView()
     await flushPromises()
 
     expect(mocks.disclosures).toHaveBeenCalledWith('test-token')
     expect(mocks.afterSales).toHaveBeenCalledWith('test-token')
     expect(mocks.warnings).toHaveBeenCalledWith('test-token')
+    expect(mocks.inbox).toHaveBeenCalledWith('test-token')
 
     expect(state(wrapper).cards).toHaveLength(1)
     expect(cardTitles(wrapper)).toContain('企业官网改版')
@@ -129,16 +145,11 @@ describe('系统通知：渲染与筛选', () => {
     await flushPromises()
 
     const chips = wrapper.findAll('.wb-chip')
-    // 胶囊：全部 / 公开申请 / 解除合作案件 / 评论警告
-    expect(chips.map((chip) => chip.text())).toEqual([
-      '全部1',
-      '公开申请1',
-      '解除合作案件0',
-      '评论警告0',
-    ])
+    // 胶囊：全部 / 需求 / 资金 / 系统；公开申请归「需求」
+    expect(chips.map((chip) => chip.text())).toEqual(['全部1', '需求1', '资金0', '系统0'])
 
     await chips[1]!.trigger('click')
-    expect(state(wrapper).kindFilter).toBe('history-disclosure')
+    expect(state(wrapper).kindFilter).toBe('requirement')
     expect(state(wrapper).filteredCards).toHaveLength(1)
     expect(wrapper.findAll('.notifications-card')).toHaveLength(1)
 
@@ -192,10 +203,11 @@ describe('系统通知：卡片动作与跳转', () => {
     expect(mocks.disclosures).toHaveBeenCalledTimes(2)
     expect(mocks.afterSales).toHaveBeenCalledTimes(1)
     expect(mocks.warnings).toHaveBeenCalledTimes(1)
+    expect(mocks.inbox).toHaveBeenCalledTimes(1)
     wrapper.unmount()
   })
 
-  it('未登录：需要令牌的三支直接跳过', async () => {
+  it('未登录：需要令牌的四支直接跳过', async () => {
     const auth = await import('@/stores/auth')
     vi.spyOn(auth, 'useAuthStore').mockReturnValue({
       token: '',
@@ -209,6 +221,7 @@ describe('系统通知：卡片动作与跳转', () => {
     expect(mocks.disclosures).not.toHaveBeenCalled()
     expect(mocks.afterSales).not.toHaveBeenCalled()
     expect(mocks.warnings).not.toHaveBeenCalled()
+    expect(mocks.inbox).not.toHaveBeenCalled()
     expect(wrapper.findAll('.notifications-card')).toHaveLength(0)
     wrapper.unmount()
   })

@@ -16,9 +16,23 @@
  */
 
 export { NOTIFICATION_KIND_LABELS } from './notifications/types'
-export type { NotificationKind, NotificationCard, NotificationSources } from './notifications/types'
+export type {
+  NotificationKind,
+  NotificationCard,
+  NotificationSource,
+  NotificationSources,
+} from './notifications/types'
 export { parseNoticeTime } from './notifications/time'
 export { buildNotificationCards, canVoteHistoryDisclosure } from './notifications/cards'
+export { dedupeNotificationCards } from './notifications/dedupe'
+export {
+  backendKindLabel,
+  notificationEventIconKey,
+  notificationEventLabel,
+  notificationKindOf,
+  resolveNotificationLink,
+} from './notifications/events'
+export type { NotificationIconKey } from './notifications/events'
 export {
   countByKind,
   pendingVoteCount,
