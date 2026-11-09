@@ -40,8 +40,8 @@ export interface HomepageSaveGuard {
   promoSharePercent: number
   /** 设过现金售价的资源不可改为积分售价。 */
   pointsLockedBySavedCash: boolean
-  /** 已绑定定制交付的资源不能设为付费售卖。 */
-  boundToRequirement: boolean
+  /** 绑定需求单且需求方尚未「转为我的资源」：定制单已定价，资源侧不能设售价。 */
+  saleLockedByRequirement: boolean
   copyrightDeclared: boolean
   /** 资源的可见性（review / published 才需要按「付费资源」额外校验）。 */
   visibility: string
@@ -123,8 +123,8 @@ export function checkHomepageSave(guard: HomepageSaveGuard): HomepageSaveCheck {
     return fail('设过现金售价的资源不可改为积分售价')
   }
 
-  if (guard.boundToRequirement && (priceParsed.fen > 0 || pointsParsed.points > 0)) {
-    return fail('已绑定定制交付的资源不能设为付费售卖')
+  if (guard.saleLockedByRequirement && (priceParsed.fen > 0 || pointsParsed.points > 0)) {
+    return fail('需求方尚未转为我的资源，暂不可定价')
   }
 
   if ((priceParsed.fen > 0 || pointsParsed.points > 0) && !guard.copyrightDeclared && isPublic) {

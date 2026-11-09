@@ -1,5 +1,5 @@
 import { ref, type Ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 
 import { TMessage, TMessageBox } from 'ui_73info'
 
@@ -18,9 +18,11 @@ import {
 import {
   canDeleteResource,
   isResourceArchiveLocked,
+  isResourceSaleLockedByRequirement,
   RESOURCE_ARCHIVE_LOCKED_MESSAGE,
 } from '@/shared/resourcePresentation'
 import { isPricedResource } from '@/shared/resourceSale'
+import { resourceWorkspaceRouteNames } from '@/shared/resourceWorkspace'
 import { useAuthStore } from '@/stores/auth'
 
 /** 「更多」菜单里带过来的动作码与目标资源（与 `shared/resourceApi.ts` 的 `ResourceRowAction` 同一套）。 */
@@ -44,7 +46,10 @@ type DevResourceRowActionDeps = {
  */
 export function useDevResourceRowActions(deps: DevResourceRowActionDeps) {
   const auth = useAuthStore()
+  const route = useRoute()
   const router = useRouter()
+  /** 行操作跳哪一套资源页由当前路由决定：开发者资源项目 / 需求方「我的资源」。 */
+  const routes = resourceWorkspaceRouteNames(route.meta)
 
   const requestingReviewResourceId = ref<number | null>(null)
   const settingPrivateResourceId = ref<number | null>(null)
@@ -56,18 +61,21 @@ export function useDevResourceRowActions(deps: DevResourceRowActionDeps) {
       return
     }
 
-    router.push({ name: 'dev-resource-homepage-edit', params: { resourceId: resource.id } })
+    router.push({ name: routes.editHomepage, params: { resourceId: resource.id } })
   }
 
   function openSoldPurchases(resource: McResourcePayload) {
+    if (!routes.soldPurchases) {
+      return
+    }
     void router.push({
-      name: 'dev-resource-sold-purchases',
+      name: routes.soldPurchases,
       query: { resourceId: String(resource.id) },
     })
   }
 
   function openVersionsPage(resource: McResourcePayload) {
-    router.push({ name: 'dev-resource-versions', params: { resourceId: resource.id } })
+    router.push({ name: routes.versions, params: { resourceId: resource.id } })
   }
 
   function goCreateResource(kind: unknown, mode?: unknown) {
@@ -89,8 +97,9 @@ export function useDevResourceRowActions(deps: DevResourceRowActionDeps) {
       return
     }
 
-    if (resource.requirement_id) {
-      TMessage.warning('已关联需求的资源不能申请公开审核')
+    // claim 之后 creator 已切成需求方，按普通资源开放申请；未 claim 仍由定制单锁定。
+    if (isResourceSaleLockedByRequirement(resource)) {
+      TMessage.warning('需求方尚未转为我的资源，暂不可申请公开')
       return
     }
 
@@ -104,7 +113,7 @@ export function useDevResourceRowActions(deps: DevResourceRowActionDeps) {
         ) {
           TMessage.warning('付费资源须先在「编辑主页」勾选版权声明，再申请公开')
           router.push({
-            name: 'dev-resource-homepage-edit',
+            name: routes.editHomepage,
             params: { resourceId: String(resource.id) },
           })
           return

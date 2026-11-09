@@ -29,11 +29,13 @@ import {
   hasBoundResource,
   hasPendingResourceVersionDeleteReview,
   isResourceClaimed,
+  isResourceVisibilityToggleLocked,
   latestDeliveryVersionLabel,
   lockRemainingText,
   pendingResourceVersionDeleteRequests,
   publishedVersionCount,
   requirementSubscriptionLabel,
+  RESOURCE_VISIBILITY_CLAIM_HINT,
   settlementHint,
   statusBadgeClass,
   toggleResourceVisibilityLabel,
@@ -235,11 +237,13 @@ function runMoreAction(key: unknown) {
           class="requirement-toggle"
           type="button"
           :aria-pressed="currentResourceVisibility(item) === 'public'"
-          :disabled="resourceVisibilityLoading"
+          :disabled="resourceVisibilityLoading || isResourceVisibilityToggleLocked(item)"
           :title="
             currentResourceVisibility(item) === 'review'
               ? '点击撤回公开审核，资源恢复为私有'
-              : '切换关联资源的公开 / 私有'
+              : isResourceVisibilityToggleLocked(item)
+                ? RESOURCE_VISIBILITY_CLAIM_HINT
+                : '切换关联资源的公开 / 私有'
           "
           @click.stop="emit('toggleVisibility')"
         >

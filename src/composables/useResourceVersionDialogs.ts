@@ -10,6 +10,7 @@ import {
 import { submitRequirementDelivery } from '@/api/requirements'
 import {
   isResourceArchiveLocked,
+  isResourceSaleLockedByRequirement,
   RESOURCE_ARCHIVE_LOCKED_MESSAGE,
 } from '@/shared/resourcePresentation'
 import { parseYuanPriceInput } from '@/shared/resourceSale'
@@ -92,7 +93,10 @@ export function useResourceVersionDialogs(deps: {
     }
 
     publishing.value = true
-    const requirementId = deps.resource.value.requirement_id
+    // claim 后需求已结单，不再走「交付给需求方」这一步；未 claim 的版本仍算交付。
+    const requirementId = isResourceSaleLockedByRequirement(deps.resource.value)
+      ? deps.resource.value.requirement_id
+      : null
     try {
       await createMcResourceVersion(auth.token, deps.resource.value.id, {
         version: version.trim(),
@@ -226,7 +230,7 @@ export function useResourceVersionDialogs(deps: {
     try {
       await deleteMcResourceVersion(auth.token, deps.resource.value.id, version.id)
       await deps.loadPage()
-      if (deps.resource.value.requirement_id) {
+      if (isResourceSaleLockedByRequirement(deps.resource.value)) {
         TMessage.success('版本删除申请已提交，等待用户审核')
       } else {
         deps.versionRows.value = deps.versionRows.value.filter((item) => item.id !== version.id)
@@ -242,7 +246,7 @@ export function useResourceVersionDialogs(deps: {
       const message =
         error instanceof Error
           ? error.message
-          : deps.resource.value.requirement_id
+          : isResourceSaleLockedByRequirement(deps.resource.value)
             ? '提交版本删除审核失败'
             : '删除版本失败'
       TMessage.error(message)

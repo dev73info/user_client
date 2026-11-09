@@ -8,6 +8,7 @@ import type { useResourceHomepageResource } from '@/composables/useResourceHomep
 import type { useResourceHomepageForm } from '@/composables/useResourceHomepageForm'
 import type { useResourceTagCatalog } from '@/composables/useResourceTagCatalog'
 import type { useResourceApiChannel } from '@/composables/useResourceApiChannel'
+import { resourceWorkspaceListRouteName } from '@/shared/resourceWorkspace'
 
 /**
  * 本页的加载时序（顺序本身就是业务）：
@@ -46,7 +47,7 @@ export function useResourceHomepageLoader(options: {
     const resourceId = Number(route.params.resourceId)
     if (!Number.isInteger(resourceId) || resourceId <= 0) {
       TMessage.warning('资源编号无效')
-      router.replace({ name: 'dev-resource-list' })
+      router.replace({ name: resourceWorkspaceListRouteName(route.meta) })
       return false
     }
 
@@ -80,7 +81,7 @@ export function useResourceHomepageLoader(options: {
             ? error.message
             : '加载资源详情失败'
       TMessage.error(message)
-      router.replace({ name: 'dev-resource-list' })
+      router.replace({ name: resourceWorkspaceListRouteName(route.meta) })
       return false
     } finally {
       if (generation === loadGeneration.value) loading.value = false

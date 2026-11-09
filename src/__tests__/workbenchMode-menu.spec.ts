@@ -86,6 +86,7 @@ describe('workbench mode switch', () => {
       .findAll('.user-workbench__submenu-link')
     expect(ordersLinks.map((link) => link.text())).toEqual([
       '我的需求',
+      '我的资源',
       '我的合同',
       '我的发票',
       '我的已购',

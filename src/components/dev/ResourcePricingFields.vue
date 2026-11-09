@@ -20,7 +20,8 @@ const props = defineProps<{
   cashPriceDisabled: boolean
   pointsPriceDisabled: boolean
   pointsLockedBySavedCash: boolean
-  boundToRequirement: boolean
+  /** 绑定需求单且需求方尚未「转为我的资源」：售价与公开申请都锁定。 */
+  saleLockedByRequirement: boolean
   promoShareError: string
   /** 拖动条右侧读数：`0%` 显示成「关闭」。 */
   promoShareDisplay: string
@@ -71,6 +72,13 @@ const feeHintText = computed(() => {
       :title="isApiKind ? undefined : '与积分售价互斥；大于 0 为现金一口价'"
       @input="onCashPriceInput"
     />
+    <p
+      v-if="saleLockedByRequirement"
+      class="dev-field-hint"
+      data-testid="resource-sale-locked-hint"
+    >
+      需求方尚未转为我的资源，暂不可定价
+    </p>
   </TFormItem>
 
   <TFormItem v-if="!isApiKind" label="积分售价" class="dev-basic-info-grid__points">
@@ -82,7 +90,7 @@ const feeHintText = computed(() => {
       title="与现金售价互斥；大于 0 时买家只能用积分购买"
       @input="emit('pointsPriceInput')"
     />
-    <p v-if="pointsLockedBySavedCash && !boundToRequirement" class="dev-field-hint">
+    <p v-if="pointsLockedBySavedCash && !saleLockedByRequirement" class="dev-field-hint">
       设过现金售价，不可改为积分售价。
     </p>
   </TFormItem>

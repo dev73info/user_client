@@ -6,6 +6,7 @@ import { createMcResourceVersion, type McResourcePayload } from '@/api/mcResourc
 import { submitRequirementDelivery } from '@/api/requirements'
 import {
   isResourceArchiveLocked,
+  isResourceSaleLockedByRequirement,
   RESOURCE_ARCHIVE_LOCKED_MESSAGE,
 } from '@/shared/resourcePresentation'
 import { parseYuanPriceInput } from '@/shared/resourceSale'
@@ -76,7 +77,10 @@ export function useDevResourcePublishVersion(options: { onPublished?: () => Prom
     }
 
     publishingResourceId.value = selectedResource.value.id
-    const requirementId = selectedResource.value.requirement_id
+    // 只有「仍绑定需求、尚未转为我的资源」的版本才算交付；claim 后需求已结单，按普通发版。
+    const requirementId = isResourceSaleLockedByRequirement(selectedResource.value)
+      ? selectedResource.value.requirement_id
+      : null
     try {
       await createMcResourceVersion(auth.token, selectedResource.value.id, {
         version: version.trim(),

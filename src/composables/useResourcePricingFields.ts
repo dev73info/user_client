@@ -13,17 +13,19 @@ import type { ResourceHomepageFormState } from '@/shared/resourceHomepageForm'
  * 售价与推广分成这两个「改一个就得清另一个」的字段。
  *
  * 三者（现金价 / 积分价 / 推广分成）互相牵制：填了现金价要清积分价、
- * 卖过一次现金价就不能再改积分价、已绑定定制交付的不能定价。判定集中在这里，
- * 保存时的校验读同一份 computed，避免「界面能填、保存被拒」。
+ * 卖过一次现金价就不能再改积分价、绑定需求单且未 claim 的不能定价。
+ * 判定集中在这里，保存时的校验读同一份 computed，避免「界面能填、保存被拒」。
+ *
+ * 免费 ↔ 现金价不受 `cash_price_locked` 影响：那个标记只锁「现金 → 积分」一个方向。
  */
 export function useResourcePricingFields(
   form: ResourceHomepageFormState,
   options: {
     resource: Ref<McResourcePayload | null>
-    boundToRequirement: Ref<boolean>
+    saleLockedByRequirement: Ref<boolean>
   },
 ) {
-  const { resource, boundToRequirement } = options
+  const { resource, saleLockedByRequirement } = options
 
   const parsedPriceFen = computed(() => parseYuanPriceInput(form.priceYuan))
   const parsedPricePoints = computed(() => parsePointsPriceInput(form.pricePoints))
@@ -45,14 +47,14 @@ export function useResourcePricingFields(
       (parsedPricePoints.value.ok && parsedPricePoints.value.points > 0),
   )
   // 积分价可直接改现金价：输入现金价时清空积分价
-  const cashPriceDisabled = computed(() => boundToRequirement.value)
+  const cashPriceDisabled = computed(() => saleLockedByRequirement.value)
   const pointsLockedBySavedCash = computed(
     () =>
       !canSwitchToPointsPrice(resource.value?.buyout_price_fen, resource.value?.cash_price_locked),
   )
   const pointsPriceDisabled = computed(
     () =>
-      boundToRequirement.value ||
+      saleLockedByRequirement.value ||
       pointsLockedBySavedCash.value ||
       (parsedPriceFen.value.ok && parsedPriceFen.value.fen > 0),
   )

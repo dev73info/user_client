@@ -27,6 +27,7 @@ import {
 import {
   canDeleteResource,
   isResourceArchiveLocked,
+  isResourceSaleLockedByRequirement,
   resourcePlatformLabel,
   resourceTagColumnLabel,
   resourceVisibilityLabel,
@@ -48,8 +49,18 @@ const props = withDefaults(
     platformFeeBps?: number | null
     /** 费率读取失败：预计到手列明确写「暂不可用」，不静默留空。 */
     platformFeeError?: boolean
+    /**
+     * 可见的行操作码：需求方「我的资源」只有主页 / 公开 / 私有 / 版本这几项；
+     * 不传 = 全开（开发者资源项目页）。
+     */
+    visibleActions?: readonly string[] | null
   }>(),
-  { versionPrices: () => ({}), platformFeeBps: null, platformFeeError: false },
+  {
+    versionPrices: () => ({}),
+    platformFeeBps: null,
+    platformFeeError: false,
+    visibleActions: null,
+  },
 )
 
 const emit = defineEmits<{
@@ -62,6 +73,11 @@ const emit = defineEmits<{
 /** 菜单里与「接口资源没有的入口」共用的判据，取值域见 shared/resourceApi.ts。 */
 function rowActionAvailable(action: ResourceRowAction, resource: McResourcePayload): boolean {
   return isResourceRowActionAvailable(action, resource.resource_kind)
+}
+
+/** 当前工作台是否提供这个动作（需求方「我的资源」不出现售出订单 / 过户 / 删除）。 */
+function actionVisible(action: string): boolean {
+  return props.visibleActions == null || props.visibleActions.includes(action)
 }
 
 /** 整行点击进入编辑；行内按钮、链接、下拉自己处理点击，不触发行跳转。 */
@@ -214,16 +230,19 @@ function handleRowClick(event: MouseEvent) {
                    所以「发布版本 / 版本管理」对它不出现（判据见
                    shared/resourceApi.ts 的 isResourceRowActionAvailable）。 -->
               <TDropdownItem
-                v-if="rowActionAvailable('publish', scope.row)"
+                v-if="actionVisible('publish') && rowActionAvailable('publish', scope.row)"
                 :disabled="isResourceArchiveLocked(scope.row)"
                 :command="{ action: 'publish', resource: scope.row }"
               >
                 发布版本
               </TDropdownItem>
               <TDropdownItem
-                v-if="['draft', 'rejected'].includes(scope.row.visibility)"
+                v-if="
+                  actionVisible('request-review') &&
+                  ['draft', 'rejected'].includes(scope.row.visibility)
+                "
                 :disabled="
-                  Boolean(scope.row.requirement_id) ||
+                  isResourceSaleLockedByRequirement(scope.row) ||
                   isResourceArchiveLocked(scope.row) ||
                   requestingReviewId === scope.row.id
                 "
@@ -238,27 +257,32 @@ function handleRowClick(event: MouseEvent) {
                 }}
               </TDropdownItem>
               <TDropdownItem
-                v-if="scope.row.visibility === 'published'"
+                v-if="actionVisible('set-private') && scope.row.visibility === 'published'"
                 :disabled="isResourceArchiveLocked(scope.row) || settingPrivateId === scope.row.id"
                 :command="{ action: 'set-private', resource: scope.row }"
               >
                 {{ settingPrivateId === scope.row.id ? '设置中...' : '设为私有' }}
               </TDropdownItem>
               <TDropdownItem
-                v-if="rowActionAvailable('versions', scope.row)"
+                v-if="actionVisible('versions') && rowActionAvailable('versions', scope.row)"
                 :command="{ action: 'versions', resource: scope.row }"
                 >版本管理</TDropdownItem
               >
-              <TDropdownItem :command="{ action: 'sold-orders', resource: scope.row }">
+              <TDropdownItem
+                v-if="actionVisible('sold-orders')"
+                :command="{ action: 'sold-orders', resource: scope.row }"
+              >
                 售出订单
               </TDropdownItem>
               <TDropdownItem
+                v-if="actionVisible('transfer')"
                 :command="{ action: 'transfer', resource: scope.row }"
                 :disabled="isResourceArchiveLocked(scope.row)"
               >
                 资源过户
               </TDropdownItem>
               <TDropdownItem
+                v-if="actionVisible('delete')"
                 :command="{ action: 'delete', resource: scope.row }"
                 :disabled="
                   isResourceArchiveLocked(scope.row) ||

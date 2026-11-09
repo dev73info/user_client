@@ -76,6 +76,9 @@ export function primeSignatureMocks(mocks: SignatureMocks) {
 const routeNames = [
   'workbench',
   'workbench-requirements',
+  'workbench-resources',
+  'workbench-resource-homepage-edit',
+  'workbench-resource-versions',
   'workbench-account',
   'workbench-authorized-apps',
   'workbench-tickets',
