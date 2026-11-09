@@ -143,6 +143,7 @@ function buildAfterSalesCard(row: AfterSalesCaseSummary): NotificationCard {
     createdAt: row.created_time,
     sortTime: parseNoticeTime(row.created_time),
     groupKey: disputeGroupKey(row.requirement_id),
+    caseStatus: row.status_label,
     canVote: false,
   }
 }
@@ -187,6 +188,7 @@ function buildInboxCard(item: BackendNotification, isDevWorkbench: boolean): Not
     : bizNo.includes(':')
       ? bizNo
       : undefined
+  const sortTime = parseNoticeTime(item.created_time)
   return {
     key: `notification-${item.notification_id}`,
     kind,
@@ -196,7 +198,9 @@ function buildInboxCard(item: BackendNotification, isDevWorkbench: boolean): Not
     body: item.body.trim() ? [item.body] : [],
     meta: item.created_time,
     createdAt: item.created_time,
-    sortTime: parseNoticeTime(item.created_time),
+    sortTime,
+    // 案件级合并时以这条事件为「当前最新」起点，避免更早的事件覆盖 meta
+    latestEventTime: groupKey?.startsWith('dispute:') ? sortTime : undefined,
     event: item.event,
     notificationId: item.notification_id,
     read: item.read,

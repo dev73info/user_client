@@ -48,6 +48,12 @@ export type NotificationCard = {
   notificationId?: string
   /** 合并进这张卡的全部后端通知单号（同一案件多条事件时点一次一起标掉） */
   notificationIds?: string[]
+  /** 本地争议案件的当前状态：案件级合并后作为次要信息保留在时间行 */
+  caseStatus?: string
+  /** 案件级合并时已采用的最新后端事件时间（毫秒），用于判断哪条事件最新 */
+  latestEventTime?: number
+  /** 案件级合并前的原始时间行：最新事件替换后缀时从它重建，避免重复追加 */
+  baseMeta?: string
   /** 后端通知的已读态；本地三源没有 read 字段，保持 undefined */
   read?: boolean
   /** 已按用户端真实路由改写过的跳转地址；空表示没有可跳的页面 */

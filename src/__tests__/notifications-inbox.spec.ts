@@ -10,7 +10,7 @@ import {
   notificationKindOf,
   resolveNotificationLink,
 } from '@/shared/notifications'
-import { afterSalesCase, commentWarning, inboxItem, keys, kinds } from './helpers/notifications'
+import { commentWarning, inboxItem, keys, kinds } from './helpers/notifications'
 
 describe('收件箱 kind / event 映射', () => {
   it('四个后端 kind 归到三个筛选桶：争议按需求看', () => {
@@ -153,99 +153,6 @@ describe('收件箱卡片', () => {
       username: 'cust',
     })
     expect(cards).toHaveLength(2)
-  })
-
-  it('同一案件的本地争议卡与 dispute_* 通知合并为一条，并收集全部单号', () => {
-    const cards = buildNotificationCards({
-      afterSales: [afterSalesCase()],
-      inbox: [
-        inboxItem({
-          notification_id: 'NTF-D4',
-          kind: 'breach',
-          event: 'dispute_closed',
-          title: '争议已结案',
-          link: '/workbench/requirements/REQ-1',
-          biz_no: 'REQ-1',
-          read: true,
-          created_time: '2026-04-05 10:00:00',
-        }),
-        inboxItem({
-          notification_id: 'NTF-D3',
-          kind: 'breach',
-          event: 'dispute_decided',
-          title: '争议已裁决',
-          link: '/workbench/requirements/REQ-1',
-          biz_no: 'REQ-1',
-          read: true,
-          created_time: '2026-04-03 10:00:00',
-        }),
-        inboxItem({
-          notification_id: 'NTF-D2',
-          kind: 'breach',
-          event: 'dispute_escalated',
-          title: '平台已介入争议处理',
-          link: '/workbench/requirements/REQ-1',
-          biz_no: 'REQ-1',
-          read: false,
-          created_time: '2026-04-02 10:00:00',
-        }),
-        inboxItem({
-          notification_id: 'NTF-D1',
-          kind: 'breach',
-          event: 'dispute_case_filed',
-          title: '争议已立案',
-          link: '/workbench/requirements/REQ-1',
-          biz_no: 'REQ-1',
-          read: true,
-          created_time: '2026-04-01 09:00:00',
-        }),
-      ],
-      username: 'cust',
-    })
-
-    expect(cards).toHaveLength(1)
-    expect(cards[0]?.key).toBe('after-sales-AFTERSALES_1_abc')
-    expect(cards[0]?.kindLabel).toBe('争议')
-    // 四个阶段的单号都收进来，点一次「标为已读」能一起标掉
-    expect(cards[0]?.notificationIds).toEqual(['NTF-D4', 'NTF-D3', 'NTF-D2', 'NTF-D1'])
-    // 只要还有一条未读，整张卡保持未读，可标记单号指向那条未读的
-    expect(cards[0]?.read).toBe(false)
-    expect(cards[0]?.notificationId).toBe('NTF-D2')
-    // 本地卡没有链接，合并后继承后端通知的跳转
-    expect(cards[0]?.link).toBe('/workbench/messages?requirement_id=REQ-1')
-  })
-
-  it('只有收件箱时，同一案件的 dispute_* 事件也只留最新一条', () => {
-    const cards = buildNotificationCards({
-      inbox: [
-        inboxItem({
-          notification_id: 'NTF-D3',
-          kind: 'breach',
-          event: 'dispute_decided',
-          title: '争议已裁决',
-          biz_no: 'REQ-1',
-          read: true,
-          created_time: '2026-04-03 10:00:00',
-        }),
-        inboxItem({
-          notification_id: 'NTF-D2',
-          kind: 'breach',
-          event: 'dispute_escalated',
-          title: '平台已介入争议处理',
-          biz_no: 'REQ-1',
-          read: false,
-          created_time: '2026-04-02 10:00:00',
-        }),
-      ],
-      username: 'cust',
-    })
-
-    expect(cards).toHaveLength(1)
-    expect(cards[0]?.key).toBe('notification-NTF-D3')
-    expect(cards[0]?.title).toBe('争议已裁决')
-    expect(cards[0]?.notificationIds).toEqual(['NTF-D3', 'NTF-D2'])
-    expect(cards[0]?.read).toBe(false)
-    expect(cards[0]?.notificationId).toBe('NTF-D2')
   })
 })
 

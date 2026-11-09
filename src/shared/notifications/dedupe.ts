@@ -66,6 +66,8 @@ function mergeNotificationCard(target: NotificationCard, source: NotificationCar
   collectNotificationIds(target, source)
 
   if (target.groupKey?.startsWith('dispute:')) {
+    // 卡片主体保持本地案件卡；只把「最新事件」补进时间行，跳转也取最新事件的。
+    adoptLatestDisputeEvent(target, source)
     // 案件里只要还有一条没读，整张卡就保持未读；可标记的单号指向那条未读的。
     if (source.read === false && target.read !== false) {
       target.read = false
@@ -78,6 +80,43 @@ function mergeNotificationCard(target: NotificationCard, source: NotificationCar
   target.notificationId ??= source.notificationId
   target.link ??= source.link
   target.event ??= source.event
+}
+
+/**
+ * 案件级合并：在时间行追加最新一条后端争议事件（标题与时间）。
+ *
+ * 只认 `dispute_*` 的收件箱卡；按 sortTime 比较而不是数组顺序。标题 / 正文 / 排序时间
+ * 保持本地案件卡不变。最新事件的标题已经出现在卡片文案里时不重复展示。
+ */
+function adoptLatestDisputeEvent(target: NotificationCard, source: NotificationCard): void {
+  if (source.source !== 'inbox' || !source.event?.startsWith('dispute_')) {
+    return
+  }
+  if (source.sortTime <= (target.latestEventTime ?? Number.NEGATIVE_INFINITY)) {
+    return
+  }
+
+  target.latestEventTime = source.sortTime
+  if (source.link) {
+    target.link = source.link
+  }
+
+  const baseMeta = target.baseMeta ?? target.meta
+  target.baseMeta = baseMeta
+
+  const eventTitle = source.title.trim()
+  if (!eventTitle || isMentioned(target, eventTitle)) {
+    target.meta = baseMeta
+    return
+  }
+  target.meta = `${baseMeta} · 最新：${eventTitle}（${source.createdAt}）`
+}
+
+/** 事件标题是否已经在卡片现有文案里出现过（标题 / 状态 / 时间行 / 正文）。 */
+function isMentioned(card: NotificationCard, text: string): boolean {
+  return [card.title, card.caseStatus, card.baseMeta ?? card.meta, ...card.body].some(
+    (value) => Boolean(value) && value!.includes(text),
+  )
 }
 
 /** 收集合并进同一张卡的全部通知单号（一张卡可能对应同一案件的多次事件）。 */
