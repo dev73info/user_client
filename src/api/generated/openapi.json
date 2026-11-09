@@ -51437,6 +51437,13 @@
             ],
             "description": "需求方「转为我的资源」的时间；未转换或未绑定资源时为 `null`。\n\n前端据此判断定制交付资源是否已解锁售卖与公开，不能只看 `bound_resource_id`。"
           },
+          "resource_visibility": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "绑定资源的对外可见性：`public` / `private` / `review`；未绑定资源时为 `null`。\n\n需求行的公开 / 私有切换按它决定下一次动作，不能只看资源是否存在。"
+          },
           "review_note": {
             "type": [
               "string",

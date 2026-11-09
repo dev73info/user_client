@@ -19361,6 +19361,12 @@ export interface components {
              *     前端据此判断定制交付资源是否已解锁售卖与公开，不能只看 `bound_resource_id`。
              */
             resource_claimed_at?: string | null;
+            /**
+             * @description 绑定资源的对外可见性：`public` / `private` / `review`；未绑定资源时为 `null`。
+             *
+             *     需求行的公开 / 私有切换按它决定下一次动作，不能只看资源是否存在。
+             */
+            resource_visibility?: string | null;
             /** @description 审核备注。 */
             review_note?: string | null;
             /** @description 审核时间。 */
