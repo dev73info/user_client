@@ -1,5 +1,6 @@
 import { ref } from 'vue'
 
+import { HttpError } from '@/api/http'
 import {
   updateRequirementResourceVisibility as updateRequirementResourceVisibilityApi,
   type RequirementItem,
@@ -56,7 +57,12 @@ export function useRequirementResourceVisibilityToggle(options: {
       TMessage.success(visibility === 'public' ? '关联资源已提交公开审核' : '关联资源已设为私有')
       await options.reload()
     } catch (err) {
-      TMessage.error(err instanceof Error ? err.message : '更新资源可见性失败')
+      // 状态冲突（未 claim 却要公开）是状态型提示，后端中文原文优先，不吞错也不当系统错误。
+      if (err instanceof HttpError && err.status === 409) {
+        TMessage.warning(err.message || RESOURCE_VISIBILITY_CLAIM_HINT)
+      } else {
+        TMessage.error(err instanceof Error ? err.message : '更新资源可见性失败')
+      }
     } finally {
       resourceVisibilityLoadingId.value = null
     }
