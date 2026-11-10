@@ -25,8 +25,8 @@ import {
  * 一条系统通知（`<li class="wb-item">` 那一层）。
  *
  * 来源不同、字段不同，但卡片形状统一：左侧类别图标 + 中间标题与正文行 +
- * 右侧时间与动作。类别色由 `--nc-accent` 决定（色条、图标底、类别徽标共用同一支颜色），
- * 这个变量由页面根元素上的 `--nc-*` 令牌提供，组件自己不带色值。
+ * 右侧时间与动作。卡片表面与其余工作台列表行共用 `.wb-item`，类别色只落在
+ * 小图标与 `.wb-badge` 类别标签上，不再给整张卡铺类别色底。
  *
  * 收件箱来源按 event 换图标；本地三支沿用原来的三种图标。
  * 卡片的点击只留给动作按钮，不再整块可点。
@@ -70,12 +70,38 @@ const icon = computed<Component>(() => {
   return ICONS[notificationEventIconKey(props.card.event, props.card.kind)]
 })
 
-/** 类别色：本地三支沿用原来的颜色；收件箱按筛选类别取色。 */
-function accentClass(card: NotificationCard): string {
-  if (card.source !== 'inbox') {
-    return `notifications-card--${card.source}`
+type NotificationTone = 'accent' | 'success' | 'warning' | 'danger'
+
+/**
+ * 类别色：需求 / 资金 / 系统按筛选桶取统一徽标 tone；
+ * 售后、评论警告与争议保持警示语义；历史沟通公开申请沿用主色。
+ */
+function toneOf(card: NotificationCard): NotificationTone {
+  if (card.source === 'history-disclosure') {
+    return 'accent'
   }
-  return `notifications-card--kind-${card.kind}`
+  if (card.source === 'after-sales' || card.source === 'comment-warning') {
+    return 'danger'
+  }
+  const event = card.event ?? ''
+  if (event.startsWith('dispute_') || event.startsWith('comment_')) {
+    return 'danger'
+  }
+  if (card.kind === 'payment') {
+    return 'success'
+  }
+  if (card.kind === 'system') {
+    return 'warning'
+  }
+  return 'accent'
+}
+
+function badgeToneClass(card: NotificationCard): string {
+  return `wb-badge--${toneOf(card)}`
+}
+
+function iconToneClass(card: NotificationCard): string {
+  return `notifications-card__icon--${toneOf(card)}`
 }
 
 const isUnread = computed(() => props.card.read === false)
@@ -91,28 +117,30 @@ const marking = computed(
 </script>
 
 <template>
-  <li class="wb-item notifications-card" :class="[accentClass(card), { 'is-unread': isUnread }]">
-    <span class="notifications-card__icon">
-      <TIcon :icon="icon" />
-    </span>
-    <div class="wb-item__main notifications-card__main">
-      <div class="notifications-card__head">
-        <strong class="wb-item__title">{{ card.title }}</strong>
-        <span class="notifications-kind">{{ card.kindLabel }}</span>
-        <span v-if="isUnread" class="notifications-unread" aria-label="未读">未读</span>
+  <li class="wb-item notifications-card" :class="{ 'is-unread': isUnread }">
+    <div class="notifications-card__body">
+      <span class="notifications-card__icon" :class="iconToneClass(card)">
+        <TIcon :icon="icon" />
+      </span>
+      <div class="wb-item__main notifications-card__main">
+        <div class="wb-item__title-row">
+          <strong class="wb-item__title">{{ card.title }}</strong>
+          <span class="wb-badge" :class="badgeToneClass(card)">{{ card.kindLabel }}</span>
+          <span v-if="isUnread" class="notifications-unread" aria-label="未读">未读</span>
+        </div>
+        <span
+          v-for="(line, index) in card.body"
+          :key="`body-${index}`"
+          class="wb-item__meta notifications-card__line"
+        >
+          {{ line }}
+        </span>
+        <span v-if="card.voteHint" class="wb-item__meta notifications-card__line">
+          {{ card.voteHint }}
+        </span>
       </div>
-      <span
-        v-for="(line, index) in card.body"
-        :key="`body-${index}`"
-        class="wb-item__meta notifications-card__line"
-      >
-        {{ line }}
-      </span>
-      <span v-if="card.voteHint" class="wb-item__meta notifications-card__line">
-        {{ card.voteHint }}
-      </span>
     </div>
-    <div class="wb-item__side">
+    <div class="wb-item__side notifications-card__side">
       <span class="wb-item__meta notifications-card__meta">
         <TIcon :icon="Clock" />
         {{ card.meta }}
@@ -145,56 +173,18 @@ const marking = computed(
 </template>
 
 <style scoped>
-/* 类别色：色条、图标底、徽标共用。色值在页面根元素的 --nc-* 令牌里，这一层只做映射 */
 .notifications-card {
-  --nc-accent: var(--nc-accent-default);
-  position: relative;
   align-items: flex-start;
-  overflow: hidden;
-  padding-left: 22px;
-  transition:
-    border-color 160ms ease,
-    background 160ms ease,
-    box-shadow 160ms ease;
+  gap: 14px;
 }
 
-.notifications-card--history-disclosure {
-  --nc-accent: var(--nc-accent-history-disclosure);
-}
-
-.notifications-card--after-sales {
-  --nc-accent: var(--nc-accent-after-sales);
-}
-
-.notifications-card--comment-warning {
-  --nc-accent: var(--nc-accent-comment-warning);
-}
-
-.notifications-card--kind-requirement {
-  --nc-accent: var(--nc-accent-kind-requirement);
-}
-
-.notifications-card--kind-payment {
-  --nc-accent: var(--nc-accent-kind-payment);
-}
-
-.notifications-card--kind-system {
-  --nc-accent: var(--nc-accent-kind-system);
-}
-
-/* 左侧 3px 类别色条：不增加一列布局，只做视觉锚点，扫列表时先按颜色分出类别 */
-.notifications-card::before {
-  content: '';
-  position: absolute;
-  inset: 0 auto 0 0;
-  width: 3px;
-  background: var(--nc-accent);
-  opacity: 0.8;
-}
-
-/* 未读：淡淡一层类别色底，扫列表时不用逐条找「未读」两个字 */
-.notifications-card.is-unread {
-  background: color-mix(in srgb, var(--nc-accent) 5%, var(--nc-surface));
+/* 图标与正文作为一个整体参与外层 .wb-item 的左右分栏；触屏档外层竖排时两者仍保持一行。 */
+.notifications-card__body {
+  display: flex;
+  align-items: flex-start;
+  flex: 1 1 auto;
+  gap: 14px;
+  min-width: 0;
 }
 
 .notifications-card__icon {
@@ -202,53 +192,50 @@ const marking = computed(
   align-items: center;
   justify-content: center;
   flex: 0 0 auto;
-  width: 38px;
-  height: 38px;
-  border: 1px solid color-mix(in srgb, var(--nc-accent) 16%, transparent);
-  border-radius: 11px;
-  background: color-mix(in srgb, var(--nc-accent) 9%, var(--nc-surface));
-  color: var(--nc-accent);
+  width: 36px;
+  height: 36px;
+  border: 1px solid var(--wb-line);
+  border-radius: var(--wb-radius-control);
+  background: var(--wb-tag-bg);
+  color: var(--profile-text-sub, var(--73-ink-muted));
   font-size: 18px;
 }
 
-/* 正文可能有两三行（公开申请有说明行 + 投票进度行），行与行贴紧一点 */
+.notifications-card__icon--accent {
+  border-color: var(--wb-accent-line);
+  background: var(--wb-accent-soft);
+  color: var(--wb-accent);
+}
+
+.notifications-card__icon--success {
+  border-color: color-mix(in srgb, var(--73-success) 30%, transparent);
+  background: var(--profile-success-soft, color-mix(in srgb, var(--73-success) 12%, transparent));
+  color: var(--profile-success-text, var(--73-success));
+}
+
+.notifications-card__icon--warning {
+  border-color: color-mix(in srgb, var(--73-warning) 30%, transparent);
+  background: var(--profile-warning-soft, color-mix(in srgb, var(--73-warning) 14%, transparent));
+  color: var(--profile-warning-text, var(--73-warning-text));
+}
+
+.notifications-card__icon--danger {
+  border-color: color-mix(in srgb, var(--73-danger) 30%, transparent);
+  background: var(--profile-danger-soft, color-mix(in srgb, var(--73-danger) 12%, transparent));
+  color: var(--profile-danger-text, var(--73-danger));
+}
+
 .notifications-card__main {
-  display: grid;
   flex: 1 1 auto;
-  gap: 5px;
   min-width: 0;
 }
 
-.notifications-card__head {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 8px;
-  min-width: 0;
-}
-
-/* 类别徽标取卡片自己的类别色，与左侧图标、色条是同一支颜色 */
-.notifications-kind {
-  display: inline-flex;
-  align-items: center;
-  min-height: 22px;
-  padding: 0 9px;
-  border: 1px solid color-mix(in srgb, var(--nc-accent) 20%, transparent);
-  border-radius: 999px;
-  background: color-mix(in srgb, var(--nc-accent) 8%, var(--nc-surface));
-  color: var(--nc-accent);
-  font-size: 11px;
-  font-weight: 700;
-  line-height: 1;
-  white-space: nowrap;
-}
-
-/* 未读小标：实心圆点 + 两个字，颜色跟类别走 */
+/* 未读小标：实心圆点 + 两个字；颜色用工作台主色，不跟着类别换色。 */
 .notifications-unread {
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  color: var(--nc-accent);
+  color: var(--wb-accent);
   font-size: 11px;
   font-weight: 700;
   line-height: 1;
@@ -260,14 +247,24 @@ const marking = computed(
   width: 6px;
   height: 6px;
   border-radius: 50%;
-  background: var(--nc-accent);
+  background: var(--wb-accent);
 }
 
 .notifications-card__line {
   margin: 0;
-  color: var(--nc-text-sub);
+  color: var(--profile-text-sub, var(--73-ink-muted));
   font-size: 13px;
   line-height: 1.65;
+  overflow-wrap: anywhere;
+}
+
+/* 右侧时间与动作：桌面竖排、右对齐；≤640 由统一层把整张卡改成竖排，这里只把侧栏横向铺开。 */
+.notifications-card__side {
+  flex-direction: column;
+  flex-wrap: nowrap;
+  align-items: flex-end;
+  justify-content: flex-start;
+  gap: 8px;
 }
 
 /* 时间行：小号灰字 + 时钟图标，不再跟正文抢视觉重量 */
@@ -277,9 +274,10 @@ const marking = computed(
   justify-content: flex-end;
   gap: 5px;
   margin-top: 0;
-  color: var(--nc-text-sub);
+  color: var(--profile-text-sub, var(--73-ink-muted));
   font-size: 12px;
   line-height: 1.5;
+  white-space: normal;
 }
 
 .notifications-card__actions {
@@ -291,18 +289,35 @@ const marking = computed(
 }
 
 @media (max-width: 640px) {
-  /* 触屏档：图标与正文一行，时间与动作落到下一行；按钮平分整行，触摸目标 ≥44px */
+  /* 触屏档：外层 .wb-item 已竖排；图标与正文保持一行，时间与动作铺满下一行，按钮平分整行。 */
   .notifications-card {
+    gap: 10px;
+  }
+
+  .notifications-card__body {
+    gap: 12px;
+    width: 100%;
+  }
+
+  .notifications-card__side {
+    flex-direction: row;
     flex-wrap: wrap;
-    padding-left: 20px;
+    align-items: center;
+    justify-content: flex-start;
+    width: 100%;
   }
 
   .notifications-card__meta {
     justify-content: flex-start;
   }
 
+  .notifications-card__actions {
+    flex: 1 1 100%;
+    width: 100%;
+  }
+
   .notifications-card__actions :deep(.t73-button) {
-    flex: 1;
+    flex: 1 1 0;
     min-height: 44px;
   }
 }

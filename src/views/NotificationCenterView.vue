@@ -17,7 +17,7 @@ import { Bell, TButton, TIcon } from 'ui_73info'
 
    两个工作台共用这一页（用户端 workbench-notifications / 开发者端 dev-notifications），
    与消息中心同一办法：页面根元素按 isDevWorkbench 在两套统一层之间切，
-   不写「近似」对方的覆盖样式；类别色由根元素上的 --nc-* 令牌下发，各构件只引用变量。 */
+   不写「近似」对方的覆盖样式；卡片表面走统一层 .wb-item，类别色只落在图标与徽标上。 */
 const router = useRouter()
 const {
   isDevWorkbench,
@@ -67,7 +67,7 @@ function openCard(card: NotificationCard) {
     :class="
       isDevWorkbench
         ? 'dev-page notifications-page'
-        : 'page-shell custom-page-shell profile-page notifications-page'
+        : 'page-shell custom-page-shell profile-page notifications-page wb-sheet'
     "
     :aria-busy="loading"
   >
@@ -84,7 +84,7 @@ function openCard(card: NotificationCard) {
       />
     </WorkbenchBarSlot>
 
-    <section class="wallet-section notifications-panel">
+    <section class="wallet-section">
       <div class="wb-card-head">
         <div class="wb-card-head__title-block">
           <h3 class="wb-card-head__title">系统通知</h3>
@@ -157,67 +157,23 @@ function openCard(card: NotificationCard) {
 </template>
 
 <style scoped>
-/* 类别色与中性色都在这里下发：根元素定义 --nc-*，各构件只引用变量、不写色值。
-   本地三支沿用原来的颜色；收件箱按筛选类别取色（需求 / 资金 / 系统）。 */
+/* 通知页自己的中性色令牌：空态提示与「待我处理」胶囊共用；类别色改由卡片组件按 tone 取统一层令牌。 */
 .notifications-page {
-  --nc-accent-default: var(--73-ink-muted);
-  --nc-accent-history-disclosure: var(--73-accent);
-  --nc-accent-after-sales: var(--73-danger);
-  --nc-accent-comment-warning: var(--73-warning);
-  --nc-accent-kind-requirement: var(--73-accent);
-  --nc-accent-kind-payment: var(--73-success);
-  --nc-accent-kind-system: var(--73-warning);
-  --nc-surface: var(--73-surface-strong);
-  --nc-text-sub: var(--profile-text-sub, var(--73-ink-muted));
   --nc-text-muted: var(--profile-text-sub, var(--73-ink-placeholder));
   --nc-pending-border: color-mix(in srgb, var(--73-warning) 20%, transparent);
   --nc-pending-bg: color-mix(in srgb, var(--73-warning) 9%, transparent);
-  --nc-pending-text: var(--73-warning);
+  --nc-pending-text: var(--profile-warning-text, var(--73-warning-text));
   --nc-empty-icon-bg: color-mix(in srgb, var(--73-ink-placeholder) 12%, transparent);
   --nc-empty-icon-text: var(--73-ink-placeholder);
 
   align-content: start;
 }
 
-/* 用户工作台的内容区本身已经是一张 22px 圆角的大卡。
-   这里不再让读数条、通知面板和空态各套一层卡，改成同一张卡里的三段式层级：
-   顶部读数带 → 面板标题 → 居中空态 / 列表。开发者工作台继续沿用 dev-page。 */
-.notifications-page:not(.dev-page) {
-  height: 100%;
-  min-height: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 0;
-}
-
-.notifications-page:not(.dev-page) :deep(.wb-strip) {
-  flex: 0 0 auto;
-  padding: 14px 24px;
-  border: 0;
-  border-bottom: 1px solid color-mix(in srgb, var(--73-accent-soft) 92%, transparent);
-  border-radius: 0;
-  background: color-mix(in srgb, var(--73-accent-soft) 24%, transparent);
-  box-shadow: none;
-}
-
-.notifications-page:not(.dev-page) > .notifications-panel {
-  flex: 1 1 auto;
-  min-height: 0;
-  display: flex;
-  flex-direction: column;
-  padding: 22px 24px 24px;
-  border: 0;
-  border-radius: 0;
-  background: transparent;
-  box-shadow: none;
-}
-
-.notifications-page:not(.dev-page) > .notifications-panel :deep(.notifications-empty) {
-  flex: 1 1 auto;
-  min-height: 260px;
-  justify-content: center;
-  border: 0;
-  background: transparent;
+/* 与其余工作台菜单页同一条基准：读数带贴近页顶，读数带与内容卡之间留 16px。
+   08-sheet-page.css 的菜单页清单里还没有 notifications-page，这里只补这一组标准间距。 */
+.user-workbench__content--workspace .page-shell.notifications-page.wb-sheet {
+  padding-top: 8px;
+  row-gap: 16px;
 }
 
 /* 卡头右侧的「待我处理」计数：与读数条呼应，提醒这一页有动作要做 */
@@ -247,18 +203,6 @@ function openCard(card: NotificationCard) {
 .notifications-load-error__copy p {
   margin: 4px 0 0;
   color: var(--73-danger);
-}
-
-/* 列表像会话一样贴底：面板撑满顶栏以下的一屏，搜索留在上方，通知压到底部，最新一条最靠近底边 */
-@media (max-width: 900px) {
-  .notifications-page:not(.dev-page) {
-    min-height: 100%;
-  }
-
-  .notifications-page:not(.dev-page) > .notifications-panel {
-    min-height: 0;
-    padding: 18px 16px 24px;
-  }
 }
 
 @media (max-width: 640px) {
