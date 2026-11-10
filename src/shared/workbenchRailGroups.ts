@@ -134,16 +134,10 @@ export function buildRailGroups(realnameApproved: boolean): RailGroup[] {
 /**
  * 开发者工作台的图标栏分组：与用户侧同一套「分组入口 → 组内列表 → 右栏内容」骨架，
  * 把原来的 10 个平铺图标收成两组，账户类入口仍留在齿轮弹层里。
+ * 总览不在分组里：它由图标栏最上面的独立入口承担，分组只列组内页面。
  */
 export function buildDevRailGroups(): RailGroup[] {
   const delivery: RailGroupItem[] = [
-    {
-      key: 'dev-home',
-      label: '开发者总览',
-      name: 'dev-home',
-      description: '查看开发数据与待办',
-      activeNames: ['dev-dashboard'],
-    },
     {
       key: 'dev-resources',
       label: '资源项目',

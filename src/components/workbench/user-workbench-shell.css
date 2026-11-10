@@ -131,6 +131,12 @@
   margin: 0;
 }
 
+/* 开发者页没有 .page-shell 包一层，工作区壳又是 padding:0，宽屏会贴住左边界。
+   只对含 .dev-page 的路由补回与其余菜单页一致的外沿留白，.wb-sheet 用户页不受影响。 */
+.user-workbench__content--workspace:has(.dev-page) {
+  padding: 24px;
+}
+
 /* 系统通知页自己把读数条、面板和空态组织成一张连续的工作区卡，内边距归零 */
 .user-workbench__content--workspace:has(.notifications-page:not(.dev-page)) {
   padding: 0;
@@ -231,6 +237,10 @@
     padding: 10px;
     border-radius: 0;
     box-shadow: none;
+  }
+
+  .user-workbench__content--workspace:has(.dev-page) {
+    padding: 10px;
   }
 
   .user-workbench--messages {

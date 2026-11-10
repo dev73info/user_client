@@ -95,9 +95,8 @@ describe('buildDevRailGroups', () => {
     expect(buildDevRailGroups().map((group) => group.label)).toEqual(['接单与交付', '收益与服务'])
   })
 
-  it('接单与交付按总览 → 资源 → 接单 → 大厅排', () => {
+  it('接单与交付按资源 → 接单 → 大厅排（总览走图标栏独立入口）', () => {
     expect(buildDevRailGroups()[0]?.items.map((item) => item.label)).toEqual([
-      '开发者总览',
       '资源项目',
       '我的接单',
       '需求大厅',
@@ -126,6 +125,15 @@ describe('buildDevRailGroups', () => {
 
     expect(railGroupOf(groups, 'dev-messages')).toBeNull()
     expect(railGroupOf(groups, 'dev-notifications')).toBeNull()
+  })
+
+  it('开发者总览不在分组里，由图标栏顶部的独立入口承担', () => {
+    const groups = buildDevRailGroups()
+
+    expect(groups.flatMap((group) => group.items).some((item) => item.name === 'dev-home')).toBe(
+      false,
+    )
+    expect(railGroupOf(groups, 'dev-home')).toBeNull()
   })
 })
 

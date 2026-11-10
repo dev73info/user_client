@@ -142,7 +142,7 @@ describe('工作台图标栏', () => {
 
     await railButton('接单与交付').trigger('click')
     await flushPromises()
-    expect(router.currentRoute.value.name).toBe('dev-home')
+    expect(router.currentRoute.value.name).toBe('dev-resource-list')
 
     await railButton('消息').trigger('click')
     await flushPromises()
