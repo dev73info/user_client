@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 
-import { TDropdown, TDropdownItem, TDropdownMenu, TIcon, ArrowDown } from 'ui_73info'
+import { Bell, TDropdown, TDropdownItem, TDropdownMenu, TIcon, ArrowDown } from 'ui_73info'
 import PaymentModeChip from '@/components/PaymentModeChip.vue'
 import type { RequirementItem } from '@/api/requirements'
 import {
@@ -230,6 +230,7 @@ function runMoreAction(key: unknown) {
           @click.stop="emit('toggleSubscription')"
         >
           <span class="requirement-toggle__track" aria-hidden="true"></span>
+          <TIcon :size="12" aria-hidden="true"><Bell /></TIcon>
           {{ subscriptionLoading ? '提交中...' : requirementSubscriptionLabel() }}
         </button>
         <button

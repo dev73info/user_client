@@ -76,6 +76,14 @@
   flex: 0 0 112px;
 }
 
+/* 需求状态下拉只有两三字：宽度跟着当前文字走，不占 150px 定宽。
+   直接落在 TSelect 根节点（子组件根）上，组件内的 scoped 规则够不到，
+   所以这条放在统一工具栏层。 */
+.wb-toolbar__field--requirement-state {
+  flex: 0 0 auto;
+  width: fit-content;
+}
+
 /* 筛选是胶囊组时，组本身不抢占空间：宽度够就整组一行，摆不下就让组收缩并靠自己的 flex-wrap
    折行。原来写的是 `flex: 0 0 auto`（即 flex-shrink: 0），组宽按 max-content 撑开、永远不折行，
    于是窄屏上「我的合同」那一组 5 个胶囊宽到 415px，从 390px 的视口里横着溢出去。 */
