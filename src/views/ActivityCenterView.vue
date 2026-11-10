@@ -7,24 +7,38 @@ import { Refresh, TButton, TIcon } from 'ui_73info'
 import { listActivities, type ActivitySummary } from '@/api/activities'
 import ActivityCard from '@/components/activity/ActivityCard.vue'
 import WorkbenchBarSlot from '@/components/WorkbenchBarSlot.vue'
+import { isJoinedActivity } from '@/shared/activity'
 import { useAuthStore } from '@/stores/auth'
+
+type ActivityFilter = 'all' | 'active' | 'joined'
 
 const router = useRouter()
 const auth = useAuthStore()
 const activities = ref<ActivitySummary[]>([])
 const loading = ref(false)
 const loadError = ref('')
+const activityFilter = ref<ActivityFilter>('all')
 
 const activeCount = computed(
   () => activities.value.filter((activity) => activity.phase === 'active').length,
 )
-const joinedCount = computed(
-  () =>
-    activities.value.filter(
-      (activity) =>
-        activity.my_quota > 0 || activity.my_reward_pending_fen + activity.my_reward_paid_fen > 0,
-    ).length,
-)
+/** 读数与「我参与的」筛选共用 `isJoinedActivity`，不再各写一份判定。 */
+const joinedCount = computed(() => activities.value.filter(isJoinedActivity).length)
+
+const filteredActivities = computed(() => {
+  if (activityFilter.value === 'active') {
+    return activities.value.filter((activity) => activity.phase === 'active')
+  }
+  if (activityFilter.value === 'joined') {
+    return activities.value.filter(isJoinedActivity)
+  }
+  return activities.value
+})
+
+/** 加载中读数不报数：先显示 0 会被读成「一个活动都没有」。 */
+function stripValue(count: number) {
+  return loading.value ? '—' : count
+}
 
 async function load() {
   auth.hydrate()
@@ -58,20 +72,38 @@ onMounted(() => {
   >
     <WorkbenchBarSlot>
       <div class="wb-strip" aria-label="活动概览">
-        <div class="wb-strip__item">
+        <button
+          class="wb-strip__item wb-strip__item--filter"
+          :class="{ 'is-active': activityFilter === 'all' }"
+          type="button"
+          :aria-pressed="activityFilter === 'all'"
+          @click="activityFilter = 'all'"
+        >
           <span class="wb-strip__label">活动</span>
-          <span class="wb-strip__value">{{ activities.length }}</span>
-        </div>
-        <div class="wb-strip__divider" />
-        <div class="wb-strip__item">
+          <span class="wb-strip__value">{{ stripValue(activities.length) }}</span>
+        </button>
+        <span class="wb-strip__divider" aria-hidden="true" />
+        <button
+          class="wb-strip__item wb-strip__item--filter"
+          :class="{ 'is-active': activityFilter === 'active' }"
+          type="button"
+          :aria-pressed="activityFilter === 'active'"
+          @click="activityFilter = 'active'"
+        >
           <span class="wb-strip__label">进行中</span>
-          <span class="wb-strip__value">{{ activeCount }}</span>
-        </div>
-        <div class="wb-strip__divider" />
-        <div class="wb-strip__item">
+          <span class="wb-strip__value">{{ stripValue(activeCount) }}</span>
+        </button>
+        <span class="wb-strip__divider" aria-hidden="true" />
+        <button
+          class="wb-strip__item wb-strip__item--filter"
+          :class="{ 'is-active': activityFilter === 'joined' }"
+          type="button"
+          :aria-pressed="activityFilter === 'joined'"
+          @click="activityFilter = 'joined'"
+        >
           <span class="wb-strip__label">我参与的</span>
-          <span class="wb-strip__value">{{ joinedCount }}</span>
-        </div>
+          <span class="wb-strip__value">{{ stripValue(joinedCount) }}</span>
+        </button>
         <div class="wb-strip__item wb-strip__action">
           <TButton icon-only :loading="loading" aria-label="刷新活动" @click="load">
             <TIcon><Refresh /></TIcon>
@@ -102,27 +134,20 @@ onMounted(() => {
       <p v-else-if="!activities.length" class="wb-empty" role="status">
         <span class="wb-empty__title">暂无活动</span>
       </p>
-      <div v-else class="activity-grid">
+      <div v-else-if="!filteredActivities.length" class="wb-empty" role="status">
+        <span class="wb-empty__title">没有符合条件的活动</span>
+        <div class="wb-empty__actions">
+          <TButton variant="outline" @click="activityFilter = 'all'">清除筛选</TButton>
+        </div>
+      </div>
+      <ul v-else class="wb-list" aria-label="活动列表">
         <ActivityCard
-          v-for="activity in activities"
+          v-for="activity in filteredActivities"
           :key="activity.id"
           :activity="activity"
           @open="openActivity(activity)"
         />
-      </div>
+      </ul>
     </section>
   </main>
 </template>
-
-<style scoped>
-.activity-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 12px;
-}
-@media (max-width: 900px) {
-  .activity-grid {
-    grid-template-columns: minmax(0, 1fr);
-  }
-}
-</style>

@@ -34,6 +34,16 @@ import type { Tone } from 'ui_73info'
 /** 邀请奖励对应的活动 code：后端内置活动固定为 `invite-reward`（见 activity 迁移与 service）。 */
 export const INVITE_ACTIVITY_CODE = 'invite-reward'
 
+/**
+ * 我是否参与过该活动：有我的名额，或已有待发 / 已发的活动奖励。
+ * 活动中心的读数与「我参与的」筛选共用这一条判定，避免两处各写一份条件。
+ */
+export function isJoinedActivity(
+  activity: Pick<ActivitySummary, 'my_quota' | 'my_reward_pending_fen' | 'my_reward_paid_fen'>,
+): boolean {
+  return activity.my_quota > 0 || activity.my_reward_pending_fen + activity.my_reward_paid_fen > 0
+}
+
 export function activityPhaseLabel(phase: string | null | undefined): string {
   switch (phase) {
     case 'active':

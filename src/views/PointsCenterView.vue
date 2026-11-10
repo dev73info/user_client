@@ -5,6 +5,7 @@ import { Promotion, Refresh, TButton, TDialog, TIcon } from 'ui_73info'
 import WorkbenchBarSlot from '@/components/WorkbenchBarSlot.vue'
 import PointsLogList from '@/components/points/PointsLogList.vue'
 import PointsRewardCard from '@/components/points/PointsRewardCard.vue'
+import WorkbenchPager from '@/components/workbench/WorkbenchPager.vue'
 import { usePointsCenter } from '@/composables/usePointsCenter'
 
 /**
@@ -24,7 +25,6 @@ const {
   loadCheckin,
   loadTransfers,
   loadTransferMeta,
-  logs,
   pointsBalance,
   pagedLogs,
   logPage,
@@ -88,12 +88,12 @@ function retryFailed() {
       <div class="wb-strip" aria-label="积分概览">
         <div class="wb-strip__item">
           <span class="wb-strip__label">可用积分</span>
-          <span class="wb-strip__value">{{ loading ? '—' : pointsBalance }} PTS</span>
+          <span class="wb-strip__value">{{ loading ? '—' : `${pointsBalance} PTS` }}</span>
         </div>
-        <div class="wb-strip__divider" />
+        <span class="wb-strip__divider" aria-hidden="true" />
         <div class="wb-strip__item">
           <span class="wb-strip__label">积分记录</span>
-          <span class="wb-strip__value">{{ loading ? '—' : logTotal }} 条</span>
+          <span class="wb-strip__value">{{ loading ? '—' : `${logTotal} 条` }}</span>
           <span class="wb-strip__tag">含打赏 {{ transferLoading ? '—' : transferTotal }} 笔</span>
         </div>
         <div class="wb-strip__item wb-strip__action">
@@ -115,9 +115,12 @@ function retryFailed() {
     </div>
 
     <section class="wallet-section points-records" aria-label="积分记录">
-      <div class="wb-toolbar points-records__toolbar">
-        <span class="wb-toolbar__hint">签到、打赏与兑换都会记入同一份积分流水</span>
-        <div class="wb-toolbar__actions">
+      <div class="wb-card-head">
+        <div class="wb-card-head__title-block">
+          <h3 class="wb-card-head__title">我的积分</h3>
+        </div>
+        <!-- 页面级动作挂在卡头右侧：桌面完整文案，≤640 收成纯文字胶囊 -->
+        <div class="wb-card-head__actions points-records__actions">
           <TButton
             variant="outline"
             :loading="checkinSaving"
@@ -139,18 +142,33 @@ function retryFailed() {
           </TButton>
         </div>
       </div>
-      <PointsLogList
-        :loading="loading"
-        :error="error"
-        :rows="pagedLogs"
-        :all-count="logs.length"
-        :page="logPage"
-        :page-size="logPageSize"
-        :total="logTotal"
-        @reload="loadPoints()"
-        @page-change="handleLogPageChange"
-        @page-size-change="handleLogPageSizeChange"
-      />
+
+      <p v-if="loading && !pagedLogs.length" class="wb-empty" role="status">
+        正在加载积分记录…
+      </p>
+      <div v-else-if="error" class="wb-empty" role="alert">
+        <span class="wb-empty__title">加载积分记录失败</span>{{ error }}
+        <div class="wb-empty__actions">
+          <TButton variant="outline" @click="loadPoints()">
+            <TIcon><Refresh /></TIcon><span>重新加载</span>
+          </TButton>
+        </div>
+      </div>
+      <p v-else-if="!pagedLogs.length" class="wb-empty" role="status">
+        <span class="wb-empty__title">暂无积分记录</span>
+      </p>
+      <template v-else>
+        <PointsLogList :rows="pagedLogs" />
+        <WorkbenchPager
+          :total="logTotal"
+          unit="条记录"
+          :page="logPage"
+          :page-size="logPageSize"
+          pagination-aria-label="积分记录分页"
+          @update:page="handleLogPageChange"
+          @update:page-size="handleLogPageSizeChange"
+        />
+      </template>
     </section>
 
     <TDialog
@@ -176,18 +194,10 @@ function retryFailed() {
         @cancel="closeReward"
       />
     </TDialog>
-
-    <footer class="points-foot">73info.cn 开发者协作平台 · 积分记录由自动化记账系统维护</footer>
   </main>
 </template>
 
 <style scoped>
-.points-page {
-  display: flex;
-  flex-direction: column;
-  gap: 0;
-}
-
 .points-alert {
   display: flex;
   align-items: center;
@@ -202,46 +212,22 @@ function retryFailed() {
   font-size: 13px;
 }
 
-.points-records {
-  overflow: hidden;
-  border: 1px solid var(--73-border);
-  border-radius: 12px;
-  background: var(--73-surface);
-  box-shadow: 0 1px 2px color-mix(in srgb, var(--73-ink) 5%, transparent);
-}
-/* 记录表自己带 20px 行内边距，作为纸身不再叠一层纸壳内边距 */
-.points-page > .points-records {
-  margin-top: 0;
-  padding: 0;
-}
-
-.points-records__toolbar {
-  margin: 0;
-  padding: 14px 20px;
-  border-bottom: 1px solid var(--73-border-soft);
-}
-
-.points-records__toolbar .wb-toolbar__actions {
+.points-records__actions {
   flex-wrap: wrap;
 }
 
-.points-records__toolbar .points-reward--compact {
+.points-records__actions .points-reward--compact {
   display: none;
 }
 
 @media (max-width: 640px) {
-  /* 触屏档工作台会把「图标 + 文字」的工具栏按钮收成纯图标；打赏入口换成纯文字胶囊，
-     比只留一枚火箭图标更容易认。 */
-  .points-records__toolbar .points-reward--compact {
+  /* 触屏档：带「图标 + 文字」的完整按钮收起，打赏入口换成纯文字胶囊，比只留一枚火箭图标更容易认。 */
+  .points-records__actions .points-reward--full {
+    display: none;
+  }
+
+  .points-records__actions .points-reward--compact {
     display: inline-flex;
   }
-}
-
-.points-foot {
-  padding: 8px 0 24px;
-  border-top: 1px solid var(--73-border-soft);
-  color: var(--73-ink-placeholder);
-  font-size: 12px;
-  text-align: center;
 }
 </style>

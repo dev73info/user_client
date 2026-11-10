@@ -13,7 +13,7 @@ import type { ResourcePurchaseOrder } from '@/api/resourcePurchase'
 import { getResourceDetailSlug } from '@/api/resourceTags'
 import PurchaseStatsStrip from '@/components/payment/PurchaseStatsStrip.vue'
 import PurchaseTransferDialog from '@/components/payment/PurchaseTransferDialog.vue'
-import { LIST_PAGE_SIZES } from '@/composables/useClientPagination'
+import WorkbenchPager from '@/components/workbench/WorkbenchPager.vue'
 import { useMyResourcePurchases } from '@/composables/useMyResourcePurchases'
 import {
   formatPurchaseAmountLabel,
@@ -23,16 +23,7 @@ import {
 import { canTransferPurchase } from '@/shared/resourceTransfer'
 import { useAuthStore } from '@/stores/auth'
 
-import {
-  RefreshLeft,
-  Search,
-  TButton,
-  TIcon,
-  TInput,
-  TOption,
-  TPagination,
-  TSelect,
-} from 'ui_73info'
+import { RefreshLeft, Search, TButton, TIcon, TInput, TOption, TSelect } from 'ui_73info'
 
 const router = useRouter()
 const auth = useAuthStore()
@@ -86,6 +77,7 @@ function openTransfer(order: ResourcePurchaseOrder) {
     :aria-busy="loading"
   >
     <PurchaseStatsStrip
+      v-model:status="statusFilter"
       :stats="stats"
       :loading="loading"
       :stats-loading="statsLoading"
@@ -93,6 +85,20 @@ function openTransfer(order: ResourcePurchaseOrder) {
     />
 
     <section class="wallet-section">
+      <div class="wb-card-head">
+        <div class="wb-card-head__title-block">
+          <h3 class="wb-card-head__title">我的已购资源</h3>
+        </div>
+        <div class="wb-card-head__actions">
+          <TButton variant="outline" @click="router.push({ name: 'workbench-purchase-transfers' })">
+            过户与转移
+          </TButton>
+          <TButton variant="outline" @click="router.push({ name: 'resources' })">
+            浏览资源
+          </TButton>
+        </div>
+      </div>
+
       <div class="wb-toolbar">
         <TSelect
           v-model="statusFilter"
@@ -117,19 +123,8 @@ function openTransfer(order: ResourcePurchaseOrder) {
             ><TIcon><Search /></TIcon
           ></template>
         </TInput>
-        <div class="wb-toolbar__actions">
-          <span v-if="hasActiveFilters" class="wb-toolbar__hint">
-            筛选出 {{ total }} / {{ stats.all }} 条
-          </span>
-          <TButton v-if="hasActiveFilters" variant="outline" @click="resetFilters">
-            <TIcon><RefreshLeft /></TIcon><span>重置</span>
-          </TButton>
-          <TButton variant="outline" @click="router.push({ name: 'workbench-purchase-transfers' })">
-            过户与转移
-          </TButton>
-          <TButton variant="outline" @click="router.push({ name: 'resources' })">
-            浏览资源
-          </TButton>
+        <div v-if="hasActiveFilters" class="wb-toolbar__actions">
+          <span class="wb-toolbar__hint">筛选出 {{ total }} / {{ stats.all }} 条</span>
         </div>
       </div>
 
@@ -168,7 +163,7 @@ function openTransfer(order: ResourcePurchaseOrder) {
               <template v-if="order.entitlement_revoked"> · 下载权已被退款收回</template>
             </span>
           </div>
-          <div class="wb-item__actions">
+          <div class="wb-item__side">
             <TButton
               v-if="canTransferPurchase(order)"
               variant="outline"
@@ -181,26 +176,18 @@ function openTransfer(order: ResourcePurchaseOrder) {
         </li>
       </ul>
 
-      <div v-if="!(loading && !orders.length)" class="wb-pager">
-        <div class="wb-pager__count">
-          <TSelect v-model="pageSize" class="wb-pager__size" aria-label="每页订单数">
-            <TOption
-              v-for="size in LIST_PAGE_SIZES"
-              :key="size"
-              :label="`${size} 条/页`"
-              :value="size"
-            />
-          </TSelect>
-        </div>
-        <TPagination
-          v-model:current-page="page"
-          :page-size="pageSize"
-          :total="total"
-          :pager-count="5"
-          background
-          aria-label="已购订单分页"
-        />
-      </div>
+      <!-- 服务端分页：页码与每页条数直接写回 composable 持有的 ref，watcher 负责发请求。 -->
+      <WorkbenchPager
+        v-if="!(loading && !orders.length)"
+        :page="page"
+        :page-size="pageSize"
+        :total="total"
+        unit="条订单"
+        page-size-aria-label="每页订单数"
+        pagination-aria-label="已购订单分页"
+        @update:page="page = $event"
+        @update:page-size="pageSize = $event"
+      />
     </section>
     <PurchaseTransferDialog
       v-model:open="transferOpen"
@@ -234,13 +221,6 @@ function openTransfer(order: ResourcePurchaseOrder) {
   font-size: 12px;
   font-weight: 700;
   line-height: 1.5;
-}
-
-.wb-item__actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  align-items: center;
 }
 
 /* 与「我的发票」同一套单纸页版式：面板撑满内容区，分页器沉到纸底；

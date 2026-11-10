@@ -122,6 +122,16 @@ export function formatExposureStatus(resource: McResourcePayload): string {
   return parts.join(' · ')
 }
 
+/** 可以申请 / 重新申请公开的可见性档：草稿与已驳回。 */
+export function canRequestResourceReview(resource: Pick<McResourcePayload, 'visibility'>): boolean {
+  return resource.visibility === 'draft' || resource.visibility === 'rejected'
+}
+
+/** 已公开的资源才能「设为私有」。 */
+export function canSetResourcePrivate(resource: Pick<McResourcePayload, 'visibility'>): boolean {
+  return resource.visibility === 'published'
+}
+
 export function hasDevResourcePrice(
   resource: McResourcePayload,
   versionPrices: Record<number, number>,

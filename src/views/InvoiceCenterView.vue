@@ -13,19 +13,10 @@ import { computed } from 'vue'
 import InvoiceApplyDialog from '@/components/InvoiceApplyDialog.vue'
 import InvoiceGroupCard from '@/components/invoice/InvoiceGroupCard.vue'
 import InvoiceSummaryStrip from '@/components/invoice/InvoiceSummaryStrip.vue'
-import { LIST_PAGE_SIZES } from '@/composables/useClientPagination'
+import WorkbenchPager from '@/components/workbench/WorkbenchPager.vue'
 import { useInvoiceCenter } from '@/composables/useInvoiceCenter'
 import { INVOICE_STATUS_FILTERS } from '@/shared/invoiceDisplay'
-import {
-  RefreshLeft,
-  Search,
-  TButton,
-  TIcon,
-  TInput,
-  TOption,
-  TPagination,
-  TSelect,
-} from 'ui_73info'
+import { RefreshLeft, Search, TButton, TIcon, TInput, TOption, TSelect } from 'ui_73info'
 
 const {
   auth,
@@ -71,7 +62,12 @@ const selectedIds = computed(() =>
     class="page-shell custom-page-shell profile-page invoice-center-page wb-sheet"
     :aria-busy="loading"
   >
-    <InvoiceSummaryStrip :loading="loading" :stats="stats" @refresh="loadData" />
+    <InvoiceSummaryStrip
+      v-model:status="statusFilter"
+      :loading="loading"
+      :stats="stats"
+      @refresh="loadData"
+    />
 
     <section class="wallet-section">
       <div class="wb-card-head">
@@ -115,7 +111,7 @@ const selectedIds = computed(() =>
       </div>
 
       <p v-if="loading && !groups.length" class="wb-empty" role="status">正在加载发票记录…</p>
-      <div v-else-if="!filteredGroups.length" class="wb-empty">
+      <div v-else-if="!filteredGroups.length" class="wb-empty" role="status">
         <span class="wb-empty__title">{{
           groups.length ? '没有符合条件的发票' : '还没有发票记录'
         }}</span>
@@ -154,26 +150,14 @@ const selectedIds = computed(() =>
         </ul>
       </template>
 
-      <div v-if="!(loading && !groups.length)" class="wb-pager">
-        <div class="wb-pager__count">
-          <TSelect v-model="pageSize" class="wb-pager__size" aria-label="每页记录数">
-            <TOption
-              v-for="size in LIST_PAGE_SIZES"
-              :key="size"
-              :label="`${size} 条/页`"
-              :value="size"
-            />
-          </TSelect>
-        </div>
-        <TPagination
-          v-model:current-page="page"
-          :page-size="pageSize"
-          :total="filteredTotal"
-          :pager-count="5"
-          background
-          aria-label="发票记录分页"
-        />
-      </div>
+      <WorkbenchPager
+        v-if="!(loading && !groups.length)"
+        v-model:page="page"
+        v-model:page-size="pageSize"
+        :total="filteredTotal"
+        page-size-aria-label="每页记录数"
+        pagination-aria-label="发票记录分页"
+      />
     </section>
 
     <!-- 原票被红冲后从这里重新申请：复用需求页那支开票弹窗，它按需求算出这次能重开哪几张票。 -->

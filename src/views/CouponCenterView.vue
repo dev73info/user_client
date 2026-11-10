@@ -9,7 +9,7 @@ import { formatCouponDiscount, formatCouponRange } from '@/shared/couponDisplay'
 import { formatFenAsCny } from '@/shared/money'
 import { useAuthStore } from '@/stores/auth'
 
-/* 「我的背包 → 优惠券中心」：券包按满减 / 折扣分两组，点券卡复制券码。
+/* 「我的背包 → 优惠券中心」：券包按满减 / 折扣分两组，点券行复制券码。
 
    字段按契约 `CouponResponse` 读：金额是整数分（`amount_off_fen` / `min_amount_fen` /
    `max_discount_fen`，展示走 `@/shared/money`），优惠百分比是整数基点 `discount_bps`
@@ -23,6 +23,7 @@ const auth = useAuthStore()
 
 const coupons = ref<CouponItem[]>([])
 const loading = ref(false)
+const couponFilter = ref<'all' | 'usable' | 'amount' | 'percent'>('all')
 
 const amountCoupons = computed(() =>
   coupons.value.filter((item) => item.discount_type === 'amount'),
@@ -32,6 +33,32 @@ const discountCoupons = computed(() =>
 )
 /** 读数条口径：可用券不含已核销的，与账户页「可用券」的说法一致。 */
 const usableCoupons = computed(() => coupons.value.filter((item) => item.status !== 'used'))
+
+/** 两组券包共用同一份行模板；顺序固定满减在前。分组计数徽标报本组总数，不随筛选变化。 */
+const couponGroups = computed(() => {
+  const groups = [
+    { key: 'amount', title: '满减优惠券', empty: '暂无满减优惠券', all: amountCoupons.value },
+    { key: 'percent', title: '折扣优惠券', empty: '暂无折扣优惠券', all: discountCoupons.value },
+  ].filter(
+    (group) =>
+      couponFilter.value === 'all' ||
+      couponFilter.value === 'usable' ||
+      group.key === couponFilter.value,
+  )
+  return groups.map((group) => ({
+    key: group.key,
+    title: group.title,
+    empty: group.empty,
+    count: group.all.length,
+    items:
+      couponFilter.value === 'usable'
+        ? group.all.filter((item) => item.status !== 'used')
+        : group.all,
+  }))
+})
+const visibleCouponCount = computed(() =>
+  couponGroups.value.reduce((total, group) => total + group.items.length, 0),
+)
 
 async function copyCouponCode(code: string) {
   const value = code.trim()
@@ -83,20 +110,49 @@ onMounted(() => {
     <!-- 顶部读数条：读数在最左，页面级刷新固定在右上角 -->
     <WorkbenchBarSlot>
       <div class="wb-strip" aria-label="优惠券概览">
-        <div class="wb-strip__item">
+        <button
+          class="wb-strip__item wb-strip__item--filter"
+          :class="{ 'is-active': couponFilter === 'all' }"
+          type="button"
+          :aria-pressed="couponFilter === 'all'"
+          @click="couponFilter = 'all'"
+        >
+          <span class="wb-strip__label">全部</span>
+          <span class="wb-strip__value">{{ loading ? '—' : coupons.length }}</span>
+        </button>
+        <span class="wb-strip__divider" aria-hidden="true" />
+        <button
+          class="wb-strip__item wb-strip__item--filter"
+          :class="{ 'is-active': couponFilter === 'usable' }"
+          type="button"
+          :aria-pressed="couponFilter === 'usable'"
+          @click="couponFilter = 'usable'"
+        >
           <span class="wb-strip__label">可用优惠券</span>
           <span class="wb-strip__value">{{ loading ? '—' : usableCoupons.length }}</span>
-        </div>
-        <div class="wb-strip__divider" />
-        <div class="wb-strip__item">
+        </button>
+        <span class="wb-strip__divider" aria-hidden="true" />
+        <button
+          class="wb-strip__item wb-strip__item--filter"
+          :class="{ 'is-active': couponFilter === 'amount' }"
+          type="button"
+          :aria-pressed="couponFilter === 'amount'"
+          @click="couponFilter = 'amount'"
+        >
           <span class="wb-strip__label">满减券</span>
           <span class="wb-strip__value">{{ loading ? '—' : amountCoupons.length }}</span>
-        </div>
-        <div class="wb-strip__divider" />
-        <div class="wb-strip__item">
+        </button>
+        <span class="wb-strip__divider" aria-hidden="true" />
+        <button
+          class="wb-strip__item wb-strip__item--filter"
+          :class="{ 'is-active': couponFilter === 'percent' }"
+          type="button"
+          :aria-pressed="couponFilter === 'percent'"
+          @click="couponFilter = 'percent'"
+        >
           <span class="wb-strip__label">折扣券</span>
           <span class="wb-strip__value">{{ loading ? '—' : discountCoupons.length }}</span>
-        </div>
+        </button>
         <div class="wb-strip__item wb-strip__action">
           <TButton icon-only :loading="loading" aria-label="刷新券包" @click="loadCoupons">
             <TIcon><Refresh /></TIcon>
@@ -112,138 +168,81 @@ onMounted(() => {
         </div>
       </div>
 
-      <p v-if="loading" class="wb-empty" role="status">正在加载券包…</p>
+      <p v-if="loading && !coupons.length" class="wb-empty" role="status">正在加载券包…</p>
       <p v-else-if="!coupons.length" class="wb-empty" role="status">
         <span class="wb-empty__title">暂无优惠券</span>
       </p>
+      <div v-else-if="!visibleCouponCount" class="wb-empty" role="status">
+        <span class="wb-empty__title">没有符合条件的优惠券</span>
+        <div class="wb-empty__actions">
+          <TButton variant="outline" @click="couponFilter = 'all'">清除筛选</TButton>
+        </div>
+      </div>
       <div v-else class="coupon-groups">
-        <div class="wb-panel coupon-group">
-          <div class="wb-panel__head">
-            <strong class="wb-subhead">满减优惠券</strong>
-            <span class="wb-badge">{{ amountCoupons.length }}</span>
+        <section
+          v-for="group in couponGroups"
+          :key="group.key"
+          class="coupon-group"
+          :aria-label="group.title"
+        >
+          <div class="coupon-group__head">
+            <strong class="wb-subhead">{{ group.title }}</strong>
+            <span class="wb-badge">{{ group.count }}</span>
           </div>
-          <p v-if="amountCoupons.length === 0" class="wb-empty" role="status">暂无满减优惠券</p>
-          <div v-else class="coupon-items">
-            <button
-              v-for="item in amountCoupons"
+          <p v-if="!group.items.length" class="wb-empty" role="status">{{ group.empty }}</p>
+          <ul v-else class="wb-list" :aria-label="`${group.title}列表`">
+            <li
+              v-for="item in group.items"
               :key="item.code"
-              type="button"
-              class="coupon-item"
+              class="wb-item wb-item--clickable"
+              tabindex="0"
               @click="copyCouponCode(item.code)"
+              @keydown.enter.prevent="copyCouponCode(item.code)"
+              @keydown.space.prevent="copyCouponCode(item.code)"
             >
-              <div class="coupon-item__head">
-                <strong>{{ item.code }}</strong>
-                <span class="wb-badge" :class="{ 'wb-badge--success': item.status !== 'used' }">
-                  {{ item.status === 'used' ? '已使用' : '可用' }}
+              <div class="wb-item__main">
+                <div class="wb-item__title-row">
+                  <span class="wb-item__title">{{ item.code }}</span>
+                  <span class="wb-badge" :class="{ 'wb-badge--success': item.status !== 'used' }">
+                    {{ item.status === 'used' ? '已使用' : '可用' }}
+                  </span>
+                </div>
+                <span class="wb-item__meta">{{ item.name }}</span>
+                <span class="wb-item__meta">{{ formatCouponDiscount(item) }}</span>
+                <span class="wb-item__meta">
+                  门槛 ¥{{ formatFenAsCny(item.min_amount_fen) }} · {{ formatCouponRange(item) }}
                 </span>
               </div>
-              <small>{{ item.name }}</small>
-              <p>{{ formatCouponDiscount(item) }}</p>
-              <p class="coupon-item__meta">
-                门槛 ¥{{ formatFenAsCny(item.min_amount_fen) }} · {{ formatCouponRange(item) }}
-              </p>
-            </button>
-          </div>
-        </div>
-
-        <div class="wb-panel coupon-group">
-          <div class="wb-panel__head">
-            <strong class="wb-subhead">折扣优惠券</strong>
-            <span class="wb-badge">{{ discountCoupons.length }}</span>
-          </div>
-          <p v-if="discountCoupons.length === 0" class="wb-empty" role="status">暂无折扣优惠券</p>
-          <div v-else class="coupon-items">
-            <button
-              v-for="item in discountCoupons"
-              :key="item.code"
-              type="button"
-              class="coupon-item"
-              @click="copyCouponCode(item.code)"
-            >
-              <div class="coupon-item__head">
-                <strong>{{ item.code }}</strong>
-                <span class="wb-badge" :class="{ 'wb-badge--success': item.status !== 'used' }">
-                  {{ item.status === 'used' ? '已使用' : '可用' }}
-                </span>
+              <div class="wb-item__side">
+                <TButton variant="outline" @click.stop="copyCouponCode(item.code)" @keydown.stop>
+                  复制券码
+                </TButton>
               </div>
-              <small>{{ item.name }}</small>
-              <p>{{ formatCouponDiscount(item) }}</p>
-              <p class="coupon-item__meta">
-                门槛 ¥{{ formatFenAsCny(item.min_amount_fen) }} · {{ formatCouponRange(item) }}
-              </p>
-            </button>
-          </div>
-        </div>
+            </li>
+          </ul>
+        </section>
       </div>
     </section>
   </main>
 </template>
 
 <style scoped>
-/* 版式走统一层（.wb-strip / .wb-card-head / .wb-empty / .wb-badge / .wb-panel / .wb-subhead），
-   本页只留「券卡网格」这一块统一层没有提供的布局：
-   券卡是「点一下就复制券码」的整块可点区，不是列表行，所以保留网格；
-   描边、圆角、悬停与状态标签都取统一层那一套。
-   分组块（.coupon-group）与组名走统一层的 .wb-panel / .wb-subhead：
-   它原先自带一份 12px 内边距 + 12px 圆角 + 13px 组名，与权益页的面板一格之差，两页各写一份。 */
-
-.coupon-groups {
+/* 版式走统一层（.wb-strip / .wb-card-head / .wb-list / .wb-item / .wb-empty / .wb-badge），
+   本页只留「两组券包」的纵向排布。 */
+.coupon-groups,
+.coupon-group {
   display: grid;
   gap: 12px;
 }
 
-.coupon-items {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-  gap: 8px;
+.coupon-group {
+  gap: 10px;
 }
 
-.coupon-item {
-  display: grid;
-  gap: 4px;
-  min-width: 0;
-  padding: 12px;
-  border: 1px solid var(--wb-line);
-  border-radius: var(--wb-radius-item);
-  background: var(--profile-card-bg-strong);
-  color: var(--profile-text-sub);
-  font: inherit;
-  text-align: left;
-  cursor: pointer;
-  transition:
-    border-color 160ms ease,
-    box-shadow 160ms ease;
-}
-
-.coupon-item:hover,
-.coupon-item:focus-visible {
-  border-color: var(--wb-accent-line);
-  box-shadow: var(--wb-shadow);
-}
-
-.coupon-item__head {
+.coupon-group__head {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 8px;
-}
-
-.coupon-item__head strong {
-  color: var(--profile-text-main);
-  font-size: 14px;
-}
-
-.coupon-item p {
-  margin: 0;
-  color: var(--profile-text-main);
-  font-size: 13px;
-  font-weight: 700;
-}
-
-.coupon-item__meta {
-  color: var(--profile-text-sub) !important;
-  font-size: 12px !important;
-  font-weight: 400 !important;
-  line-height: 1.6;
 }
 </style>

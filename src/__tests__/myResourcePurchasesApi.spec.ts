@@ -140,3 +140,50 @@ describe('我的已购资源：接口资源订单标签', () => {
     expect(tags[0]?.text()).toBe('接口资源')
   })
 })
+
+describe('我的已购资源：读数格即状态筛选', () => {
+  it('点读数格写回 statusFilter，并与工具栏下拉双向同步', async () => {
+    mocks.count.mockImplementation((_token: string, options?: { status?: string }) => {
+      if (options?.status === 'paid') return Promise.resolve(3)
+      if (options?.status === 'refunding') return Promise.resolve(1)
+      if (options?.status === 'refunded') return Promise.resolve(2)
+      return Promise.resolve(6)
+    })
+    wrapper = mount(MyResourcePurchasesView)
+    await flushPromises()
+    await flushPromises()
+
+    const cells = () => wrapper!.findAll('.wb-strip__item--filter')
+    expect(cells().map((cell) => cell.find('.wb-strip__label').text())).toEqual([
+      '订单数',
+      '有效已购',
+      '退款中',
+      '已退款',
+    ])
+    expect(cells()[0]?.find('.wb-strip__value').text()).toBe('6')
+    expect(cells()[0]?.attributes('aria-pressed')).toBe('true')
+
+    await cells()[1]!.trigger('click')
+    await flushPromises()
+    expect(cells()[1]?.attributes('aria-pressed')).toBe('true')
+    expect(cells()[0]?.attributes('aria-pressed')).toBe('false')
+    expect(mocks.listPage).toHaveBeenLastCalledWith(
+      'buyer-token',
+      expect.objectContaining({ status: 'paid', offset: 0 }),
+    )
+
+    await cells()[3]!.trigger('click')
+    await flushPromises()
+    expect(mocks.listPage).toHaveBeenLastCalledWith(
+      'buyer-token',
+      expect.objectContaining({ status: 'refunded' }),
+    )
+
+    await cells()[0]!.trigger('click')
+    await flushPromises()
+    expect(mocks.listPage).toHaveBeenLastCalledWith(
+      'buyer-token',
+      expect.objectContaining({ status: undefined }),
+    )
+  })
+})

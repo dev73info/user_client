@@ -149,7 +149,7 @@ describe('我的积分', () => {
     expect(mocks.me).toHaveBeenCalledTimes(2)
   })
 
-  it('读数条只报读数，签到与打赏入口收在记录工具栏，打赏在弹窗里打开', async () => {
+  it('读数条只报读数，签到与打赏入口收在卡头右侧，打赏在弹窗里打开', async () => {
     wrapper = mount(PointsCenterView, {
       global: { stubs: { WorkbenchBarSlot: { template: '<div><slot /></div>' } } },
     })
@@ -159,12 +159,16 @@ describe('我的积分', () => {
     expect(strip.text()).toContain('含打赏 0 笔')
     expect(strip.text()).not.toContain('每日签到')
     expect(strip.text()).not.toContain('发起积分打赏')
-    const toolbar = wrapper.get('.points-records__toolbar')
-    expect(toolbar.text()).toContain('每日签到')
-    expect(toolbar.text()).toContain('发起积分打赏')
+    const actions = wrapper.get('.points-records__actions')
+    expect(actions.text()).toContain('每日签到')
+    expect(actions.text()).toContain('发起积分打赏')
     expect(wrapper.text()).not.toContain('导出 CSV')
     expect(wrapper.find('[role="tablist"]').exists()).toBe(false)
     expect(wrapper.find('[aria-label="接收方用户名"]').exists()).toBe(false)
+    // 读数格只报读数（余额与记录数都不是可筛维度），页脚与解释性 hint 已按 ui-copy 删除
+    expect(strip.find('[aria-pressed]').exists()).toBe(false)
+    expect(wrapper.find('.points-foot').exists()).toBe(false)
+    expect(wrapper.text()).not.toContain('签到、打赏与兑换都会记入同一份积分流水')
 
     await button('发起积分打赏').trigger('click')
     await flushPromises()
@@ -211,10 +215,22 @@ describe('我的积分', () => {
     })
     await flushPromises()
     expect(wrapper.find('[role="tablist"]').exists()).toBe(false)
+    expect(wrapper.get('.wb-card-head__title').text()).toBe('我的积分')
     expect(wrapper.get('table').attributes('aria-label')).toBe('积分记录')
     expect(wrapper.findAll('tbody tr')).toHaveLength(2)
     expect(wrapper.text()).toContain('打赏给 receiver')
     expect(wrapper.text()).toContain('每日签到')
+    // 分页从记录组件移到页面，用统一表尾分页器
+    expect(wrapper.get('.wb-pager').text()).toContain('共 2 条记录')
+  })
+
+  it('没有积分记录时展示统一空态', async () => {
+    wrapper = mount(PointsCenterView, {
+      global: { stubs: { WorkbenchBarSlot: { template: '<div><slot /></div>' } } },
+    })
+    await flushPromises()
+    expect(wrapper.get('.wb-empty').text()).toContain('暂无积分记录')
+    expect(wrapper.find('.wb-pager').exists()).toBe(false)
   })
 
   it('打赏提交真实接收方、金额和附言', async () => {

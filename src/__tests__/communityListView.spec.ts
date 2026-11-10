@@ -264,12 +264,15 @@ describe('社区列表', () => {
     ])
     expect(wrapper.text()).not.toContain('全部帖子')
     expect(mocks.listFavorites).toHaveBeenCalledWith('token', { limit: 10, offset: 0 })
-    // 与「资产与权益」同组菜单页同一版式：读数条 + 同一张纸里的列表
+    // 与「资产与权益」同组菜单页同一版式：读数条 + 卡头 + 同一张纸里的列表
     expect(wrapper.classes()).toContain('wb-sheet')
     expect(wrapper.get('.wb-strip').text()).toContain('当前列表')
     expect(wrapper.find('.wallet-section .community-list-panel').exists()).toBe(true)
     expect(wrapper.get('.wb-strip__action button').attributes('aria-label')).toBe('刷新社区帖子')
-    expect(wrapper.get('.community-page__tabs-actions').text()).toContain('发布帖子')
+    expect(wrapper.get('.wb-card-head__title').text()).toBe('我的帖子')
+    expect(wrapper.get('.wb-card-head__actions').text()).toContain('发布帖子')
+    // 服务端 offset 分页、只取当前页：读数格没有可映射的筛选维度，保持只读
+    expect(wrapper.get('.wb-strip').find('[aria-pressed]').exists()).toBe(false)
     wrapper.unmount()
   })
 
