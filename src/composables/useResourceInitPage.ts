@@ -36,7 +36,7 @@ export function useResourceInitPage(options: {
         ...resourceCreationRouteQuery(creationType.value, paidMode.value),
       }
       delete query.kind
-      if (creationType.value !== 'paid') {
+      if (creationType.value === 'api') {
         delete query.mode
       }
       if (

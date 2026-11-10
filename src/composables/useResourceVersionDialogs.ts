@@ -32,7 +32,6 @@ export function useResourceVersionDialogs(deps: {
   resource: Ref<McResourcePayload | null>
   versionRows: Ref<McResourceVersionPayload[]>
   loadPage: () => Promise<void>
-  requireVersionPrice?: Ref<boolean>
   onVersionCreated?: () => Promise<void>
 }) {
   const auth = useAuthStore()
@@ -76,10 +75,6 @@ export function useResourceVersionDialogs(deps: {
     const price = parseYuanPriceInput(priceYuan)
     if (!price.ok) {
       TMessage.warning(price.message)
-      return
-    }
-    if (deps.requireVersionPrice?.value && price.fen <= 0) {
-      TMessage.warning('请设置单版本售价')
       return
     }
     if (price.fen > 0 && !deps.resource.value.copyright_declared) {

@@ -7,10 +7,14 @@ import { TButton, TDialog, TForm, TFormItem, TInput } from 'ui_73info'
 /** 发布版本表单；金额校验与请求由 useResourceVersionDialogs 处理。 */
 const open = defineModel<boolean>('open', { required: true })
 
-defineProps<{
-  submitting: boolean
-  requirePrice?: boolean
-}>()
+const props = withDefaults(
+  defineProps<{
+    submitting: boolean
+    /** 售价输入框占位：按资源是否已有买断价区分「0 = 免费」与「0 表示不单卖」。 */
+    pricePlaceholder?: string
+  }>(),
+  { pricePlaceholder: '0 = 免费' },
+)
 
 const emit = defineEmits<{
   submit: [payload: { version: string; note: string; priceYuan: string; file: File | null }]
@@ -78,11 +82,11 @@ function submit() {
       <TFormItem label="版本号" required>
         <TInput v-model="form.version" :maxlength="80" placeholder="例如：1.20.1-2.0.0" />
       </TFormItem>
-      <TFormItem label="单版本售价（元）" :required="requirePrice">
+      <TFormItem label="单版本售价（元）">
         <TInput
           v-model="form.priceYuan"
           inputmode="decimal"
-          placeholder="0 表示不可单买"
+          :placeholder="props.pricePlaceholder"
           aria-label="单版本售价（元）"
         />
       </TFormItem>

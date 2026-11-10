@@ -75,7 +75,6 @@ const versionSaleFlow = useResourceVersionSaleFlow({
   openCreateVersionDialog: () => openCreateVersionDialog(),
 })
 const {
-  requireVersionPrice,
   reviewError: versionSaleReviewError,
   reviewing: versionSaleReviewing,
   completeVersionSale,
@@ -101,7 +100,6 @@ const {
   resource,
   versionRows,
   loadPage,
-  requireVersionPrice,
   onVersionCreated: completeVersionSale,
 })
 
@@ -257,7 +255,9 @@ function handleVersionAction(command: string, version: McResourceVersionPayload)
     <ResourceVersionCreateDialog
       v-model:open="createVersionDialogVisible"
       :submitting="publishing"
-      :require-price="requireVersionPrice"
+      :price-placeholder="
+        Number(resource?.buyout_price_fen ?? 0) > 0 ? '0 表示不单卖' : '0 = 免费'
+      "
       @submit="submitVersion"
     />
 

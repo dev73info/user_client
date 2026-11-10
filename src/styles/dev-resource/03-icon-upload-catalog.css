@@ -60,6 +60,17 @@
   display: grid;
   gap: 8px;
   min-width: 0;
+  width: fit-content;
+  max-width: 100%;
+  justify-self: start;
+  justify-items: start;
+}
+
+/* 触发器按当前内容收窄，不再被栅格默认的 stretch 拉满整列；长标签仍以 100% 为上限 */
+.dev-page--publish .dev-catalog-select > .t73-select {
+  width: fit-content;
+  min-width: 160px;
+  max-width: 100%;
 }
 
 .dev-page--publish .dev-catalog-select__head {
@@ -109,7 +120,7 @@
   padding: 4px 6px 8px 2px;
 }
 
-/* 与需求详情绑定侧栏一致：标题在上、多选满宽，已选芯片全部换行（不用 +N） */
+/* 与需求详情绑定侧栏一致：标题在上、多选按内容宽自适应（上限整行），已选芯片全部换行（不用 +N） */
 .dev-page--publish .dev-tag-group-row {
   display: grid;
   grid-template-columns: 1fr;
@@ -118,7 +129,8 @@
   row-gap: 8px;
   /* 缩到内容宽：标题与计数贴在一起，下拉框按内容宽；不占满整行 */
   width: max-content;
-  max-width: 100%;
+  /* 桌面再压一档：内容再长也不超过 220px，路径超出走省略号 */
+  max-width: min(220px, 100%);
   padding: 12px;
   border: 1px solid color-mix(in srgb, var(--73-accent) 10%, transparent);
   border-radius: 12px;
@@ -176,7 +188,15 @@
   grid-column: 1;
   margin-bottom: 0;
   min-width: 0;
-  width: 100%;
+  width: fit-content;
+  max-width: 100%;
+  justify-self: start;
+}
+
+.dev-page--publish .dev-tag-group-row__field > .t73-select {
+  width: fit-content;
+  min-width: 160px;
+  max-width: 100%;
 }
 
 .dev-tag-group-panel::-webkit-scrollbar {
@@ -195,4 +215,19 @@
   border: 1px solid color-mix(in srgb, var(--73-accent) 10%, transparent);
   background: color-mix(in srgb, var(--73-surface-strong) 92%, transparent);
   box-shadow: 0 12px 24px color-mix(in srgb, var(--73-accent) 6%, transparent);
+}
+
+/* 窄屏回到满宽：标签组本身已改成单列满行，下拉不再按内容收窄 */
+@media (max-width: 900px) {
+  .dev-page--publish .dev-catalog-select,
+  .dev-page--publish .dev-catalog-select > .t73-select,
+  .dev-page--publish .dev-tag-group-row,
+  .dev-page--publish .dev-tag-group-row__field,
+  .dev-page--publish .dev-tag-group-row__field > .t73-select {
+    width: 100%;
+  }
+
+  .dev-page--publish .dev-tag-group-row {
+    max-width: 100%;
+  }
 }

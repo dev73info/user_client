@@ -1,21 +1,19 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
-import { TCheckbox, TForm, TFormItem, TInput, TOption, TSelect } from 'ui_73info'
+import { TCheckbox, TForm, TFormItem, TInput, TOption, TSelect, TTooltip } from 'ui_73info'
 import ResourceIconPicker from '@/components/ResourceIconPicker.vue'
 import {
-  RESOURCE_FEE_NOTICE_TEXT,
   RESOURCE_FEE_UNAVAILABLE_TEXT,
   resourceExpectedNetLabel,
   resourceFeeHintText,
 } from '@/shared/requirementFee'
-import type { ResourceCreationType, ResourcePaidMode } from '@/shared/resourceCreation'
+import type { ResourcePaidMode } from '@/shared/resourceCreation'
 
 /**
  * 基础信息字段；资源类型由独立区块选择，这里只按类型展示适用字段。
  * 现金价输入框的底层元素通过 `cashPriceInput` 事件回传，供实时归一使用。
  */
 const props = defineProps<{
-  creationType: ResourceCreationType
   paidMode: ResourcePaidMode
   isApiKind: boolean
   effectiveOriginType: 'original' | 'repost'
@@ -158,16 +156,13 @@ const feeHintText = computed(() => {
           </TCheckbox>
         </TFormItem>
 
-        <div
-          v-if="isApiKind || (creationType === 'paid' && paidMode === 'buyout')"
-          class="dev-price-group"
-        >
-          <TFormItem label="售价（元）" :required="creationType === 'paid'">
+        <div v-if="isApiKind || paidMode === 'buyout'" class="dev-price-group">
+          <TFormItem label="售价（元）" class="dev-form-item--price-cash">
             <TInput
               ref="cashPriceInputRef"
               v-model="priceYuan"
               :disabled="cashPriceDisabled"
-              :placeholder="isApiKind ? '0 表示免费' : '请输入买断价'"
+              placeholder="0 = 免费"
               inputmode="decimal"
               :title="isApiKind ? undefined : '与售价（积分）互斥'"
               @input="onCashPriceInput"
@@ -175,9 +170,29 @@ const feeHintText = computed(() => {
             <p v-if="cashPriceDisabled" class="dev-field-hint">
               已填售价（积分），售价（元）已禁用。
             </p>
+            <!-- 费用披露收成一个提示触发点：平台抽成与预计到手在悬浮/聚焦时展开；
+                 费率读取失败时不藏起来，直接把错误文案显示在售价旁。 -->
+            <TTooltip
+              v-if="feeHintText && !platformFeeError"
+              class="dev-platform-fee-hint"
+              data-testid="resource-platform-fee-hint"
+              tabindex="0"
+              :content="feeHintText"
+              placement="top"
+              :max-width="360"
+            >
+              <span class="dev-platform-fee-hint__trigger">费率提示</span>
+            </TTooltip>
+            <p
+              v-else-if="platformFeeError"
+              class="dev-field-hint dev-field-hint--error"
+              data-testid="resource-platform-fee-hint"
+            >
+              {{ feeHintText }}
+            </p>
           </TFormItem>
 
-          <TFormItem v-if="creationType === 'paid' && paidMode === 'buyout'" label="售价（积分）">
+          <TFormItem v-if="!isApiKind && paidMode === 'buyout'" label="售价（积分）">
             <TInput
               v-model="pricePoints"
               :disabled="pointsPriceDisabled"
@@ -191,23 +206,6 @@ const feeHintText = computed(() => {
             </p>
           </TFormItem>
         </div>
-
-        <!-- 费用披露：付费 / 接口资源在售价旁写明平台抽成与预计到手；读取失败也要说话 -->
-        <p
-          v-if="feeHintText && (creationType === 'paid' || isApiKind)"
-          class="dev-field-hint dev-platform-fee-hint"
-          :class="{ 'dev-field-hint--error': props.platformFeeError }"
-          data-testid="resource-platform-fee-hint"
-        >
-          {{ feeHintText }}
-        </p>
-        <p
-          v-if="creationType === 'paid' || isApiKind"
-          class="dev-field-hint dev-platform-fee-notice"
-          data-testid="resource-platform-fee-notice"
-        >
-          {{ RESOURCE_FEE_NOTICE_TEXT }}
-        </p>
 
         <!-- R029 推广分成：0～50（%），0 = 关闭；拖动条 + 百分比展示，随资源一次保存（promo_share_bps） -->
         <TFormItem label="推广分成" class="dev-form-item--promo">

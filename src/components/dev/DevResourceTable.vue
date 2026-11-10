@@ -137,10 +137,12 @@ function handleRowClick(event: MouseEvent) {
         </div>
       </template>
     </TTableColumn>
-    <!-- 标签不截断：列宽内自然换行，这一行标签多时宁可把行撑高也不显示省略号 -->
+    <!-- 标签最多两行，超出省略；完整值放在 title 里，避免把整行撑高 -->
     <TTableColumn label="标签" width="200" resizable>
       <template #default="scope">
-        <span class="dev-resource-table__tags">{{ resourceTagColumnLabel(scope.row) }}</span>
+        <span class="dev-resource-table__tags" :title="resourceTagColumnLabel(scope.row)">
+          {{ resourceTagColumnLabel(scope.row) }}
+        </span>
       </template>
     </TTableColumn>
     <!-- 售价要给「价格胶囊 + BETA」留位：最宽的真实组合「单版本 ¥19999.00」+ sm BETA 实测

@@ -50,6 +50,16 @@
   grid-column: span 12;
 }
 
+.dev-basic-info-grid__price-cash {
+  position: relative;
+}
+
+.dev-basic-info-grid__price-cash .dev-platform-fee-hint {
+  position: absolute;
+  top: 0;
+  right: 0;
+}
+
 /* 接口资源的售价行右侧还有半行空位，推广分成并排放在售价右边 */
 .dev-basic-info-grid__promo--inline {
   grid-column: span 6;

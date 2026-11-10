@@ -30,13 +30,13 @@ const paidMode = defineModel<ResourcePaidMode>('paidMode', { required: true })
         @click="creationType = option.value"
       >
         <span>{{ option.label }}</span>
-        <BetaTag v-if="option.value === 'paid' || option.value === 'api'" />
+        <BetaTag v-if="option.value === 'api'" />
       </button>
     </div>
 
-    <div v-if="creationType === 'paid'" class="dev-resource-type__paid">
-      <span class="dev-resource-type__label">付费方式</span>
-      <div class="dev-segmented" role="group" aria-label="付费方式">
+    <div v-if="creationType !== 'api'" class="dev-resource-type__paid">
+      <span class="dev-resource-type__label">售卖方式</span>
+      <div class="dev-segmented" role="group" aria-label="售卖方式">
         <button
           v-for="option in RESOURCE_PAID_MODE_OPTIONS"
           :key="option.value"

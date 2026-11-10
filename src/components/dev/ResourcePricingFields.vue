@@ -1,8 +1,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
-import { TFormItem, TInput } from 'ui_73info'
+import { TFormItem, TInput, TTooltip } from 'ui_73info'
 import {
-  RESOURCE_FEE_NOTICE_TEXT,
   RESOURCE_FEE_UNAVAILABLE_TEXT,
   resourceExpectedNetLabel,
   resourceFeeHintText,
@@ -62,7 +61,7 @@ const feeHintText = computed(() => {
 </script>
 
 <template>
-  <TFormItem label="售价（元）" class="dev-basic-info-grid__price">
+  <TFormItem label="售价（元）" class="dev-basic-info-grid__price dev-basic-info-grid__price-cash">
     <TInput
       ref="cashPriceInputRef"
       v-model="priceYuan"
@@ -79,6 +78,24 @@ const feeHintText = computed(() => {
     >
       需求方尚未转为我的资源，暂不可定价
     </p>
+    <TTooltip
+      v-if="feeHintText && !platformFeeError"
+      class="dev-platform-fee-hint"
+      data-testid="resource-platform-fee-hint"
+      tabindex="0"
+      :content="feeHintText"
+      placement="top"
+      :max-width="360"
+    >
+      <span class="dev-platform-fee-hint__trigger">费率提示</span>
+    </TTooltip>
+    <p
+      v-else-if="platformFeeError"
+      class="dev-field-hint dev-field-hint--error"
+      data-testid="resource-platform-fee-hint"
+    >
+      {{ feeHintText }}
+    </p>
   </TFormItem>
 
   <TFormItem v-if="!isApiKind" label="积分售价" class="dev-basic-info-grid__points">
@@ -94,21 +111,6 @@ const feeHintText = computed(() => {
       设过现金售价，不可改为积分售价。
     </p>
   </TFormItem>
-
-  <p
-    v-if="feeHintText"
-    class="dev-field-hint dev-platform-fee-hint dev-basic-info-grid__span"
-    :class="{ 'dev-field-hint--error': props.platformFeeError }"
-    data-testid="resource-platform-fee-hint"
-  >
-    {{ feeHintText }}
-  </p>
-  <p
-    class="dev-field-hint dev-platform-fee-notice dev-basic-info-grid__span"
-    data-testid="resource-platform-fee-notice"
-  >
-    {{ RESOURCE_FEE_NOTICE_TEXT }}
-  </p>
 
   <!-- R029 推广分成比例：0～50（%），0 = 关闭；随「保存」一次提交（promo_share_bps） -->
   <TFormItem

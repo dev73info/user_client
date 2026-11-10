@@ -259,6 +259,9 @@ async function loadPlatformFee() {
       v-model:open="publishDialogVisible"
       :resource-title="selectedResource?.title ?? null"
       :submitting="publishingResourceId === selectedResource?.id"
+      :price-placeholder="
+        Number(selectedResource?.buyout_price_fen ?? 0) > 0 ? '0 表示不单卖' : '0 = 免费'
+      "
       @submit="submitVersion"
     />
     <ResourceTransferDialog

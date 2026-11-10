@@ -36,25 +36,34 @@ describe('BetaTag', () => {
   })
 })
 
-describe('资源类型：付费 / 接口打 BETA，免费不打', () => {
+describe('资源类型：接口资源打 BETA，普通资源不打', () => {
   function mountSection(creationType: ResourceCreationType, paidMode: ResourcePaidMode = 'buyout') {
     return mount(ResourceTypeSection, {
       props: { creationType, paidMode },
     })
   }
 
-  it('三段里只有「付费」「接口」带 BETA', () => {
-    const wrapper = mountSection('free')
-    const items = wrapper.findAll('.dev-segmented__item')
-    expect(items.map((item) => item.text())).toEqual(['免费', '付费BETA', '接口BETA'])
+  it('两个选项里只有「接口资源」带 BETA', () => {
+    const wrapper = mountSection('normal')
+    const items = wrapper.findAll('.dev-resource-type > .dev-segmented .dev-segmented__item')
+    expect(items.map((item) => item.text())).toEqual(['普通资源', '接口资源BETA'])
 
-    const paid = items[1]!
-    const api = items[2]!
-    expect(paid.findAll('.beta-tag')).toHaveLength(1)
-    expect(paid.find('.beta-tag').classes()).toContain('t73-tag--tone-accent')
+    const api = items[1]!
     expect(api.findAll('.beta-tag')).toHaveLength(1)
+    expect(api.find('.beta-tag').classes()).toContain('t73-tag--tone-accent')
     expect(items[0]!.findAll('.beta-tag')).toHaveLength(0)
     wrapper.unmount()
+  })
+
+  it('售卖方式只在普通资源下渲染，接口资源不渲染', () => {
+    const normal = mountSection('normal')
+    expect(normal.find('.dev-resource-type__paid').exists()).toBe(true)
+    expect(normal.text()).toContain('售卖方式')
+    normal.unmount()
+
+    const api = mountSection('api')
+    expect(api.find('.dev-resource-type__paid').exists()).toBe(false)
+    api.unmount()
   })
 })
 

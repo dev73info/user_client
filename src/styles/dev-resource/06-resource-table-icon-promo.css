@@ -24,11 +24,16 @@
   color: var(--dev-muted);
 }
 
-/* 标签列允许换行：标签列表长时完整展示，不用省略号截断 */
+/* 标签列最多两行：与资源列 40px 图标 + 单元格上下 12px 的行高对齐。
+   超出部分省略，完整值由单元格的 title 提供。 */
 .dev-resource-table__tags {
-  display: block;
+  display: -webkit-box;
+  overflow: hidden;
   overflow-wrap: anywhere;
   white-space: normal;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
 }
 
 .dev-version-file-picker {

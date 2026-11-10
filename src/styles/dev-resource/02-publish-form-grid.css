@@ -92,9 +92,33 @@
   min-width: 0;
 }
 
-/* 抽成披露：父容器是 flex-wrap，独占一整行，别挤进售价那一排 */
-.dev-page--publish .dev-upload-form .dev-platform-fee-hint {
-  flex: 1 1 100%;
+/* 抽成披露：收成售价标签右侧的一枚小提示，不再独占一整行 */
+.dev-page--publish .dev-upload-form .dev-form-item--price-cash {
+  position: relative;
+}
+
+.dev-page--publish .dev-upload-form .dev-form-item--price-cash .dev-platform-fee-hint {
+  position: absolute;
+  top: 0;
+  right: 0;
+}
+
+.dev-platform-fee-hint {
+  color: var(--dev-muted);
+  cursor: help;
+}
+
+.dev-platform-fee-hint__trigger {
+  font-size: 12px;
+  line-height: 1.45;
+  text-decoration: underline dotted color-mix(in srgb, var(--dev-muted) 55%, transparent);
+  text-underline-offset: 3px;
+  white-space: nowrap;
+}
+
+.dev-platform-fee-hint:hover,
+.dev-platform-fee-hint:focus-within {
+  color: var(--dev-blue);
 }
 
 /* 图标上传块走内嵌块那一档圆角（原来是 14px，不在 24/12/10 这三个令牌里） */

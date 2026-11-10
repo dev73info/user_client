@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 
-
 import { TButton, TDialog, TIcon, Plus, TMessage } from 'ui_73info'
+import { RESOURCE_ICON_MAX_BYTES, resourceIconMime } from '@/shared/resourceIcon'
 
 /**
  * 资源图标选择器：正方形触发区 + 裁剪弹窗（拖动调整位置、滚轮缩放，应用后裁成 1200×742 的 PNG）。
@@ -105,11 +105,7 @@ function onCropPointerUp() {
 
 function onCropWheel(event: WheelEvent) {
   const delta = event.deltaY < 0 ? 0.12 : -0.12
-  cropScale.value = clampCrop(
-    Math.round((cropScale.value + delta) * 100) / 100,
-    1,
-    4,
-  )
+  cropScale.value = clampCrop(Math.round((cropScale.value + delta) * 100) / 100, 1, 4)
   const limit = cropLimit(cropScale.value)
   cropX.value = clampCrop(cropX.value, -limit, limit)
   cropY.value = clampCrop(cropY.value, -limit, limit)
@@ -152,13 +148,14 @@ async function handleFileChange(event: Event) {
     return
   }
 
-  if (!picked.type.startsWith('image/')) {
-    TMessage.warning('图标文件仅支持图片格式')
+  const mime = resourceIconMime(picked)
+  if (!mime) {
+    TMessage.warning('图标仅支持 PNG、JPG、WebP 或 GIF 图片')
     removeIcon()
     return
   }
 
-  if (picked.size > 2 * 1024 * 1024) {
+  if (picked.size > RESOURCE_ICON_MAX_BYTES) {
     TMessage.warning('图标文件请控制在 2MB 以内')
     removeIcon()
     return
@@ -167,7 +164,8 @@ async function handleFileChange(event: Event) {
   try {
     const dataUrl = await readFileAsDataUrl(picked)
     fileName.value = picked.name
-    file.value = picked
+    // 浏览器没给出标准 MIME 时按扩展名补齐，否则 multipart 会声明成空类型，后端按声明校验会拒
+    file.value = picked.type === mime ? picked : new File([picked], picked.name, { type: mime })
     cropSource.value = dataUrl
     resetCrop()
     lastEmittedPreview = dataUrl
@@ -218,6 +216,9 @@ async function confirmCrop() {
     if (!blob) {
       throw new Error('未能生成裁剪文件')
     }
+    if (blob.size > RESOURCE_ICON_MAX_BYTES) {
+      throw new Error('裁剪后的图标超过 2MB，请换一张尺寸更小的图片')
+    }
 
     const baseName = fileName.value.replace(/\.[^.]+$/, '') || 'icon'
     file.value = new File([blob], `${baseName}.png`, { type: 'image/png' })
@@ -236,22 +237,49 @@ async function confirmCrop() {
     <TIcon v-else class="dev-icon-upload__square-plus"><Plus /></TIcon>
   </div>
 
-  <TDialog v-model:open="dialogVisible" class="dev-icon-dialog-modal" title="上传图标" width="400px"
-    :mask-closable="false">
+  <TDialog
+    v-model:open="dialogVisible"
+    class="dev-icon-dialog-modal"
+    title="上传图标"
+    width="400px"
+    :mask-closable="false"
+  >
     <div class="dev-icon-dialog">
-      <input ref="inputRef" class="dev-icon-upload__native" type="file"
-        accept="image/png,image/jpeg,image/webp,image/gif" @change="handleFileChange" />
+      <input
+        ref="inputRef"
+        class="dev-icon-upload__native"
+        type="file"
+        accept="image/png,image/jpeg,image/webp,image/gif"
+        @change="handleFileChange"
+      />
 
       <template v-if="cropSource">
         <div class="dev-icon-editor">
-          <div class="dev-icon-editor__crop" @wheel.prevent="onCropWheel" @dragstart.prevent
-            @pointerdown="onCropPointerDown" @pointermove="onCropPointerMove" @pointerup="onCropPointerUp"
-            @pointercancel="onCropPointerUp">
-            <img :src="cropSource" alt="图标裁剪预览" class="dev-icon-editor__media" :style="cropMediaStyle"
-              draggable="false" />
+          <div
+            class="dev-icon-editor__crop"
+            @wheel.prevent="onCropWheel"
+            @dragstart.prevent
+            @pointerdown="onCropPointerDown"
+            @pointermove="onCropPointerMove"
+            @pointerup="onCropPointerUp"
+            @pointercancel="onCropPointerUp"
+          >
+            <img
+              :src="cropSource"
+              alt="图标裁剪预览"
+              class="dev-icon-editor__media"
+              :style="cropMediaStyle"
+              draggable="false"
+            />
             <span class="dev-icon-editor__hint">拖动调整位置 · 滚轮缩放</span>
-            <button type="button" class="dev-icon-editor__reselect" @pointerdown.stop
-              @click="triggerFileSelect">重新选择</button>
+            <button
+              type="button"
+              class="dev-icon-editor__reselect"
+              @pointerdown.stop
+              @click="triggerFileSelect"
+            >
+              重新选择
+            </button>
           </div>
         </div>
 

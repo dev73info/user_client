@@ -153,7 +153,6 @@ const {
           v-model:price-yuan="form.priceYuan"
           v-model:price-points="form.pricePoints"
           v-model:promo-share-percent="form.promoSharePercent"
-          :creation-type="creationType"
           :paid-mode="paidMode"
           :is-api-kind="isApiKind"
           :effective-origin-type="effectiveOriginType"
