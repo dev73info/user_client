@@ -19,7 +19,6 @@ import {
   type SelectModelValue,
 } from 'ui_73info'
 
-import TourButton from '@/features/tour/TourButton.vue'
 import type { RequirementGuaranteeFilter } from '@/shared/requirementDisplay'
 
 defineProps<{
@@ -83,7 +82,6 @@ const keyword = defineModel<string>('keyword', { required: true })
     </TInput>
 
     <div class="portal-page__header-actions requirement-hall__header-actions">
-      <TourButton tour="requirement-hall" />
       <button
         class="requirement-hall__publish-btn"
         type="button"

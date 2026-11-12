@@ -140,6 +140,7 @@ declare module 'vue' {
     NotificationsToolbar: typeof import('./src/components/notification/NotificationsToolbar.vue')['default']
     OAuthClientCreateDialog: typeof import('./src/components/dev/OAuthClientCreateDialog.vue')['default']
     OtherLoginMethods: typeof import('./src/components/authModal/OtherLoginMethods.vue')['default']
+    OverviewWelcomeAvatar: typeof import('./src/components/workbench/OverviewWelcomeAvatar.vue')['default']
     PasswordDialog: typeof import('./src/components/account/PasswordDialog.vue')['default']
     PaymentEntryCard: typeof import('./src/components/payment/PaymentEntryCard.vue')['default']
     PaymentLinkPanel: typeof import('./src/components/payment/PaymentLinkPanel.vue')['default']

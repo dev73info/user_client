@@ -7,6 +7,7 @@ import { useRailGroupFlyout } from '@/composables/useRailGroupFlyout'
 import { useRailTooltip } from '@/composables/useRailTooltip'
 import { useWorkbenchRailGroups } from '@/composables/useWorkbenchRailGroups'
 import TourButton from '@/features/tour/TourButton.vue'
+import { tourForRoute } from '@/features/tour/routeTour'
 import { railGroupItemActive, railGroupItemTo } from '@/shared/workbenchRailGroups'
 import { isWorkbenchChatPage } from '@/shared/workbenchChatRoute'
 
@@ -59,6 +60,8 @@ const { groups, activeGroup } = useWorkbenchRailGroups({
 const query = computed(() => route.query as Record<string, unknown>)
 const currentName = computed(() => String(route.name ?? ''))
 const isChatActive = computed(() => isWorkbenchChatPage(currentName.value, route.meta, query.value))
+/** 底部 ? 按当前路由自动选引导：有页面引导放页面的，否则播基础导览。 */
+const tourId = computed(() => tourForRoute(route))
 
 /**
  * 图标栏：消息 / 分组 / 系统通知。用户与开发者走同一套骨架，只是分组与落地路由不同。
@@ -312,7 +315,7 @@ function handleItemLeave(item: RailItem) {
     <div class="workbench-icon-rail__foot">
       <TourButton
         class="workbench-icon-rail__item workbench-icon-rail__guide"
-        tour="basic"
+        :tour="tourId"
         label="引导帮助"
         compact
         data-tour="basic:8"

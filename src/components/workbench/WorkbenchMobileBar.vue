@@ -1,7 +1,10 @@
 <script setup lang="ts">
+import { computed } from 'vue'
+import { useRoute } from 'vue-router'
 import { Menu as MenuIcon, TIcon } from 'ui_73info'
 
 import TourButton from '@/features/tour/TourButton.vue'
+import { tourForRoute } from '@/features/tour/routeTour'
 import { WORKBENCH_BAR_SLOT_ID, workbenchBarSlotCount } from '@/shared/workbenchBarSlot'
 
 /**
@@ -19,6 +22,10 @@ defineProps<{
 const emit = defineEmits<{
   (event: 'open-menu'): void
 }>()
+
+const route = useRoute()
+/** 移动端只有这一个引导入口：按当前路由选页面引导，没有则播基础导览。 */
+const tourId = computed(() => tourForRoute(route))
 </script>
 
 <template>
@@ -44,7 +51,7 @@ const emit = defineEmits<{
       <span>{{ currentTitle }}</span>
     </div>
     <!-- 图标栏在 ≤900px 整体隐藏，引导入口在移动端改挂这里，随时可以重播 -->
-    <TourButton class="user-workbench__mobile-guide" tour="basic" label="引导帮助" compact />
+    <TourButton class="user-workbench__mobile-guide" :tour="tourId" label="引导帮助" compact />
     <!-- 页面经 WorkbenchBarSlot 传进来的顶部读数（顶替标题）；没有时不占位 -->
     <div :id="WORKBENCH_BAR_SLOT_ID" class="user-workbench__mobile-bar-extra" />
   </div>

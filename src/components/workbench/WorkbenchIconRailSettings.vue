@@ -2,10 +2,13 @@
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
+import { useUserAvatar } from '@/composables/useUserAvatar'
+import { PROFILE_AVATAR_UPDATED_EVENT } from '@/shared/profileEvents'
 import {
   workbenchRailAccountMenuItems,
   type WorkbenchRailAccountMenuItem,
 } from '@/shared/workbenchRailAccountMenu'
+import { useAuthStore } from '@/stores/auth'
 
 const props = defineProps<{
   username?: string
@@ -13,9 +16,16 @@ const props = defineProps<{
 
 const route = useRoute()
 const router = useRouter()
+const auth = useAuthStore()
+/** 账户头像与顶栏用户胶囊同一口径：有图显示图片，没有或加载失败回退首字母。 */
+const { avatarSrc, ensureLoaded, refresh, markFailed } = useUserAvatar()
 const open = ref(false)
 const rootRef = ref<HTMLElement | null>(null)
 const avatarInitial = computed(() => (props.username || '?').slice(0, 1).toUpperCase())
+
+function handleAvatarUpdated() {
+  void refresh()
+}
 
 const currentName = computed(() => String(route.name ?? ''))
 
@@ -64,12 +74,22 @@ watch(
   () => close(),
 )
 
+watch(
+  () => auth.token,
+  () => {
+    void ensureLoaded()
+  },
+)
+
 onMounted(() => {
+  void ensureLoaded()
+  window.addEventListener(PROFILE_AVATAR_UPDATED_EVENT, handleAvatarUpdated)
   document.addEventListener('pointerdown', handleDocumentPointerDown, true)
   document.addEventListener('keydown', handleDocumentKeydown)
 })
 
 onBeforeUnmount(() => {
+  window.removeEventListener(PROFILE_AVATAR_UPDATED_EVENT, handleAvatarUpdated)
   document.removeEventListener('pointerdown', handleDocumentPointerDown, true)
   document.removeEventListener('keydown', handleDocumentKeydown)
 })
@@ -92,7 +112,16 @@ onBeforeUnmount(() => {
       title="账户"
       @click="toggle"
     >
-      <span class="workbench-icon-rail__settings-avatar">{{ avatarInitial }}</span>
+      <span class="workbench-icon-rail__settings-avatar">
+        <img
+          v-if="avatarSrc"
+          class="workbench-icon-rail__settings-avatar-image"
+          :src="avatarSrc"
+          alt=""
+          @error="markFailed"
+        />
+        <template v-else>{{ avatarInitial }}</template>
+      </span>
       <span class="workbench-icon-rail__tooltip">账户</span>
     </button>
 

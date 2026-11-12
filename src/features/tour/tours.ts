@@ -73,7 +73,7 @@ export const TOURS: Record<string, TourDefinition> = {
       },
       {
         title: '引导帮助',
-        body: '左下角的引导帮助按钮随时可以重新播放这段引导。每个主要页面也提供本页引导，只讲解当前页面的操作，看完可以随时关闭。',
+        body: '左下角的引导帮助按钮会播放当前页面的操作讲解；没有单独讲解的页面会播放这段基础导览。',
         target: '[data-tour="basic:8"]',
         placement: 'right',
       },

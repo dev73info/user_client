@@ -9,11 +9,14 @@
  * - 外壳色板 `--uw-*` → `styles/workbench-shell.css`；
  * - 菜单数据与高亮判定 → `@/shared/workbenchMenu`，文案与时间格式化 → `@/shared/workbenchDisplay`。
  */
-import { computed, ref } from 'vue'
+import { computed, onBeforeUnmount, ref } from 'vue'
 import { useRoute } from 'vue-router'
 
 import {
   WORKBENCH_PANE_WIDTH_CSS_VAR,
+  WORKBENCH_PANE_WIDTH_DEFAULT,
+  WORKBENCH_PANE_WIDTH_MAX,
+  WORKBENCH_PANE_WIDTH_MIN,
   useWorkbenchPaneWidth,
 } from '@/composables/useWorkbenchPaneWidth'
 import { useWorkbenchShell } from '@/composables/useWorkbenchShell'
@@ -21,6 +24,7 @@ import { isWorkbenchChatPage } from '@/shared/workbenchChatRoute'
 
 import WorkbenchIconRail from '@/components/workbench/WorkbenchIconRail.vue'
 import WorkbenchMobileBar from '@/components/workbench/WorkbenchMobileBar.vue'
+import WorkbenchPaneResizer from '@/components/workbench/WorkbenchPaneResizer.vue'
 import WorkbenchRailGroupNav from '@/components/workbench/WorkbenchRailGroupNav.vue'
 import WorkbenchSidebar from '@/components/workbench/WorkbenchSidebar.vue'
 
@@ -79,19 +83,17 @@ const showRailGroupList = computed(
   () => railGroupListOpen.value && Boolean(activeRailGroup.value) && !isChatWorkspace.value,
 )
 
-/* 分组菜单与消息中心共用中栏宽度：同一份本机偏好，切页不跳宽。
-   分组导航比消息中栏窄（只放条目文字），避免把右侧内容区挤没。 */
-const RAIL_GROUP_WIDTH_MIN = 200
-const RAIL_GROUP_WIDTH_MAX = 320
-const RAIL_GROUP_WIDTH_DEFAULT = 280
-const { paneWidth } = useWorkbenchPaneWidth()
+/* 分组菜单与消息中心共用中栏宽度与同一组上下限：拖过一边另一边一致，切页不跳宽。 */
+const { paneWidth, persistPaneWidth } = useWorkbenchPaneWidth()
+const railRef = ref<HTMLElement | null>(null)
+const railResizing = ref(false)
+
+function clampRailWidth(width: number) {
+  return Math.round(Math.min(WORKBENCH_PANE_WIDTH_MAX, Math.max(WORKBENCH_PANE_WIDTH_MIN, width)))
+}
+
 const railGroupWidth = computed(() =>
-  Math.round(
-    Math.min(
-      RAIL_GROUP_WIDTH_MAX,
-      Math.max(RAIL_GROUP_WIDTH_MIN, paneWidth.value ?? RAIL_GROUP_WIDTH_DEFAULT),
-    ),
-  ),
+  clampRailWidth(paneWidth.value ?? WORKBENCH_PANE_WIDTH_DEFAULT),
 )
 const railGroupStyle = computed<Record<string, string>>(() => {
   const style: Record<string, string> = {}
@@ -100,6 +102,67 @@ const railGroupStyle = computed<Record<string, string>>(() => {
   }
   return style
 })
+/** ≤900px 不拖：导航由抽屉接管，拖拽条也被 CSS 隐藏。 */
+function railResizeUnavailable() {
+  if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return false
+  return window.matchMedia('(max-width: 900px)').matches
+}
+
+function finishRailResizeStyles() {
+  railResizing.value = false
+  document.body.style.cursor = ''
+  document.body.style.userSelect = ''
+}
+
+function startRailResize(event: PointerEvent) {
+  if (railResizeUnavailable()) return
+  // 先把当前生效宽度落成共用值，拖动基于它增减（共用值可能是消息中心设的）
+  paneWidth.value = railGroupWidth.value
+  railResizing.value = true
+  document.body.style.cursor = 'col-resize'
+  document.body.style.userSelect = 'none'
+  ;(event.currentTarget as HTMLElement | null)?.setPointerCapture?.(event.pointerId)
+}
+
+function resizeRail(event: PointerEvent) {
+  if (!railResizing.value) return
+  const left = railRef.value?.getBoundingClientRect().left ?? 0
+  paneWidth.value = clampRailWidth(event.clientX - left)
+}
+
+function stopRailResize(event: PointerEvent) {
+  if (!railResizing.value) return
+  persistPaneWidth(railGroupWidth.value)
+  const splitter = event.currentTarget as HTMLElement | null
+  if (splitter?.hasPointerCapture?.(event.pointerId)) {
+    splitter.releasePointerCapture(event.pointerId)
+  }
+  finishRailResizeStyles()
+}
+
+function resetRailWidth() {
+  persistPaneWidth(clampRailWidth(WORKBENCH_PANE_WIDTH_DEFAULT))
+}
+
+function resizeRailByKeyboard(event: KeyboardEvent) {
+  const step = event.shiftKey ? 48 : 16
+  let nextWidth = railGroupWidth.value
+  if (event.key === 'ArrowLeft') {
+    nextWidth -= step
+  } else if (event.key === 'ArrowRight') {
+    nextWidth += step
+  } else if (event.key === 'Home') {
+    nextWidth = WORKBENCH_PANE_WIDTH_MIN
+  } else if (event.key === 'End') {
+    nextWidth = WORKBENCH_PANE_WIDTH_MAX
+  } else {
+    return
+  }
+  event.preventDefault()
+  persistPaneWidth(clampRailWidth(nextWidth))
+}
+
+onBeforeUnmount(finishRailResizeStyles)
 </script>
 
 <template>
@@ -168,6 +231,7 @@ const railGroupStyle = computed<Record<string, string>>(() => {
     />
 
     <section
+      ref="railRef"
       class="user-workbench__main"
       :style="railGroupStyle"
       :class="{
@@ -192,6 +256,21 @@ const railGroupStyle = computed<Record<string, string>>(() => {
         :is-item-active="isRailGroupItemActive"
         @navigate="closeMobileMenu"
         @close="railGroupListOpen = false"
+      />
+
+      <!-- 中栏拖拽条：与消息中心同一组件、同一组上下限，调完两边一致 -->
+      <WorkbenchPaneResizer
+        v-if="showRailGroupList"
+        label="调整导航宽度"
+        :value-min="WORKBENCH_PANE_WIDTH_MIN"
+        :value-max="WORKBENCH_PANE_WIDTH_MAX"
+        :value-now="railGroupWidth"
+        @reset="resetRailWidth"
+        @keydown="resizeRailByKeyboard"
+        @pointerdown="startRailResize"
+        @pointermove="resizeRail"
+        @pointerup="stopRailResize"
+        @pointercancel="stopRailResize"
       />
 
       <div

@@ -7,7 +7,6 @@ import { useClientPagination } from '@/composables/useClientPagination'
 import { useAuthStore } from '@/stores/auth'
 import MySignatureRow from '@/components/contract/MySignatureRow.vue'
 import WorkbenchPager from '@/components/workbench/WorkbenchPager.vue'
-import TourButton from '@/features/tour/TourButton.vue'
 import { getSignatureState, type SignatureState } from '@/utils/contractSignatures'
 
 import { TButton, TIcon, TInput, TOption, TSelect, Refresh, RefreshLeft, Search } from 'ui_73info'
@@ -209,7 +208,6 @@ function openDetail(item: MyContractSummary) {
             >筛选出 {{ filteredTotal }} / {{ contracts.length }} 份</span
           >
         </div>
-        <TourButton tour="signatures" />
       </div>
 
       <p

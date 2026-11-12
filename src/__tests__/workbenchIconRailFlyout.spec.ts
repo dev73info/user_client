@@ -1,4 +1,5 @@
 import { flushPromises, mount } from '@vue/test-utils'
+import { createPinia } from 'pinia'
 import { createMemoryHistory, createRouter } from 'vue-router'
 import { describe, expect, it } from 'vitest'
 
@@ -33,7 +34,7 @@ async function render(name: string, groupPanelOpen: boolean) {
       username: 'dev_flow_03562487',
       groupPanelOpen,
     },
-    global: { plugins: [router] },
+    global: { plugins: [router, createPinia()] },
   })
   await flushPromises()
   return { router, wrapper }
