@@ -77,7 +77,7 @@ const repeatPurchasable = defineModel<boolean>('repeatPurchasable', { required: 
             placeholder="https://shop.example.com/73info/callback"
           />
           <p v-if="callbackInvalid" class="dev-field-hint dev-field-hint--error">
-            当前不合法：请填 http(s) 绝对地址。
+            当前不合法：必须填 https 绝对地址；本地调试可用 http://localhost 或 http://127.0.0.1。
           </p>
         </TFormItem>
 
