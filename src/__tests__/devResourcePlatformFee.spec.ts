@@ -45,6 +45,7 @@ function mountSection(
       promoShareOff: true,
       platformFeeBps: 400,
       platformFeeError: false,
+      settlementReady: true,
       ...overrides,
     },
     global: {

@@ -54,6 +54,14 @@
   position: relative;
 }
 
+/* 版权声明：紧跟售价行的整行软提示块（底色走令牌，不写裸色值） */
+.dev-basic-info-grid__copyright {
+  padding: 10px 12px;
+  border: 1px solid color-mix(in srgb, var(--73-accent) 12%, transparent);
+  border-radius: var(--dev-radius-inner);
+  background: color-mix(in srgb, var(--73-accent-soft) 55%, transparent);
+}
+
 .dev-basic-info-grid__price-cash .dev-platform-fee-hint {
   position: absolute;
   top: 0;
@@ -107,9 +115,10 @@
   width: 100%;
 }
 
+/* 简介高度由内容驱动（换行自动增高）：不开拖拽把手，避免与 ResizeObserver 互相打回造成抖动 */
 .dev-basic-info-grid__desc textarea {
   min-height: 112px;
-  resize: vertical;
+  resize: none;
 }
 
 .dev-basic-info-grid__icon .dev-icon-upload--square,
@@ -130,4 +139,131 @@
    R029 的推广分成比例都用它标红，此前只有类名、没有样式。 */
 .dev-field-hint--error {
   color: var(--73-danger, var(--73-danger));
+}
+
+/* 积分售价不出现时，归属/类型/售价三项均分整行 */
+.dev-basic-info-grid--triple .dev-basic-info-grid__ownership,
+.dev-basic-info-grid--triple .dev-basic-info-grid__origin,
+.dev-basic-info-grid--triple .dev-basic-info-grid__price {
+  grid-column: span 4;
+}
+
+/* 接口资源没有「类型」，并排的第三项是推广分成：同样给 4 列，整行 12 列不溢出 */
+.dev-basic-info-grid--triple .dev-basic-info-grid__promo--inline {
+  grid-column: span 4;
+}
+
+/* 售价输入框后缀：单位弱化，不参与输入 */
+.dev-price-unit {
+  font-size: 12px;
+  color: var(--dev-muted);
+}
+
+/* 推广分成做成与输入框同口径的控件盒：滑块在内、读数右对齐 */
+.dev-basic-info-grid__promo .dev-promo-share {
+  min-height: var(--dev-control-height);
+  padding: 0 12px;
+  border: 1px solid var(--dev-line);
+  border-radius: var(--dev-radius-inner);
+  background: color-mix(in srgb, var(--73-surface-strong) 92%, transparent);
+}
+
+.dev-basic-info-grid__promo .dev-promo-share__range {
+  flex: 1 1 auto;
+}
+
+.dev-basic-info-grid__promo .dev-promo-share__value {
+  min-width: 56px;
+}
+
+/* R029 推广分成比例：拖动条 + 百分比展示（0 = 关闭）。
+   仍用原生 range（交互不抬成跨仓组件），但轨道与滑块自绘成与令牌一致的细轨道 + 圆点，
+   进度由模板写入的 --dev-promo-progress 驱动，0% 时只剩中性轨道。 */
+.dev-promo-share {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: var(--dev-control-height);
+}
+
+.dev-promo-share__range {
+  flex: 1 1 auto;
+  min-width: 0;
+  height: 20px;
+  margin: 0;
+  appearance: none;
+  -webkit-appearance: none;
+  background: transparent;
+  cursor: pointer;
+}
+
+.dev-promo-share__range::-webkit-slider-runnable-track {
+  height: 4px;
+  border-radius: 999px;
+  background: linear-gradient(
+    to right,
+    var(--73-accent) var(--dev-promo-progress, 0%),
+    var(--73-border) var(--dev-promo-progress, 0%)
+  );
+}
+
+.dev-promo-share__range::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 16px;
+  height: 16px;
+  margin-top: -6px;
+  border: 2px solid var(--73-surface-strong);
+  border-radius: 50%;
+  background: var(--73-accent);
+  box-shadow: 0 1px 4px color-mix(in srgb, var(--73-ink) 20%, transparent);
+  transition:
+    transform 120ms ease,
+    box-shadow 120ms ease;
+}
+
+.dev-promo-share__range:hover::-webkit-slider-thumb,
+.dev-promo-share__range:active::-webkit-slider-thumb {
+  transform: scale(1.12);
+  box-shadow: 0 2px 8px color-mix(in srgb, var(--73-accent) 35%, transparent);
+}
+
+.dev-promo-share__range::-moz-range-track {
+  height: 4px;
+  border-radius: 999px;
+  background: var(--73-border);
+}
+
+.dev-promo-share__range::-moz-range-progress {
+  height: 4px;
+  border-radius: 999px;
+  background: var(--73-accent);
+}
+
+.dev-promo-share__range::-moz-range-thumb {
+  width: 16px;
+  height: 16px;
+  border: 2px solid var(--73-surface-strong);
+  border-radius: 50%;
+  background: var(--73-accent);
+  box-shadow: 0 1px 4px color-mix(in srgb, var(--73-ink) 20%, transparent);
+}
+
+.dev-promo-share__range:focus-visible {
+  outline: 2px solid var(--73-accent);
+  outline-offset: 4px;
+  border-radius: 999px;
+}
+
+.dev-promo-share__value {
+  flex: 0 0 auto;
+  min-width: 48px;
+  text-align: right;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--dev-ink);
+}
+
+.dev-promo-share__value.is-off {
+  font-weight: 500;
+  color: var(--dev-muted);
 }

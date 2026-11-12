@@ -2,6 +2,7 @@ import { computed, type Ref } from 'vue'
 import type { McResourcePayload } from '@/api/mcResources'
 import {
   canSwitchToPointsPrice,
+  normalizePointsPriceText,
   normalizeYuanPriceText,
   parsePointsPriceInput,
   parsePromoSharePercentInput,
@@ -91,7 +92,25 @@ export function useResourcePricingFields(
     }
   }
 
-  function onPointsPriceInput() {
+  /** 积分售价实时归一：只保留数字并去掉前导 0；写法与现金价那条一致（直接改写底层 input 与光标）。 */
+  function normalizePointsPriceInput(el: HTMLInputElement | null) {
+    const raw = form.pricePoints
+    const { text, caret } = normalizePointsPriceText(raw, el?.selectionStart ?? null)
+    if (text === raw) {
+      return
+    }
+
+    form.pricePoints = text
+    if (!el || caret === null) {
+      return
+    }
+
+    el.value = text
+    el.setSelectionRange(caret, caret)
+  }
+
+  function onPointsPriceInput(el: HTMLInputElement | null) {
+    normalizePointsPriceInput(el)
     if (parsedPricePoints.value.ok && parsedPricePoints.value.points > 0) {
       form.priceYuan = '0'
     }

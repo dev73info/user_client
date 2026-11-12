@@ -5,7 +5,7 @@ import BetaTag from '@/components/BetaTag.vue'
 import PaymentModeChip from '@/components/PaymentModeChip.vue'
 import PublishModal from '@/components/PublishModal.vue'
 import ResourceTypeSection from '@/components/dev/ResourceTypeSection.vue'
-import type { ResourceCreationType, ResourcePaidMode } from '@/shared/resourceCreation'
+import type { ResourceCreationType } from '@/shared/resourceCreation'
 
 /**
  * BETA 标签口径（根仓 D-2026-11-05-04）：
@@ -37,9 +37,9 @@ describe('BetaTag', () => {
 })
 
 describe('资源类型：接口资源打 BETA，普通资源不打', () => {
-  function mountSection(creationType: ResourceCreationType, paidMode: ResourcePaidMode = 'buyout') {
+  function mountSection(creationType: ResourceCreationType) {
     return mount(ResourceTypeSection, {
-      props: { creationType, paidMode },
+      props: { creationType },
     })
   }
 
@@ -53,17 +53,6 @@ describe('资源类型：接口资源打 BETA，普通资源不打', () => {
     expect(api.find('.beta-tag').classes()).toContain('t73-tag--tone-accent')
     expect(items[0]!.findAll('.beta-tag')).toHaveLength(0)
     wrapper.unmount()
-  })
-
-  it('售卖方式只在普通资源下渲染，接口资源不渲染', () => {
-    const normal = mountSection('normal')
-    expect(normal.find('.dev-resource-type__paid').exists()).toBe(true)
-    expect(normal.text()).toContain('售卖方式')
-    normal.unmount()
-
-    const api = mountSection('api')
-    expect(api.find('.dev-resource-type__paid').exists()).toBe(false)
-    api.unmount()
   })
 })
 

@@ -13,6 +13,9 @@ import { RESOURCE_ICON_MAX_BYTES, resourceIconMime } from '@/shared/resourceIcon
 const preview = defineModel<string>({ default: '' })
 const file = defineModel<File | null>('file', { default: null })
 
+/** 裁剪「应用」完成：父级据此立即上传封面，不必等保存。 */
+const emit = defineEmits<{ applied: [] }>()
+
 const inputRef = ref<HTMLInputElement | null>(null)
 const dialogVisible = ref(false)
 const fileName = ref('')
@@ -225,6 +228,7 @@ async function confirmCrop() {
     lastEmittedPreview = dataUrl
     preview.value = dataUrl
     dialogVisible.value = false
+    emit('applied')
   } catch (error) {
     TMessage.warning(error instanceof Error ? error.message : '未能生成裁剪结果，请重试')
   }

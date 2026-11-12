@@ -69,10 +69,6 @@ export function useResourceVersionList() {
 
   const hasActiveFilters = computed(() => filters.keyword.trim() !== '')
 
-  function resetFilters() {
-    filters.keyword = ''
-  }
-
   /* 分页与其余菜单页同构（资源项目、团队资源、我的接单、收益钱包、需求大厅都带表尾分页器）。
      版本一次取回全部、搜索在前端做，所以这里是客户端切片，不走服务端页码。 */
   const {
@@ -199,7 +195,6 @@ export function useResourceVersionList() {
     pageSize,
     filteredTotal,
     pagedVersions,
-    resetFilters,
     loadPage,
     reloadVersions,
     versionDownloadUrl,

@@ -34,18 +34,23 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   cashPriceInput: [el: HTMLInputElement | null]
-  pointsPriceInput: []
+  pointsPriceInput: [el: HTMLInputElement | null]
 }>()
 
 const priceYuan = defineModel<string>('priceYuan', { required: true })
 const pricePoints = defineModel<string>('pricePoints', { required: true })
 const promoSharePercent = defineModel<number>('promoSharePercent', { required: true })
 
-/** 现金价输入框实例：实时归一前导 0 时要拿到它的底层 input 来改写值并复位光标。 */
+/** 现金 / 积分输入框实例：实时归一前导 0 时要拿到底层 input 来改写值并复位光标。 */
 const cashPriceInputRef = ref<InstanceType<typeof TInput> | null>(null)
+const pointsPriceInputRef = ref<InstanceType<typeof TInput> | null>(null)
 
 function onCashPriceInput() {
   emit('cashPriceInput', cashPriceInputRef.value?.inputRef ?? null)
+}
+
+function onPointsPriceInput() {
+  emit('pointsPriceInput', pointsPriceInputRef.value?.inputRef ?? null)
 }
 
 const feeHintText = computed(() => {
@@ -61,7 +66,7 @@ const feeHintText = computed(() => {
 </script>
 
 <template>
-  <TFormItem label="售价（元）" class="dev-basic-info-grid__price dev-basic-info-grid__price-cash">
+  <TFormItem label="售价" class="dev-basic-info-grid__price dev-basic-info-grid__price-cash">
     <TInput
       ref="cashPriceInputRef"
       v-model="priceYuan"
@@ -70,7 +75,11 @@ const feeHintText = computed(() => {
       inputmode="decimal"
       :title="isApiKind ? undefined : '与积分售价互斥；大于 0 为现金一口价'"
       @input="onCashPriceInput"
-    />
+    >
+      <template #suffix>
+        <span class="dev-price-unit">元</span>
+      </template>
+    </TInput>
     <p
       v-if="saleLockedByRequirement"
       class="dev-field-hint"
@@ -98,25 +107,32 @@ const feeHintText = computed(() => {
     </p>
   </TFormItem>
 
-  <TFormItem v-if="!isApiKind" label="积分售价" class="dev-basic-info-grid__points">
+  <!-- 卖过现金售价后积分价不可再改（pointsLockedBySavedCash），此时整格不显示 -->
+  <TFormItem
+    v-if="!isApiKind && !pointsLockedBySavedCash"
+    label="积分售价"
+    class="dev-basic-info-grid__points"
+  >
     <TInput
+      ref="pointsPriceInputRef"
       v-model="pricePoints"
       :disabled="pointsPriceDisabled"
       placeholder="0 = 不用积分购"
       inputmode="numeric"
       title="与现金售价互斥；大于 0 时买家只能用积分购买"
-      @input="emit('pointsPriceInput')"
+      @input="onPointsPriceInput"
     />
-    <p v-if="pointsLockedBySavedCash && !saleLockedByRequirement" class="dev-field-hint">
-      设过现金售价，不可改为积分售价。
-    </p>
   </TFormItem>
+
+  <!-- 父级往这里塞「积分售价」之后、「推广分成比例」之前的整行内容（本页是版权声明） -->
+  <slot name="after-price" />
 
   <!-- R029 推广分成比例：0～50（%），0 = 关闭；随「保存」一次提交（promo_share_bps） -->
   <TFormItem
     label="推广分成比例"
     class="dev-basic-info-grid__promo"
     :class="{ 'dev-basic-info-grid__promo--inline': isApiKind }"
+    help="推广人带来成交后，按其订单金额的该比例分成；0 表示关闭"
   >
     <div class="dev-promo-share">
       <input
@@ -128,6 +144,7 @@ const feeHintText = computed(() => {
         step="1"
         :title="promoShareDisplay"
         aria-label="推广分成比例（百分比，0 表示关闭）"
+        :style="{ '--dev-promo-progress': `${Math.min(100, (promoSharePercent / 50) * 100)}%` }"
       />
       <span class="dev-promo-share__value" :class="{ 'is-off': promoShareOff }">{{
         promoShareDisplay

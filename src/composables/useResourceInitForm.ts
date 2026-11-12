@@ -4,6 +4,7 @@ import type { McResourceKind } from '@/api/mcResources'
 import { listMyTeams, type TeamResponse } from '@/api/team'
 import type { ResourceCreationType, ResourcePaidMode } from '@/shared/resourceCreation'
 import {
+  normalizePointsPriceText,
   normalizeYuanPriceText,
   parsePointsPriceInput,
   parsePromoSharePercentInput,
@@ -113,7 +114,18 @@ export function useResourceInitForm(options: {
     }
   }
 
-  function onPointsPriceInput() {
+  /** 积分售价实时归一：只保留数字并去掉前导 0；写法与现金价那条一致（直接改写底层 input 与光标）。 */
+  function onPointsPriceInput(input: HTMLInputElement | null) {
+    const raw = form.pricePoints
+    const { text, caret } = normalizePointsPriceText(raw, input?.selectionStart ?? null)
+    if (text !== raw) {
+      form.pricePoints = text
+      if (input && caret !== null) {
+        input.value = text
+        input.setSelectionRange(caret, caret)
+      }
+    }
+
     if (hasPointsPrice.value) {
       form.priceYuan = '0'
     }

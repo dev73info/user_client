@@ -1,8 +1,30 @@
+/* 固定列（操作）与滚动列之间给一条稳定分隔线：
+   表格横向滚动时它跟着固定列走，滚到最右也不会像「内容被遮住的边缘」那样忽隐忽现。 */
+.dev-resource-table .t73-table__th.t73-table__cell--fixed,
+.dev-resource-table .t73-table__td.t73-table__cell--fixed {
+  border-left: 1px solid var(--73-border);
+}
+
 .dev-resource-table__title-cell {
   display: flex;
   align-items: center;
   gap: 12px;
   min-width: 0;
+}
+
+/* 标题 + BETA：BETA 紧跟标题，标题过长时先压缩标题（ellipsis），徽标不换行 */
+.dev-resource-table__title-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.dev-resource-table__title-row .dev-resource-table__title-link {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .dev-resource-table__icon {
@@ -187,36 +209,4 @@
 
 /* R047 断点收敛：原档位 480px → 640px */
 @media (max-width: 640px) {
-}
-
-/* R029 推广分成比例：拖动条 + 百分比展示（0 = 关闭）。
-   用原生 range 是为了不把这一处的交互抬成跨仓组件；配色走 dev 令牌，
-   进度与滑块交给 accent-color，避免自绘轨道与 thumb 各浏览器不一致。 */
-.dev-promo-share {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  min-height: var(--dev-control-height);
-}
-
-.dev-promo-share__range {
-  flex: 1 1 auto;
-  min-width: 0;
-  margin: 0;
-  accent-color: var(--dev-blue);
-  cursor: pointer;
-}
-
-.dev-promo-share__value {
-  flex: 0 0 auto;
-  min-width: 48px;
-  text-align: right;
-  font-weight: 600;
-  font-variant-numeric: tabular-nums;
-  color: var(--dev-ink);
-}
-
-.dev-promo-share__value.is-off {
-  font-weight: 500;
-  color: var(--dev-muted);
 }

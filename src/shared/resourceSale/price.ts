@@ -133,6 +133,41 @@ export function normalizeYuanPriceText(
   return { text: normalized, caret: filteredCaret }
 }
 
+/**
+ * 积分售价输入实时归一：只保留数字，并去掉整数部分的前导 0（`007` → `7`）。
+ *
+ * 边界：单个 `0` 保持 `0`（不把输入框清空）、空串原样返回。
+ * `caret` 传输入框当前光标位置；返回归一后的文本与光标该落的位置
+ * （被丢弃的字符在光标左侧时，光标随之左移）。
+ */
+
+export function normalizePointsPriceText(
+  text: string,
+  caret: number | null = null,
+): { text: string; caret: number | null } {
+  const caretLimit = caret === null ? null : Math.max(0, Math.min(caret, text.length))
+  let filtered = ''
+  let filteredCaret: number | null = caretLimit === null ? null : 0
+
+  for (let index = 0; index < text.length; index += 1) {
+    const char = text.charAt(index)
+    if (char < '0' || char > '9') {
+      continue
+    }
+    filtered += char
+    if (caretLimit !== null && index < caretLimit) {
+      filteredCaret = filtered.length
+    }
+  }
+
+  const normalized = stripLeadingZeros(filtered)
+  if (filteredCaret !== null) {
+    filteredCaret = caretAfterStripLeadingZeros(filtered, filteredCaret)
+  }
+
+  return { text: normalized, caret: filteredCaret }
+}
+
 export type ParsePointsPriceOk = { ok: true; points: number }
 
 export type ParsePointsPriceErr = { ok: false; message: string }

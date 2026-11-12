@@ -2,13 +2,10 @@
 import BetaTag from '@/components/BetaTag.vue'
 import {
   RESOURCE_CREATION_TYPE_OPTIONS,
-  RESOURCE_PAID_MODE_OPTIONS,
   type ResourceCreationType,
-  type ResourcePaidMode,
 } from '@/shared/resourceCreation'
 
 const creationType = defineModel<ResourceCreationType>('creationType', { required: true })
-const paidMode = defineModel<ResourcePaidMode>('paidMode', { required: true })
 </script>
 
 <template>
@@ -33,38 +30,17 @@ const paidMode = defineModel<ResourcePaidMode>('paidMode', { required: true })
         <BetaTag v-if="option.value === 'api'" />
       </button>
     </div>
-
-    <div v-if="creationType !== 'api'" class="dev-resource-type__paid">
-      <span class="dev-resource-type__label">售卖方式</span>
-      <div class="dev-segmented" role="group" aria-label="售卖方式">
-        <button
-          v-for="option in RESOURCE_PAID_MODE_OPTIONS"
-          :key="option.value"
-          type="button"
-          class="dev-segmented__item"
-          :class="{ 'is-active': paidMode === option.value }"
-          :aria-pressed="paidMode === option.value"
-          @click="paidMode = option.value"
-        >
-          {{ option.label }}
-        </button>
-      </div>
-    </div>
   </section>
 </template>
 
 <style scoped>
-.dev-resource-type,
-.dev-resource-type__paid {
+.dev-resource-type {
   display: grid;
   gap: 16px;
-}
-
-.dev-resource-type {
   margin-bottom: 18px;
 }
 
-/* 资源类型三档铺满整行：它决定下面整张表单的形态，是这一屏的主选择，给足宽度。 */
+/* 资源类型两个选项铺满整行：它决定下面整张表单的形态，是这一屏的主选择，给足宽度。 */
 .dev-resource-type > .dev-segmented {
   display: flex;
   width: 100%;
@@ -79,31 +55,8 @@ const paidMode = defineModel<ResourcePaidMode>('paidMode', { required: true })
   min-width: 0;
 }
 
-.dev-resource-type__paid > .dev-segmented {
-  display: flex;
-  width: 100%;
-}
-
-.dev-resource-type__paid > .dev-segmented .dev-segmented__item {
-  flex: 1 1 0;
-  min-width: 0;
-}
-
-.dev-resource-type__paid {
-  grid-template-columns: auto minmax(0, 360px);
-  align-items: center;
-}
-
-.dev-resource-type__label {
-  font-weight: 600;
-}
-
-/* 640 档：三档按钮可能挤不下一行「文案 + BETA」，允许换行、不要把标签压出按钮。 */
+/* 640 档：两个按钮可能挤不下一行「文案 + BETA」，允许换行、不要把标签压出按钮。 */
 @media (max-width: 640px) {
-  .dev-resource-type__paid {
-    grid-template-columns: 1fr;
-  }
-
   .dev-resource-type > .dev-segmented .dev-segmented__item {
     flex-wrap: wrap;
     gap: 2px 6px;

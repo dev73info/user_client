@@ -9,14 +9,6 @@ export const RESOURCE_CREATION_TYPE_OPTIONS: ReadonlyArray<{
   { value: 'api', label: '接口资源' },
 ]
 
-export const RESOURCE_PAID_MODE_OPTIONS: ReadonlyArray<{
-  value: ResourcePaidMode
-  label: string
-}> = [
-  { value: 'buyout', label: '买断' },
-  { value: 'version', label: '单版本' },
-]
-
 function firstQueryValue(raw: unknown): unknown {
   return Array.isArray(raw) ? raw[0] : raw
 }

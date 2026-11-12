@@ -110,13 +110,12 @@ beforeEach(() => {
   mocks.listMyTeams.mockResolvedValue([])
 })
 
-describe('DevResourceListView：三类资源统一创建入口', () => {
-  it('菜单提供免费的、付费的和接口三类资源', async () => {
+describe('DevResourceListView：两类资源统一创建入口', () => {
+  it('菜单提供（免费/付费）和接口两类资源', async () => {
     const wrapper = mountList()
     await flushPromises()
     expect(wrapper.findAll('.entry-item').map((item) => item.text())).toEqual([
-      '免费资源',
-      '付费资源（买断 / 单版本）BETA',
+      '免费/付费资源BETA',
       '接口资源BETA',
     ])
     wrapper.unmount()

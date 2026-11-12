@@ -35,7 +35,6 @@ import {
   type DevResourceCommandPayload,
 } from '@/composables/useDevResourceRowActions'
 import { DEV_RESOURCE_VISIBILITY_OPTIONS } from '@/shared/devResourceList'
-import { RESOURCE_FEE_NOTICE_TEXT } from '@/shared/requirementFee'
 import {
   resourceCoverUrl,
   RESOURCE_ARCHIVE_LOCKED_MESSAGE,
@@ -149,10 +148,9 @@ async function loadPlatformFee() {
             </button>
             <template #dropdown>
               <TDropdownMenu>
-                <TDropdownItem :command="'free'">免费资源</TDropdownItem>
-                <TDropdownItem :command="'paid'">
+                <TDropdownItem :command="'free'">
                   <span class="dev-create-option">
-                    <span>付费资源（买断 / 单版本）</span>
+                    <span>免费/付费资源</span>
                     <BetaTag />
                   </span>
                 </TDropdownItem>
@@ -213,10 +211,6 @@ async function loadPlatformFee() {
           </span>
         </div>
       </div>
-
-      <p class="dev-field-hint dev-platform-fee-notice" data-testid="resource-fee-notice">
-        {{ RESOURCE_FEE_NOTICE_TEXT }}
-      </p>
 
       <DevResourceTable
         :rows="paged"

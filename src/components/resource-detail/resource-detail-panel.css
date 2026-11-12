@@ -136,6 +136,16 @@
   gap: 16px;
 }
 
+/* 页内预览（嵌进工作台内容列）：去掉外壳的描边/底色/内边距，
+   让详情里的卡片与工作台卡片左右对齐 */
+.resource-detail-page--panel.resource-detail-page--panel-embedded .resource-detail-page__panel {
+  padding: 0;
+  border: none;
+  background: transparent;
+  box-shadow: none;
+  backdrop-filter: none;
+}
+
 .resource-detail-page--panel .resource-detail-page__panel {
   padding: 18px;
   border-radius: 16px;

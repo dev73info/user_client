@@ -1,6 +1,15 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
-import { TCheckbox, TForm, TFormItem, TInput, TOption, TSelect, TTooltip } from 'ui_73info'
+import {
+  TButton,
+  TCheckbox,
+  TForm,
+  TFormItem,
+  TInput,
+  TOption,
+  TSelect,
+  TTooltip,
+} from 'ui_73info'
 import ResourceIconPicker from '@/components/ResourceIconPicker.vue'
 import {
   RESOURCE_FEE_UNAVAILABLE_TEXT,
@@ -33,12 +42,16 @@ const props = defineProps<{
   platformFeeBps: number | null
   /** 费率读取失败：显示「费率暂不可用」，不要静默消失。 */
   platformFeeError: boolean
+  /** 结算账户已开通；未开通时只锁「售价（元）」，积分售价只依赖实名（路由已保证）。 */
+  settlementReady: boolean
 }>()
 
 const emit = defineEmits<{
-  /** 现金价输入框的底层元素（实时归一前导 0 用）。 */
+  /** 现金 / 积分价输入框的底层元素（实时归一前导 0 用）。 */
   cashPriceInput: [el: HTMLInputElement | null]
-  pointsPriceInput: []
+  pointsPriceInput: [el: HTMLInputElement | null]
+  /** 售价被结算账户拦截时，点「去完善结算账户」。 */
+  goSettlement: []
 }>()
 
 const coverUrl = defineModel<string>('coverUrl', { required: true })
@@ -56,11 +69,16 @@ const priceYuan = defineModel<string>('priceYuan', { required: true })
 const pricePoints = defineModel<string>('pricePoints', { required: true })
 const promoSharePercent = defineModel<number>('promoSharePercent', { required: true })
 
-/** 售价（元）输入框实例：实时归一前导 0 时要拿到它的底层 input 来改写值并复位光标。 */
+/** 现金 / 积分输入框实例：实时归一前导 0 时要拿到底层 input 来改写值并复位光标。 */
 const cashPriceInputRef = ref<InstanceType<typeof TInput> | null>(null)
+const pointsPriceInputRef = ref<InstanceType<typeof TInput> | null>(null)
 
 function onCashPriceInput() {
   emit('cashPriceInput', cashPriceInputRef.value?.inputRef ?? null)
+}
+
+function onPointsPriceInput() {
+  emit('pointsPriceInput', pointsPriceInputRef.value?.inputRef ?? null)
 }
 
 /** 预计到手：现金价按整数分算，积分价按积分算；没有定价时只给费率与「买家支付价不变」。 */
@@ -161,13 +179,19 @@ const feeHintText = computed(() => {
             <TInput
               ref="cashPriceInputRef"
               v-model="priceYuan"
-              :disabled="cashPriceDisabled"
+              :disabled="cashPriceDisabled || !settlementReady"
               placeholder="0 = 免费"
               inputmode="decimal"
               :title="isApiKind ? undefined : '与售价（积分）互斥'"
               @input="onCashPriceInput"
             />
-            <p v-if="cashPriceDisabled" class="dev-field-hint">
+            <p v-if="!settlementReady" class="dev-field-hint">
+              完成结算账户后才能设置售价
+              <TButton variant="text" tone="accent" size="sm" @click="emit('goSettlement')">
+                去完善结算账户
+              </TButton>
+            </p>
+            <p v-else-if="cashPriceDisabled" class="dev-field-hint">
               已填售价（积分），售价（元）已禁用。
             </p>
             <!-- 费用披露收成一个提示触发点：平台抽成与预计到手在悬浮/聚焦时展开；
@@ -194,12 +218,13 @@ const feeHintText = computed(() => {
 
           <TFormItem v-if="!isApiKind && paidMode === 'buyout'" label="售价（积分）">
             <TInput
+              ref="pointsPriceInputRef"
               v-model="pricePoints"
               :disabled="pointsPriceDisabled"
               placeholder="0 表示不走积分购"
               inputmode="numeric"
               title="与售价（元）互斥"
-              @input="emit('pointsPriceInput')"
+              @input="onPointsPriceInput"
             />
             <p v-if="pointsPriceDisabled" class="dev-field-hint">
               已填售价（元），售价（积分）已禁用。

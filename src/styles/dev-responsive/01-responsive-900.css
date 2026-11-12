@@ -4,7 +4,16 @@
     grid-template-columns: 1fr;
   }
 
-  /* 窄屏回落：标签组不再按内容宽并排，改为每组占满一行（控件满宽、触摸目标够大） */
+  /* 根节点 / 二级节点的双列均分档在窄屏回落单列（与基础规则同选择器，靠引入顺序覆盖） */
+  .dev-page--publish .dev-catalog-section .dev-upload-grid--two {
+    grid-template-columns: 1fr;
+  }
+
+  /* 窄屏回落：标签组不再并排，改为每组占满一行（控件满宽、触摸目标够大） */
+  .dev-upload-grid--tag-groups {
+    grid-template-columns: 1fr;
+  }
+
   .dev-page--publish .dev-tag-group-row {
     width: 100%;
   }

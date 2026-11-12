@@ -9,7 +9,7 @@ import WorkbenchBarSlot from '@/components/WorkbenchBarSlot.vue'
  * 这一页原来自己写了一条蓝调渐变横幅（封面缩略图 + 大标题 + 一行胶囊），与其它菜单页
  * 两套外观；标题与封面在下方「预览摘要」卡片里已有，这里不重复，只留可读的口径与操作。
  */
-defineProps<{
+const props = defineProps<{
   /** 接口资源固定不进大厅，可见性没有可操作的信息，读数条不展示。 */
   isApiKind: boolean
   visibilityLabel: string
@@ -18,7 +18,8 @@ defineProps<{
   saveDisabled: boolean
   /** 接口资源没有对外主页，预览入口一并不放。 */
   showPreview: boolean
-  previewUrl: string
+  /** 当前是否已经在页内预览态（按钮文案在「预览 / 退出预览」间切换）。 */
+  previewing: boolean
   previewDisabled?: boolean
   previewDisabledReason?: string
   isLoadingTags: boolean
@@ -28,7 +29,16 @@ const emit = defineEmits<{
   back: []
   save: []
   refreshTags: []
+  togglePreview: []
 }>()
+
+/** 不可预览时保留状态按钮但不触发切换。 */
+function onTogglePreview() {
+  if (props.previewDisabled) {
+    return
+  }
+  emit('togglePreview')
+}
 </script>
 
 <template>
@@ -54,19 +64,16 @@ const emit = defineEmits<{
             ><TIcon><Back /></TIcon></template
           >返回</TButton
         >
-        <!-- 不可预览时保留状态按钮但移除链接，避免打开无权访问的详情页。 -->
+        <!-- 页内切换预览：不再跳转用户端，禁用时保留按钮但点不动 -->
         <TButton
           variant="outline"
           v-if="showPreview"
-          :as="previewDisabled ? 'button' : 'a'"
-          :href="previewDisabled ? undefined : previewUrl"
-          :target="previewDisabled ? undefined : '_blank'"
-          :rel="previewDisabled ? undefined : 'noopener noreferrer'"
           :disabled="previewDisabled"
           :title="previewDisabledReason || undefined"
+          @click="onTogglePreview"
           ><template #prefix
             ><TIcon><View /></TIcon></template
-          >预览</TButton
+          >{{ previewing ? '退出预览' : '预览' }}</TButton
         >
         <TButton
           variant="solid"
