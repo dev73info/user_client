@@ -103,7 +103,7 @@ const {
   align-items: center;
   flex: 0 1 auto;
   gap: 8px;
-  width: clamp(220px, 22vw, 300px);
+  width: clamp(180px, 20vw, 280px);
   min-width: 0;
   height: var(--73-control-height);
   min-height: var(--73-control-height);
@@ -256,7 +256,7 @@ const {
   .portal-search {
     flex: 0 1 auto;
     width: 100%;
-    max-width: 300px;
+    max-width: 280px;
     min-width: 0;
   }
 }

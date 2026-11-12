@@ -109,13 +109,15 @@ const emit = defineEmits<{ toggle: []; select: [scope: SearchScope] }>()
   outline: none;
 }
 
+/* 宽度跟着选项文字走，至少与触发器对齐，不再写死像素值 */
 .portal-search-scope__menu {
   position: absolute;
   top: calc(100% + 10px);
   left: 0;
   z-index: 90;
   display: grid;
-  width: 112px;
+  width: max-content;
+  min-width: 100%;
   gap: 4px;
   padding: 6px;
   border: 1px solid var(--73-border);
@@ -181,10 +183,6 @@ const emit = defineEmits<{ toggle: []; select: [scope: SearchScope] }>()
     padding-left: 6px;
     padding-right: 15px;
     font-size: 12px;
-  }
-
-  .portal-search-scope__menu {
-    width: 104px;
   }
 }
 </style>

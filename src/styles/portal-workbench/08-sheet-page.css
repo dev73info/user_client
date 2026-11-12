@@ -60,6 +60,13 @@
   row-gap: 16px;
 }
 
+/* 开发者资源子页（版本管理）：不是侧边栏菜单页，但要与上面这组同一节奏，
+   否则读数带与内容卡的间距、页顶留白都和其余工作台页对不上。 */
+.user-workbench__content--workspace .page-shell.custom-page-shell.wb-sheet.dev-versions-page {
+  padding-top: 8px;
+  row-gap: 16px;
+}
+
 /* 同一页有多块面板时（勋章墙 + 邀请记录，账户优惠券的分块），用一条分隔线代替两张卡 */
 .wb-sheet > .wallet-section + .wallet-section {
   margin-top: 16px;

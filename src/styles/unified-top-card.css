@@ -87,24 +87,8 @@
     padding: 8px 14px 8px 16px !important;
   }
 
-  /* 资源页移动端顶部栏 - 统一规格 */
-  .mobile-resource-header {
-    position: sticky !important;
-    top: 8px !important;
-    z-index: 12 !important;
-    display: flex !important;
-    align-items: center !important;
-    gap: 10px !important;
-    width: calc(100% - 16px) !important;
-    margin: 8px 8px 12px !important;
-    height: auto !important;
-    min-height: 66px !important;
-    padding: 12px !important;
-    border: 1px solid color-mix(in srgb, var(--73-accent-soft) 96%, transparent) !important;
-    border-radius: 16px !important;
-    background: color-mix(in srgb, var(--73-surface-strong) 94%, transparent) !important;
-    box-shadow: 0 10px 24px color-mix(in srgb, var(--73-accent) 8%, transparent) !important;
-  }
+  /* 资源页移动端顶部栏已由 mobile-resource-header.css 自行定义（中性描边 / 12px 圆角），
+     这里不再保留旧的「统一规格」覆写。 */
 
   .messages-search-bar {
     position: sticky !important;

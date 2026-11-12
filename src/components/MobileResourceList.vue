@@ -386,5 +386,3 @@ watch(listingCounts, (counts) => emit('listing-counts', counts), { immediate: tr
 </template>
 
 <style scoped src="./mobile-resource/mobile-resource-page.css"></style>
-
-<style src="./mobile-resource/mobile-resource-sort-dropdown.css"></style>

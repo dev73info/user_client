@@ -20,27 +20,29 @@
 
 .mobile-level-trigger {
   position: relative;
-  border: 1px solid var(--73-accent-soft);
-  background: var(--73-surface-strong);
+  border: 1px solid var(--73-border);
+  background: var(--73-surface);
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 8px;
   width: 100%;
   padding: 12px 10px;
-  border-radius: 12px;
-  color: var(--73-accent);
+  border-radius: 10px;
+  color: var(--73-ink-soft);
   font: inherit;
   min-height: 44px;
   cursor: pointer;
   transition:
     background-color 180ms ease,
-    border-color 180ms ease;
+    border-color 180ms ease,
+    color 180ms ease;
 }
 
 .mobile-level-trigger--open {
   border-color: var(--73-accent);
-  background: var(--73-accent-soft);
+  background: color-mix(in srgb, var(--73-accent-soft) 96%, transparent);
+  color: var(--73-accent);
 }
 
 .mobile-level-trigger strong {
@@ -76,11 +78,11 @@
   gap: 6px;
   margin-top: 6px;
   padding: 8px;
-  border: 1px solid var(--73-accent-soft);
-  border-radius: 12px;
-  background: var(--73-surface-strong);
+  border: 1px solid var(--73-border);
+  border-radius: var(--73-radius-inner);
+  background: var(--73-surface);
   z-index: 2;
-  box-shadow: 0 8px 24px color-mix(in srgb, var(--73-accent) 12%, transparent);
+  box-shadow: var(--73-shadow-panel);
   animation: mobile-level-options-in 160ms ease-out;
 }
 
@@ -97,9 +99,9 @@
 }
 
 .mobile-level-option {
-  border: 1px solid var(--73-accent-soft);
-  border-radius: 12px;
-  background: var(--73-surface-strong);
+  border: 1px solid var(--73-border);
+  border-radius: 10px;
+  background: var(--73-surface);
   padding: 10px 12px;
   text-align: left;
   font: inherit;
@@ -107,16 +109,16 @@
 }
 
 .mobile-level-option--active {
-  border-color: var(--73-accent);
-  background: var(--73-accent-soft);
+  border-color: transparent;
+  background: color-mix(in srgb, var(--73-accent-soft) 96%, transparent);
   color: var(--73-accent);
 }
 
 .mobile-chip {
   border: 1px solid var(--73-border);
-  border-radius: 999px;
+  border-radius: var(--73-radius-control);
   padding: 6px 12px;
-  background: var(--73-surface-strong);
+  background: var(--73-surface);
   color: var(--73-ink-soft);
   font-size: 12px;
   font-weight: 700;
@@ -124,8 +126,8 @@
 
 .mobile-chip--active {
   border-color: transparent;
-  color: var(--73-surface-strong);
-  background: var(--73-accent);
+  color: var(--73-accent);
+  background: color-mix(in srgb, var(--73-accent-soft) 96%, transparent);
 }
 
 .mobile-menu-foot {
@@ -135,24 +137,24 @@
   gap: 8px;
   padding: 10px 12px calc(10px + env(safe-area-inset-bottom, 0px));
   border-top: 1px solid var(--73-border);
-  background: var(--73-surface-strong);
+  background: var(--73-surface);
 }
 
 .mobile-foot-btn {
-  border-radius: 12px;
+  border-radius: var(--73-radius-control);
   padding: 12px 0;
   font-size: 14px;
   font-weight: 700;
 }
 
 .mobile-foot-btn--ghost {
-  border: 1px solid var(--73-accent-soft);
-  background: var(--73-surface-strong);
+  border: 1px solid var(--73-border);
+  background: var(--73-surface);
   color: var(--73-ink-soft);
 }
 
 .mobile-foot-btn--primary {
   border: 0;
   background: var(--73-accent);
-  color: var(--73-surface-strong);
+  color: var(--73-accent-contrast);
 }

@@ -1,5 +1,5 @@
 /* 移动端资源列表顶栏的样式：筛选入口、搜索框、排序按钮与免费 / 付费分段行。
-   随模板节点从 `MobileResourceList.vue` 搬来，类名与声明未改。 */
+   随模板节点从 `MobileResourceList.vue` 搬来；顶栏与控件按桌面资源页的中性描边口径对齐。 */
 
 .mobile-resource-header {
   position: sticky;
@@ -13,10 +13,10 @@
   height: auto;
   min-height: 66px;
   padding: 12px;
-  border: 1px solid color-mix(in srgb, var(--73-accent-soft) 96%, transparent);
-  border-radius: 16px;
-  background: color-mix(in srgb, var(--73-surface-strong) 94%, transparent);
-  box-shadow: 0 10px 24px color-mix(in srgb, var(--73-accent) 8%, transparent);
+  border: 1px solid var(--73-border);
+  border-radius: var(--73-radius-inner);
+  background: var(--73-surface);
+  box-shadow: var(--73-shadow-card);
 }
 
 .mobile-mode-row {
@@ -40,13 +40,22 @@
   align-items: center;
   gap: 6px;
   flex: 0 0 auto;
-  min-height: 38px;
+  min-height: 44px;
   padding: 0 12px;
-  border-radius: 12px;
-  background: color-mix(in srgb, var(--73-accent-soft) 90%, transparent);
+  border: 1px solid var(--73-border);
+  border-radius: var(--73-radius-control);
+  background: var(--73-bg-soft);
+  color: var(--73-ink-soft);
+  font-size: 12px;
+  font-weight: 500;
+  transition:
+    border-color 160ms ease,
+    color 160ms ease;
+}
+
+.mobile-resource-menu-btn:hover {
+  border-color: color-mix(in srgb, var(--73-accent) 40%, transparent);
   color: var(--73-accent);
-  font-size: 13px;
-  font-weight: 800;
 }
 
 .mobile-search-form {
@@ -57,22 +66,20 @@
   gap: 9px;
   padding: 0 10px 0 12px;
   min-height: 38px;
-  border-radius: 999px;
-  border: 1px solid color-mix(in srgb, var(--73-ink-disabled) 86%, transparent);
-  background: var(--73-app-grad-soft-09);
-  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--73-surface-strong) 82%, transparent);
+  border-radius: var(--73-radius-control);
+  border: 1px solid var(--73-border);
+  background: var(--73-surface);
   color: var(--73-ink-muted);
   transition:
     background-color 160ms ease,
     border-color 160ms ease,
-    box-shadow 160ms ease,
     color 160ms ease;
 }
 
 .mobile-search-form:hover,
 .mobile-search-form:focus-within {
-  border-color: color-mix(in srgb, var(--73-accent) 96%, transparent);
-  background: var(--73-surface-strong);
+  border-color: color-mix(in srgb, var(--73-accent) 40%, transparent);
+  background: var(--73-surface);
 }
 
 .mobile-search-icon {
@@ -94,15 +101,23 @@
   align-items: center;
   gap: 6px;
   flex: 0 0 auto;
-  min-height: 38px;
+  min-height: 44px;
   padding: 0 12px;
-  border: 0;
-  border-radius: 12px;
-  background: color-mix(in srgb, var(--73-accent-soft) 90%, transparent);
+  border: 1px solid var(--73-border);
+  border-radius: var(--73-radius-control);
+  background: var(--73-bg-soft);
+  color: var(--73-ink-soft);
+  font-size: 12px;
+  font-weight: 500;
+  fill: currentColor;
+  transition:
+    border-color 160ms ease,
+    color 160ms ease;
+}
+
+.mobile-sort-btn:hover {
+  border-color: color-mix(in srgb, var(--73-accent) 40%, transparent);
   color: var(--73-accent);
-  font-size: 13px;
-  font-weight: 800;
-  fill: var(--73-accent);
 }
 
 .mobile-search-input {
