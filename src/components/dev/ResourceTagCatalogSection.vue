@@ -46,10 +46,6 @@ const emit = defineEmits<{
     <div v-if="entries.length > 0 || showRootWhenEmpty" class="dev-catalog-section">
       <div class="dev-upload-grid dev-upload-grid--two">
         <section class="dev-catalog-select">
-          <div class="dev-catalog-select__head">
-            <span class="dev-catalog-select__label">根节点</span>
-            <span class="dev-catalog-select__meta">当前：{{ rootLabel }}</span>
-          </div>
           <TSelect
             aria-label="根节点"
             :model-value="rootKey"
@@ -62,10 +58,6 @@ const emit = defineEmits<{
         </section>
 
         <section v-if="entries.length > 0" class="dev-catalog-select">
-          <div class="dev-catalog-select__head">
-            <span class="dev-catalog-select__label">二级节点</span>
-            <span class="dev-catalog-select__meta">当前：{{ entryLabel }}</span>
-          </div>
           <TSelect
             aria-label="二级节点"
             :model-value="entryKey"
@@ -90,7 +82,6 @@ const emit = defineEmits<{
           <header class="dev-tag-group-row__head">
             <section class="dev-tag-group-row__copy">
               <h4 class="dev-tag-group-row__title">{{ group.group_name }}</h4>
-              <p class="dev-tag-group-row__path" :title="group.label">{{ group.label }}</p>
             </section>
             <span class="dev-tag-group-row__count"
               >{{ (selectedTagIdsByGroup[group.group_id] ?? []).length }}/{{
@@ -99,10 +90,11 @@ const emit = defineEmits<{
             >
           </header>
           <div class="dev-tag-group-row__field">
+            <!-- 芯片超过 2 个折成 +N，保持每张卡片单行高度一致 -->
             <TSelect
               :model-value="selectedTagIdsByGroup[group.group_id] ?? []"
               multiple
-              filterable
+              :max-tag-count="2"
               placeholder="选择一个或多个标签"
               @update:model-value="emit('updateGroupTags', group.group_id, $event)"
             >

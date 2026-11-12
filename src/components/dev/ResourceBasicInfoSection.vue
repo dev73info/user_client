@@ -9,7 +9,7 @@ import ResourceRepostFields from '@/components/dev/ResourceRepostFields.vue'
  *
  * 栅格是 12 列分区（侧栏预览时主栏约 500px，一行塞 4 个会截断）：
  *   1) 图标 | 标题
- *   2) 归属 | 类型 | 售价
+ *   2) 归属 | 类型 | 售价（该行之后插版权声明，见 ResourcePricingFields 的 after-price 插槽）
  *   3) 简介通栏
  * 列宽全由 `.dev-basic-info-grid__*` 决定，组件只管顺序——插槽顺序就是视觉顺序。
  *
@@ -43,11 +43,13 @@ defineProps<{
 
 const emit = defineEmits<{
   'update:coverPreview': [value: string]
+  /** 裁剪「应用」完成：父级据此立即上传封面。 */
+  coverApplied: []
   /** 简介被手改：自动生成的那句不再跟着归类变。 */
   descriptionInput: []
-  /** 现金价输入框的底层元素（实时归一前导 0 用）。 */
+  /** 现金 / 积分价输入框的底层元素（实时归一前导 0 用）。 */
   cashPriceInput: [el: HTMLInputElement | null]
-  pointsPriceInput: []
+  pointsPriceInput: [el: HTMLInputElement | null]
 }>()
 
 const title = defineModel<string>('title', { required: true })
@@ -75,12 +77,16 @@ const promoSharePercent = defineModel<number>('promoSharePercent', { required: t
     </header>
 
     <TForm label-position="top" class="dev-upload-form">
-      <div class="dev-basic-info-grid">
-        <TFormItem label="图标文件" class="dev-basic-info-grid__icon">
+      <div
+        class="dev-basic-info-grid"
+        :class="{ 'dev-basic-info-grid--triple': isApiKind || pointsLockedBySavedCash }"
+      >
+        <TFormItem label="封面" class="dev-basic-info-grid__icon">
           <ResourceIconPicker
             :model-value="coverPreview"
             @update:model-value="emit('update:coverPreview', $event)"
             v-model:file="coverFile"
+            @applied="emit('coverApplied')"
           />
         </TFormItem>
 
@@ -118,25 +124,31 @@ const promoSharePercent = defineModel<number>('promoSharePercent', { required: t
           :platform-fee-bps="platformFeeBps"
           :platform-fee-error="platformFeeError"
           @cash-price-input="emit('cashPriceInput', $event)"
-          @points-price-input="emit('pointsPriceInput')"
-        />
+          @points-price-input="emit('pointsPriceInput', $event)"
+        >
+          <!-- 版权声明紧跟售价、排在推广分成上方（整行） -->
+          <template #after-price>
+            <TFormItem label="版权声明" class="dev-basic-info-grid__copyright">
+              <TCheckbox v-model="copyrightDeclared">
+                我确认拥有该资源版权，或已获得合法授权可售卖
+              </TCheckbox>
+            </TFormItem>
+          </template>
+        </ResourcePricingFields>
 
         <TFormItem label="资源简介" required class="dev-basic-info-grid__desc">
+          <!-- 换行自动增高与手动拖拽互斥：这里取自动增高，故 resize 关掉（TInput 的 inline style 会覆盖 CSS） -->
           <TInput
             show-count
             v-model="description"
             type="textarea"
             :rows="5"
+            resize="none"
+            :autosize="{ minRows: 5, maxRows: 12 }"
             :maxlength="500"
             placeholder="用一段简洁说明告诉用户这是什么资源、适合谁、解决什么问题"
             @input="emit('descriptionInput')"
           />
-        </TFormItem>
-
-        <TFormItem label="版权声明" class="dev-basic-info-grid__copyright">
-          <TCheckbox v-model="copyrightDeclared">
-            我确认拥有该资源版权，或已获得合法授权可售卖
-          </TCheckbox>
         </TFormItem>
 
         <TFormItem

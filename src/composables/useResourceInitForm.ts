@@ -4,6 +4,7 @@ import type { McResourceKind } from '@/api/mcResources'
 import { listMyTeams, type TeamResponse } from '@/api/team'
 import type { ResourceCreationType, ResourcePaidMode } from '@/shared/resourceCreation'
 import {
+  normalizePointsPriceText,
   normalizeYuanPriceText,
   parsePointsPriceInput,
   parsePromoSharePercentInput,
@@ -32,16 +33,14 @@ export function useResourceInitForm(options: {
   const form = reactive<ResourceInitFormState>(createResourceInitFormState())
   /** 图标文件：只在用户选了本地文件时才有值，提交后单独上传，其余字段先落资源。 */
   const selectedIconFile = ref<File | null>(null)
-  const creationType = ref<ResourceCreationType>('free')
+  const creationType = ref<ResourceCreationType>('normal')
   const paidMode = ref<ResourcePaidMode>('buyout')
   const resourceKind = computed<McResourceKind>(() =>
     creationType.value === 'api' ? 'api' : 'normal',
   )
 
   const isApiKind = computed(() => resourceKind.value === 'api')
-  const isVersionSale = computed(
-    () => creationType.value === 'paid' && paidMode.value === 'version',
-  )
+  const isVersionSale = computed(() => !isApiKind.value && paidMode.value === 'version')
   const effectiveOriginType = computed<'original' | 'repost'>(() =>
     isApiKind.value ? 'original' : form.originType,
   )
@@ -70,30 +69,21 @@ export function useResourceInitForm(options: {
   const pointsPriceDisabled = computed(() => hasCashPrice.value)
   const showCopyrightField = computed(
     () =>
-      creationType.value === 'paid' ||
-      hasCashPrice.value ||
-      hasPointsPrice.value ||
-      form.copyrightDeclared,
+      hasCashPrice.value || hasPointsPrice.value || form.copyrightDeclared || isVersionSale.value,
   )
 
   watch(creationType, (type) => {
-    if (type === 'free') {
-      form.priceYuan = '0'
-      form.pricePoints = '0'
-      form.copyrightDeclared = false
-    } else if (type === 'api') {
-      form.pricePoints = '0'
-    } else if (paidMode.value === 'version') {
-      form.priceYuan = '0'
+    // 接口资源不能走积分购；切到接口时只收敛积分价，现金价与版权声明保留。
+    if (type === 'api') {
       form.pricePoints = '0'
     }
   })
 
   watch(paidMode, () => {
-    if (creationType.value === 'paid') {
+    // 买断价与单版本价两套输入不通用，非接口资源切换售卖方式时清零重填。
+    if (!isApiKind.value) {
       form.priceYuan = '0'
       form.pricePoints = '0'
-      form.copyrightDeclared = false
     }
   })
 
@@ -121,7 +111,18 @@ export function useResourceInitForm(options: {
     }
   }
 
-  function onPointsPriceInput() {
+  /** 积分售价实时归一：只保留数字并去掉前导 0；写法与现金价那条一致（直接改写底层 input 与光标）。 */
+  function onPointsPriceInput(input: HTMLInputElement | null) {
+    const raw = form.pricePoints
+    const { text, caret } = normalizePointsPriceText(raw, input?.selectionStart ?? null)
+    if (text !== raw) {
+      form.pricePoints = text
+      if (input && caret !== null) {
+        input.value = text
+        input.setSelectionRange(caret, caret)
+      }
+    }
+
     if (hasPointsPrice.value) {
       form.priceYuan = '0'
     }

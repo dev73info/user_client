@@ -3,8 +3,9 @@
    「80px 的图标按钮占着 228px 的格子」「售价输入框被拉成 473px」
    「类型 / 版权只渲染出一个字段时右半边整块空着」，字段之间的留白比字段本身还宽。
 
-   行尾余量只交给**内容本身就是流动的**那两档（长文本框、推广分成拖动条）：它们宽一点更好用，
-   也不会像等分档那样把旁边的短控件一起拉宽。开关、标签这类内容固定的字段不伸缩。
+   行尾余量只交给**内容本身就是流动的**长文本框：它宽一点更好用，也不会像等分档那样
+   把旁边的短控件一起拉宽。推广分成拖动条只占固定一档（不吃行尾余量），开关、标签这类
+   内容固定的字段同样不伸缩。
 
    行距列距都取 gap 这一个来源：表单项自带 18px 下边距（ui_73info 的 .t73-form-item），
    与 gap 叠起来会让行距变成列距的两倍（列 18px、行 36px）——一行里的字段看着挤，
@@ -26,7 +27,7 @@
    - 接口资源的「允许的来源地址」：多行清单，走长文本框档（可伸缩），起高给 5 行——
      通栏会让它变成一条 900px 宽、2 行高的浅条（TInput 的 autosize 默认只给 2 行）；
      同行的「购买限制」按内容取宽，正好把这一行排满，不留半行空白；
-   - 推广分成：拖动条取 280px 起。
+   - 推广分成：滑块约 300px + 数值 48px，取 360px 且不伸缩（不再吃行尾余量，避免滑块被拉成一条）。
 
    ≤900px 走 dev-responsive.css 的单列回落，那里控件照旧满宽。 */
 .dev-page--publish .dev-upload-grid--form {
@@ -67,9 +68,9 @@
   flex: 1 1 320px;
 }
 
-/* 推广分成：拖动条要够长，也让它跟着补满行尾 */
+/* 推广分成：固定一档（滑块约 300px + 数值 48px），不伸——补满行尾会把滑块拉成一条长槽 */
 .dev-page--publish .dev-upload-form .dev-form-item--promo {
-  flex: 1 1 280px;
+  flex: 0 1 360px;
 }
 
 /* 开关组（购买限制）：按内容取宽，不伸缩 */
@@ -92,9 +93,33 @@
   min-width: 0;
 }
 
-/* 抽成披露：父容器是 flex-wrap，独占一整行，别挤进售价那一排 */
-.dev-page--publish .dev-upload-form .dev-platform-fee-hint {
-  flex: 1 1 100%;
+/* 抽成披露：收成售价标签右侧的一枚小提示，不再独占一整行 */
+.dev-page--publish .dev-upload-form .dev-form-item--price-cash {
+  position: relative;
+}
+
+.dev-page--publish .dev-upload-form .dev-form-item--price-cash .dev-platform-fee-hint {
+  position: absolute;
+  top: 0;
+  right: 0;
+}
+
+.dev-platform-fee-hint {
+  color: var(--dev-muted);
+  cursor: help;
+}
+
+.dev-platform-fee-hint__trigger {
+  font-size: 12px;
+  line-height: 1.45;
+  text-decoration: underline dotted color-mix(in srgb, var(--dev-muted) 55%, transparent);
+  text-underline-offset: 3px;
+  white-space: nowrap;
+}
+
+.dev-platform-fee-hint:hover,
+.dev-platform-fee-hint:focus-within {
+  color: var(--dev-blue);
 }
 
 /* 图标上传块走内嵌块那一档圆角（原来是 14px，不在 24/12/10 这三个令牌里） */

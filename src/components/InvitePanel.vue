@@ -118,7 +118,9 @@ defineExpose({ reload: loadInvite })
 <template>
   <section class="invite-panel" aria-label="邀请面板" :aria-busy="loading">
     <div class="wb-card-head">
-      <h3 class="wb-card-head__title">我的邀请</h3>
+      <div class="wb-card-head__title-block">
+        <h3 class="wb-card-head__title">我的邀请</h3>
+      </div>
       <div class="wb-card-head__actions">
         <RouterLink class="wb-btn wb-btn--ghost" :to="{ name: 'workbench-invite-leaderboard' }"
           >查看排行榜</RouterLink

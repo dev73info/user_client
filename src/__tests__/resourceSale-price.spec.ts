@@ -10,6 +10,7 @@ import {
   isPaidResource,
   isPointsResource,
   isPricedResource,
+  normalizePointsPriceText,
   normalizeYuanPriceText,
   parsePointsPriceInput,
   parseYuanPriceInput,
@@ -83,6 +84,19 @@ describe('resourceSale 价格输入与展示', () => {
     expect(normalizeYuanPriceText('', 0)).toEqual({ text: '', caret: 0 })
     // 不传光标时 caret 为 null（只做文本归一）
     expect(normalizeYuanPriceText('1.234')).toEqual({ text: '1.23', caret: null })
+  })
+
+  it('normalizePointsPriceText keeps digits only and strips leading zeros', () => {
+    expect(normalizePointsPriceText('007', 3)).toEqual({ text: '7', caret: 1 })
+    // 非法字符直接丢弃，光标按被丢弃的字符左移
+    expect(normalizePointsPriceText('abc12x3', 7)).toEqual({ text: '123', caret: 3 })
+    expect(normalizePointsPriceText('1.5', 3)).toEqual({ text: '15', caret: 2 })
+    // 单个 0 / 空串原样保留，输入过程中不被清空
+    expect(normalizePointsPriceText('0', 1)).toEqual({ text: '0', caret: 1 })
+    expect(normalizePointsPriceText('00', 2)).toEqual({ text: '0', caret: 1 })
+    expect(normalizePointsPriceText('', 0)).toEqual({ text: '', caret: 0 })
+    // 不传光标时 caret 为 null（只做文本归一）
+    expect(normalizePointsPriceText('100')).toEqual({ text: '100', caret: null })
   })
 
   it('canSwitchToPointsPrice blocks cash → points only', () => {

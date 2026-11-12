@@ -1,8 +1,12 @@
-@media (max-width: 900px) {
+/* 侧栏预览占 300px 起：901–1180 这一档表单只剩 ~170px，标签归类两个下拉放不下
+   （溢出容器、互相覆盖）。这一档先把预览压到表单下面，单栏铺满。 */
+@media (max-width: 1180px) {
   .dev-resource-homepage-editor__layout {
     grid-template-columns: 1fr;
   }
+}
 
+@media (max-width: 900px) {
   .dev-basic-info-grid {
     grid-template-columns: 1fr;
   }

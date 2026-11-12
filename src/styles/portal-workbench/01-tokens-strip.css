@@ -115,6 +115,39 @@
   white-space: nowrap;
 }
 
+/* 读数格即筛选按钮：结构仍是 .wb-strip__item，只去掉按钮默认外观。
+   取值与 RequirementStrip 的 scoped 规则逐字一致，只是收成共享类供各页复用。 */
+.wb-strip__item--filter {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.wb-strip__item--filter:hover .wb-strip__label {
+  color: var(--73-ink);
+}
+
+.wb-strip__item--filter:focus-visible {
+  outline: 2px solid var(--73-accent);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+.wb-strip__item--filter.is-active .wb-strip__label,
+.wb-strip__item--filter.is-active .wb-strip__value,
+/* 悬停规则会多压一级：激活格悬停时要把蓝色再说一遍 */
+.wb-strip__item--filter.is-active:hover .wb-strip__label,
+.wb-strip__item--filter.is-active:hover .wb-strip__value {
+  color: var(--73-accent);
+}
+
+.wb-strip__item--filter.is-active .wb-strip__value {
+  font-weight: 700;
+}
+
 /* 读数后面跟的同义小标签（环比、口径说明）：与读数同一行、贴着右侧 */
 .wb-strip__tag {
   display: inline-flex;

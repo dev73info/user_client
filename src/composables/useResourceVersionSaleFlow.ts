@@ -1,4 +1,4 @@
-import { computed, ref, watch, type Ref } from 'vue'
+import { ref, watch, type Ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
 import { submitMcResourceReview, type McResourcePayload } from '@/api/mcResources'
@@ -14,7 +14,6 @@ export function useResourceVersionSaleFlow(options: {
   const router = useRouter()
   const reviewError = ref('')
   const reviewing = ref(false)
-  const requireVersionPrice = computed(() => route.query.sale === 'version')
 
   watch(
     () => [options.resource.value, route.query.create] as const,
@@ -61,7 +60,6 @@ export function useResourceVersionSaleFlow(options: {
   }
 
   return {
-    requireVersionPrice,
     reviewError,
     reviewing,
     completeVersionSale,

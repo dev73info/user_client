@@ -6,6 +6,7 @@ export {
   stripLeadingZeros,
   caretAfterStripLeadingZeros,
   normalizeYuanPriceText,
+  normalizePointsPriceText,
   parsePointsPriceInput,
   fenToYuanText,
 } from './resourceSale/price'

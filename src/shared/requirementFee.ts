@@ -145,6 +145,3 @@ export function resourceExpectedNetLabel(
   }
   return ''
 }
-
-/** 平台费率调整的公告期口径（资源发布 / 资源管理页常驻一句）。 */
-export const RESOURCE_FEE_NOTICE_TEXT = '费率调整提前 7 天公告，已下单订单不受影响'

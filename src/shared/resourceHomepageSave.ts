@@ -160,6 +160,8 @@ export interface HomepagePayloadInput {
   effectiveOriginType: 'original' | 'repost'
   /** 归类的提交口径（接口资源为空，回落态下是资源原有归类）。 */
   tagSelections: CreateMcResourceTagSelection[]
+  /** 当前二级节点的 platform；空串不提交，避免把资源平台清空。 */
+  platform: string
   /** 本次要提交的封面地址；有选新文件时是上传后的地址。 */
   coverUrl: string | null
   priceFen: number
@@ -175,6 +177,9 @@ export function buildHomepagePayload(input: HomepagePayloadInput): UpdateMcResou
     author: form.author.trim(),
     description: form.description.trim(),
     tag_selections: input.tagSelections,
+    // 旧标签树时期创建的资源 platform 是旧值，保存时不一并纠正的话，后端会以
+    // 「选中的标签分组不属于所选平台」把这类资源永远卡在 400。
+    ...(input.platform.trim() ? { platform: input.platform.trim() } : {}),
     // cover_url / release_note 传空串表示清空，传 null 后端会当成没改
     cover_url: input.coverUrl,
     docs_url: form.docs_url.trim() || null,

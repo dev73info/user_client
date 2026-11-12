@@ -1,21 +1,12 @@
-export type ResourceCreationType = 'free' | 'paid' | 'api'
+export type ResourceCreationType = 'normal' | 'api'
 export type ResourcePaidMode = 'buyout' | 'version'
 
 export const RESOURCE_CREATION_TYPE_OPTIONS: ReadonlyArray<{
   value: ResourceCreationType
   label: string
 }> = [
-  { value: 'free', label: '免费' },
-  { value: 'paid', label: '付费' },
-  { value: 'api', label: '接口' },
-]
-
-export const RESOURCE_PAID_MODE_OPTIONS: ReadonlyArray<{
-  value: ResourcePaidMode
-  label: string
-}> = [
-  { value: 'buyout', label: '买断' },
-  { value: 'version', label: '单版本' },
+  { value: 'normal', label: '普通资源' },
+  { value: 'api', label: '接口资源' },
 ]
 
 function firstQueryValue(raw: unknown): unknown {
@@ -24,7 +15,10 @@ function firstQueryValue(raw: unknown): unknown {
 
 export function parseResourceCreationType(raw: unknown): ResourceCreationType | null {
   const value = firstQueryValue(raw)
-  return value === 'free' || value === 'paid' || value === 'api' ? value : null
+  if (value === 'api') {
+    return 'api'
+  }
+  return value === 'normal' || value === 'free' || value === 'paid' ? 'normal' : null
 }
 
 export function resolveResourceCreationType(
@@ -35,7 +29,7 @@ export function resolveResourceCreationType(
   if (parsed) {
     return parsed
   }
-  return firstQueryValue(legacyKind) === 'api' ? 'api' : 'free'
+  return firstQueryValue(legacyKind) === 'api' ? 'api' : 'normal'
 }
 
 export function resolveResourcePaidMode(raw: unknown): ResourcePaidMode {
@@ -46,5 +40,5 @@ export function resourceCreationRouteQuery(
   type: ResourceCreationType,
   paidMode: ResourcePaidMode,
 ): Record<string, string> {
-  return type === 'paid' ? { type, mode: paidMode } : { type }
+  return type === 'api' ? { type } : { type, mode: paidMode }
 }

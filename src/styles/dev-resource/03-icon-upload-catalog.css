@@ -54,32 +54,28 @@
   background: color-mix(in srgb, var(--73-surface-strong) 90%, transparent);
 }
 
-/* 根节点 / 二级节点各一个下拉：宽度与列数交给 .dev-upload-grid--two，
+/* 根节点 / 二级节点两列均分整行，下拉铺满各自半栏，与下方标签组网格对齐 */
+.dev-page--publish .dev-catalog-section .dev-upload-grid--two {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
+}
+
+/* 根节点 / 二级节点各一个下拉：列宽由 .dev-upload-grid--two 均分，
    下拉本体（高度、圆角、描边、字号）走库的 `--73-*`，这里只排标签与状态回显。 */
 .dev-page--publish .dev-catalog-select {
   display: grid;
   gap: 8px;
   min-width: 0;
+  width: 100%;
+  max-width: 100%;
 }
 
-.dev-page--publish .dev-catalog-select__head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-}
-
-.dev-page--publish .dev-catalog-select__label {
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--dev-blue);
-}
-
-.dev-page--publish .dev-catalog-select__meta {
-  font-size: 12px;
-  color: var(--dev-muted);
+/* 触发器铺满半栏；允许被网格轨道压窄，绝不溢出容器 */
+.dev-page--publish .dev-catalog-select > .t73-select {
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
 }
 
 .dev-page--publish .dev-team-select-native {
@@ -109,15 +105,16 @@
   padding: 4px 6px 8px 2px;
 }
 
-/* 与需求详情绑定侧栏一致：标题在上、多选满宽，已选芯片全部换行（不用 +N） */
+/* 与需求详情绑定侧栏一致：标题在上、已选芯片全部换行（不用 +N）。
+   宽度由外层网格轨道决定（见 01-publish-layout.css 的 .dev-upload-grid--tag-groups），
+   这里不再按内容收窄，卡片才能等宽、等高。 */
 .dev-page--publish .dev-tag-group-row {
   display: grid;
   grid-template-columns: 1fr;
   align-content: start;
   align-items: stretch;
   row-gap: 8px;
-  /* 缩到内容宽：标题与计数贴在一起，下拉框按内容宽；不占满整行 */
-  width: max-content;
+  /* 轨道已定宽：铺满卡片，路径超出走省略号 */
   max-width: 100%;
   padding: 12px;
   border: 1px solid color-mix(in srgb, var(--73-accent) 10%, transparent);
@@ -126,11 +123,6 @@
   box-shadow: 0 6px 14px color-mix(in srgb, var(--73-accent) 4%, transparent);
   /* 不可 overflow:hidden：会裁掉 TSelect 底边描边与圆角 */
   overflow: visible;
-}
-
-.dev-page--publish .dev-tag-group-row:last-child {
-  padding-bottom: 10px;
-  border-bottom: 1px solid color-mix(in srgb, var(--73-accent) 10%, transparent);
 }
 
 .dev-page--publish .dev-tag-group-row__head {
@@ -147,16 +139,6 @@
   font-size: 13px;
   font-weight: 700;
   color: var(--dev-ink);
-}
-
-.dev-page--publish .dev-tag-group-row__path {
-  margin: 2px 0 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  font-size: 10px;
-  line-height: 1.35;
-  color: var(--dev-muted);
 }
 
 .dev-page--publish .dev-tag-group-row__count {
@@ -177,6 +159,15 @@
   margin-bottom: 0;
   min-width: 0;
   width: 100%;
+  max-width: 100%;
+  justify-self: start;
+}
+
+/* 卡片等宽后下拉铺满整张卡片，视觉才齐；min-width 保住 160px 的可用下限 */
+.dev-page--publish .dev-tag-group-row__field > .t73-select {
+  width: 100%;
+  min-width: 160px;
+  max-width: 100%;
 }
 
 .dev-tag-group-panel::-webkit-scrollbar {
@@ -188,11 +179,36 @@
   background: color-mix(in srgb, var(--73-ink-muted) 32%, transparent);
 }
 
-.dev-page--publish .dev-preview-card {
-  gap: 14px;
-  padding: 16px;
-  border-radius: 18px;
-  border: 1px solid color-mix(in srgb, var(--73-accent) 10%, transparent);
-  background: color-mix(in srgb, var(--73-surface-strong) 92%, transparent);
-  box-shadow: 0 12px 24px color-mix(in srgb, var(--73-accent) 6%, transparent);
+/* 窄屏回到满宽：标签组本身已改成单列满行，下拉不再按内容收窄 */
+@media (max-width: 900px) {
+  .dev-page--publish .dev-catalog-select,
+  .dev-page--publish .dev-catalog-select > .t73-select,
+  .dev-page--publish .dev-tag-group-row,
+  .dev-page--publish .dev-tag-group-row__field,
+  .dev-page--publish .dev-tag-group-row__field > .t73-select {
+    width: 100%;
+  }
+
+  .dev-page--publish .dev-tag-group-row {
+    max-width: 100%;
+  }
+}
+
+/* 标签组卡片：芯片与 +N 始终单行，超出由芯片自身收缩省略 */
+.dev-page--publish .dev-tag-group-row .t73-select--multiple {
+  flex-wrap: nowrap;
+}
+
+.dev-page--publish .dev-tag-group-row .t73-select__tag {
+  flex: 0 1 auto;
+  min-width: 0;
+}
+
+.dev-page--publish .dev-tag-group-row .t73-select__tag--more {
+  flex: 0 0 auto;
+}
+
+.dev-page--publish .dev-tag-group-row .t73-select--multiple .t73-select__input {
+  flex: 0 1 48px;
+  min-width: 24px;
 }

@@ -42,21 +42,17 @@ const props = defineProps<{
   resourceId: number
   /** 面包屑里的当前分区名（如「自由工具」）；缺省显示「资源列表」 */
   contextLabel?: string
+  embedded?: boolean // 页内预览嵌入宿主：隐藏返回行，并去掉外壳的内边距与描边
 }>()
 
-/**
- * `close`：由列表页清掉当前选中（`ResourceCatalogView` 的桌面 / 移动两个实例都还挂着 `@close`）。
- * 面板内原来的「收起详情」按钮已按需求删除，出口改由窄屏的返回控件提供
- * （见模板里的 `resource-detail-page__panel-back`）：它与桌面工具条的「返回」走同一个事件、
- * 同一条父级清理逻辑，不新增事件契约。（本组件是「div + Teleport」的多根结构，
- * 父级监听若没有对应声明就会退化成无法继承的额外属性、触发 Vue 的 dev 警告，所以声明必须保留。）
- */
+/** `close`：列表页清掉当前选中（桌面 / 移动两个实例都挂着 `@close`），窄屏返回控件与
+ * 桌面工具条「返回」共用它。本组件是「div + Teleport」多根结构，未声明的父级监听会
+ * 退化成额外属性并触发 dev 警告，所以这个事件声明必须保留。 */
 const emit = defineEmits<{
   (e: 'close'): void
 }>()
 
 const auth = useAuthStore()
-
 const loading = ref(false)
 /** 面板形态下取数失败时的兜底文案（详情页形态失败会退回首页，不用这个） */
 const loadError = ref('')
@@ -278,13 +274,16 @@ watch(
 </script>
 
 <template>
-  <div class="portal-page resource-detail-page resource-detail-page--panel">
+  <div
+    class="portal-page resource-detail-page resource-detail-page--panel"
+    :class="{ 'resource-detail-page--panel-embedded': props.embedded }"
+  >
     <TLoading tag="section" class="resource-detail-page__panel" :loading="loading">
       <!-- 窄屏（≤900px）详情面板里的唯一退出口：桌面工具条的「返回」只在 ≥900px 渲染，
            面板内原来的「收起详情」已删除，移动端因此需要一个可见的返回控件。
            桌面端（>900px）由下面的媒体查询隐藏，保证不出现第二个返回入口。 -->
       <!-- 桌面（>900px）详情页的返回行：返回按钮 + 面包屑（草稿形态）；窄屏仍用下面的面板内返回 -->
-      <div class="resource-detail-page__backbar">
+      <div v-if="!props.embedded" class="resource-detail-page__backbar">
         <button
           class="resource-detail-page__back-btn"
           type="button"

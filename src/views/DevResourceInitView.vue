@@ -1,6 +1,8 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
+import { useRouter } from 'vue-router'
 import { TAlert, TButton, TCard } from 'ui_73info'
+import { getMyAdapayMember } from '@/api/adapay'
 import type { McResourcePayload } from '@/api/mcResources'
 import { getResourceSaleFee } from '@/api/resourceSale'
 import { useResourceTagCatalog } from '@/composables/useResourceTagCatalog'
@@ -18,11 +20,22 @@ import ResourceSecretPlainDialog from '@/components/dev/ResourceSecretPlainDialo
 import { useAuthStore } from '@/stores/auth'
 
 const auth = useAuthStore()
+const router = useRouter()
+/** 结算账户是否已开通：未开通时售价锁定，先引导去钱包页完善。 */
+const settlementReady = ref(false)
 /** 平台抽成比例（基点）；接口失败时置错误标记，页面明确提示「费率暂不可用」。 */
 const platformFeeBps = ref<number | null>(null)
 const platformFeeError = ref(false)
 
 onMounted(async () => {
+  try {
+    const member = await getMyAdapayMember(auth.token)
+    settlementReady.value = member?.acceptsSettlement === true
+  } catch {
+    // 状态读不到按未开通处理：售价锁着，用户仍可先建免费资源
+    settlementReady.value = false
+  }
+
   try {
     const fee = await getResourceSaleFee(auth.token)
     platformFeeBps.value = fee.platform_fee_bps
@@ -32,6 +45,11 @@ onMounted(async () => {
     platformFeeError.value = true
   }
 })
+
+/** 「去完善结算账户」：账户页收到 settle=1 会直接打开结算账户弹窗。 */
+function goSettlement() {
+  void router.push({ name: 'workbench-account', query: { settle: '1' } })
+}
 
 /** 免费、付费（买断 / 单版本）与接口共用的资源创建页。 */
 const tagCatalog = useResourceTagCatalog()
@@ -67,6 +85,8 @@ const {
   myTeams,
   teamOptions,
   hasJoinedTeam,
+  hasCashPrice,
+  hasPointsPrice,
   cashPriceDisabled,
   pointsPriceDisabled,
   showCopyrightField,
@@ -76,6 +96,12 @@ const {
   onCashPriceInput,
   onPointsPriceInput,
 } = formState
+
+/** 读数条上的资源类型：接口 / 填了价格即付费 / 否则免费。 */
+const resourceTypeLabel = computed(() =>
+  isApiKind.value ? '接口' : hasCashPrice.value || hasPointsPrice.value ? '付费' : '免费',
+)
+
 const {
   currentRootKey,
   currentEntryKey,
@@ -112,8 +138,7 @@ const {
     <ResourceInitMetaStrip
       :is-api-kind="isApiKind"
       :root-label="currentRootLabel"
-      :entry-label="currentEntryLabel"
-      :selected-tag-count="selectedTagCount"
+      :resource-type-label="resourceTypeLabel"
       :is-loading-tags="isLoadingTags"
       @refresh-tags="loadTagTree"
       @back="goBack"
@@ -136,7 +161,7 @@ const {
 
     <div class="dev-upload-layout">
       <TCard class="dev-surface-card dev-upload-combined-card">
-        <ResourceTypeSection v-model:creation-type="creationType" v-model:paid-mode="paidMode" />
+        <ResourceTypeSection v-model:creation-type="creationType" />
 
         <ResourceInitBasicInfoSection
           v-model:cover-url="form.coverUrl"
@@ -153,7 +178,6 @@ const {
           v-model:price-yuan="form.priceYuan"
           v-model:price-points="form.pricePoints"
           v-model:promo-share-percent="form.promoSharePercent"
-          :creation-type="creationType"
           :paid-mode="paidMode"
           :is-api-kind="isApiKind"
           :effective-origin-type="effectiveOriginType"
@@ -168,8 +192,10 @@ const {
           :promo-share-off="promoSharePercentValue <= 0"
           :platform-fee-bps="platformFeeBps"
           :platform-fee-error="platformFeeError"
+          :settlement-ready="settlementReady"
           @cash-price-input="onCashPriceInput"
           @points-price-input="onPointsPriceInput"
+          @go-settlement="goSettlement"
         />
 
         <!-- 接口渠道在资源创建后保存；类别仍使用现有 resource_kind 字段。 -->

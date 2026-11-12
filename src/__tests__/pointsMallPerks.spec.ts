@@ -181,6 +181,43 @@ describe('积分商城与权益', () => {
     expect(mocks.appearance).toHaveBeenCalledWith('user-token', 'gradient')
   })
 
+  it('读数格可点筛选，读数保持全量口径', async () => {
+    mocks.me.mockResolvedValue(
+      points([
+        perk('home_background_static'),
+        perk('home_background_dynamic'),
+        { ...perk('username_gradient'), equipped: true },
+      ]),
+    )
+    wrapper = mount(PerksCenterView, {
+      global: { stubs: { WorkbenchBarSlot: { template: '<div><slot /></div>' } } },
+    })
+    await flushPromises()
+
+    const stripItem = (label: string) =>
+      wrapper!.findAll('.wb-strip__item--filter').find((item) => item.text().startsWith(label))!
+    expect(wrapper.findAll('.wb-strip__item--filter')).toHaveLength(3)
+    expect(stripItem('全部权益').text()).toContain('3')
+    expect(stripItem('已解锁权益').text()).toContain('3')
+    expect(stripItem('已佩戴权益').text()).toContain('1')
+    // 列表本身仍排除用户名颜色类权益。
+    expect(wrapper.findAll('button[aria-label="佩戴权益"]')).toHaveLength(2)
+
+    await stripItem('已佩戴权益').trigger('click')
+    expect(stripItem('已佩戴权益').attributes('aria-pressed')).toBe('true')
+    expect(wrapper.findAll('button[aria-label="佩戴权益"]')).toHaveLength(0)
+    expect(wrapper.text()).toContain('没有符合条件的权益')
+    // 读数不随筛选变化（已佩戴的用户名渐变计入读数、不在列表里）。
+    expect(stripItem('全部权益').text()).toContain('3')
+    expect(stripItem('已解锁权益').text()).toContain('3')
+    expect(stripItem('已佩戴权益').text()).toContain('1')
+
+    await stripItem('已解锁权益').trigger('click')
+    expect(wrapper.findAll('button[aria-label="佩戴权益"]')).toHaveLength(2)
+    await stripItem('全部权益').trigger('click')
+    expect(wrapper.findAll('button[aria-label="佩戴权益"]')).toHaveLength(2)
+  })
+
   it('权益加载失败显示错误并允许重试', async () => {
     mocks.me.mockRejectedValueOnce(new Error('权益服务暂不可用'))
     wrapper = mount(PerksCenterView, {

@@ -32,7 +32,6 @@ export function useResourceVersionDialogs(deps: {
   resource: Ref<McResourcePayload | null>
   versionRows: Ref<McResourceVersionPayload[]>
   loadPage: () => Promise<void>
-  requireVersionPrice?: Ref<boolean>
   onVersionCreated?: () => Promise<void>
 }) {
   const auth = useAuthStore()
@@ -76,10 +75,6 @@ export function useResourceVersionDialogs(deps: {
     const price = parseYuanPriceInput(priceYuan)
     if (!price.ok) {
       TMessage.warning(price.message)
-      return
-    }
-    if (deps.requireVersionPrice?.value && price.fen <= 0) {
-      TMessage.warning('请设置单版本售价')
       return
     }
     if (price.fen > 0 && !deps.resource.value.copyright_declared) {
@@ -135,7 +130,12 @@ export function useResourceVersionDialogs(deps: {
     editVersionDialogVisible.value = true
   }
 
-  async function submitVersionEdit({ version, note, file }: ResourceVersionSubmitPayload) {
+  async function submitVersionEdit({
+    version,
+    note,
+    file,
+    priceYuan = '0',
+  }: ResourceVersionSubmitPayload) {
     if (!auth.token || !deps.resource.value || !editingVersion.value) {
       TMessage.error('登录状态已失效，请重新登录')
       return
@@ -151,6 +151,21 @@ export function useResourceVersionDialogs(deps: {
       return
     }
 
+    const price = parseYuanPriceInput(priceYuan)
+    if (!price.ok) {
+      TMessage.warning(price.message)
+      return
+    }
+    if (price.fen > 0 && !deps.resource.value.copyright_declared) {
+      TMessage.warning('付费版本须先在资源主页确认版权声明')
+      return
+    }
+    const buyoutFen = Number(deps.resource.value.buyout_price_fen ?? 0)
+    if (buyoutFen > 0 && price.fen >= buyoutFen) {
+      TMessage.warning('单版本售价必须低于买断价')
+      return
+    }
+
     savingVersionId.value = editingVersion.value.id
     try {
       const updated = await updateMcResourceVersion(
@@ -160,6 +175,7 @@ export function useResourceVersionDialogs(deps: {
         {
           version: version.trim(),
           note: sanitizeRichHtml(note.trim()) || null,
+          price_fen: price.fen,
           file: file ?? undefined,
         },
       )

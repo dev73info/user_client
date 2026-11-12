@@ -39,6 +39,34 @@
   box-shadow: 0 1px 2px color-mix(in srgb, var(--73-ink) 5%, transparent);
 }
 
+/* 工作台菜单页统一口径（以「我的需求」为准）：读数带离页顶近一点，读数带与内容卡之间留出明确的 16px 呼吸。
+   只列工作台侧边栏的菜单页；总览、详情页与已授权应用等子页保持各自的版式。 */
+.user-workbench__content--workspace
+  .page-shell.custom-page-shell.wb-sheet:is(
+    .my-requirements-page,
+    .my-resources-page,
+    .signatures,
+    .invoice-center-page,
+    .my-purchases-page,
+    .purchase-transfers-page,
+    .community-favorites-page,
+    .coupons-page,
+    .points-page,
+    .perks-page,
+    .badges-center-page,
+    .activities-page
+  ) {
+  padding-top: 8px;
+  row-gap: 16px;
+}
+
+/* 开发者资源子页（版本管理）：不是侧边栏菜单页，但要与上面这组同一节奏，
+   否则读数带与内容卡的间距、页顶留白都和其余工作台页对不上。 */
+.user-workbench__content--workspace .page-shell.custom-page-shell.wb-sheet.dev-versions-page {
+  padding-top: 8px;
+  row-gap: 16px;
+}
+
 /* 同一页有多块面板时（勋章墙 + 邀请记录，账户优惠券的分块），用一条分隔线代替两张卡 */
 .wb-sheet > .wallet-section + .wallet-section {
   margin-top: 16px;

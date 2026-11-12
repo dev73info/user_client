@@ -160,10 +160,26 @@
   color: var(--73-accent);
 }
 
+.user-workbench .user-workbench__content .requirement-toggle--subscribe {
+  gap: 5px;
+  padding: 0 10px;
+  border: 1px solid var(--73-border);
+  border-radius: 999px;
+  background: var(--73-surface-strong);
+  color: var(--73-ink-soft);
+}
+
+.user-workbench .user-workbench__content .requirement-toggle--subscribe:hover:not(:disabled) {
+  border-color: var(--73-ink-disabled);
+  background: var(--73-surface-strong);
+  color: var(--73-ink);
+}
+
 .user-workbench .user-workbench__content .requirement-toggle--subscribe[aria-pressed='true'],
 .user-workbench
   .user-workbench__content
   .requirement-toggle--subscribe[aria-pressed='true']:hover:not(:disabled) {
+  border-color: var(--73-success-line);
   background: var(--73-success-soft);
   color: var(--73-success-text);
 }

@@ -165,6 +165,8 @@ export type UpdateMcResourceHomepageRequest = {
   author: string
   description: string
   tag_selections?: CreateMcResourceTagSelection[]
+  /** 资源所属平台（当前二级节点的 platform）；保存时用它纠正旧标签树留下的旧值。 */
+  platform?: string | null
   cover_url?: string | null
   docs_url?: string | null
   visibility?: McResourceVisibility

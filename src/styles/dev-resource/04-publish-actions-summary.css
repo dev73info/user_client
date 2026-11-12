@@ -101,10 +101,6 @@
   top: 16px;
 }
 
-.dev-page--publish .dev-preview-card__hero {
-  gap: 10px;
-}
-
 .dev-page--publish .dev-resource-card__title {
   font-size: 18px;
 }

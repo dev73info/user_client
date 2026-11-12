@@ -28,12 +28,12 @@ const emit = defineEmits<{ refresh: []; markAllRead: [] }>()
       <span class="wb-strip__label">全部通知</span>
       <span class="wb-strip__value">{{ total === null || (loading && !total) ? '—' : total }}</span>
     </div>
-    <div class="wb-strip__divider" />
+    <span class="wb-strip__divider" aria-hidden="true" />
     <div class="wb-strip__item">
       <span class="wb-strip__label">未读</span>
       <span class="wb-strip__value">{{ loading && !total ? '—' : unread }}</span>
     </div>
-    <div class="wb-strip__divider" />
+    <span class="wb-strip__divider" aria-hidden="true" />
     <div class="wb-strip__item">
       <span class="wb-strip__label">待我处理</span>
       <span class="wb-strip__value">{{ pending }}</span>

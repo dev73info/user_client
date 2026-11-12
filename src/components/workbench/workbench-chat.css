@@ -4,9 +4,9 @@
   min-width: 0;
   min-height: 0;
   display: grid;
-  /* 中栏宽度与分组导航共用 --uw-pane-width（见 useWorkbenchPaneWidth），没存过时 360px */
+  /* 中栏宽度与分组导航共用 --uw-pane-width（见 useWorkbenchPaneWidth），没存过时 200px */
   grid-template-columns:
-    var(--uw-pane-width, 360px)
+    var(--uw-pane-width, 200px)
     12px
     minmax(0, 1fr);
   gap: 0;

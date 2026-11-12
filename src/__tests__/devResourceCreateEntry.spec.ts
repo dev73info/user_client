@@ -110,13 +110,12 @@ beforeEach(() => {
   mocks.listMyTeams.mockResolvedValue([])
 })
 
-describe('DevResourceListView：三类资源统一创建入口', () => {
-  it('菜单提供免费的、付费的和接口三类资源', async () => {
+describe('DevResourceListView：两类资源统一创建入口', () => {
+  it('菜单提供（免费/付费）和接口两类资源', async () => {
     const wrapper = mountList()
     await flushPromises()
     expect(wrapper.findAll('.entry-item').map((item) => item.text())).toEqual([
-      '免费资源',
-      '付费资源（买断 / 单版本）BETA',
+      '免费/付费资源BETA',
       '接口资源BETA',
     ])
     wrapper.unmount()
@@ -130,12 +129,12 @@ describe('DevResourceListView：三类资源统一创建入口', () => {
     view.goCreateResource('free')
     expect(mocks.push).toHaveBeenLastCalledWith({
       name: 'dev-plugins',
-      query: { type: 'free' },
+      query: { type: 'normal', mode: 'buyout' },
     })
     view.goCreateResource('paid', 'version')
     expect(mocks.push).toHaveBeenLastCalledWith({
       name: 'dev-plugins',
-      query: { type: 'paid', mode: 'version' },
+      query: { type: 'normal', mode: 'version' },
     })
     view.goCreateResource('api')
     expect(mocks.push).toHaveBeenLastCalledWith({
@@ -145,7 +144,7 @@ describe('DevResourceListView：三类资源统一创建入口', () => {
     view.goCreateResource('API（不公开展示）')
     expect(mocks.push).toHaveBeenLastCalledWith({
       name: 'dev-plugins',
-      query: { type: 'free' },
+      query: { type: 'normal', mode: 'buyout' },
     })
     wrapper.unmount()
   })
@@ -181,12 +180,20 @@ describe('DevResourceInitView：类型来自统一路由查询', () => {
     const wrapper = mountCreate()
     await flushPromises()
     const view = state<CreateState>(wrapper)
-    view.creationType = 'paid'
+    view.creationType = 'normal'
     view.paidMode = 'version'
     await flushPromises()
     expect(mocks.replace).toHaveBeenLastCalledWith({
       name: 'dev-plugins',
-      query: { type: 'paid', mode: 'version' },
+      query: { type: 'normal', mode: 'version' },
+    })
+
+    // 接口资源没有售卖方式，切过去时把 mode 从查询里删掉
+    view.creationType = 'api'
+    await flushPromises()
+    expect(mocks.replace).toHaveBeenLastCalledWith({
+      name: 'dev-plugins',
+      query: { type: 'api' },
     })
     wrapper.unmount()
   })

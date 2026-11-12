@@ -1,4 +1,5 @@
 import { flushPromises, mount } from '@vue/test-utils'
+import { createPinia } from 'pinia'
 import { createMemoryHistory, createRouter } from 'vue-router'
 import { describe, expect, it } from 'vitest'
 
@@ -33,7 +34,7 @@ async function render(name: string, groupPanelOpen: boolean) {
       username: 'dev_flow_03562487',
       groupPanelOpen,
     },
-    global: { plugins: [router] },
+    global: { plugins: [router, createPinia()] },
   })
   await flushPromises()
   return { router, wrapper }
@@ -66,7 +67,8 @@ describe('图标栏分组悬浮菜单（PC）', () => {
     expect(flyout!.parentElement).toBe(document.body)
 
     const items = flyout!.querySelectorAll('.workbench-icon-rail__flyout-item')
-    expect(items).toHaveLength(4)
+    expect(items).toHaveLength(3)
+    expect(flyout!.textContent).not.toContain('开发者总览')
     expect(flyout!.textContent).toContain('我的接单')
     // 悬浮层出现时不再叠一层分组 tooltip
     expect(document.querySelector('.workbench-icon-rail__tooltip--floating')).toBeNull()

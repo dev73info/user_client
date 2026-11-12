@@ -63,15 +63,6 @@ export function useResourceInitSubmit(options: {
       }
     }
 
-    if (
-      formState.creationType.value === 'paid' &&
-      !formState.isVersionSale.value &&
-      !formState.hasCashPrice.value &&
-      !formState.hasPointsPrice.value
-    ) {
-      return '请设置现金售价或积分售价'
-    }
-
     return ''
   })
   const canSubmit = computed(() => !submitBlockReason.value)
@@ -101,7 +92,6 @@ export function useResourceInitSubmit(options: {
       return
     }
 
-    const creationType = formState.creationType.value
     const versionSale = formState.isVersionSale.value
     const priceParsed = formState.parsedPriceFen.value
     const pointsParsed = formState.parsedPricePoints.value
@@ -117,19 +107,6 @@ export function useResourceInitSubmit(options: {
       TMessage.warning('现金售价与积分售价不能同时设置')
       return
     }
-    if (creationType === 'free' && (priceParsed.fen > 0 || pointsParsed.points > 0)) {
-      TMessage.warning('免费资源不能设置售价')
-      return
-    }
-    if (
-      creationType === 'paid' &&
-      !versionSale &&
-      priceParsed.fen <= 0 &&
-      pointsParsed.points <= 0
-    ) {
-      TMessage.warning('付费买断资源请设置现金售价或积分售价')
-      return
-    }
     if (versionSale && (priceParsed.fen > 0 || pointsParsed.points > 0)) {
       TMessage.warning('单版本售价请在发布版本时设置')
       return
@@ -143,9 +120,7 @@ export function useResourceInitSubmit(options: {
       TMessage.warning(promoParsed.message)
       return
     }
-    const paidPublic =
-      mode === 'public' &&
-      (creationType === 'paid' || priceParsed.fen > 0 || pointsParsed.points > 0)
+    const paidPublic = mode === 'public' && (priceParsed.fen > 0 || pointsParsed.points > 0)
     if (paidPublic && !form.copyrightDeclared) {
       TMessage.warning('付费资源公开申请前必须勾选版权声明')
       return
@@ -174,8 +149,8 @@ export function useResourceInitSubmit(options: {
           origin_url: form.originUrl.trim() || null,
           origin_org: form.originOrg.trim() || null,
           origin_note: form.originNote.trim() || null,
-          buyout_price_fen: creationType === 'free' || versionSale ? 0 : priceParsed.fen,
-          price_points: creationType === 'paid' && !versionSale ? pointsParsed.points : 0,
+          buyout_price_fen: versionSale ? 0 : priceParsed.fen,
+          price_points: versionSale || isApiKind.value ? 0 : pointsParsed.points,
           copyright_declared: form.copyrightDeclared,
           resource_kind: formState.resourceKind.value,
           promo_share_bps: promoParsed.bps,

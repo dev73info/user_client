@@ -11,13 +11,22 @@
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 16px;
-  /* 两张卡各自按内容取高：不再被同一行拉成等高，短卡不背一截空白 */
-  align-items: start;
+  /* 两张卡同高：与右侧保证金卡底边对齐，短卡由正文区的 flex:1 吃掉多余高度 */
+  align-items: stretch;
 }
 
-.wallet-hero__card {
+/* TCard 的内容都包在 .t73-card__body 里：让这层也变成可伸缩的纵向 flex，
+   正文区的 flex:1 才能把「自动提现 / 申请提现」推到卡片底部，与右侧保证金卡的操作行对齐 */
+.wallet-hero .wallet-hero__card {
   display: flex;
   flex-direction: column;
+}
+
+.wallet-hero .wallet-hero__card > .t73-card__body {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
 }
 
 /* 「资金明细」的类型筛选按文字收宽：通用档 150px 在这一行只显示 4 个字，右边空出一大截。

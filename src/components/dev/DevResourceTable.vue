@@ -123,13 +123,22 @@ function handleRowClick(event: MouseEvent) {
             class="dev-resource-table__icon"
           />
           <div>
-            <button
-              class="dev-resource-table__title-link"
-              type="button"
-              @click="emit('edit', scope.row)"
-            >
-              {{ scope.row.title }}
-            </button>
+            <div class="dev-resource-table__title-row">
+              <button
+                class="dev-resource-table__title-link"
+                type="button"
+                @click="emit('edit', scope.row)"
+              >
+                {{ scope.row.title }}
+              </button>
+              <!-- 付费资源（非接口）的 BETA 跟在标题后面；接口资源的 BETA 落在状态列的「接口资源」标签旁。 -->
+              <BetaTag
+                v-if="
+                  !isApiResourceKind(scope.row.resource_kind) &&
+                  hasDevResourcePrice(scope.row, versionPrices)
+                "
+              />
+            </div>
             <div class="dev-resource-table__meta">
               {{ resourcePlatformLabel(scope.row.platform) }} / {{ scope.row.author }}
             </div>
@@ -137,16 +146,16 @@ function handleRowClick(event: MouseEvent) {
         </div>
       </template>
     </TTableColumn>
-    <!-- 标签不截断：列宽内自然换行，这一行标签多时宁可把行撑高也不显示省略号 -->
-    <TTableColumn label="标签" width="200" resizable>
+    <!-- 标签最多两行，超出省略；完整值放在 title 里，避免把整行撑高。列宽不写死，按内容自动分配 -->
+    <TTableColumn label="标签" min-width="120" resizable>
       <template #default="scope">
-        <span class="dev-resource-table__tags">{{ resourceTagColumnLabel(scope.row) }}</span>
+        <span class="dev-resource-table__tags" :title="resourceTagColumnLabel(scope.row)">
+          {{ resourceTagColumnLabel(scope.row) }}
+        </span>
       </template>
     </TTableColumn>
-    <!-- 售价要给「价格胶囊 + BETA」留位：最宽的真实组合「单版本 ¥19999.00」+ sm BETA 实测
-         175.6px，200px 列扣掉 24px 内边距只剩 0.4px 余量，换字体回退 / 不同 DPI 就会压到状态列；
-         208 给到 184px 可用宽度（约 8px 裕度）。96px 时本就有存量溢出。 -->
-    <TTableColumn label="售价" width="208" resizable>
+    <!-- 售价胶囊只留价格本身（BETA 已移到标题后），200px 足够最宽的「单版本 ¥19999.00」组合 -->
+    <TTableColumn label="售价" width="200" resizable>
       <template #default="scope">
         <span class="dev-resource-table__price-cell">
           <TTag
@@ -155,13 +164,6 @@ function handleRowClick(event: MouseEvent) {
           >
             {{ formatDevResourcePrice(scope.row, versionPrices) }}
           </TTag>
-          <!-- 付费资源（非接口）打蓝色 BETA；接口资源的 BETA 落在状态列的「接口资源」标签旁。 -->
-          <BetaTag
-            v-if="
-              !isApiResourceKind(scope.row.resource_kind) &&
-              hasDevResourcePrice(scope.row, versionPrices)
-            "
-          />
         </span>
       </template>
     </TTableColumn>

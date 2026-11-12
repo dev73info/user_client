@@ -41,7 +41,6 @@ const emit = defineEmits<{ reset: [] }>()
   flex-direction: column;
   align-items: center;
   gap: 8px;
-  padding: 40px 24px;
 }
 
 .notifications-empty__icon {
@@ -55,11 +54,6 @@ const emit = defineEmits<{ reset: [] }>()
   background: var(--nc-empty-icon-bg);
   color: var(--nc-empty-icon-text);
   font-size: 21px;
-}
-
-/* 统一层的空态标题有固定色，这里跟随正文色，让图标与标题一起淡下去 */
-.notifications-empty__title {
-  color: inherit;
 }
 
 .notifications-empty__hint {

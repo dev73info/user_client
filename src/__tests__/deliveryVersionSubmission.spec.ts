@@ -128,13 +128,12 @@ describe('资源版本发布后的需求交付登记', () => {
 })
 
 describe('版本管理：单版本售价', () => {
-  function setupPriceEntry(buyoutFen = 0, required = true) {
+  function setupPriceEntry(buyoutFen = 0) {
     const onVersionCreated = vi.fn().mockResolvedValue(undefined)
     const composable = useResourceVersionDialogs({
       resource: ref({ ...resource(null), buyout_price_fen: buyoutFen }),
       versionRows: ref([]),
       loadPage: vi.fn().mockResolvedValue(undefined),
-      requireVersionPrice: ref(required),
       onVersionCreated,
     })
     composable.openCreateVersionDialog()
@@ -158,7 +157,7 @@ describe('版本管理：单版本售价', () => {
     expect(composable.createVersionDialogVisible.value).toBe(false)
   })
 
-  it('单版本流程拒绝零价，不发起创建', async () => {
+  it('零价允许（免费版本），按 price_fen 0 创建', async () => {
     const { composable } = setupPriceEntry()
     await composable.submitVersion({
       version: 'v1.0.0',
@@ -166,13 +165,17 @@ describe('版本管理：单版本售价', () => {
       priceYuan: '0',
       file: new File(['version'], 'version.zip'),
     })
-    expect(mocks.createVersion).not.toHaveBeenCalled()
-    expect(mocks.warning).toHaveBeenCalledWith('请设置单版本售价')
-    expect(composable.createVersionDialogVisible.value).toBe(true)
+    expect(mocks.createVersion).toHaveBeenCalledWith(
+      'test-token',
+      17,
+      expect.objectContaining({ price_fen: 0 }),
+    )
+    expect(mocks.success).toHaveBeenCalledWith('新版本已发布')
+    expect(composable.createVersionDialogVisible.value).toBe(false)
   })
 
   it('有买断价时拒绝不低于买断价的单版本价', async () => {
-    const { composable } = setupPriceEntry(250, false)
+    const { composable } = setupPriceEntry(250)
     await composable.submitVersion({
       version: 'v1.0.0',
       note: '',
@@ -180,6 +183,56 @@ describe('版本管理：单版本售价', () => {
       file: new File(['version'], 'version.zip'),
     })
     expect(mocks.createVersion).not.toHaveBeenCalled()
+    expect(mocks.warning).toHaveBeenCalledWith('单版本售价必须低于买断价')
+  })
+})
+
+describe('版本管理：编辑版本的单版本售价', () => {
+  function setupEditEntry(buyoutFen = 0) {
+    const version = {
+      id: 5,
+      version: 'v1.0.0',
+      price_fen: 100,
+    } as McResourceVersionPayload
+    const composable = useResourceVersionDialogs({
+      resource: ref({ ...resource(null), buyout_price_fen: buyoutFen }),
+      versionRows: ref([version]),
+      loadPage: vi.fn().mockResolvedValue(undefined),
+    })
+    composable.openEditVersionDialog(version)
+    return composable
+  }
+
+  it('按元提交 price_fen 并更新版本', async () => {
+    mocks.updateVersion.mockResolvedValue({ id: 5, version: 'v1.0.0' } as McResourceVersionPayload)
+    const composable = setupEditEntry()
+
+    await composable.submitVersionEdit({
+      version: 'v1.0.0',
+      note: '',
+      priceYuan: '3.20',
+      file: null,
+    })
+
+    expect(mocks.updateVersion).toHaveBeenCalledWith(
+      'test-token',
+      17,
+      5,
+      expect.objectContaining({ price_fen: 320 }),
+    )
+  })
+
+  it('有买断价时拒绝不低于买断价的单版本价', async () => {
+    const composable = setupEditEntry(250)
+
+    await composable.submitVersionEdit({
+      version: 'v1.0.0',
+      note: '',
+      priceYuan: '2.50',
+      file: null,
+    })
+
+    expect(mocks.updateVersion).not.toHaveBeenCalled()
     expect(mocks.warning).toHaveBeenCalledWith('单版本售价必须低于买断价')
   })
 })

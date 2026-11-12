@@ -54,6 +54,37 @@ describe('my signatures list', () => {
     expect(router.currentRoute.value.params.contractId).toBe('1')
     wrapper.unmount()
   })
+  it('reads strip cells as signature-state filters synced with the toolbar select', async () => {
+    const { wrapper } = await render(MySignaturesView)
+    const cell = (label: string) => {
+      const found = wrapper
+        .findAll('.wb-strip__item--filter')
+        .find((item) => item.find('.wb-strip__label').text() === label)
+      if (!found) throw new Error(`读数格「${label}」不存在`)
+      return found
+    }
+    expect(cell('合同总数').attributes('aria-pressed')).toBe('true')
+    expect(cell('合同总数').find('.wb-strip__value').text()).toBe('2')
+    expect(cell('待我签署').find('.wb-strip__value').text()).toBe('1')
+    expect(cell('已完成').find('.wb-strip__value').text()).toBe('1')
+
+    await cell('已完成').trigger('click')
+    expect(wrapper.findAll('.wb-item')).toHaveLength(1)
+    expect(wrapper.find('.wb-item').text()).toContain('已完成合同')
+    expect(cell('已完成').attributes('aria-pressed')).toBe('true')
+    // 读数格与工具栏下拉共用同一个筛选状态（工具栏第一个 TSelect 是签署状态）
+    expect(wrapper.findAllComponents({ name: 'TSelect' })[0]!.props('modelValue')).toBe('signed')
+
+    await cell('待我签署').trigger('click')
+    expect(wrapper.findAll('.wb-item')).toHaveLength(1)
+    expect(wrapper.find('.wb-item').text()).toContain('网站服务合同')
+    expect(cell('已完成').attributes('aria-pressed')).toBe('false')
+
+    await cell('合同总数').trigger('click')
+    expect(wrapper.findAll('.wb-item')).toHaveLength(2)
+    expect(cell('合同总数').attributes('aria-pressed')).toBe('true')
+    wrapper.unmount()
+  })
   it('filters by search and status and can clear empty filters', async () => {
     const { wrapper } = await render(MySignaturesView)
     // 下拉筛的是签名态（不是合同状态码）：工具栏第一个 TSelect 是状态，第二个是每页条数。

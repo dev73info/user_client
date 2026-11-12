@@ -65,10 +65,6 @@ export function useResourceHomepageResource() {
     return new URL(routeLocation.href, baseUrl).toString()
   }
 
-  const userClientPreviewUrl = computed(() =>
-    resource.value ? userClientResourceUrl(resource.value) : '',
-  )
-
   function goBack() {
     if (window.history.state?.back) {
       router.back()
@@ -89,7 +85,6 @@ export function useResourceHomepageResource() {
     saleLockedByRequirement,
     canPreview,
     previewBlockReason,
-    userClientPreviewUrl,
     goBack,
     userClientResourceUrl,
   }

@@ -150,7 +150,13 @@ describe('统一过户申请中心', () => {
       global: { stubs: { WorkbenchBarSlot: { template: '<div><slot /></div>' } } },
     })
     await flushPromises()
-    await button(wrapper, '订单使用权转移').trigger('click')
+    // 切换入口在读数格：第二格「待接收使用权转移」把 tab 切成 purchase。
+    const cells = wrapper.findAll('.wb-strip__item--filter')
+    expect(cells).toHaveLength(2)
+    expect(cells[0]!.attributes('aria-pressed')).toBe('true')
+    await cells[1]!.trigger('click')
+    expect(cells[1]!.attributes('aria-pressed')).toBe('true')
+    expect(cells[0]!.attributes('aria-pressed')).toBe('false')
     await button(wrapper, '撤销').trigger('click')
     await flushPromises()
     expect(mocks.cancelPurchase).toHaveBeenCalledWith('buyer-token', 7)

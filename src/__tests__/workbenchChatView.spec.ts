@@ -197,11 +197,12 @@ describe('工作台聊天首页', () => {
 
     const resizer = wrapper.find('.workbench-pane-resizer')
     expect(resizer.attributes('role')).toBe('separator')
-    expect(resizer.attributes('aria-valuemin')).toBe('280')
+    expect(resizer.attributes('aria-valuemin')).toBe('200')
     expect(resizer.attributes('aria-valuemax')).toBe('520')
 
     await resizer.trigger('keydown', { key: 'ArrowRight' })
-    expect(chat.attributes('style')).toContain('--uw-pane-width: 376px')
+    // 默认宽度即最窄档 200，右移一档（16）后为 216
+    expect(chat.attributes('style')).toContain('--uw-pane-width: 216px')
     wrapper.unmount()
   })
 

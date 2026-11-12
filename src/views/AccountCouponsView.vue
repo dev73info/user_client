@@ -18,7 +18,6 @@ import { useAuthStore } from '@/stores/auth'
 import RealnameHero from '@/components/RealnameHero.vue'
 import AccountDialogHost from '@/components/account/AccountDialogHost.vue'
 import AccountEntryGrid from '@/components/account/AccountEntryGrid.vue'
-import TourButton from '@/features/tour/TourButton.vue'
 import { useAccountDialogRegistry } from '@/composables/useAccountDialogRegistry'
 import { useAccountEntryGroups } from '@/composables/useAccountEntryGroups'
 import { useFaceidChallenge } from '@/composables/useFaceidChallenge'
@@ -159,7 +158,6 @@ onMounted(async () => {
     <section class="wallet-section account-settings-section" data-tour="account:2">
       <div class="realname-form__head">
         <h3>账号与安全</h3>
-        <TourButton tour="account" />
       </div>
       <AccountEntryGrid :groups="accountEntryGroups" @open="openAccountEntry" />
       <div v-if="providerLoadError" class="wb-empty" role="alert">

@@ -233,8 +233,7 @@ describe('DevResourceHomepageEditView：接口资源按「原创」归类、不�
     // 预览摘要画的是大厅资源卡，接口资源没有这张卡的落地页；那一侧的「预览」入口同理
     expect(text).not.toContain('预览摘要')
     expect(text).not.toContain('预览')
-    // 预览入口是唯一指向用户端资源主页的链接，这里再按 href 兜一层：
-    // 按钮文字将来改了，这条仍能拦住「接口资源带了预览入口」
+    // 预览已改为页内切换、不再带 href，这里按 href 兜一层拦「接口资源带了预览入口」
     expect(wrapper.find('[href*="sale=paid"]').exists()).toBe(false)
     // 侧栏没了，栅格必须跟着收成单栏，不能留一条空的第二列
     expect(wrapper.find('.dev-resource-homepage-editor__layout--single').exists()).toBe(true)
@@ -262,7 +261,8 @@ describe('DevResourceHomepageEditView：接口资源按「原创」归类、不�
     expect(wrapper.text()).toContain('标签归类')
     expect(wrapper.text()).toContain('页面内容')
     expect(wrapper.text()).toContain('预览摘要')
-    expect(wrapper.find('[href*="resource="]').exists()).toBe(true)
+    // 预览入口改为页内切换的按钮，不再是指向用户端主页的链接
+    expect(wrapper.findAll('button').some((button) => button.text() === '预览')).toBe(true)
 
     view.form.originType = 'repost'
     await flushPromises()
@@ -274,7 +274,7 @@ describe('DevResourceHomepageEditView：接口资源按「原创」归类、不�
     wrapper.unmount()
   })
 
-  it('普通资源：审核中且未关联需求时禁用预览并移除链接', async () => {
+  it('普通资源：审核中且未关联需求时禁用预览按钮', async () => {
     const wrapper = mountEdit(
       resourceFixture({ resource_kind: 'normal', visibility: 'review', requirement_id: null }),
     )

@@ -50,29 +50,54 @@
   line-height: 1.7;
 }
 
+/* 两列：左「选择文件」按钮，右「已选：文件名 · 大小」；提示与主按钮各占整行 */
 .attachment-upload {
   display: grid;
-  gap: 10px;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 10px 12px;
   justify-items: start;
   margin-top: 12px;
 }
 
+.attachment-upload .attachment-prepare__hint,
+.attachment-upload .attachment-btn {
+  grid-column: 1 / -1;
+}
+
+/* 原生文件输入隐藏：点 label 仍能唤起选择框，避免浏览器原生按钮与「选择文件」文字并排裸露 */
 .attachment-upload__picker {
   display: inline-flex;
   align-items: center;
   gap: 10px;
+  padding: 8px 14px;
+  border: 1px solid var(--73-border);
+  border-radius: 8px;
+  background: var(--73-surface);
   font-size: 13px;
+  font-weight: 600;
   color: var(--73-ink);
+  cursor: pointer;
+  transition:
+    border-color var(--73-transition),
+    color var(--73-transition);
+}
+
+.attachment-upload__picker:hover,
+.attachment-upload__picker:focus-visible {
+  border-color: var(--73-accent);
+  color: var(--73-accent);
 }
 
 .attachment-upload__picker input[type='file'] {
-  font-size: 13px;
+  display: none;
 }
 
 .attachment-upload__file {
+  grid-column: 2;
+  align-self: center;
   margin: 0;
   font-size: 13px;
-  color: var(--73-ink-soft);
+  color: var(--73-app-success-vivid);
   font-weight: 600;
 }
 
@@ -157,6 +182,7 @@
 
 .attachment-btn--primary:not(:disabled):hover {
   border-color: var(--73-accent);
+  background: var(--73-app-accent-vivid);
   color: var(--73-surface-strong);
 }
 

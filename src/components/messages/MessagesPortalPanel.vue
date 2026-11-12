@@ -55,7 +55,7 @@ const emit = defineEmits<{
       </div>
     </div>
 
-    <div class="wb-toolbar">
+    <div class="wb-toolbar messages-thread-toolbar">
       <TSelect v-model="filter" class="wb-toolbar__field" aria-label="消息筛选">
         <TOption label="全部" value="all" />
         <TOption label="已开启" value="active" />
@@ -159,3 +159,20 @@ const emit = defineEmits<{
     </div>
   </section>
 </template>
+
+<style scoped>
+/* 窄屏（≤900px）：筛选下拉收成内容宽、搜索吃掉剩余宽度，两者并排一行；
+   有筛选时「筛选出 N 条 + 重置」仍允许换到下一行，所以不给工具栏加 nowrap。 */
+@media (max-width: 900px) {
+  .messages-thread-toolbar :deep(.wb-toolbar__field) {
+    flex: 0 0 auto;
+    width: fit-content;
+    min-width: 88px;
+  }
+
+  .messages-thread-toolbar :deep(.wb-toolbar__search) {
+    flex: 1 1 0;
+    max-width: none;
+  }
+}
+</style>

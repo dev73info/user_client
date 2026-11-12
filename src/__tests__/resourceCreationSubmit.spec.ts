@@ -43,7 +43,11 @@ vi.mock('ui_73info', () => ({
   },
 }))
 
-function setupSubmit(creationType: ResourceCreationType, paidMode: ResourcePaidMode) {
+function setupSubmit(
+  creationType: ResourceCreationType,
+  paidMode: ResourcePaidMode,
+  priceYuan = '0',
+) {
   const selectedTagCount = ref(1)
   const formState = useResourceInitForm({
     selectedTagCount,
@@ -56,7 +60,8 @@ function setupSubmit(creationType: ResourceCreationType, paidMode: ResourcePaidM
   formState.paidMode.value = paidMode
   formState.form.title = '测试资源'
   formState.form.author = 'developer'
-  formState.form.copyrightDeclared = creationType === 'paid'
+  formState.form.priceYuan = priceYuan
+  formState.form.copyrightDeclared = priceYuan !== '0'
 
   const tagCatalog = {
     platformTagGroups: ref([{ id: 28 }]),
@@ -89,8 +94,9 @@ beforeEach(() => {
 })
 
 describe('资源创建类型提交', () => {
-  it('免费资源始终提交零现金价与零积分价', async () => {
-    const { composable } = setupSubmit('free', 'buyout')
+  it('不填售价 = 免费，提交零现金价与零积分价', async () => {
+    const { composable } = setupSubmit('normal', 'buyout')
+    expect(composable.canSubmit.value).toBe(true)
     await composable.submitResource('private')
 
     expect(mocks.create).toHaveBeenCalledWith(
@@ -104,17 +110,24 @@ describe('资源创建类型提交', () => {
     expect(mocks.push).toHaveBeenCalledWith({ name: 'dev-resource-list' })
   })
 
-  it('付费买断没有售价时不可提交', async () => {
-    const { composable } = setupSubmit('paid', 'buyout')
+  it('填 9.90 即付费，提交 buyout_price_fen 990', async () => {
+    const { composable } = setupSubmit('normal', 'buyout', '9.90')
+    expect(composable.canSubmit.value).toBe(true)
     await composable.submitResource('private')
 
-    expect(composable.canSubmit.value).toBe(false)
-    expect(composable.submitBlockReason.value).toBe('请设置现金售价或积分售价')
-    expect(mocks.create).not.toHaveBeenCalled()
+    expect(mocks.create).toHaveBeenCalledWith(
+      'test-token',
+      expect.objectContaining({
+        buyout_price_fen: 990,
+        price_points: 0,
+        resource_kind: 'normal',
+      }),
+    )
   })
 
   it('单版本主资源为零买断价，首版发布前不送审', async () => {
-    const { composable } = setupSubmit('paid', 'version')
+    const { formState, composable } = setupSubmit('normal', 'version')
+    formState.form.copyrightDeclared = true
     await composable.submitResource('public')
 
     expect(mocks.create).toHaveBeenCalledWith(

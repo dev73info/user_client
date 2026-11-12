@@ -74,12 +74,40 @@
 }
 
 .requirement-review-card {
-  margin: -2px 0 10px;
+  margin: 0 0 10px;
   padding: 18px;
   border: 1px solid var(--profile-card-border);
   border-radius: 16px;
   background: var(--73-accent-soft);
   color: var(--profile-text-main);
+}
+
+/* 展开审核时，需求行与审核卡是同一块面板：接缝处不换背景、不画双线、不留列表间距。 */
+.profile-page .requirement-row.expanded {
+  border-bottom-width: 0;
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
+}
+
+.profile-page .requirement-row.expanded + .requirement-review-card-row {
+  margin-top: -10px; /* 抵消 .wb-list 的 10px gap */
+}
+
+.profile-page .requirement-row.expanded + .requirement-review-card-row .requirement-review-card {
+  margin-top: 0;
+  border-top-width: 0;
+  border-color: color-mix(in srgb, var(--73-accent) 95%, transparent);
+  border-radius: 0 0 16px 16px;
+  background: var(--73-accent-soft);
+}
+
+/* ≤640 档的列表白卡规则（:has(.wb-toolbar) .wb-item）优先级更高，会把展开行压回白底 16px 圆角；
+   这里用同一条上下文加展开态把接缝重新拉平。 */
+.profile-page :is(.wallet-section, section):has(.wb-toolbar) .requirement-row.expanded {
+  border-bottom-width: 0;
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
+  background: var(--73-accent-soft);
 }
 
 .requirement-review-card__header {

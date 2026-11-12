@@ -3,7 +3,10 @@ import { flushPromises, mount } from '@vue/test-utils'
 import { createMemoryHistory, createRouter } from 'vue-router'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { useWorkbenchPaneWidth } from '@/composables/useWorkbenchPaneWidth'
+import {
+  WORKBENCH_PANE_WIDTH_MAX,
+  useWorkbenchPaneWidth,
+} from '@/composables/useWorkbenchPaneWidth'
 import { useAuthStore } from '@/stores/auth'
 import UserWorkbenchView from '@/views/UserWorkbenchView.vue'
 
@@ -57,6 +60,36 @@ describe('工作台分组菜单宽度', () => {
 
     const main = wrapper.get('.user-workbench__main--rail-group')
     expect(main.attributes('style')).toContain('--uw-pane-width: 318px')
+    wrapper.unmount()
+  })
+
+  it('拖拽条与消息中心同上下限：双击复位到 200，已最窄再左移仍停在 200', async () => {
+    const { persistPaneWidth } = useWorkbenchPaneWidth()
+    persistPaneWidth(WORKBENCH_PANE_WIDTH_MAX)
+
+    const router = createRouter({ history: createMemoryHistory(), routes })
+    await router.push({ name: 'workbench-invoices' })
+    const wrapper = mount(UserWorkbenchView, {
+      global: {
+        plugins: [router],
+        stubs: {
+          RouterView: true,
+          RouterLink: { props: ['to'], template: '<a><slot /></a>' },
+        },
+      },
+    })
+    await flushPromises()
+
+    const main = wrapper.get('.user-workbench__main--rail-group')
+    const resizer = wrapper.get('.workbench-pane-resizer')
+    expect(resizer.attributes('aria-valuemin')).toBe('200')
+    expect(resizer.attributes('aria-valuemax')).toBe('520')
+
+    await resizer.trigger('dblclick')
+    expect(main.attributes('style')).toContain('--uw-pane-width: 200px')
+
+    await resizer.trigger('keydown', { key: 'ArrowLeft' })
+    expect(main.attributes('style')).toContain('--uw-pane-width: 200px')
     wrapper.unmount()
   })
 })

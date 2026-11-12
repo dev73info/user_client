@@ -203,14 +203,16 @@ function handlePostsLoaded(posts: CommunityPost[]) {
 
     <template v-else>
       <!-- 工作台菜单页统一版式：顶部读数条只放「当前列表 / 页码」与刷新，
-           发布按钮跟页签同一行，下面是同一张纸里的帖子列表（页头标题由中栏菜单承担）。 -->
+           卡头放标题与发布按钮，面板只保留页签与筛选；社区分页与空态沿用共享面板。 -->
       <WorkbenchBarSlot>
         <div class="wb-strip" aria-label="我的帖子概览">
           <div class="wb-strip__item">
             <span class="wb-strip__label">当前列表</span>
-            <span class="wb-strip__value">{{ list.posts.length }} 篇</span>
+            <span class="wb-strip__value">{{
+              list.loading ? '—' : `${list.posts.length} 篇`
+            }}</span>
           </div>
-          <div class="wb-strip__divider" />
+          <span class="wb-strip__divider" aria-hidden="true" />
           <div class="wb-strip__item">
             <span class="wb-strip__label">页码</span>
             <span class="wb-strip__value">{{ list.page }}</span>
@@ -224,6 +226,17 @@ function handlePostsLoaded(posts: CommunityPost[]) {
       </WorkbenchBarSlot>
 
       <section class="wallet-section">
+        <div class="wb-card-head">
+          <div class="wb-card-head__title-block">
+            <h3 class="wb-card-head__title">我的帖子</h3>
+          </div>
+          <div class="wb-card-head__actions">
+            <TButton variant="solid" tone="accent" @click="panelRef?.openCreate()">
+              <TIcon><Plus /></TIcon>
+              发布帖子
+            </TButton>
+          </div>
+        </div>
         <CommunityListPanel
           ref="panelRef"
           :list="list"
@@ -233,14 +246,7 @@ function handlePostsLoaded(posts: CommunityPost[]) {
           @select-post="selectPost"
           @posts-loaded="handlePostsLoaded"
           @created="selectPost"
-        >
-          <template #actions>
-            <TButton variant="solid" tone="accent" @click="panelRef?.openCreate()">
-              <TIcon><Plus /></TIcon>
-              发布帖子
-            </TButton>
-          </template>
-        </CommunityListPanel>
+        />
       </section>
     </template>
   </main>

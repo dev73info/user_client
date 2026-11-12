@@ -41,6 +41,8 @@ export function useResourceHomepageSave(options: {
   >
   /** 归类的提交口径（接口资源为空、回落态下回传资源原有归类），由视图统一给。 */
   buildTagSelections: () => CreateMcResourceTagSelection[]
+  /** 当前二级节点的 platform：老资源的 platform 是旧标签树的值，保存时一并纠正。 */
+  platform: Ref<string>
   channel: Pick<
     ReturnType<typeof useResourceApiChannel>,
     | 'needsApiAgreement'
@@ -133,6 +135,7 @@ export function useResourceHomepageSave(options: {
           isApiKind: isApiKind.value,
           effectiveOriginType: options.effectiveOriginType.value,
           tagSelections: options.buildTagSelections(),
+          platform: options.platform.value,
           coverUrl: nextCoverUrl,
           priceFen: checked.priceFen,
           pricePoints: checked.pricePoints,

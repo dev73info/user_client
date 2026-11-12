@@ -1,9 +1,9 @@
-import { flushPromises, shallowMount } from '@vue/test-utils'
+import { flushPromises, mount } from '@vue/test-utils'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 /**
- * 需求方「我的资源」：只列本人名下、已 claim 的定制交付，
- * 并且行操作收窄到主页 / 公开 / 私有 / 版本（没有售出订单、过户、删除）。
+ * 需求方「我的资源」：只列本人名下、已 claim 的定制交付；
+ * 读数格即可见性筛选（全部 / 公开 / 审核中 / 私有），列表换 wb 卡片行。
  */
 const mocks = vi.hoisted(() => ({
   listResources: vi.fn(),
@@ -34,32 +34,36 @@ vi.mock('@/api/resourceSale', () => ({ getResourceSaleFee: mocks.fee }))
 import MyResourcesView from '@/views/MyResourcesView.vue'
 import { resourceFixture } from './devResourceHomepageFixtures'
 
+/** 行组件有自己的 spec：这里只留一份能读到 resource 的壳，避免把行内细节测两遍。 */
+const MyResourceRowStub = {
+  name: 'MyResourceRow',
+  props: [
+    'resource',
+    'versionPrices',
+    'platformFeeBps',
+    'platformFeeError',
+    'requestingReviewId',
+    'settingPrivateId',
+  ],
+  template: '<li class="wb-item" />',
+}
+
+const WorkbenchPagerStub = {
+  name: 'WorkbenchPager',
+  props: ['total', 'unit', 'page', 'pageSize', 'pageSizeAriaLabel', 'paginationAriaLabel'],
+  emits: ['update:page', 'update:pageSize'],
+  template: '<div class="wb-pager" />',
+}
+
 function mountView() {
-  return shallowMount(MyResourcesView, {
+  return mount(MyResourcesView, {
     global: {
       config: { warnHandler: () => {} },
       stubs: {
-        TCard: { name: 'TCard', template: '<div><slot /></div>' },
-        DevResourceListMetaStrip: { name: 'DevResourceListMetaStrip', template: '<div />' },
+        MyResourceRow: MyResourceRowStub,
+        WorkbenchPager: WorkbenchPagerStub,
         DevResourcePublishVersionDialog: {
           name: 'DevResourcePublishVersionDialog',
-          template: '<div />',
-        },
-        DevResourceTable: {
-          name: 'DevResourceTable',
-          props: [
-            'rows',
-            'loading',
-            'emptyText',
-            'requestingReviewId',
-            'settingPrivateId',
-            'deletingId',
-            'coverUrl',
-            'versionPrices',
-            'platformFeeBps',
-            'platformFeeError',
-            'visibleActions',
-          ],
           template: '<div />',
         },
       },
@@ -67,8 +71,21 @@ function mountView() {
   })
 }
 
-function table(wrapper: ReturnType<typeof mountView>) {
-  return wrapper.findComponent({ name: 'DevResourceTable' })
+/** 读数格按文案定位（四格：资源总数 / 公开 / 审核中 / 私有）。 */
+function filterCell(wrapper: ReturnType<typeof mountView>, label: string) {
+  const cell = wrapper
+    .findAll('.wb-strip__item--filter')
+    .find((item) => item.find('.wb-strip__label').text() === label)
+  if (!cell) {
+    throw new Error(`读数格「${label}」不存在`)
+  }
+  return cell
+}
+
+function rowIds(wrapper: ReturnType<typeof mountView>) {
+  return wrapper
+    .findAllComponents({ name: 'MyResourceRow' })
+    .map((row) => (row.props('resource') as { id: number }).id)
 }
 
 describe('MyResourcesView：只管理已 claim 的定制交付', () => {
@@ -105,23 +122,64 @@ describe('MyResourcesView：只管理已 claim 的定制交付', () => {
         ownership_type: 'individual',
         requirement_id: '2026-3',
         requirement_claimed: true,
+        visibility: 'published',
       }),
     ])
   })
 
-  it('列表只保留已 claim 的个人定制交付，并收窄行操作', async () => {
+  it('列表只保留已 claim 的个人定制交付', async () => {
     const wrapper = mountView()
     await flushPromises()
 
     expect(mocks.listResources).toHaveBeenCalledWith('test-token')
-    const rows = table(wrapper).props('rows') as Array<{ id: number }>
-    expect(rows.map((row) => row.id)).toEqual([3, 5])
-    expect(table(wrapper).props('visibleActions')).toEqual([
-      'publish',
-      'request-review',
-      'set-private',
-      'versions',
-    ])
+    expect(rowIds(wrapper)).toEqual([3, 5])
+    expect(wrapper.findComponent({ name: 'WorkbenchPager' }).props('total')).toBe(2)
+    expect(wrapper.findComponent({ name: 'WorkbenchPager' }).props('unit')).toBe('个资源')
+    wrapper.unmount()
+  })
+
+  it('点读数格把可见性筛选写进 filters.visibility，并与工具栏联动', async () => {
+    const wrapper = mountView()
+    await flushPromises()
+
+    // 默认「资源总数」高亮，读数来自已滤过的列表
+    expect(filterCell(wrapper, '资源总数').attributes('aria-pressed')).toBe('true')
+    expect(filterCell(wrapper, '私有').find('.wb-strip__value').text()).toBe('1')
+    expect(filterCell(wrapper, '公开').find('.wb-strip__value').text()).toBe('1')
+
+    await filterCell(wrapper, '公开').trigger('click')
+    expect(rowIds(wrapper)).toEqual([5])
+    expect(filterCell(wrapper, '公开').attributes('aria-pressed')).toBe('true')
+    expect(wrapper.find('.wb-toolbar__hint').text()).toContain('筛选出 1 / 2 个')
+
+    await filterCell(wrapper, '私有').trigger('click')
+    expect(rowIds(wrapper)).toEqual([3])
+
+    await filterCell(wrapper, '审核中').trigger('click')
+    expect(rowIds(wrapper)).toEqual([])
+    expect(wrapper.find('.wb-empty__title').text()).toBe('没有符合筛选条件的资源')
+
+    await filterCell(wrapper, '资源总数').trigger('click')
+    expect(rowIds(wrapper)).toEqual([3, 5])
+    wrapper.unmount()
+  })
+
+  it('加载中读数显示破折号', async () => {
+    let resolve!: (rows: unknown[]) => void
+    mocks.listResources.mockImplementationOnce(
+      () =>
+        new Promise((done) => {
+          resolve = done
+        }),
+    )
+    const wrapper = mountView()
+    await flushPromises()
+
+    expect(filterCell(wrapper, '资源总数').find('.wb-strip__value').text()).toBe('—')
+    expect(wrapper.text()).toContain('资源列表加载中')
+
+    resolve([])
+    await flushPromises()
     wrapper.unmount()
   })
 
@@ -155,8 +213,8 @@ describe('MyResourcesView：只管理已 claim 的定制交付', () => {
     const wrapper = mountView()
     await flushPromises()
 
-    expect(table(wrapper).props('rows')).toEqual([])
-    expect(table(wrapper).props('emptyText')).toBe('还没有已转为我的资源的定制交付')
+    expect(rowIds(wrapper)).toEqual([])
+    expect(wrapper.find('.wb-empty__title').text()).toBe('还没有已转为我的资源的定制交付')
     wrapper.unmount()
   })
 })

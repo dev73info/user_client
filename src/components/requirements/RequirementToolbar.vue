@@ -3,7 +3,6 @@
  * 「我的需求」页的卡头 + 筛选工具栏 + 空态：只做展示与筛选交互 —— `keyword` / `selectedState`
  * 走 v-model 由外面持有，点「发布」与「清除筛选」只派发事件，不发请求、不改列表。
  */
-import TourButton from '@/features/tour/TourButton.vue'
 import type { RequirementFilterKey, RequirementFilterOption } from '@/shared/requirementStatus'
 import { RefreshLeft, Search, TButton, TIcon, TInput, TOption, TSelect } from 'ui_73info'
 
@@ -53,7 +52,6 @@ const selectedState = defineModel<RequirementFilterKey>('selectedState', { requi
     </TInput>
     <!-- 工具栏不放「重置」：清空筛选的入口保留在下面空态的「清除筛选」；操作槽只在收窄了结果时给条数说明，无筛选时整槽不渲染、不留空容器。 -->
     <div class="wb-toolbar__actions" data-tour="my-requirements:3">
-      <TourButton tour="my-requirements" />
       <span v-if="hasActiveFilters" class="wb-toolbar__hint">
         筛选出 {{ filteredCount }} / {{ totalCount }} 条
       </span>
@@ -63,17 +61,17 @@ const selectedState = defineModel<RequirementFilterKey>('selectedState', { requi
         class="my-requirements-publish--head"
         @click="emit('publish')"
       >
-        发布新需求
+        我有需求
       </TButton>
       <!-- 手机档收起整字按钮，搜索栏右端用这枚小号胶囊 -->
       <TButton
         variant="solid"
         tone="accent"
         class="my-requirements-publish--toolbar"
-        aria-label="发布新需求"
+        aria-label="我有需求"
         @click="emit('publish')"
       >
-        发布
+        我有需求
       </TButton>
     </div>
   </div>
@@ -99,14 +97,7 @@ const selectedState = defineModel<RequirementFilterKey>('selectedState', { requi
 </template>
 
 <style scoped>
-/* 档位只有两三字，状态下拉按当前文字收宽（TSelect 自带 width: 100%，用 fit-content 顶回来）；
-   不再固定 140px 留一截空白。 */
-.wb-toolbar__field--requirement-state {
-  flex: 0 0 auto;
-  width: fit-content;
-}
-
-/* 「发布新需求」和筛选、搜索同处一行：桌面显示整字按钮，手机档收进搜索栏右端的小号胶囊 */
+/* 「我有需求」和筛选、搜索同处一行：桌面显示整字按钮，手机档收进搜索栏右端的小号胶囊 */
 .my-requirements-publish--toolbar {
   display: none;
 }

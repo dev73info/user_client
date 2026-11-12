@@ -5,6 +5,11 @@
   gap: 18px;
 }
 
+/* 工作台外壳把 .page-shell.wb-sheet 的 gap 压成 0；总览页仍按统一页的 16px 节奏分隔直接子块。 */
+.user-workbench__content--workspace .user-workbench-overview.page-shell.wb-sheet {
+  row-gap: 16px;
+}
+
 .overview-welcome {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto;
@@ -37,16 +42,44 @@
   box-shadow: var(--73-focus-ring);
 }
 
-.overview-welcome__avatar {
+/* 圆形头像：本身就是「更换头像」入口，悬停 / 聚焦给一圈主色提示可点。
+   样式仍集中在本文件，但头像抽成了多根子组件，父级 scope 属性落不到根节点上，故用 :deep 穿透。
+   提示用可过渡的 box-shadow 而不是 outline：outline 没有缓动，进出都是硬切。 */
+.overview-welcome :deep(.overview-welcome__avatar) {
   display: grid;
   place-items: center;
   width: 58px;
   height: 58px;
-  border-radius: 18px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  overflow: hidden;
   background: var(--73-app-grad-soft-10);
   color: var(--73-accent);
+  font-family: inherit;
   font-size: 23px;
   font-weight: 700;
+  cursor: pointer;
+  outline: none;
+  box-shadow: 0 0 0 0 color-mix(in srgb, var(--73-accent) 40%, transparent);
+  transition: box-shadow var(--73-transition);
+}
+
+.overview-welcome :deep(.overview-welcome__avatar:hover),
+.overview-welcome :deep(.overview-welcome__avatar:focus-visible) {
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--73-accent) 40%, transparent);
+}
+
+.overview-welcome :deep(.overview-welcome__avatar-image) {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* 选图用的原生 input 不展示，点头像唤起 */
+.overview-welcome :deep(.overview-welcome__avatar-input) {
+  display: none;
 }
 
 .overview-welcome__copy {
@@ -83,8 +116,8 @@
   display: grid;
   grid-template-columns: minmax(0, 1.45fr) minmax(280px, 0.78fr);
   gap: 16px;
-  align-items: start;
-  margin-top: 16px;
+  /* 两列卡片等高、底边对齐；跨列行（overview-recent）自成一行，高度不受影响 */
+  align-items: stretch;
 }
 
 .overview-panel {
@@ -158,7 +191,6 @@
 
   .overview-grid {
     grid-template-columns: minmax(0, 1fr);
-    margin-top: 14px;
   }
 
   .overview-panel {
@@ -177,10 +209,10 @@
     padding: 16px;
   }
 
-  .overview-welcome__avatar {
+  .overview-welcome :deep(.overview-welcome__avatar) {
     width: 46px;
     height: 46px;
-    border-radius: 14px;
+    border-radius: 50%;
     font-size: 19px;
   }
 

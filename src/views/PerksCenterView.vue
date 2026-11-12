@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import WorkbenchBarSlot from '@/components/WorkbenchBarSlot.vue'
+import PerksSummaryStrip from '@/components/perks/PerksSummaryStrip.vue'
 import {
   TButton,
   TIcon,
@@ -66,7 +66,14 @@ const displayedPerks = computed(() =>
     (p) => p.perk_code !== 'username_gradient' && !p.perk_code.startsWith('username_color'),
   ),
 )
-
+type PerkFilter = 'all' | 'owned' | 'equipped'
+const perkFilter = ref<PerkFilter>('all')
+/** 筛选只收窄下方列表；读数条仍按全部权益（含用户名颜色类目）计数。 */
+const visiblePerks = computed(() => {
+  if (perkFilter.value === 'owned') return displayedPerks.value.filter((p) => p.owned)
+  if (perkFilter.value === 'equipped') return displayedPerks.value.filter((p) => p.equipped)
+  return displayedPerks.value
+})
 function perkCodeHex(code: string): string {
   const hex = code.split(':')[1] ?? ''
   return hex ? `#${hex}` : ''
@@ -144,31 +151,22 @@ onMounted(() => {
 
 <template>
   <main class="page-shell custom-page-shell profile-page perks-page wb-sheet" :aria-busy="loading">
-    <WorkbenchBarSlot>
-      <div class="wb-strip" aria-label="权益概览">
-        <div class="wb-strip__item">
-          <span class="wb-strip__label">已解锁权益</span>
-          <span class="wb-strip__value">{{ loading || error ? '—' : ownedPerkCount }}</span>
-        </div>
-        <div class="wb-strip__divider" />
-        <div class="wb-strip__item">
-          <span class="wb-strip__label">已佩戴权益</span>
-          <span class="wb-strip__value">{{ loading || error ? '—' : equippedPerkCount }}</span>
-        </div>
-        <div class="wb-strip__item wb-strip__action">
-          <TButton icon-only :loading="loading" aria-label="刷新权益" @click="loadPerks">
-            <TIcon><Refresh /></TIcon>
-          </TButton>
-        </div>
-      </div>
-    </WorkbenchBarSlot>
+    <PerksSummaryStrip
+      v-model:filter="perkFilter"
+      :loading="loading"
+      :failed="Boolean(error)"
+      :total="perks.length"
+      :owned="ownedPerkCount"
+      :equipped="equippedPerkCount"
+      @refresh="loadPerks"
+    />
     <section class="wallet-section">
       <div class="wb-card-head">
         <div class="wb-card-head__title-block">
           <h3 class="wb-card-head__title">我的权益</h3>
         </div>
       </div>
-      <p v-if="loading" class="wb-empty" role="status">正在加载权益…</p>
+      <p v-if="loading && !perks.length" class="wb-empty" role="status">正在加载权益…</p>
       <div v-else-if="error" class="wb-empty" role="alert">
         <span class="wb-empty__title">加载权益失败</span>{{ error }}
         <div class="wb-empty__actions">
@@ -184,8 +182,14 @@ onMounted(() => {
       >
         <span class="wb-empty__title">还没有解锁任何权益</span>
       </p>
-      <ul v-if="displayedPerks.length" class="wb-list" aria-label="我的权益">
-        <li v-for="perk in displayedPerks" :key="perk.perk_code" class="wb-item">
+      <div v-else-if="displayedPerks.length && !visiblePerks.length" class="wb-empty" role="status">
+        <span class="wb-empty__title">没有符合条件的权益</span>
+        <div class="wb-empty__actions">
+          <TButton variant="outline" @click="perkFilter = 'all'">清除筛选</TButton>
+        </div>
+      </div>
+      <ul v-if="visiblePerks.length" class="wb-list" aria-label="我的权益">
+        <li v-for="perk in visiblePerks" :key="perk.perk_code" class="wb-item">
           <div class="wb-item__main">
             <span class="wb-item__title">{{ perkTitle(perk.perk_code) }}</span>
             <span class="wb-item__meta">{{ perkExpireText(perk) }}</span>

@@ -182,6 +182,8 @@ describe('DevResourceHomepageEditView：回填与保存载荷', () => {
       author: '开发者',
       description: '一套手绘笔刷与配套示例工程。',
       tag_selections: [{ group_id: 28, tag_ids: [210] }],
+      // 旧标签树时期的老资源靠保存时纠正 platform，否则后端会以「标签分组不属于所选平台」拦 400
+      platform: '手绘',
       // 没有选新文件时沿用已保存的封面地址（清空才传空串，null 会被后端当成没改）
       cover_url: '/uploads/cover-158100.png',
       docs_url: null,

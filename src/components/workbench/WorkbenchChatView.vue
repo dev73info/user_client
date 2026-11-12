@@ -9,6 +9,9 @@ import WorkbenchPaneResizer from '@/components/workbench/WorkbenchPaneResizer.vu
 import { useMessagesPage } from '@/composables/useMessagesPage'
 import {
   WORKBENCH_PANE_WIDTH_CSS_VAR,
+  WORKBENCH_PANE_WIDTH_DEFAULT,
+  WORKBENCH_PANE_WIDTH_MAX,
+  WORKBENCH_PANE_WIDTH_MIN,
   useWorkbenchPaneWidth,
 } from '@/composables/useWorkbenchPaneWidth'
 import type { MessageThread } from '@/shared/messagesThreads'
@@ -22,9 +25,6 @@ let mediaQuery: MediaQueryList | null = null
 /* 中栏宽度与分组导航共用一份值（useWorkbenchPaneWidth）：本页只按自己的上下限夹取显示 */
 const { paneWidth, persistPaneWidth } = useWorkbenchPaneWidth()
 
-const INBOX_WIDTH_MIN = 280
-const INBOX_WIDTH_MAX = 520
-const INBOX_WIDTH_DEFAULT = 360
 const CHAT_PANE_MIN_WIDTH = 360
 const SPLITTER_WIDTH = 12
 
@@ -72,8 +72,10 @@ const selectedThread = computed<MessageThread | null>(() => {
 
 const selectedThreadKey = computed(() => selectedThread.value?.selectionKey ?? '')
 const isConversationOpen = computed(() => selectedThreadKey.value !== '')
-/** 本页的会话列表宽度：共用值按会话区的上下限夹取（未拖动过时用默认 360） */
-const inboxWidth = computed(() => normalizeInboxWidth(paneWidth.value ?? INBOX_WIDTH_DEFAULT))
+/** 本页的会话列表宽度：共用值按会话区的上下限夹取（未拖动过时用默认最窄宽度） */
+const inboxWidth = computed(() =>
+  normalizeInboxWidth(paneWidth.value ?? WORKBENCH_PANE_WIDTH_DEFAULT),
+)
 const workbenchChatStyle = computed<Record<string, string>>(() => ({
   [WORKBENCH_PANE_WIDTH_CSS_VAR]: `${inboxWidth.value}px`,
 }))
@@ -106,16 +108,16 @@ function selectThread(thread: MessageThread) {
 function maxInboxWidth() {
   const containerWidth = chatRef.value?.getBoundingClientRect().width ?? 0
   if (containerWidth <= 0) {
-    return INBOX_WIDTH_MAX
+    return WORKBENCH_PANE_WIDTH_MAX
   }
   return Math.max(
-    INBOX_WIDTH_MIN,
-    Math.min(INBOX_WIDTH_MAX, containerWidth - CHAT_PANE_MIN_WIDTH - SPLITTER_WIDTH),
+    WORKBENCH_PANE_WIDTH_MIN,
+    Math.min(WORKBENCH_PANE_WIDTH_MAX, containerWidth - CHAT_PANE_MIN_WIDTH - SPLITTER_WIDTH),
   )
 }
 
 function normalizeInboxWidth(width: number) {
-  return Math.round(Math.min(maxInboxWidth(), Math.max(INBOX_WIDTH_MIN, width)))
+  return Math.round(Math.min(maxInboxWidth(), Math.max(WORKBENCH_PANE_WIDTH_MIN, width)))
 }
 
 function finishResizeStyles() {
@@ -157,7 +159,7 @@ function stopResize(event: PointerEvent) {
 }
 
 function resetInboxWidth() {
-  persistPaneWidth(normalizeInboxWidth(INBOX_WIDTH_DEFAULT))
+  persistPaneWidth(normalizeInboxWidth(WORKBENCH_PANE_WIDTH_DEFAULT))
 }
 
 function resizeInboxByKeyboard(event: KeyboardEvent) {
@@ -169,9 +171,9 @@ function resizeInboxByKeyboard(event: KeyboardEvent) {
   } else if (event.key === 'ArrowRight') {
     nextWidth += step
   } else if (event.key === 'Home') {
-    nextWidth = INBOX_WIDTH_MIN
+    nextWidth = WORKBENCH_PANE_WIDTH_MIN
   } else if (event.key === 'End') {
-    nextWidth = INBOX_WIDTH_MAX
+    nextWidth = WORKBENCH_PANE_WIDTH_MAX
   } else {
     return
   }
@@ -207,8 +209,8 @@ function resizeInboxByKeyboard(event: KeyboardEvent) {
 
     <WorkbenchPaneResizer
       label="调整会话列表宽度"
-      :value-min="INBOX_WIDTH_MIN"
-      :value-max="INBOX_WIDTH_MAX"
+      :value-min="WORKBENCH_PANE_WIDTH_MIN"
+      :value-max="WORKBENCH_PANE_WIDTH_MAX"
       :value-now="inboxWidth"
       @reset="resetInboxWidth"
       @keydown="resizeInboxByKeyboard"

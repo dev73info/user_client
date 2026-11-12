@@ -6,6 +6,7 @@ import { Refresh, TButton, TIcon, TMessage } from 'ui_73info'
 import { listAvailableCoupons } from '@/api/coupons'
 import type { RequirementItem } from '@/api/requirements'
 import WorkbenchBarSlot from '@/components/WorkbenchBarSlot.vue'
+import OverviewWelcomeAvatar from '@/components/workbench/OverviewWelcomeAvatar.vue'
 import { useRequirementConversations } from '@/composables/useRequirementConversations'
 import { formatRequirementTime, useRequirementOverview } from '@/composables/useRequirementOverview'
 import { isActiveRequirement, requirementStatusLabel } from '@/shared/requirementStatus'
@@ -150,7 +151,7 @@ onMounted(() => {
       @click="goProfile"
       @keydown="handleWelcomeKeydown"
     >
-      <div class="overview-welcome__avatar" aria-hidden="true">{{ avatarText }}</div>
+      <OverviewWelcomeAvatar :text="avatarText" />
       <div class="overview-welcome__copy">
         <span class="overview-welcome__eyebrow">需求方工作台</span>
         <h1 id="workbench-overview-title">{{ greeting }}，{{ displayName }}</h1>

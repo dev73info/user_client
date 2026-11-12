@@ -12,12 +12,22 @@ import {
 } from '@/api/invite'
 import { useAuthStore } from '@/stores/auth'
 
-const props = withDefaults(defineProps<{ username?: string; publicOnly?: boolean }>(), {
-  username: '',
-  publicOnly: false,
-})
+const props = withDefaults(
+  defineProps<{
+    username?: string
+    publicOnly?: boolean
+    /** 徽章墙筛选：全部 / 已获得 / 已佩戴（默认全部，公开主页不受影响）。 */
+    filter?: 'all' | 'acquired' | 'equipped'
+  }>(),
+  {
+    username: '',
+    publicOnly: false,
+    filter: 'all',
+  },
+)
 const emit = defineEmits<{
   (event: 'stats', acquired: number, total: number, equipped: number, failed: boolean): void
+  (event: 'clear-filter'): void
 }>()
 const auth = useAuthStore()
 const allBadges = ref<BadgeDefinition[]>([])
@@ -26,18 +36,27 @@ const loading = ref(false)
 const saving = ref(false)
 const loadError = ref('')
 const earnedMap = computed(() => new Map(earnedBadges.value.map((badge) => [badge.code, badge])))
-const groups = computed(() => [
-  {
-    key: 'achievement',
-    title: '成就徽章',
-    badges: allBadges.value.filter((badge) => badge.category === '成就徽章'),
-  },
-  {
-    key: 'special',
-    title: '特殊徽章',
-    badges: allBadges.value.filter((badge) => badge.category === '特殊徽章'),
-  },
-])
+function matchesFilter(badge: BadgeDefinition) {
+  if (props.filter === 'acquired') return earnedMap.value.has(badge.code)
+  if (props.filter === 'equipped') return Boolean(earnedMap.value.get(badge.code)?.equipped)
+  return true
+}
+const groups = computed(() => {
+  const mapped = [
+    {
+      key: 'achievement',
+      title: '成就徽章',
+      badges: allBadges.value.filter((badge) => badge.category === '成就徽章'),
+    },
+    {
+      key: 'special',
+      title: '特殊徽章',
+      badges: allBadges.value.filter((badge) => badge.category === '特殊徽章'),
+    },
+  ].map((group) => ({ ...group, badges: group.badges.filter(matchesFilter) }))
+  // 全部模式下分组标题保持完整（空分组也留着）；筛选模式只展示有命中的分组。
+  return props.filter === 'all' ? mapped : mapped.filter((group) => group.badges.length > 0)
+})
 const acquiredCount = computed(() => earnedBadges.value.length)
 const equippedCount = computed(() => earnedBadges.value.filter((badge) => badge.equipped).length)
 const isOwn = computed(() => !props.username && !props.publicOnly && !!auth.token)
@@ -116,6 +135,16 @@ onMounted(() => {
       <TButton :loading="loading" @click="loadBadges">重试</TButton>
     </div>
     <p v-if="loading && !allBadges.length" class="wb-empty" role="status">正在加载徽章…</p>
+    <div
+      v-else-if="filter !== 'all' && !groups.length && allBadges.length"
+      class="wb-empty"
+      role="status"
+    >
+      <span class="wb-empty__title">没有符合条件的徽章</span>
+      <div class="wb-empty__actions">
+        <TButton variant="outline" @click="emit('clear-filter')">清除筛选</TButton>
+      </div>
+    </div>
     <div v-else class="badge-wall__groups">
       <section v-for="group in groups" :key="group.key" class="badge-wall__group">
         <h3 class="wb-subhead">{{ group.title }}</h3>

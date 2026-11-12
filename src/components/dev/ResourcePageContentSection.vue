@@ -37,6 +37,7 @@ defineExpose({ setContent })
     <RichTextEditor
       ref="editorRef"
       :model-value="modelValue"
+      toolbar-on-focus
       min-height="clamp(320px, 42vh, 480px)"
       @update:model-value="emit('update:modelValue', $event)"
       @notify="(message, type) => emit('notify', message, type)"

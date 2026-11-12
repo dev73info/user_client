@@ -2,13 +2,13 @@
    书写顺序，级联顺序与原文件逐条一致（同名选择器的先后、@media 与它包着的规则都没动过）。
    分片只搬运不修改：声明、选择器、媒体查询一字未改，色值也没动；改顺序会让级联悄悄变样。
    01 发布页布局 / 02 发布表单排布与图标上传 / 03 图标预览与目录标签选择 /
-   04 提交操作与摘要 / 05 预览摘要卡 / 06 资源表格与图标弹窗 /
-   07 主页编辑页与基础信息栅格 / 08 接口资源配置与提示 */
+   04 提交操作与摘要 / 06 资源表格与图标弹窗 /
+   07 主页编辑页与基础信息栅格 / 08 接口资源配置与提示
+   （05 预览摘要卡：预览摘要改用大厅资源卡后整份删除，样式随 `resource-catalog-card*.css` 走。） */
 @import './dev-resource/01-publish-layout.css';
 @import './dev-resource/02-publish-form-grid.css';
 @import './dev-resource/03-icon-upload-catalog.css';
 @import './dev-resource/04-publish-actions-summary.css';
-@import './dev-resource/05-preview-card.css';
 @import './dev-resource/06-resource-table-icon-promo.css';
 @import './dev-resource/07-homepage-editor-basic-grid.css';
 @import './dev-resource/08-api-config-notices.css';

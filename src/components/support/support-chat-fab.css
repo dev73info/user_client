@@ -163,23 +163,47 @@
   pointer-events: none;
 }
 
-.support-fab__close {
+/* 浮窗右上角的关闭入口：收起整个浮窗（本次页面会话内不再出现） */
+.support-widget__dismiss {
   position: absolute;
-  top: 0;
-  right: 0;
+  top: 2px;
+  z-index: 2;
   display: flex;
   align-items: center;
   justify-content: center;
   width: 20px;
   height: 20px;
+  padding: 0;
   border-radius: 999px;
-  background: var(--73-surface-strong);
   border: 1px solid var(--73-border);
+  background: var(--73-surface-strong);
   box-shadow: 0 2px 6px color-mix(in srgb, var(--73-ink) 18%, transparent);
   color: var(--73-ink);
+  font: inherit;
   font-size: 13px;
   font-weight: 700;
   line-height: 1;
+  cursor: pointer;
+  transition:
+    color 140ms ease,
+    border-color 140ms ease,
+    background-color 140ms ease;
+}
+
+.support-widget__dismiss--right {
+  right: 2px;
+}
+
+.support-widget__dismiss--left {
+  left: 2px;
+}
+
+.support-widget__dismiss:hover,
+.support-widget__dismiss:focus-visible {
+  border-color: var(--73-border-hover);
+  background: var(--73-surface);
+  color: var(--73-accent);
+  outline: none;
 }
 
 @media (max-width: 640px) {

@@ -83,7 +83,9 @@ const emit = defineEmits<{
     </TTableColumn>
     <TTableColumn label="标签" min-width="120">
       <template #default="scope">
-        <span class="dev-resource-table__tags">{{ resourceTagColumnLabel(scope.row) }}</span>
+        <span class="dev-resource-table__tags" :title="resourceTagColumnLabel(scope.row)">
+          {{ resourceTagColumnLabel(scope.row) }}
+        </span>
       </template>
     </TTableColumn>
     <TTableColumn label="状态" min-width="110">

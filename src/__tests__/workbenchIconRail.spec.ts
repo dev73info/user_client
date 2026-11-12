@@ -1,4 +1,5 @@
 import { flushPromises, mount } from '@vue/test-utils'
+import { createPinia } from 'pinia'
 import { createMemoryHistory, createRouter } from 'vue-router'
 import { describe, expect, it } from 'vitest'
 
@@ -51,7 +52,7 @@ async function render(
       username: 'client_flow_03562487',
       groupPanelOpen,
     },
-    global: { plugins: [router] },
+    global: { plugins: [router, createPinia()] },
   })
   await flushPromises()
   return { router, wrapper }
@@ -142,7 +143,7 @@ describe('工作台图标栏', () => {
 
     await railButton('接单与交付').trigger('click')
     await flushPromises()
-    expect(router.currentRoute.value.name).toBe('dev-home')
+    expect(router.currentRoute.value.name).toBe('dev-resource-list')
 
     await railButton('消息').trigger('click')
     await flushPromises()

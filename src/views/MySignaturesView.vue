@@ -3,23 +3,13 @@ import { computed, ref, watch } from 'vue'
 import WorkbenchBarSlot from '@/components/WorkbenchBarSlot.vue'
 import { useRouter } from 'vue-router'
 import { listMyContracts, type MyContractSummary } from '@/api/contracts'
-import { LIST_PAGE_SIZES, useClientPagination } from '@/composables/useClientPagination'
+import { useClientPagination } from '@/composables/useClientPagination'
 import { useAuthStore } from '@/stores/auth'
 import MySignatureRow from '@/components/contract/MySignatureRow.vue'
-import TourButton from '@/features/tour/TourButton.vue'
+import WorkbenchPager from '@/components/workbench/WorkbenchPager.vue'
 import { getSignatureState, type SignatureState } from '@/utils/contractSignatures'
 
-import {
-  TButton,
-  TIcon,
-  TInput,
-  TOption,
-  TPagination,
-  TSelect,
-  Refresh,
-  RefreshLeft,
-  Search,
-} from 'ui_73info'
+import { TButton, TIcon, TInput, TOption, TSelect, Refresh, RefreshLeft, Search } from 'ui_73info'
 
 const auth = useAuthStore()
 const router = useRouter()
@@ -30,10 +20,10 @@ const keyword = ref('')
 const selectedState = ref<'all' | SignatureState>('all')
 let requestId = 0
 
-/* 状态筛选走下拉（统一层 .wb-toolbar__field + TSelect），与需求列表同一套工具栏：
-   筛的是**签名态**（我方要不要签），不是合同状态码：整数状态里没有对应语义，
+/* 签名态筛选有两个入口：顶部读数格（点哪格选哪档）与工具栏下拉，二者共用 selectedState，
+   与需求列表同一套工具栏：筛的是**签名态**（我方要不要签），不是合同状态码：整数状态里没有对应语义，
    过期 / 拒签 / 撤销 这类合同只在「全部」里出现，列表徽标按合同状态显示。
-   条数只在顶部读数条里报，选项文案不加括号数字。 */
+   「已作废」不占读数格，只在下拉里；条数只在顶部读数条里报，选项文案不加括号数字。 */
 type SignatureFilterKey = 'all' | SignatureState
 
 const states: { value: SignatureFilterKey; label: string }[] = [
@@ -135,25 +125,49 @@ function openDetail(item: MyContractSummary) {
     <!-- 顶部读数条：读数在最左，页面级刷新固定在右上角 -->
     <WorkbenchBarSlot>
       <div class="wb-strip" aria-label="签署概览" data-tour="signatures:4">
-        <div class="wb-strip__item">
+        <button
+          class="wb-strip__item wb-strip__item--filter"
+          :class="{ 'is-active': selectedState === 'all' }"
+          type="button"
+          :aria-pressed="selectedState === 'all'"
+          @click="selectedState = 'all'"
+        >
           <span class="wb-strip__label">合同总数</span>
           <span class="wb-strip__value">{{ stripValue(contracts.length) }}</span>
-        </div>
-        <div class="wb-strip__divider" />
-        <div class="wb-strip__item">
+        </button>
+        <span class="wb-strip__divider" aria-hidden="true" />
+        <button
+          class="wb-strip__item wb-strip__item--filter"
+          :class="{ 'is-active': selectedState === 'pending' }"
+          type="button"
+          :aria-pressed="selectedState === 'pending'"
+          @click="selectedState = 'pending'"
+        >
           <span class="wb-strip__label">待我签署</span>
           <span class="wb-strip__value">{{ stripValue(countOf('pending')) }}</span>
-        </div>
-        <div class="wb-strip__divider" />
-        <div class="wb-strip__item">
+        </button>
+        <span class="wb-strip__divider" aria-hidden="true" />
+        <button
+          class="wb-strip__item wb-strip__item--filter"
+          :class="{ 'is-active': selectedState === 'waiting' }"
+          type="button"
+          :aria-pressed="selectedState === 'waiting'"
+          @click="selectedState = 'waiting'"
+        >
           <span class="wb-strip__label">等待他方</span>
           <span class="wb-strip__value">{{ stripValue(countOf('waiting')) }}</span>
-        </div>
-        <div class="wb-strip__divider" />
-        <div class="wb-strip__item">
+        </button>
+        <span class="wb-strip__divider" aria-hidden="true" />
+        <button
+          class="wb-strip__item wb-strip__item--filter"
+          :class="{ 'is-active': selectedState === 'signed' }"
+          type="button"
+          :aria-pressed="selectedState === 'signed'"
+          @click="selectedState = 'signed'"
+        >
           <span class="wb-strip__label">已完成</span>
           <span class="wb-strip__value">{{ stripValue(countOf('signed')) }}</span>
-        </div>
+        </button>
         <div class="wb-strip__item wb-strip__action">
           <TButton icon-only :loading="loading" aria-label="刷新签署记录" @click="loadContracts">
             <TIcon><Refresh /></TIcon>
@@ -194,10 +208,14 @@ function openDetail(item: MyContractSummary) {
             >筛选出 {{ filteredTotal }} / {{ contracts.length }} 份</span
           >
         </div>
-        <TourButton tour="signatures" />
       </div>
 
-      <p v-if="loading" class="wb-empty" role="status" data-tour="signatures:2">
+      <p
+        v-if="loading && !filteredContracts.length"
+        class="wb-empty"
+        role="status"
+        data-tour="signatures:2"
+      >
         正在加载签署记录…
       </p>
       <div v-else-if="error" class="wb-empty" role="alert" data-tour="signatures:2">
@@ -234,26 +252,14 @@ function openDetail(item: MyContractSummary) {
             @open="openDetail(item)"
           />
         </ul>
-        <div class="wb-pager">
-          <div class="wb-pager__count">
-            <TSelect v-model="pageSize" class="wb-pager__size" aria-label="每页合同数">
-              <TOption
-                v-for="size in LIST_PAGE_SIZES"
-                :key="size"
-                :label="`${size} 条/页`"
-                :value="size"
-              />
-            </TSelect>
-          </div>
-          <TPagination
-            v-model:current-page="page"
-            :page-size="pageSize"
-            :total="filteredTotal"
-            :pager-count="5"
-            background
-            aria-label="签署记录分页"
-          />
-        </div>
+        <WorkbenchPager
+          v-model:page="page"
+          v-model:page-size="pageSize"
+          :total="filteredTotal"
+          unit="份合同"
+          page-size-aria-label="每页合同数"
+          pagination-aria-label="签署记录分页"
+        />
       </template>
     </section>
   </main>

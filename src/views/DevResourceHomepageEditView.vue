@@ -2,6 +2,7 @@
 import { onMounted, ref } from 'vue'
 import { TAlert, TButton, TCard, TLoading } from 'ui_73info'
 import { getResourceSaleFee } from '@/api/resourceSale'
+import ResourceDetailPanel from '@/components/ResourceDetailPanel.vue'
 import ResourceHomepageEditBar from '@/components/dev/ResourceHomepageEditBar.vue'
 import ResourceBasicInfoSection from '@/components/dev/ResourceBasicInfoSection.vue'
 import ResourceApiChannelSection from '@/components/dev/ResourceApiChannelSection.vue'
@@ -19,6 +20,7 @@ import {
 import { useResourceApiChannel } from '@/composables/useResourceApiChannel'
 import { useResourceHomepageSave } from '@/composables/useResourceHomepageSave'
 import { useResourceHomepageLoader } from '@/composables/useResourceHomepageLoader'
+import { useResourceHomepagePreview } from '@/composables/useResourceHomepagePreview'
 import {
   RESOURCE_ARCHIVE_LOCKED_MESSAGE,
   RESOURCE_ARCHIVE_LOCKED_TITLE,
@@ -47,7 +49,6 @@ const {
   saleLockedByRequirement,
   canPreview,
   previewBlockReason,
-  userClientPreviewUrl,
   goBack,
 } = useResourceHomepageResource()
 
@@ -99,6 +100,7 @@ const { saving, saveHomepage } = useResourceHomepageSave({
   selectedCoverFile: formState.selectedCoverFile,
   tagCatalog,
   buildTagSelections,
+  platform: tagCatalog.currentPlatform,
   channel,
   applySavedHomepage: formState.applySavedHomepage,
 })
@@ -132,6 +134,13 @@ const {
   setGroupTagIds,
   loadTagTree,
 } = tagCatalog
+
+/** 页内预览态与右栏预览摘要卡的展示值（售价实时换算、标签取当前勾选）。 */
+const { previewing, togglePreview, previewCardProps } = useResourceHomepagePreview({
+  formState,
+  platformTagGroups,
+  selectedTagIdsByGroup,
+})
 </script>
 
 <template>
@@ -142,15 +151,15 @@ const {
       :saving="saving"
       :save-disabled="archiveLocked || channel.needsApiAgreement.value"
       :show-preview="Boolean(resource) && !isApiKind"
-      :preview-url="userClientPreviewUrl"
+      :previewing="previewing"
       :preview-disabled="!canPreview"
       :preview-disabled-reason="previewBlockReason"
       :is-loading-tags="isLoadingTags"
       @back="goBack"
       @save="saveHomepage"
       @refresh-tags="loadTagTree"
+      @toggle-preview="togglePreview"
     />
-
     <TAlert
       v-if="archiveLocked"
       tone="warning"
@@ -160,7 +169,6 @@ const {
       :title="RESOURCE_ARCHIVE_LOCKED_TITLE"
       :description="RESOURCE_ARCHIVE_LOCKED_MESSAGE"
     />
-
     <!-- 协议未签：签署按钮进 TAlert 的 #actions，排在提示框内右侧（窄屏整块换行） -->
     <TAlert
       v-if="channel.needsApiAgreement.value"
@@ -177,7 +185,16 @@ const {
       </template>
     </TAlert>
 
+    <!-- 页内预览：编辑布局整体换出，就地渲染用户端资源详情（面板按资源 id 取已保存内容） -->
+    <ResourceDetailPanel
+      v-if="previewing && resource"
+      :resource-id="resource?.id ?? 0"
+      context-label="资源主页"
+      embedded
+      @close="previewing = false"
+    />
     <TLoading
+      v-else
       tag="section"
       class="dev-resource-homepage-editor__layout"
       :class="{ 'dev-resource-homepage-editor__layout--single': isApiKind }"
@@ -217,6 +234,7 @@ const {
             :platform-fee-bps="platformFeeBps"
             :platform-fee-error="platformFeeError"
             @update:cover-preview="formState.handleCoverPreviewChange"
+            @cover-applied="formState.uploadSelectedCover"
             @description-input="formState.onDescriptionInput"
             @cash-price-input="formState.onCashPriceInput"
             @points-price-input="formState.onPointsPriceInput"
@@ -267,18 +285,8 @@ const {
         </TCard>
       </div>
 
-      <!-- 预览摘要画的是大厅资源卡的外观；接口资源不进大厅、首页精选与公开搜索，
-           没有这张卡的落地页，侧栏整块不出现（主栏随之占满一行）。 -->
-      <ResourceHomepagePreviewAside
-        v-if="!isApiKind"
-        :cover-preview="formState.coverPreview.value"
-        :title="formState.heroTitle.value"
-        :description="form.description"
-        :platform-label="formState.resourcePlatformLabel.value"
-        :author-label="formState.resourceAuthorLabel.value"
-        :entry-label="formState.previewEntryLabel.value"
-        :tag-count="tagCatalog.previewTagCount.value"
-      />
+      <!-- 预览摘要直接复用大厅资源卡；接口资源没有这张卡的落地页，整块不出现（主栏占满一行） -->
+      <ResourceHomepagePreviewAside v-if="!isApiKind" v-bind="previewCardProps" />
     </TLoading>
 
     <!-- 后端首次生成的回调密钥：明文只回这一次，弹窗最醒目地提示一次 -->
