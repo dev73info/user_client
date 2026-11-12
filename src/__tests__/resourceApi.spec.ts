@@ -146,12 +146,19 @@ describe('resourceApi', () => {
     )
   })
 
-  it('isValidCallbackUrl 收 http(s) 绝对地址，本地回环放行', () => {
+  it('isValidCallbackUrl 只收 https，本地调试放行 HTTP 回环', () => {
     expect(isValidCallbackUrl('https://shop.example.com/73info/callback')).toBe(true)
-    expect(isValidCallbackUrl('http://shop.example.com/callback')).toBe(true)
+    expect(isValidCallbackUrl('https://shop.example.com:8443/cb?a=1')).toBe(true)
+    expect(isValidCallbackUrl('https://203.0.113.9/callback')).toBe(true)
     expect(isValidCallbackUrl('http://127.0.0.1:8080/callback')).toBe(true)
     expect(isValidCallbackUrl('http://localhost:5173/callback')).toBe(true)
-    expect(isValidCallbackUrl('https://shop.example.com:8443/cb?a=1')).toBe(true)
+
+    // 公网 / 私网 / 非回环 HTTP 一律拒绝
+    expect(isValidCallbackUrl('http://shop.example.com/callback')).toBe(false)
+    expect(isValidCallbackUrl('http://203.0.113.9/callback')).toBe(false)
+    expect(isValidCallbackUrl('http://192.168.1.10:8080/callback')).toBe(false)
+    expect(isValidCallbackUrl('http://10.0.0.5/callback')).toBe(false)
+    expect(isValidCallbackUrl('http://localhost.evil.com/callback')).toBe(false)
 
     expect(isValidCallbackUrl('')).toBe(false)
     expect(isValidCallbackUrl('   ')).toBe(false)

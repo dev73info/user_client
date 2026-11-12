@@ -181,7 +181,7 @@ export function useResourceApiChannel(options: {
 
     if (form.apiCallbackUrl.trim() && !isValidCallbackUrl(form.apiCallbackUrl)) {
       TMessage.warning(
-        '回调地址须为 http(s) 开头的绝对地址，例如 https://shop.example.com/73info/callback',
+        '回调地址必须是 https 绝对地址；本地调试可用 http://localhost 或 http://127.0.0.1，例如 https://shop.example.com/73info/callback',
       )
       return false
     }
