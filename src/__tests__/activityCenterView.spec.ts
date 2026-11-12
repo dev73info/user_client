@@ -143,9 +143,7 @@ describe('活动中心', () => {
     await render()
 
     const stripItem = (label: string) =>
-      wrapper!
-        .findAll('.wb-strip__item--filter')
-        .find((item) => item.text().startsWith(label))!
+      wrapper!.findAll('.wb-strip__item--filter').find((item) => item.text().startsWith(label))!
     expect(wrapper!.findAll('.wb-strip__item--filter')).toHaveLength(3)
     expect(stripItem('活动').text()).toContain('3')
     expect(stripItem('进行中').text()).toContain('2')

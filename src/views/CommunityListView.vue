@@ -208,7 +208,9 @@ function handlePostsLoaded(posts: CommunityPost[]) {
         <div class="wb-strip" aria-label="我的帖子概览">
           <div class="wb-strip__item">
             <span class="wb-strip__label">当前列表</span>
-            <span class="wb-strip__value">{{ list.loading ? '—' : `${list.posts.length} 篇` }}</span>
+            <span class="wb-strip__value">{{
+              list.loading ? '—' : `${list.posts.length} 篇`
+            }}</span>
           </div>
           <span class="wb-strip__divider" aria-hidden="true" />
           <div class="wb-strip__item">

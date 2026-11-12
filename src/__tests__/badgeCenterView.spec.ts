@@ -26,7 +26,14 @@ vi.mock('@/components/InviteRewardPanel.vue', () => ({
 }))
 
 const definitions: BadgeDefinition[] = [
-  { code: 'first', name: '初来乍到', description: '注册即得', icon: '🎉', category: '成就徽章', tier: 1 },
+  {
+    code: 'first',
+    name: '初来乍到',
+    description: '注册即得',
+    icon: '🎉',
+    category: '成就徽章',
+    tier: 1,
+  },
   {
     code: 'veteran',
     name: '资深开发者',
@@ -35,7 +42,14 @@ const definitions: BadgeDefinition[] = [
     category: '成就徽章',
     tier: 2,
   },
-  { code: 'helper', name: '热心助人', description: '帮助他人', icon: '🤝', category: '特殊徽章', tier: 1 },
+  {
+    code: 'helper',
+    name: '热心助人',
+    description: '帮助他人',
+    icon: '🤝',
+    category: '特殊徽章',
+    tier: 1,
+  },
 ]
 const mine: UserBadge[] = [
   { ...definitions[0]!, equipped: true, awarded_at: '2026-10-01 00:00:00' },
@@ -57,7 +71,11 @@ beforeEach(() => {
   mocks.definitions.mockResolvedValue(definitions)
   mocks.mine.mockResolvedValue({ badges: mine })
   mocks.inviteCode.mockResolvedValue({ code: 'INVITE-CODE', invite_count: 2, invite_url: '' })
-  mocks.inviteStats.mockResolvedValue({ invite_code: 'INVITE-CODE', invitees: [], total_invited: 2 })
+  mocks.inviteStats.mockResolvedValue({
+    invite_code: 'INVITE-CODE',
+    invitees: [],
+    total_invited: 2,
+  })
 })
 
 afterEach(() => {

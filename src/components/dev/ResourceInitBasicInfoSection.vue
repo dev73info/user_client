@@ -1,15 +1,6 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
-import {
-  TButton,
-  TCheckbox,
-  TForm,
-  TFormItem,
-  TInput,
-  TOption,
-  TSelect,
-  TTooltip,
-} from 'ui_73info'
+import { TButton, TCheckbox, TForm, TFormItem, TInput, TOption, TSelect, TTooltip } from 'ui_73info'
 import ResourceIconPicker from '@/components/ResourceIconPicker.vue'
 import {
   RESOURCE_FEE_UNAVAILABLE_TEXT,

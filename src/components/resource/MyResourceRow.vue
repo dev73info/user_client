@@ -119,7 +119,8 @@ function runCommand(payload: unknown) {
         {{ resource.author }}
       </span>
       <span class="wb-item__meta my-resource-row__created">
-        创建于 {{ resource.created_at }}<template v-if="exposureText"> · {{ exposureText }}</template>
+        创建于 {{ resource.created_at
+        }}<template v-if="exposureText"> · {{ exposureText }}</template>
       </span>
     </div>
 

@@ -195,9 +195,7 @@ describe('积分商城与权益', () => {
     await flushPromises()
 
     const stripItem = (label: string) =>
-      wrapper!
-        .findAll('.wb-strip__item--filter')
-        .find((item) => item.text().startsWith(label))!
+      wrapper!.findAll('.wb-strip__item--filter').find((item) => item.text().startsWith(label))!
     expect(wrapper.findAll('.wb-strip__item--filter')).toHaveLength(3)
     expect(stripItem('全部权益').text()).toContain('3')
     expect(stripItem('已解锁权益').text()).toContain('3')

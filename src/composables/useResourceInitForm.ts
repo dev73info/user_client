@@ -69,10 +69,7 @@ export function useResourceInitForm(options: {
   const pointsPriceDisabled = computed(() => hasCashPrice.value)
   const showCopyrightField = computed(
     () =>
-      hasCashPrice.value ||
-      hasPointsPrice.value ||
-      form.copyrightDeclared ||
-      isVersionSale.value,
+      hasCashPrice.value || hasPointsPrice.value || form.copyrightDeclared || isVersionSale.value,
   )
 
   watch(creationType, (type) => {

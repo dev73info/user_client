@@ -120,8 +120,7 @@ export function useResourceInitSubmit(options: {
       TMessage.warning(promoParsed.message)
       return
     }
-    const paidPublic =
-      mode === 'public' && (priceParsed.fen > 0 || pointsParsed.points > 0)
+    const paidPublic = mode === 'public' && (priceParsed.fen > 0 || pointsParsed.points > 0)
     if (paidPublic && !form.copyrightDeclared) {
       TMessage.warning('付费资源公开申请前必须勾选版权声明')
       return

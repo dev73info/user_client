@@ -18,16 +18,7 @@ import {
 
 import type { McResourceVersionPayload } from '@/api/mcResources'
 
-import {
-  Plus,
-  Refresh,
-  Search,
-  TAlert,
-  TButton,
-  TIcon,
-  TInput,
-  TLoading,
-} from 'ui_73info'
+import { Plus, Refresh, Search, TAlert, TButton, TIcon, TInput, TLoading } from 'ui_73info'
 
 /**
  * 「版本管理」页：版本列表 + 发布 / 编辑 / 删除三个弹窗。
@@ -220,9 +211,7 @@ function handleVersionAction(command: string, version: McResourceVersionPayload)
     <ResourceVersionCreateDialog
       v-model:open="createVersionDialogVisible"
       :submitting="publishing"
-      :price-placeholder="
-        Number(resource?.buyout_price_fen ?? 0) > 0 ? '0 表示不单卖' : '0 = 免费'
-      "
+      :price-placeholder="Number(resource?.buyout_price_fen ?? 0) > 0 ? '0 表示不单卖' : '0 = 免费'"
       @submit="submitVersion"
     />
 
@@ -232,9 +221,7 @@ function handleVersionAction(command: string, version: McResourceVersionPayload)
       :options="versionRows"
       :submitting="savingVersionId === editingVersion?.id"
       :file-name-of="versionFileName"
-      :price-placeholder="
-        Number(resource?.buyout_price_fen ?? 0) > 0 ? '0 表示不单卖' : '0 = 免费'
-      "
+      :price-placeholder="Number(resource?.buyout_price_fen ?? 0) > 0 ? '0 表示不单卖' : '0 = 免费'"
       @submit="submitVersionEdit"
     />
 

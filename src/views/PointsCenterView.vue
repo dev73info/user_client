@@ -143,9 +143,7 @@ function retryFailed() {
         </div>
       </div>
 
-      <p v-if="loading && !pagedLogs.length" class="wb-empty" role="status">
-        正在加载积分记录…
-      </p>
+      <p v-if="loading && !pagedLogs.length" class="wb-empty" role="status">正在加载积分记录…</p>
       <div v-else-if="error" class="wb-empty" role="alert">
         <span class="wb-empty__title">加载积分记录失败</span>{{ error }}
         <div class="wb-empty__actions">

@@ -88,10 +88,16 @@ const filteredItems = computed(() => {
   const mode = props.listingMode ?? null
 
   const data = cards.value.filter((card) => {
-    if (mode === 'free' && !isFreeListingResource(card.priceFen, card.pricePoints, card.minVersionPriceFen)) {
+    if (
+      mode === 'free' &&
+      !isFreeListingResource(card.priceFen, card.pricePoints, card.minVersionPriceFen)
+    ) {
       return false
     }
-    if (mode === 'paid' && !isCashPaidListingResource(card.priceFen, card.pricePoints, card.minVersionPriceFen)) {
+    if (
+      mode === 'paid' &&
+      !isCashPaidListingResource(card.priceFen, card.pricePoints, card.minVersionPriceFen)
+    ) {
       return false
     }
 
