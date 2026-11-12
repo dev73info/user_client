@@ -115,22 +115,23 @@ function runCommand(payload: unknown) {
         <BetaTag v-if="apiResource" data-testid="resource-api-tag" />
       </div>
       <span class="wb-item__meta">
-        {{ resourcePlatformLabel(resource.platform) }} / {{ resource.author }} ·
-        {{ resourceTagColumnLabel(resource) }}
+        {{ resourcePlatformLabel(resource.platform) }} · {{ resourceTagColumnLabel(resource) }} ·
+        {{ resource.author }}
       </span>
-      <span class="wb-item__meta my-resource-row__price">
-        <span>售价 {{ priceLabel }}</span>
-        <BetaTag v-if="priced && !apiResource" />
-        <span v-if="priced">· 预计到手 {{ netText }}</span>
+      <span class="wb-item__meta my-resource-row__created">
+        创建于 {{ resource.created_at }}<template v-if="exposureText"> · {{ exposureText }}</template>
       </span>
-      <span class="wb-item__meta">创建于 {{ resource.created_at }}</span>
-      <span v-if="exposureText" class="wb-item__meta">{{ exposureText }}</span>
     </div>
 
     <!-- 行内控件各自拦住点击 / 回车，别再冒泡到整行的「进编辑主页」；
          注意「更多」按钮自身不能再挂 @click.stop：TDropdown 的触发监听挂在外层，
          在按钮处截断冒泡等于菜单永远打不开（同 RequirementRow）。 -->
     <div class="wb-item__side" @click.stop @keydown.stop>
+      <span class="my-resource-row__price">
+        <span class="my-resource-row__price-value">{{ priceLabel }}</span>
+        <BetaTag v-if="priced && !apiResource" />
+        <span v-if="priced" class="my-resource-row__net">预计到手 {{ netText }}</span>
+      </span>
       <TButton variant="outline" @click.stop="emit('edit', resource)">编辑主页</TButton>
       <TDropdown trigger="click" @command="runCommand">
         <TButton variant="outline" tone="accent">
@@ -185,10 +186,32 @@ function runCommand(payload: unknown) {
   object-fit: cover;
 }
 
+.my-resource-row__created {
+  font-size: 12px;
+  color: var(--73-ink-placeholder);
+}
+
+/* 价格从正文里拿出来独立成列：金额一档、预计到手与 BETA 一行小字，正文只留标题与出处 */
 .my-resource-row__price {
-  display: flex;
-  align-items: center;
+  display: inline-flex;
+  align-items: baseline;
+  justify-content: flex-end;
   flex-wrap: wrap;
   gap: 6px;
+  min-width: 0;
+}
+
+.my-resource-row__price-value {
+  color: var(--73-ink);
+  font-size: 15px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.my-resource-row__net {
+  color: var(--73-ink-placeholder);
+  font-size: 12px;
+  white-space: nowrap;
 }
 </style>

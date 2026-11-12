@@ -90,10 +90,10 @@ describe('MyResourceRow：我的资源卡片行', () => {
     wrapper.unmount()
   })
 
-  it('售价行按 shared 口径展示价格与预计到手', () => {
+  it('售价列按 shared 口径展示价格与预计到手', () => {
     const wrapper = mountRow({ buyout_price_fen: 1234, price_fen: 1234 })
 
-    expect(wrapper.text()).toContain('售价 ¥12.34')
+    expect(wrapper.find('.my-resource-row__price-value').text()).toBe('¥12.34')
     expect(wrapper.text()).toContain('预计到手 ¥11.11')
     wrapper.unmount()
   })
@@ -111,7 +111,7 @@ describe('MyResourceRow：我的资源卡片行', () => {
   it('免费资源只写售价，不写预计到手', () => {
     const wrapper = mountRow({ buyout_price_fen: 0, price_points: 0 })
 
-    expect(wrapper.text()).toContain('售价 免费')
+    expect(wrapper.find('.my-resource-row__price-value').text()).toBe('免费')
     expect(wrapper.text()).not.toContain('预计到手')
     wrapper.unmount()
   })

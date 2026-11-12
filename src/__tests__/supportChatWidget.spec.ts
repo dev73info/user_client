@@ -94,6 +94,15 @@ describe('在线客服浮窗', () => {
     expect(FakeSupportSocket.instances).toHaveLength(0)
   })
 
+  it('浮窗右上角的关闭入口收起整个浮窗', async () => {
+    const target = await mountWidget()
+    expect(target.find('.support-widget').exists()).toBe(true)
+
+    await target.find('.support-widget__dismiss').trigger('click')
+
+    expect(target.find('.support-widget').exists()).toBe(false)
+  })
+
   it('未登录只提示登录，不发会话请求', async () => {
     useAuthStore().token = ''
     const target = await mountWidget(false)

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 
 import SupportChatPanel from '@/components/support/SupportChatPanel.vue'
 import { useSupportChatDrag } from '@/components/support/useSupportChatDrag'
@@ -43,6 +43,12 @@ const openLabel = computed(() => {
   return unread.value > 0 ? `在线客服（${unread.value} 条未读）` : '在线客服'
 })
 let disposed = false
+/** 「关闭」只收起整个浮窗（本次页面会话内不再出现），刷新页面后恢复。 */
+const dismissed = ref(false)
+
+function dismiss() {
+  dismissed.value = true
+}
 
 onMounted(async () => {
   const enabled = await resolveChannelEnabled()
@@ -61,7 +67,7 @@ onBeforeUnmount(() => {
 
 <template>
   <div
-    v-if="channelEnabled"
+    v-if="channelEnabled && !dismissed"
     class="support-widget"
     :class="{ 'is-open': opened }"
     :style="widgetStyle"
@@ -105,12 +111,23 @@ onBeforeUnmount(() => {
       <span class="support-fab__stage" aria-hidden="true">
         <span class="support-fab__sprite support-fab__sprite--idle"></span>
         <span class="support-fab__sprite support-fab__sprite--wave"></span>
-        <span v-if="opened" class="support-fab__close">×</span>
-        <span v-else-if="unread > 0" class="support-fab__badge">{{
+        <span v-if="unread > 0 && !opened" class="support-fab__badge">{{
           unread > 99 ? '99+' : unread
         }}</span>
       </span>
       <span class="support-fab__text">在线客服</span>
+    </button>
+
+    <button
+      type="button"
+      class="support-widget__dismiss"
+      :class="side === 'left' ? 'support-widget__dismiss--left' : 'support-widget__dismiss--right'"
+      aria-label="关闭在线客服"
+      title="关闭在线客服"
+      @pointerdown.stop.prevent
+      @click.stop="dismiss"
+    >
+      <span aria-hidden="true">×</span>
     </button>
   </div>
 </template>
