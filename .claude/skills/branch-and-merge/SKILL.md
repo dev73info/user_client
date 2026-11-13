@@ -6,6 +6,9 @@ description: 从 master 开分支、提交、推分支、开 PR（base=master）
 # 开分支 → 门禁 → PR → 合并（审阅在发版前）
 
 本仓（user_client）的基线与稳定线均为 `master`。**改动一律走分支 + PR**。
+> **2026-11-13 口径（优先于下文）**：默认路径是**本地收尾** —— `bash ../scripts/finish.sh user_client`
+> 合入本地 `master` 并删分支，**不 push、不开 PR**。只有用户明确说「提」才走下面的 push + PR；
+> PR 门禁绿自行 squash 合并。留分支不算完成。
 
 ## 一、开工前 30 秒
 

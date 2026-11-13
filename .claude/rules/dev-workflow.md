@@ -9,7 +9,7 @@
 2. **合并看门禁，审阅看发版**：日常 PR 由门禁（type-check / lint / test / 契约 / 构建）把关，
    门禁绿即可 squash 合并；**独立审阅只在打 tag 发版前做**（对 `master` 上这段时间累积的改动
    做一轮独立审阅，`PASS` 才打 tag）。执行代理永远不给自己写 `PASS`。
-3. **没合入不算完成**：只有合进 `master` 才写「已完成」；只在分支上、PR 开着、只在本地，都算「待验收」。
+3. **没合入不算完成**：只有合进本地 `master`（收尾完成、分支已删）才写「已完成」；只在分支上、PR 开着，都算「待验收」。
 
 ## 二、开工四步（每个会话、每个仓都做，包括「只是看看 / 改个文案」）
 
@@ -44,6 +44,7 @@ git switch -c feat/r0xx-<简称>
 
 ## 四、PR 与合并
 
+0. 默认先在本地收尾（`bash ../scripts/finish.sh user_client`），**不 push**；用户说「提」再走下面 1-5。
 1. `git fetch origin` → 落后就 `git rebase origin/master` → `git push -u origin HEAD`；
 2. 开 PR，**base 一律 `master`**（包括 `hotfix/`）：
 
