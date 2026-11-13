@@ -88,7 +88,7 @@ function money(fen: number | null | undefined): string {
 function statusLabel(reward: InviteRewardItem): string {
   switch (reward.status) {
     case 'pending':
-      return overview.value?.require_invitee_realname ? '待实名' : '待入账'
+      return '待发放'
     case 'available':
       return '可领取'
     case 'claimed':
@@ -115,7 +115,7 @@ function goWechatLogin() {
   })
 }
 
-/** 「邀请有礼」活动详情：名额、奖励与转账单统一在活动页查看。 */
+/** 活动详情：名额、奖励与转账单统一在活动页查看。 */
 function goActivity() {
   void router.push({
     name: 'workbench-activity-detail',
@@ -133,7 +133,6 @@ defineExpose({ reload: load })
         <h3 class="wb-card-head__title">邀请现金奖励</h3>
         <p class="invite-reward__window">{{ phaseNotice || activityWindow }}</p>
         <p class="invite-reward__source">
-          由活动「邀请有礼」驱动 ·
           <button type="button" class="invite-reward__activity-link" @click="goActivity">
             查看活动
           </button>

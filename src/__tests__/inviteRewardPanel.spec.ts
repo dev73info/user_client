@@ -94,7 +94,7 @@ describe('邀请现金奖励面板', () => {
     expect(text).toContain('已到账')
     expect(text).toContain('u***3')
     expect(text).toContain('待被邀请人完成实名认证')
-    expect(text).toContain('待实名')
+    expect(text).toContain('待发放')
     expect(claimButton().attributes('disabled')).toBeUndefined()
   })
 
@@ -102,7 +102,6 @@ describe('邀请现金奖励面板', () => {
     wrapper = mount(InviteRewardPanel)
     await flushPromises()
 
-    expect(wrapper.text()).toContain('由活动「邀请有礼」驱动')
     const link = wrapper.findAll('button').find((item) => item.text() === '查看活动')
     expect(link).toBeDefined()
     await link!.trigger('click')
