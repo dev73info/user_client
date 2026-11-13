@@ -40,9 +40,10 @@ __screenshots__/
 
 src/__cursor_hook_probe.ts
 
-# 本机工具产物：Playwright 走查记录、旧 worktree 软链
+# 本机工具产物：Playwright 走查记录、旧 worktree 软链、走查素材
 .playwright-mcp/
 .worktrees/
+/.wip/
 
 # Claude Code 项目配置：只入库规则与技能，本机设置（worktrees / launch.json 等）不入库
 .claude/*
