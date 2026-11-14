@@ -43,7 +43,7 @@
 }
 
 .auth-modal label,
-.auth-modal input,
+.auth-modal input:not([type='checkbox']):not([type='radio']),
 .auth-modal textarea {
   width: 100%;
 }
@@ -57,7 +57,7 @@
   font-weight: 600;
 }
 
-.auth-modal input,
+.auth-modal input:not([type='checkbox']):not([type='radio']),
 .auth-modal textarea,
 .profile-update-row input {
   width: 100%;
@@ -69,16 +69,10 @@
   outline: none;
 }
 
-.auth-modal input::placeholder,
+.auth-modal input:not([type='checkbox']):not([type='radio'])::placeholder,
 .auth-modal textarea::placeholder,
 .profile-update-row input::placeholder {
   color: var(--73-ink-placeholder);
-}
-
-.auth-modal input[type='checkbox'] {
-  width: auto;
-  max-width: none;
-  margin: 0;
 }
 
 .auth-agreement-row {
@@ -224,7 +218,7 @@
   font: inherit;
 }
 
-.auth-modal input:focus,
+.auth-modal input:not([type='checkbox']):not([type='radio']):focus,
 .auth-modal textarea:focus {
   border-color: color-mix(in srgb, var(--73-accent) 72%, transparent);
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--73-accent) 12%, transparent);
