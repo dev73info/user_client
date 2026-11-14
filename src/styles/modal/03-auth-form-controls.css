@@ -85,8 +85,8 @@
   margin-bottom: 12px;
 }
 
-/* 人机验证与「忘记密码？」同行：控件在左、链接在右，垂直居中。
-   链接沿用原先的靠右落点（原 `.auth-forgot-row { text-align: right }`）。 */
+/* 人机验证与辅助链接同排：控件在左，链接组在右并纵向排列。
+   表单内容宽约 493px，放不下 320px 挂件与横向链接，竖排可避免整组折到下一行。 */
 .auth-captcha-row {
   display: flex;
   align-items: center;
@@ -105,8 +105,9 @@
 
 .auth-captcha-row__actions {
   display: inline-flex;
-  align-items: center;
-  gap: 12px;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
   margin-left: auto;
 }
 

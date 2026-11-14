@@ -64,6 +64,13 @@
   .auth-captcha-row {
     gap: 8px;
   }
+
+  .auth-captcha-row__actions {
+    flex-direction: row;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 6px 12px;
+  }
 }
 
 .auth-modal input[type='number']::-webkit-outer-spin-button,
