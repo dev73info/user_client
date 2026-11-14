@@ -110,12 +110,14 @@ defineExpose({ reset })
 
 <style scoped>
 .captcha-field {
+  width: min(320px, 100%);
   display: flex;
   flex-direction: column;
   gap: 0.35rem;
 }
 
 .captcha-widget {
+  width: 100%;
   min-height: 48px;
 }
 
