@@ -89,7 +89,7 @@ export function createAuthApiClient(deps: AuthApiDependencies, options: AuthApiO
     inviteCode?: string,
     shareType?: string,
     shareTargetId?: string,
-    turnstileToken?: string,
+    captchaToken?: string,
   ): Promise<AuthRequestPayload> {
     try {
       return await deps.requestJson<AuthRequestPayload>(
@@ -111,7 +111,7 @@ export function createAuthApiClient(deps: AuthApiDependencies, options: AuthApiO
               inviteCode,
               shareType,
               shareTargetId,
-              turnstileToken,
+              captchaToken,
             }),
           ),
         },
@@ -145,12 +145,12 @@ export function createAuthApiClient(deps: AuthApiDependencies, options: AuthApiO
   function loginWithAuthenticator(
     username: string,
     code: string,
-    turnstileToken?: string,
+    captchaToken?: string,
   ): Promise<AuthPayload> {
-    return requestAuthenticatorLogin(deps, username, code, turnstileToken)
+    return requestAuthenticatorLogin(deps, username, code, captchaToken)
   }
 
-  async function sendRegisterEmailCode(email: string, turnstileToken?: string): Promise<void> {
+  async function sendRegisterEmailCode(email: string, captchaToken?: string): Promise<void> {
     try {
       await deps.requestVoid(
         '/auth/send-register-email-code',
@@ -161,7 +161,7 @@ export function createAuthApiClient(deps: AuthApiDependencies, options: AuthApiO
           },
           body: JSON.stringify({
             email,
-            ...(turnstileToken ? { turnstile_token: turnstileToken } : {}),
+            ...(captchaToken ? { turnstile_token: captchaToken } : {}),
           }),
         },
         '发送验证码失败',
@@ -174,7 +174,7 @@ export function createAuthApiClient(deps: AuthApiDependencies, options: AuthApiO
     }
   }
 
-  function sendResetPasswordEmailCode(email: string, turnstileToken?: string): Promise<void> {
+  function sendResetPasswordEmailCode(email: string, captchaToken?: string): Promise<void> {
     return deps.requestVoid(
       '/auth/send-reset-password-email-code',
       {
@@ -184,7 +184,7 @@ export function createAuthApiClient(deps: AuthApiDependencies, options: AuthApiO
         },
         body: JSON.stringify({
           email,
-          ...(turnstileToken ? { turnstile_token: turnstileToken } : {}),
+          ...(captchaToken ? { turnstile_token: captchaToken } : {}),
         }),
       },
       '发送验证码失败',
@@ -195,7 +195,7 @@ export function createAuthApiClient(deps: AuthApiDependencies, options: AuthApiO
     email: string,
     password: string,
     emailCode: string,
-    turnstileToken?: string,
+    captchaToken?: string,
   ): Promise<AuthPayload> {
     return deps.requestJson<AuthPayload>(
       '/auth/reset-password',
@@ -209,7 +209,7 @@ export function createAuthApiClient(deps: AuthApiDependencies, options: AuthApiO
           // 同登录：契约 ResetPasswordRequest 要求 md5(明文密码)
           password: md5Hex(password),
           email_code: emailCode,
-          ...(turnstileToken ? { turnstile_token: turnstileToken } : {}),
+          ...(captchaToken ? { turnstile_token: captchaToken } : {}),
         }),
       },
       '重置密码失败',

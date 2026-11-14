@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, ref, watch, type PropType } from 'vue'
 import { isQqBrowser, isWechatBrowser } from '@/shared/auth/browser'
-import { isTurnstileEnabled, type TurnstileSurfaceAction } from '@/shared/turnstile'
+import { isCaptchaEnabled } from '@/shared/captcha'
 import AccountForm from '@/components/authModal/AccountForm.vue'
 import AuthModalHead from '@/components/authModal/AuthModalHead.vue'
 import InAppLoginPanel from '@/components/authModal/InAppLoginPanel.vue'
@@ -37,7 +37,7 @@ const props = defineProps({
   sendCodeLoading: { type: Boolean, default: false },
   sendCodeCountdown: { type: Number, default: 0 },
   authLoading: { type: Boolean, default: false },
-  turnstileToken: { type: String, default: '' },
+  captchaToken: { type: String, default: '' },
 })
 
 const emit = defineEmits<{
@@ -56,7 +56,7 @@ const emit = defineEmits<{
   (e: 'update:authAuthenticatorCode', value: string): void
   (e: 'update:authInviteCode', value: string): void
   (e: 'update:acceptTerms', value: boolean): void
-  (e: 'update:turnstileToken', value: string): void
+  (e: 'update:captchaToken', value: string): void
   (e: 'toggle-authenticator', enabled: boolean): void
 }>()
 
@@ -93,29 +93,23 @@ const showAccountPanel = computed(
   () => !preferInAppOauth.value || inAppLoginPanel.value === 'account',
 )
 
-// ── Cloudflare Turnstile 人机验证 ─────────────────────────────────────────────
-// 站点密钥来自 VITE_TURNSTILE_SITE_KEY：未配置时整块不渲染，后端也应对应关闭校验
-// （backend_73info/config/local.toml 的 [turnstile] enabled）。
-// 挂件本体在 `authModal/AccountForm.vue` 里，这里只保留动作名与重建用的 nonce。
-const turnstileEnabled = isTurnstileEnabled()
+// ── 自托管 ALTCHA 人机验证 ───────────────────────────────────────────────────
+// 开关来自 VITE_CAPTCHA_ENABLED：未开启时整块不渲染，后端也应对应关闭校验。
+// 挂件本体在 `authModal/AccountForm.vue` 里，这里只保留重建用的 nonce。
+const captchaEnabled = isCaptchaEnabled()
 const accountFormRef = ref<InstanceType<typeof AccountForm> | null>(null)
-/** 换入口 / 重开弹窗时递增，用 :key 强制重建挂件，避免沿用旧动作名下已消费的 token。 */
-const turnstileNonce = ref(0)
-
-/** 动作名必须与后端 turnstile::guard 的 expected_action 一一对应。 */
-const turnstileAction = computed<TurnstileSurfaceAction>(() =>
-  props.authMode === 'reset' ? 'reset_password' : props.authMode,
-)
+/** 换入口 / 重开弹窗时递增，用 :key 强制重建挂件，避免沿用已消费的旧 payload。 */
+const captchaNonce = ref(0)
 
 watch(
   () => props.authMode,
   () => {
-    emit('update:turnstileToken', '')
-    turnstileNonce.value += 1
+    emit('update:captchaToken', '')
+    captchaNonce.value += 1
   },
 )
 
-// 一次请求结束后 token 已被后端消费（Turnstile token 一次性），必须重新取一枚，
+// 一次请求结束后 token 已被后端消费（人机校验 payload 一次性），必须重新取一枚，
 // 否则下一次提交必然被拒。authLoading 覆盖登录 / 注册 / 重置，sendCodeLoading 覆盖发码。
 watch(
   () => [props.authLoading, props.sendCodeLoading] as const,
@@ -123,7 +117,7 @@ watch(
     const wasBusy = Boolean(prev?.[0]) || Boolean(prev?.[1])
     const isBusy = Boolean(now[0]) || Boolean(now[1])
     if (wasBusy && !isBusy) {
-      accountFormRef.value?.resetTurnstile()
+      accountFormRef.value?.resetCaptcha()
     }
   },
 )
@@ -132,8 +126,8 @@ watch(
   () => props.visible,
   (visible) => {
     if (!visible) {
-      emit('update:turnstileToken', '')
-      turnstileNonce.value += 1
+      emit('update:captchaToken', '')
+      captchaNonce.value += 1
     }
   },
 )
@@ -231,9 +225,8 @@ function canSubmitAuth(): boolean {
         :send-code-loading="sendCodeLoading"
         :send-code-countdown="sendCodeCountdown"
         :auth-loading="authLoading"
-        :turnstile-enabled="turnstileEnabled"
-        :turnstile-action="turnstileAction"
-        :turnstile-nonce="turnstileNonce"
+        :captcha-enabled="captchaEnabled"
+        :captcha-nonce="captchaNonce"
         :prefer-in-app-oauth="preferInAppOauth"
         :show-in-app-oauth-panel="showInAppOauthPanel"
         @submit="emit('submit')"
@@ -246,7 +239,7 @@ function canSubmitAuth(): boolean {
         @update:auth-authenticator-code="emit('update:authAuthenticatorCode', $event)"
         @update:auth-invite-code="emit('update:authInviteCode', $event)"
         @update:accept-terms="emit('update:acceptTerms', $event)"
-        @update:turnstile-token="emit('update:turnstileToken', $event)"
+        @update:captcha-token="emit('update:captchaToken', $event)"
         @toggle-authenticator="emit('toggle-authenticator', $event)"
       />
 

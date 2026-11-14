@@ -9,9 +9,7 @@ import { TMessage } from 'ui_73info'
 
 import { useAuthStore } from '@/stores/auth'
 import { AUTH_UNAUTHORIZED_EVENT, type AuthUnauthorizedEventDetail } from '@/shared/api/authEvents'
-import { fetchTurnstileToken, getTurnstileSiteKey, isTurnstileEnabled } from '@/shared/turnstile'
-
-const CLOUDFLARE_TEST_SITE_KEY = '1x0000000000000000000000000000000AA'
+import { fetchCaptchaPayload, isCaptchaEnabled } from '@/shared/captcha'
 
 export function useAppShellAuth() {
   const auth = useAuthStore()
@@ -31,19 +29,14 @@ export function useAppShellAuth() {
     }
 
     try {
-      // `/auth/login` 与手动登录是同一个端点，仍由后端校验账号密码与 token。
-      // 只有官方测试站点密钥才直接提交测试 token，避免本机挂件域名或脚本加载阻塞自动登录；
-      // 正式站点密钥必须继续通过 Cloudflare 取得真实 token，不能拿测试值代替。
-      const turnstileToken = isTurnstileEnabled()
-        ? getTurnstileSiteKey() === CLOUDFLARE_TEST_SITE_KEY
-          ? 'test'
-          : await fetchTurnstileToken('login')
-        : ''
+      // `/auth/login` 与手动登录是同一个端点，仍由后端校验账号密码与 payload。
+      // 开发模式开着人机校验时先离屏算一枚 ALTCHA payload；关掉开关就不带 payload。
+      const captchaPayload = isCaptchaEnabled() ? await fetchCaptchaPayload() : ''
       await auth.login(
         devAutoLoginCredentials.username,
         devAutoLoginCredentials.password,
         undefined,
-        turnstileToken || undefined,
+        captchaPayload || undefined,
       )
     } catch (error) {
       console.warn('开发模式自动登录失败', error)

@@ -11,10 +11,10 @@ export function useAuthFormState() {
   const authInviteCode = ref('')
   const authShareType = ref('')
   const authShareTargetId = ref('')
-  // Cloudflare Turnstile 一次性 token：由登录弹窗里的挂件抛上来，随各接口提交。
-  // Turnstile 的 token **一次性**且有时效，被后端消费后必须由挂件 reset 重新取一枚；
+  // 自托管 ALTCHA 的一次性 payload：由登录弹窗里的挂件抛上来，随各接口提交。
+  // payload **一次性**且有时效，被后端消费后必须由挂件 reset 重新取一枚；
   // 因此这里只在「当前这一次提交」使用，挂件在每次请求结束后会清空并重取。
-  const authTurnstileToken = ref('')
+  const authCaptchaToken = ref('')
   const acceptTerms = ref(false)
   const loginRequiresTwoFactor = ref(false)
   /** 密码校验通过后第二步用哪种动态码（后端 202 的 `delivery`）。 */
@@ -42,7 +42,7 @@ export function useAuthFormState() {
     authInviteCode.value = ''
     authShareType.value = ''
     authShareTargetId.value = ''
-    authTurnstileToken.value = ''
+    authCaptchaToken.value = ''
     acceptTerms.value = false
     loginRequiresTwoFactor.value = false
     loginTwoFactorDelivery.value = 'email'
@@ -76,7 +76,7 @@ export function useAuthFormState() {
     authInviteCode,
     authShareType,
     authShareTargetId,
-    authTurnstileToken,
+    authCaptchaToken,
     acceptTerms,
     loginRequiresTwoFactor,
     loginTwoFactorDelivery,

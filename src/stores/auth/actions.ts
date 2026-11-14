@@ -85,7 +85,7 @@ export function createAuthActions(session: AuthSession) {
     usernameInput: string,
     passwordInput: string,
     twoFactorCode?: string,
-    turnstileToken?: string,
+    captchaToken?: string,
   ): Promise<LoginResult> {
     loading.value = true
     try {
@@ -100,7 +100,7 @@ export function createAuthActions(session: AuthSession) {
         undefined,
         undefined,
         undefined,
-        turnstileToken,
+        captchaToken,
       )
       if (isTwoFactorRequiredPayload(payload)) {
         return {
@@ -130,11 +130,11 @@ export function createAuthActions(session: AuthSession) {
   async function loginWithAuthenticator(
     usernameInput: string,
     codeInput: string,
-    turnstileToken?: string,
+    captchaToken?: string,
   ): Promise<LoginResult> {
     loading.value = true
     try {
-      const payload = await loginWithAuthenticatorApi(usernameInput, codeInput, turnstileToken)
+      const payload = await loginWithAuthenticatorApi(usernameInput, codeInput, captchaToken)
       await finishLogin(payload)
       return { requiresTwoFactor: false }
     } finally {
@@ -160,23 +160,23 @@ export function createAuthActions(session: AuthSession) {
     }
   }
 
-  async function sendRegisterEmailCode(email: string, turnstileToken?: string) {
-    await sendRegisterEmailCodeApi(email, turnstileToken)
+  async function sendRegisterEmailCode(email: string, captchaToken?: string) {
+    await sendRegisterEmailCodeApi(email, captchaToken)
   }
 
-  async function sendResetPasswordEmailCode(email: string, turnstileToken?: string) {
-    await sendResetPasswordEmailCodeApi(email, turnstileToken)
+  async function sendResetPasswordEmailCode(email: string, captchaToken?: string) {
+    await sendResetPasswordEmailCodeApi(email, captchaToken)
   }
 
   async function resetPasswordWithEmail(
     emailInput: string,
     passwordInput: string,
     emailCodeInput: string,
-    turnstileToken?: string,
+    captchaToken?: string,
   ) {
     loading.value = true
     try {
-      const payload = await resetPassword(emailInput, passwordInput, emailCodeInput, turnstileToken)
+      const payload = await resetPassword(emailInput, passwordInput, emailCodeInput, captchaToken)
       applyAuthPayload(payload)
       if (!payload.username || !payload.role) {
         await initializeSession(true)
@@ -196,7 +196,7 @@ export function createAuthActions(session: AuthSession) {
     inviteCodeInput?: string,
     shareTypeInput?: string,
     shareTargetIdInput?: string,
-    turnstileToken?: string,
+    captchaToken?: string,
   ) {
     loading.value = true
     try {
@@ -211,7 +211,7 @@ export function createAuthActions(session: AuthSession) {
         inviteCodeInput?.trim() || undefined,
         shareTypeInput?.trim() || undefined,
         shareTargetIdInput?.trim() || undefined,
-        turnstileToken,
+        captchaToken,
       )
       if (isTwoFactorRequiredPayload(payload)) {
         throw new Error('注册流程不需要两步验证')

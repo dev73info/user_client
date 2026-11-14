@@ -87,7 +87,7 @@
 
 /* 人机验证与「忘记密码？」同行：控件在左、链接在右，垂直居中。
    链接沿用原先的靠右落点（原 `.auth-forgot-row { text-align: right }`）。 */
-.auth-turnstile-row {
+.auth-captcha-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -96,14 +96,14 @@
   margin-bottom: 12px;
 }
 
-/* Cloudflare Turnstile「normal」挂件实宽 300×65（未传 size，走默认）；
+/* ALTCHA standard 挂件最大宽 320px（--altcha-max-width）；
    按它的实宽预留，既不拉伸也不压扁，窄屏再靠 max-width 收口。 */
-.auth-turnstile-row__widget {
-  flex: 0 0 300px;
+.auth-captcha-row__widget {
+  flex: 0 0 320px;
   max-width: 100%;
 }
 
-.auth-turnstile-row__actions {
+.auth-captcha-row__actions {
   display: inline-flex;
   align-items: center;
   gap: 12px;

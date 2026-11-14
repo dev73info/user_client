@@ -25,7 +25,7 @@ export function useAuthSubmit({
     authInviteCode,
     authShareType,
     authShareTargetId,
-    authTurnstileToken,
+    authCaptchaToken,
     acceptTerms,
     loginRequiresTwoFactor,
     loginTwoFactorDelivery,
@@ -58,7 +58,7 @@ export function useAuthSubmit({
           username,
           password,
           undefined,
-          authTurnstileToken.value || undefined,
+          authCaptchaToken.value || undefined,
         )
         if (!result.requiresTwoFactor) {
           TMessage.success('登录成功')
@@ -71,9 +71,9 @@ export function useAuthSubmit({
           return
         }
         if (mode.value === 'register') {
-          await auth.sendRegisterEmailCode(email, authTurnstileToken.value || undefined)
+          await auth.sendRegisterEmailCode(email, authCaptchaToken.value || undefined)
         } else {
-          await auth.sendResetPasswordEmailCode(email, authTurnstileToken.value || undefined)
+          await auth.sendResetPasswordEmailCode(email, authCaptchaToken.value || undefined)
         }
       }
       TMessage.success('验证码已发送，请查收邮箱')
@@ -116,7 +116,7 @@ export function useAuthSubmit({
           username,
           password,
           loginRequiresTwoFactor.value ? twoFactorCode : undefined,
-          authTurnstileToken.value || undefined,
+          authCaptchaToken.value || undefined,
         )
         if (result.requiresTwoFactor) {
           loginRequiresTwoFactor.value = true
@@ -165,7 +165,7 @@ export function useAuthSubmit({
           authInviteCode.value.trim() || undefined,
           authShareType.value.trim() || undefined,
           authShareTargetId.value.trim() || undefined,
-          authTurnstileToken.value || undefined,
+          authCaptchaToken.value || undefined,
         )
         TMessage.success('注册成功')
         return true
@@ -187,7 +187,7 @@ export function useAuthSubmit({
           authEmail.value.trim(),
           authPassword.value,
           authEmailCode.value.trim(),
-          authTurnstileToken.value || undefined,
+          authCaptchaToken.value || undefined,
         )
         TMessage.success('密码已重置，已自动登录')
         return true
@@ -221,7 +221,7 @@ export function useAuthSubmit({
         TMessage.error('请输入 6 位动态码')
         return false
       }
-      await auth.loginWithAuthenticator(username, code, authTurnstileToken.value || undefined)
+      await auth.loginWithAuthenticator(username, code, authCaptchaToken.value || undefined)
       TMessage.success('登录成功')
       return true
     } catch (err) {

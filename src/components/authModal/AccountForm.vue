@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
-import TurnstileWidget from '@/components/TurnstileWidget.vue'
-import type { TurnstileSurfaceAction } from '@/shared/turnstile'
+import CaptchaWidget from '@/components/CaptchaWidget.vue'
 
 import type { AuthModalMode } from './types'
 
@@ -21,9 +20,8 @@ const props = defineProps({
   sendCodeLoading: { type: Boolean, default: false },
   sendCodeCountdown: { type: Number, default: 0 },
   authLoading: { type: Boolean, default: false },
-  turnstileEnabled: { type: Boolean, default: false },
-  turnstileAction: { type: String as () => TurnstileSurfaceAction, required: true },
-  turnstileNonce: { type: Number, default: 0 },
+  captchaEnabled: { type: Boolean, default: false },
+  captchaNonce: { type: Number, default: 0 },
   preferInAppOauth: { type: Boolean, default: false },
   showInAppOauthPanel: { type: Boolean, default: false },
 })
@@ -39,7 +37,7 @@ const emit = defineEmits<{
   (e: 'update:authAuthenticatorCode', value: string): void
   (e: 'update:authInviteCode', value: string): void
   (e: 'update:acceptTerms', value: boolean): void
-  (e: 'update:turnstileToken', value: string): void
+  (e: 'update:captchaToken', value: string): void
   (e: 'toggle-authenticator', enabled: boolean): void
 }>()
 
@@ -56,21 +54,20 @@ const authAuthenticatorCode = computed(() => props.authAuthenticatorCode)
 const acceptTerms = computed(() => props.acceptTerms)
 const sendCodeLoading = computed(() => props.sendCodeLoading)
 const sendCodeCountdown = computed(() => props.sendCodeCountdown)
-const turnstileEnabled = computed(() => props.turnstileEnabled)
-const turnstileAction = computed(() => props.turnstileAction)
-const turnstileNonce = computed(() => props.turnstileNonce)
+const captchaEnabled = computed(() => props.captchaEnabled)
+const captchaNonce = computed(() => props.captchaNonce)
 const preferInAppOauth = computed(() => props.preferInAppOauth)
 const showInAppOauthPanel = computed(() => props.showInAppOauthPanel)
 const showAccountPanel = true
 
-const turnstileRef = ref<InstanceType<typeof TurnstileWidget> | null>(null)
+const captchaRef = ref<InstanceType<typeof CaptchaWidget> | null>(null)
 
-/** 一次请求结束后由父级调用：Turnstile token 一次性，必须重新取一枚。 */
-function resetTurnstile() {
-  turnstileRef.value?.reset()
+/** 一次请求结束后由父级调用：人机校验 payload 一次性，必须重新取一枚。 */
+function resetCaptcha() {
+  captchaRef.value?.reset()
 }
 
-defineExpose({ resetTurnstile })
+defineExpose({ resetCaptcha })
 
 function requiresAgreement(): boolean {
   return props.authMode === 'login' || props.authMode === 'register'
@@ -282,16 +279,15 @@ function updateAcceptTerms(event: Event) {
 
     <!-- 人机验证与「忘记密码？」同一行：控件在左、链接在右、垂直居中；
          注册 / 重置态没有该链接，仅保留左侧控件，行位置与登录态一致 -->
-    <div class="auth-turnstile-row">
-      <TurnstileWidget
-        v-if="turnstileEnabled"
-        ref="turnstileRef"
-        :key="`${turnstileAction}-${turnstileNonce}`"
-        :action="turnstileAction"
-        class="auth-turnstile-row__widget"
-        @update:token="emit('update:turnstileToken', $event)"
+    <div class="auth-captcha-row">
+      <CaptchaWidget
+        v-if="captchaEnabled"
+        ref="captchaRef"
+        :key="`captcha-${captchaNonce}`"
+        class="auth-captcha-row__widget"
+        @update:token="emit('update:captchaToken', $event)"
       />
-      <div v-if="authMode === 'login'" class="auth-turnstile-row__actions">
+      <div v-if="authMode === 'login'" class="auth-captcha-row__actions">
         <button
           v-if="!loginRequiresTwoFactor"
           class="auth-link"
