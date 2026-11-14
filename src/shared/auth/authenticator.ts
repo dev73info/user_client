@@ -18,7 +18,7 @@ export async function requestAuthenticatorLogin(
   deps: { requestJson: RequestJson; isHttpError: IsHttpError },
   username: string,
   code: string,
-  turnstileToken?: string,
+  captchaToken?: string,
 ): Promise<AuthPayload> {
   try {
     return await deps.requestJson<AuthPayload>(
@@ -32,7 +32,7 @@ export async function requestAuthenticatorLogin(
         body: JSON.stringify({
           username,
           code,
-          ...(turnstileToken ? { turnstile_token: turnstileToken } : {}),
+          ...(captchaToken ? { turnstile_token: captchaToken } : {}),
         }),
       },
       '登录失败',

@@ -11,7 +11,6 @@
 
 /** 参与进件校验的实名资料字段（个人主体这些字段恒为空，不参与校验）。 */
 export type EnterpriseOnboardingRecord = {
-  business_license_file?: string | null
   company_prov_code?: string | null
   company_area_code?: string | null
   company_address?: string | null
@@ -25,7 +24,6 @@ export function missingEnterpriseOnboardingLabels(
   record: EnterpriseOnboardingRecord | null | undefined,
 ): string[] {
   const labels: string[] = []
-  if (!record?.business_license_file?.trim()) labels.push('营业执照文件')
   // 省市是一组：渠道两个都校验，任一为空都算这项没填，提示里合并成一条更好读。
   if (!record?.company_prov_code?.trim() || !record?.company_area_code?.trim()) {
     labels.push('企业所在省市')

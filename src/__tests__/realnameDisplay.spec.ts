@@ -13,6 +13,7 @@ import {
   realnameSubjectLabel,
 } from '@/shared/realnameDisplay'
 import { LONG_TERM_DATE, type RealnameDraftFields } from '@/shared/realnameForm'
+import { fakeFile } from '@/__tests__/realnameDraftFixtures'
 
 /**
  * 实名认证的展示口径（纯函数层）：状态文案与语气、主体中文名、入口卡文案、
@@ -49,14 +50,14 @@ function draft(patch: Partial<RealnameDraftFields> = {}): RealnameDraftFields {
     operatorName: '张三',
     operatorIdCardNo: '110101199001011234',
     operatorIdentifyType: 153,
-    operatorCertFrontFile: 'https://cdn.example.com/operator-front.jpg',
+    operatorCertFrontFile: fakeFile('operator-front.jpg'),
     operatorMobile: '13800000000',
     guardianRequired: false,
     guardianConsent: false,
     guardianConsentFile: '',
-    businessLicenseFile: 'https://cdn.example.com/bl.jpg',
-    legalCertFrontFile: 'https://cdn.example.com/front.jpg',
-    legalCertBackFile: 'https://cdn.example.com/back.jpg',
+    businessLicenseFile: fakeFile('bl.jpg'),
+    legalCertFrontFile: fakeFile('front.jpg'),
+    legalCertBackFile: fakeFile('back.jpg'),
     companyProvCode: '0011',
     companyAreaCode: '1100',
     companyAddress: '北京市朝阳区某路 1 号',

@@ -101,10 +101,9 @@ describe('rich HTML XSS defenses', () => {
       'deploy/openresty/73info-user-client.conf',
     ]) {
       const content = readFileSync(file, 'utf8')
-      expect(content).toContain(
-        "script-src 'self' 'wasm-unsafe-eval' https://challenges.cloudflare.com;",
-      )
+      expect(content).toContain("script-src 'self' 'wasm-unsafe-eval';")
       expect(content).toContain("form-action 'self';")
+      expect(content).not.toContain('challenges.cloudflare.com')
       expect(content).not.toMatch(/script-src[^;]*'unsafe-inline'/)
       expect(content).not.toMatch(/script-src[^;]*'unsafe-eval'/)
     }

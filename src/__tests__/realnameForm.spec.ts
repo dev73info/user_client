@@ -38,7 +38,7 @@ describe('手机号与身份证年龄', () => {
 describe('材料认证表单校验', () => {
   it('个人只拦身份证、手机号和认证方式，不拦手填姓名与证件号', () => {
     expect(validateRealnameDraft(draft({ realName: '', idCardNo: '' }))).toBe('')
-    expect(validateRealnameDraft(draft({ legalCertFrontFile: '' }))).toBe('请上传身份证人像面照片')
+    expect(validateRealnameDraft(draft({ legalCertFrontFile: null }))).toBe('请上传身份证人像面照片')
     expect(validateRealnameDraft(draft({ mobile: '' }))).toBe('请填写正确的手机号')
     expect(validateRealnameDraft(draft({ mobile: '138' }))).toBe('请填写正确的手机号')
     expect(validateRealnameDraft(draft({ identifyType: 351 }))).toBe('请选择个人认证方式')
@@ -63,16 +63,16 @@ describe('材料认证表单校验', () => {
   it('企业只拦本次三张证照与认证方式，工商信息留给后端 OCR', () => {
     expect(validateRealnameDraft(enterpriseDraft())).toBe('')
     expect(validateRealnameDraft(enterpriseDraft({ identifyType: 153 }))).toBe('请选择企业认证方式')
-    expect(validateRealnameDraft(enterpriseDraft({ legalCertFrontFile: '' }))).toBe(
+    expect(validateRealnameDraft(enterpriseDraft({ legalCertFrontFile: null }))).toBe(
       '请上传身份证人像面照片',
     )
-    expect(validateRealnameDraft(enterpriseDraft({ legalCertBackFile: '' }))).toBe(
+    expect(validateRealnameDraft(enterpriseDraft({ legalCertBackFile: null }))).toBe(
       '请上传法人身份证国徽面照片',
     )
-    expect(validateRealnameDraft(enterpriseDraft({ businessLicenseFile: '' }))).toBe(
+    expect(validateRealnameDraft(enterpriseDraft({ businessLicenseFile: null }))).toBe(
       '请上传营业执照',
     )
-    expect(validateRealnameDraft(enterpriseDraft({ operatorCertFrontFile: '' }))).toBe(
+    expect(validateRealnameDraft(enterpriseDraft({ operatorCertFrontFile: null }))).toBe(
       '请上传经办人身份证人像面照片',
     )
     expect(validateRealnameDraft(enterpriseDraft({ operatorMobile: '' }))).toBe(
@@ -91,7 +91,7 @@ describe('材料认证表单校验', () => {
 
 describe('手动填写认证', () => {
   it('个人只要姓名、身份证号与手机号，不要求身份证照片', () => {
-    expect(manualRealnameMissing(draft({ legalCertFrontFile: '' }))).toEqual([])
+    expect(manualRealnameMissing(draft({ legalCertFrontFile: null }))).toEqual([])
     expect(manualRealnameMissing(draft({ realName: '', idCardNo: '', mobile: '' }))).toEqual([
       '姓名',
       '身份证号',
@@ -102,7 +102,7 @@ describe('手动填写认证', () => {
     )
   })
 
-  it('企业要收齐企业名称、统一社会信用代码、经办人、执照与进件资料', () => {
+  it('企业要收齐企业名称、统一社会信用代码、经办人与进件资料', () => {
     expect(manualRealnameMissing(enterpriseDraft())).toEqual([])
     expect(
       manualRealnameMissing(
@@ -111,7 +111,6 @@ describe('手动填写认证', () => {
           unifiedSocialCreditCode: '',
           operatorName: '',
           operatorIdCardNo: '',
-          businessLicenseFile: '',
           companyAddress: '',
           legalCertBeginOn: '',
         }),
@@ -121,7 +120,6 @@ describe('手动填写认证', () => {
       '统一社会信用代码',
       '经办人姓名',
       '经办人身份证号',
-      '营业执照',
       '企业注册地址',
       '法人证件有效期',
     ])

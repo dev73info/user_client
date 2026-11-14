@@ -1,13 +1,10 @@
 import { authHeader, requestJson } from '@/api/http'
 
-import type {
-  BusinessLicenseUploadResponse,
-  GuardianConsentUploadResponse,
-  LegalCertBackUploadResponse,
-  LegalCertFrontUploadResponse,
-  OperatorCertFrontUploadResponse,
-} from './types'
+import type { GuardianConsentUploadResponse } from './types'
 
+/**
+ * 上传监护人同意书（唯一保留在服务器上的实名材料，后端 AES-256-GCM 加密落盘）。
+ */
 export async function uploadGuardianConsentFile(
   token: string,
   file: File,
@@ -25,92 +22,5 @@ export async function uploadGuardianConsentFile(
       body: formData,
     },
     '上传监护人同意书失败',
-  )
-}
-
-export async function uploadBusinessLicenseFile(
-  token: string,
-  file: File,
-): Promise<BusinessLicenseUploadResponse> {
-  const formData = new FormData()
-  formData.append('file', file)
-
-  return requestJson<BusinessLicenseUploadResponse>(
-    '/realname/business-license-file',
-    {
-      method: 'POST',
-      headers: {
-        ...authHeader(token),
-      },
-      body: formData,
-    },
-    '上传营业执照失败',
-  )
-}
-
-/**
- * 上传法人身份证**人像面**照片（企业开户进件三张证照之一）。
- *
- * 此接口**上传即落库**（后端写进 `realname_legal_cert.front_file`），
- * 返回路径随实名请求提交，供本次认证 OCR 与后续支付进件使用。
- */
-export async function uploadLegalCertFrontFile(
-  token: string,
-  file: File,
-): Promise<LegalCertFrontUploadResponse> {
-  const formData = new FormData()
-  formData.append('file', file)
-
-  return requestJson<LegalCertFrontUploadResponse>(
-    '/realname/legal-cert-front-file',
-    {
-      method: 'POST',
-      headers: {
-        ...authHeader(token),
-      },
-      body: formData,
-    },
-    '上传法人身份证人像面失败',
-  )
-}
-
-/** 上传法人身份证**国徽面**照片（同 `uploadLegalCertFrontFile`，上传即落库）。 */
-export async function uploadLegalCertBackFile(
-  token: string,
-  file: File,
-): Promise<LegalCertBackUploadResponse> {
-  const formData = new FormData()
-  formData.append('file', file)
-
-  return requestJson<LegalCertBackUploadResponse>(
-    '/realname/legal-cert-back-file',
-    {
-      method: 'POST',
-      headers: {
-        ...authHeader(token),
-      },
-      body: formData,
-    },
-    '上传法人身份证国徽面失败',
-  )
-}
-
-export async function uploadOperatorCertFrontFile(
-  token: string,
-  file: File,
-): Promise<OperatorCertFrontUploadResponse> {
-  const formData = new FormData()
-  formData.append('file', file)
-
-  return requestJson<OperatorCertFrontUploadResponse>(
-    '/realname/operator-cert-front-file',
-    {
-      method: 'POST',
-      headers: {
-        ...authHeader(token),
-      },
-      body: formData,
-    },
-    '上传经办人身份证人像面失败',
   )
 }

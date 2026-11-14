@@ -7,7 +7,6 @@ import {
 
 /** 一份齐备的企业进件资料，各用例只改需要缺的那几项。 */
 const completeRecord = {
-  business_license_file: '/uploads/realname-business-licenses/flow/license.jpg',
   company_prov_code: '0053',
   company_area_code: '5315',
   company_address: '云南省昭通市彝良县角奎街道人民街1号',
@@ -24,8 +23,8 @@ describe('企业进件资料的缺口', () => {
 
   it('缺哪一项就点名哪一项，而不是笼统说「资料不全」', () => {
     expect(
-      missingEnterpriseOnboardingLabels({ ...completeRecord, business_license_file: '' }),
-    ).toEqual(['营业执照文件'])
+      missingEnterpriseOnboardingLabels({ ...completeRecord, business_license_expires_on: '' }),
+    ).toEqual(['营业执照有效期'])
     expect(missingEnterpriseOnboardingLabels({ ...completeRecord, business_scope: '' })).toEqual([
       '经营范围',
     ])
@@ -40,9 +39,8 @@ describe('企业进件资料的缺口', () => {
     ).toEqual(['企业所在省市'])
   })
 
-  it('六项全缺时按渠道校验顺序列全', () => {
+  it('五项全缺时按渠道校验顺序列全', () => {
     expect(missingEnterpriseOnboardingLabels({})).toEqual([
-      '营业执照文件',
       '企业所在省市',
       '企业注册地址',
       '经营范围',
@@ -59,6 +57,6 @@ describe('企业进件资料的缺口', () => {
 
   it('没有实名记录时视为全部缺失，不报错', () => {
     expect(enterpriseOnboardingComplete(null)).toBe(false)
-    expect(missingEnterpriseOnboardingLabels(undefined)).toHaveLength(6)
+    expect(missingEnterpriseOnboardingLabels(undefined)).toHaveLength(5)
   })
 })

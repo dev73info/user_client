@@ -29,14 +29,14 @@ export function useRealnameFormDraft() {
     operatorName: '',
     operatorIdCardNo: '',
     operatorIdentifyType: 153,
-    operatorCertFrontFile: '',
+    operatorCertFrontFile: null,
     operatorMobile: '',
     guardianRequired: false,
     guardianConsent: false,
     guardianConsentFile: '',
-    businessLicenseFile: '',
-    legalCertFrontFile: '',
-    legalCertBackFile: '',
+    businessLicenseFile: null,
+    legalCertFrontFile: null,
+    legalCertBackFile: null,
     companyProvCode: '',
     companyAreaCode: '',
     companyAddress: '',
@@ -66,13 +66,13 @@ export function useRealnameFormDraft() {
     form.companyName = ''
     form.unifiedSocialCreditCode = ''
     form.businessLicenseNo = ''
-    form.businessLicenseFile = ''
-    form.legalCertFrontFile = ''
-    form.legalCertBackFile = ''
+    form.businessLicenseFile = null
+    form.legalCertFrontFile = null
+    form.legalCertBackFile = null
     form.operatorName = ''
     form.operatorIdCardNo = ''
     form.operatorIdentifyType = 153
-    form.operatorCertFrontFile = ''
+    form.operatorCertFrontFile = null
     form.operatorMobile = ''
     form.guardianRequired = false
     form.guardianConsent = false

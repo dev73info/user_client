@@ -95,6 +95,18 @@ export type QuickStartIdentifyPayload = Schemas['QuickStartIdentifyRequest'] & {
   identify_type: number
 }
 
+/**
+ * quick-start 随请求携带的证照文件（multipart）。
+ *
+ * 只在这个请求里存在：后端在内存里做 OCR 与渠道认证，处理完即丢，不落服务器磁盘。
+ */
+export type QuickStartIdentifyFiles = {
+  legalCertFront: File
+  legalCertBack?: File | null
+  businessLicense?: File | null
+  operatorCertFront?: File | null
+}
+
 /** 爱签个人核身请求体（`POST /api/realname/asign/start`），字段同契约 `StartIdentifyRequest`。 */
 export type StartAsignIdentifyPayload = Schemas['StartIdentifyRequest']
 
@@ -132,58 +144,4 @@ export type StartCompanyIdentifyResponse = Schemas['StartCompanyIdentifyResponse
  */
 export type GuardianConsentUploadResponse = {
   guardian_consent_file: string
-}
-
-/** 上传营业执照成功后的响应（`POST /api/realname/business-license-file`）；契约未声明响应体，手写。 */
-export type BusinessLicenseUploadResponse = {
-  business_license_file: string
-}
-
-/** 上传法人身份证人像面成功后的响应（`POST /api/realname/legal-cert-front-file`）；契约未声明响应体，手写。 */
-export type LegalCertFrontUploadResponse = {
-  front_file: string
-}
-
-/** 上传法人身份证国徽面成功后的响应（`POST /api/realname/legal-cert-back-file`）；契约未声明响应体，手写。 */
-export type LegalCertBackUploadResponse = {
-  back_file: string
-}
-
-/** 上传经办人身份证人像面成功后的响应；契约未声明响应体，与现有上传端点同口径。 */
-export type OperatorCertFrontUploadResponse = {
-  front_file: string
-}
-
-/**
- * 营业执照 OCR 识别结果：只包含可回填表单的白名单字段。
- *
- * 契约 `BusinessLicenseOcrResponse` 把六项全标成可选，本仓按「键一定在、值可能为 null」收窄：
- * 回填表单时逐项判断 `null` 即可，不必再区分「字段缺失」。
- */
-export type BusinessLicenseOcrResult = Schemas['BusinessLicenseOcrResponse'] & {
-  company_name: string | null
-  unified_social_credit_code: string | null
-  company_address: string | null
-  business_scope: string | null
-  legal_person: string | null
-  /** 有效期截止 `YYYYMMDD`（「长期」已由后端归一为 20991231） */
-  business_license_expires_on: string | null
-}
-
-/**
- * 法人身份证的哪一面：`front` = 人像面，`back` = 国徽面（与两个上传端点一一对应）。
- *
- * 契约里 `LegalCertOcrRequest.side` 是 `string | null`，这里收窄成两个取值。
- */
-export type LegalCertOcrSide = 'front' | 'back'
-
-/**
- * 法人证件有效期 OCR 结果：只回有效期起止（`YYYYMMDD`），识别不到的项为 `null`。
- *
- * 与营业执照 OCR 同口径的白名单：身份证号、姓名等敏感字段后端一律不外露。
- * 契约 `LegalCertOcrResponse` 两项都可选，本仓同样按「键一定在、值可能为 null」收窄。
- */
-export type LegalCertOcrResult = Schemas['LegalCertOcrResponse'] & {
-  cert_begin_on: string | null
-  cert_expires_on: string | null
 }

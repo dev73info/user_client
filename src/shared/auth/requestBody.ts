@@ -20,7 +20,7 @@ export type AuthBodyInput = {
   inviteCode?: string
   shareType?: string
   shareTargetId?: string
-  turnstileToken?: string
+  captchaToken?: string
 }
 
 /**
@@ -30,13 +30,16 @@ export type AuthBodyInput = {
  * 登录额外携带 `legacy_password`，仅用于 1.0 迁移账号首次登录时兼容
  * bcrypt(明文密码)；后端升级到 Argon2id 后不会再读取它。
  * 没有值的键直接不出现，不要用空串占位。
+ *
+ * 人机校验的 payload 由自托管 ALTCHA 产出，但**线上字段名沿用契约里的 `turnstile_token`**：
+ * 后端换实现时没有改认证契约，前端也不另起字段。
  */
 export function buildAuthBody(path: AuthPath, input: AuthBodyInput): Record<string, unknown> {
   const base = {
     username: input.username,
     password: md5Hex(input.password),
     ...(input.requestDevRole ? { request_dev_role: true } : {}),
-    ...(input.turnstileToken ? { turnstile_token: input.turnstileToken } : {}),
+    ...(input.captchaToken ? { turnstile_token: input.captchaToken } : {}),
   }
 
   if (path === '/auth/login') {

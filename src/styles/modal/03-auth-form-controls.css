@@ -43,7 +43,7 @@
 }
 
 .auth-modal label,
-.auth-modal input,
+.auth-modal input:not([type='checkbox']):not([type='radio']),
 .auth-modal textarea {
   width: 100%;
 }
@@ -57,7 +57,7 @@
   font-weight: 600;
 }
 
-.auth-modal input,
+.auth-modal input:not([type='checkbox']):not([type='radio']),
 .auth-modal textarea,
 .profile-update-row input {
   width: 100%;
@@ -69,25 +69,19 @@
   outline: none;
 }
 
-.auth-modal input::placeholder,
+.auth-modal input:not([type='checkbox']):not([type='radio'])::placeholder,
 .auth-modal textarea::placeholder,
 .profile-update-row input::placeholder {
   color: var(--73-ink-placeholder);
-}
-
-.auth-modal input[type='checkbox'] {
-  width: auto;
-  max-width: none;
-  margin: 0;
 }
 
 .auth-agreement-row {
   margin-bottom: 12px;
 }
 
-/* 人机验证与「忘记密码？」同行：控件在左、链接在右，垂直居中。
-   链接沿用原先的靠右落点（原 `.auth-forgot-row { text-align: right }`）。 */
-.auth-turnstile-row {
+/* 人机验证与辅助链接同排：控件在左，链接组在右并纵向排列。
+   表单内容宽约 493px，放不下 320px 挂件与横向链接，竖排可避免整组折到下一行。 */
+.auth-captcha-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -96,17 +90,30 @@
   margin-bottom: 12px;
 }
 
-/* Cloudflare Turnstile「normal」挂件实宽 300×65（未传 size，走默认）；
+/* ALTCHA standard 挂件最大宽 320px（--altcha-max-width）；
    按它的实宽预留，既不拉伸也不压扁，窄屏再靠 max-width 收口。 */
-.auth-turnstile-row__widget {
-  flex: 0 0 300px;
+.auth-captcha-row__widget {
+  flex: 0 0 320px;
   max-width: 100%;
 }
 
-.auth-turnstile-row__actions {
+/* ALTCHA 内部也用 label 承载文案；在这里复位，避免被表单 label 规则
+   拉成整行、加下边距，导致文字相对勾选框偏上。 */
+.auth-modal .auth-captcha-row__widget label {
+  display: flex;
+  width: auto;
+  margin: 0;
+  gap: normal;
+  color: inherit;
+  font-size: 14px;
+  font-weight: 400;
+}
+
+.auth-captcha-row__actions {
   display: inline-flex;
-  align-items: center;
-  gap: 12px;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
   margin-left: auto;
 }
 
@@ -223,7 +230,7 @@
   font: inherit;
 }
 
-.auth-modal input:focus,
+.auth-modal input:not([type='checkbox']):not([type='radio']):focus,
 .auth-modal textarea:focus {
   border-color: color-mix(in srgb, var(--73-accent) 72%, transparent);
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--73-accent) 12%, transparent);

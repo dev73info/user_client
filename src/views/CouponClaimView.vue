@@ -25,7 +25,7 @@ const {
   authPassword,
   authEmail,
   authEmailCode,
-  authTurnstileToken,
+  authCaptchaToken,
   acceptTerms,
   loginRequiresTwoFactor,
   loginTwoFactorDelivery,
@@ -159,7 +159,7 @@ onMounted(() => {
       v-model:authEmail="authEmail"
       v-model:authEmailCode="authEmailCode"
       v-model:authAuthenticatorCode="authAuthenticatorCode"
-      v-model:turnstileToken="authTurnstileToken"
+      v-model:captchaToken="authCaptchaToken"
       v-model:acceptTerms="acceptTerms"
       :authLoading="auth.loading"
       :loginRequiresTwoFactor="loginRequiresTwoFactor"

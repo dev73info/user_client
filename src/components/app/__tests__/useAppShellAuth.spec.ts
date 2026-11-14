@@ -9,9 +9,8 @@ const mocks = vi.hoisted(() => ({
   initializeSession: vi.fn(),
   hydrate: vi.fn(),
   logout: vi.fn(),
-  fetchToken: vi.fn(),
+  fetchPayload: vi.fn(),
   enabled: vi.fn(),
-  siteKey: vi.fn(),
 }))
 
 vi.mock('@/stores/auth', () => ({
@@ -25,10 +24,9 @@ vi.mock('@/stores/auth', () => ({
   }),
 }))
 
-vi.mock('@/shared/turnstile', () => ({
-  fetchTurnstileToken: mocks.fetchToken,
-  isTurnstileEnabled: mocks.enabled,
-  getTurnstileSiteKey: mocks.siteKey,
+vi.mock('@/shared/captcha', () => ({
+  fetchCaptchaPayload: mocks.fetchPayload,
+  isCaptchaEnabled: mocks.enabled,
 }))
 
 vi.mock('vue-router', () => ({
@@ -60,9 +58,8 @@ describe('useAppShellAuth 开发模式自动登录', () => {
     vi.stubEnv('VITE_DEV_AUTO_LOGIN_USERNAME', 'dev_flow_test')
     vi.stubEnv('VITE_DEV_AUTO_LOGIN_PASSWORD', 'Test@123456')
     mocks.enabled.mockReturnValue(true)
-    mocks.siteKey.mockReturnValue('1x0000000000000000000000000000000AA')
-    mocks.fetchToken.mockResolvedValue('token-from-cloudflare')
-    mocks.login.mockResolvedValue({ requires_two_factor: false })
+    mocks.fetchPayload.mockResolvedValue('payload-from-altcha')
+    mocks.login.mockResolvedValue({ requiresTwoFactor: false })
   })
 
   afterEach(() => {
@@ -71,17 +68,7 @@ describe('useAppShellAuth 开发模式自动登录', () => {
     vi.unstubAllEnvs()
   })
 
-  it('官方测试密钥直接使用测试 token，不依赖挂件域名', async () => {
-    mountAuth()
-
-    await vi.waitFor(() => {
-      expect(mocks.login).toHaveBeenCalledWith('dev_flow_test', 'Test@123456', undefined, 'test')
-    })
-    expect(mocks.fetchToken).not.toHaveBeenCalled()
-  })
-
-  it('正式站点密钥仍从 Cloudflare 获取真实 token', async () => {
-    mocks.siteKey.mockReturnValue('site-key-for-real-tenant')
+  it('人机校验开启时先离屏取 ALTCHA payload，再随登录提交', async () => {
     mountAuth()
 
     await vi.waitFor(() => {
@@ -89,9 +76,19 @@ describe('useAppShellAuth 开发模式自动登录', () => {
         'dev_flow_test',
         'Test@123456',
         undefined,
-        'token-from-cloudflare',
+        'payload-from-altcha',
       )
     })
-    expect(mocks.fetchToken).toHaveBeenCalledWith('login')
+    expect(mocks.fetchPayload).toHaveBeenCalledTimes(1)
+  })
+
+  it('人机校验关闭时不加载挂件，也不带 payload', async () => {
+    mocks.enabled.mockReturnValue(false)
+    mountAuth()
+
+    await vi.waitFor(() => {
+      expect(mocks.login).toHaveBeenCalledWith('dev_flow_test', 'Test@123456', undefined, undefined)
+    })
+    expect(mocks.fetchPayload).not.toHaveBeenCalled()
   })
 })

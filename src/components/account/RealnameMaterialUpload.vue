@@ -54,7 +54,7 @@ const props = defineProps<{
   uploading: boolean
   /** 只读态：审核中或已通过后不许再传。 */
   disabled: boolean
-  /** 已上传的文件路径（父级草稿里的那一项）；空串表示还没传。 */
+  /** 已选择的文件名（父级草稿里的那一项）；空串表示还没选。 */
   fileName: string
   /** 有值时顶掉文件名 / 说明的位置（营业执照识别中那句「正在识别…」）。 */
   statusHint?: string
@@ -81,7 +81,7 @@ function onChange(event: Event) {
   emit('picked', file)
 }
 
-/** 只回显文件名，不暴露目录（路径由后端给，前缀长度不稳定）。 */
+/** 只回显文件名，不暴露目录。 */
 function displayName(): string {
   return props.fileName.split('/').pop() || kindConfig.value.fallbackName
 }
@@ -108,7 +108,7 @@ function displayName(): string {
       {{ props.statusHint }}
     </span>
     <span v-else-if="props.fileName" class="realname-consent-upload__name">
-      已上传：{{ displayName() }}
+      已选择：{{ displayName() }}
     </span>
     <span v-else class="realname-consent-upload__hint">{{ kindConfig.hint }}</span>
     <!-- 监护人同意书那一行后面还挂着一个「下载模板」链接 -->

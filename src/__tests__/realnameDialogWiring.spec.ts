@@ -10,10 +10,6 @@ const mocks = vi.hoisted(() => ({
   getMyRealnameVerification: vi.fn(),
   quickStartAsignIdentify: vi.fn(),
   submitMyRealnameVerification: vi.fn(),
-  uploadBusinessLicenseFile: vi.fn(),
-  uploadLegalCertFrontFile: vi.fn(),
-  uploadLegalCertBackFile: vi.fn(),
-  uploadOperatorCertFrontFile: vi.fn(),
   withdrawRealname: vi.fn(),
   open: vi.fn(),
   replace: vi.fn(),
@@ -51,10 +47,6 @@ vi.mock('@/api/realname', async (importOriginal) => ({
   getMyRealnameVerification: mocks.getMyRealnameVerification,
   quickStartAsignIdentify: mocks.quickStartAsignIdentify,
   submitMyRealnameVerification: mocks.submitMyRealnameVerification,
-  uploadBusinessLicenseFile: mocks.uploadBusinessLicenseFile,
-  uploadLegalCertFrontFile: mocks.uploadLegalCertFrontFile,
-  uploadLegalCertBackFile: mocks.uploadLegalCertBackFile,
-  uploadOperatorCertFrontFile: mocks.uploadOperatorCertFrontFile,
   withdrawMyRealnameVerification: mocks.withdrawRealname,
 }))
 
@@ -67,10 +59,6 @@ const APPROVED_RECORD = {
   real_name: '旧姓名',
   mobile: '13800000000',
 }
-const FRONT_FILE = '/uploads/realname-legal-certs/flow/front.jpg'
-const BACK_FILE = '/uploads/realname-legal-certs/flow/back.jpg'
-const LICENSE_FILE = '/uploads/realname-business-licenses/flow/license.jpg'
-const OPERATOR_FILE = '/uploads/realname-operator-certs/flow/front.jpg'
 const OPERATOR_MOBILE = '13900000000'
 
 type Setup = {
@@ -131,10 +119,6 @@ beforeEach(() => {
   mocks.getBoundProviders.mockResolvedValue({ providers: [] })
   mocks.getMyRealnameVerification.mockResolvedValue(REJECTED_RECORD)
   mocks.quickStartAsignIdentify.mockResolvedValue({ auth_url: 'https://asign.test/auth' })
-  mocks.uploadLegalCertFrontFile.mockResolvedValue({ front_file: FRONT_FILE })
-  mocks.uploadLegalCertBackFile.mockResolvedValue({ back_file: BACK_FILE })
-  mocks.uploadOperatorCertFrontFile.mockResolvedValue({ front_file: OPERATOR_FILE })
-  mocks.uploadBusinessLicenseFile.mockResolvedValue({ business_license_file: LICENSE_FILE })
 })
 
 afterEach(() => {
@@ -153,13 +137,20 @@ describe('材料认证弹窗', () => {
     bodyButton('开始认证').click()
     await flushPromises()
 
-    expect(mocks.uploadLegalCertFrontFile).toHaveBeenCalledWith('test-token', file)
-    expect(mocks.quickStartAsignIdentify).toHaveBeenCalledWith('test-token', {
-      auth_type: 'IDENTITY_CARD',
-      identify_type: 153,
-      mobile: '13800000000',
-      legal_cert_front_file: FRONT_FILE,
-    })
+    expect(mocks.quickStartAsignIdentify).toHaveBeenCalledWith(
+      'test-token',
+      {
+        auth_type: 'IDENTITY_CARD',
+        identify_type: 153,
+        mobile: '13800000000',
+      },
+      {
+        legalCertFront: file,
+        legalCertBack: null,
+        businessLicense: null,
+        operatorCertFront: null,
+      },
+    )
     expect(mocks.open).toHaveBeenCalledWith('https://asign.test/auth', '_self')
     wrapper.unmount()
   })
@@ -201,30 +192,35 @@ describe('材料认证弹窗', () => {
     expect(document.body.textContent).toContain('企业线下盖章授权认证')
     expect(document.body.textContent).not.toContain('（369，默认）')
 
-    pickFile(0, 'front.jpg')
+    const front = pickFile(0, 'front.jpg')
     await flushPromises()
-    pickFile(1, 'back.jpg')
+    const back = pickFile(1, 'back.jpg')
     await flushPromises()
-    pickFile(2, 'license.jpg')
+    const license = pickFile(2, 'license.jpg')
     await flushPromises()
-    pickFile(3, 'operator-front.jpg')
+    const operator = pickFile(3, 'operator-front.jpg')
     await flushPromises()
     await fillMobile('请输入法定代表人手机号')
     await fillMobile('请输入经办人手机号', OPERATOR_MOBILE)
     bodyButton('开始认证').click()
     await flushPromises()
 
-    expect(mocks.quickStartAsignIdentify).toHaveBeenCalledWith('test-token', {
-      auth_type: 'ENTERPRISE',
-      identify_type: 369,
-      mobile: '13800000000',
-      legal_cert_front_file: FRONT_FILE,
-      legal_cert_back_file: BACK_FILE,
-      business_license_file: LICENSE_FILE,
-      operator_identify_type: 153,
-      operator_mobile: OPERATOR_MOBILE,
-      operator_cert_front_file: OPERATOR_FILE,
-    })
+    expect(mocks.quickStartAsignIdentify).toHaveBeenCalledWith(
+      'test-token',
+      {
+        auth_type: 'ENTERPRISE',
+        identify_type: 369,
+        mobile: '13800000000',
+        operator_identify_type: 153,
+        operator_mobile: OPERATOR_MOBILE,
+      },
+      {
+        legalCertFront: front,
+        legalCertBack: back,
+        businessLicense: license,
+        operatorCertFront: operator,
+      },
+    )
     expect(mocks.open).toHaveBeenCalledWith('https://asign.test/auth', '_self')
     wrapper.unmount()
   })

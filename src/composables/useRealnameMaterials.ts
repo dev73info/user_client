@@ -1,12 +1,6 @@
 import { ref } from 'vue'
 
-import {
-  uploadBusinessLicenseFile,
-  uploadGuardianConsentFile,
-  uploadLegalCertBackFile,
-  uploadLegalCertFrontFile,
-  uploadOperatorCertFrontFile,
-} from '@/api/realname'
+import { uploadGuardianConsentFile } from '@/api/realname'
 import type { RealnameDraftFields } from '@/shared/realnameForm'
 import { useAuthStore } from '@/stores/auth'
 import { TMessage } from 'ui_73info'
@@ -20,14 +14,18 @@ const MAX_MATERIAL_FILE_SIZE = 10 * 1024 * 1024
 const DOCUMENT_EXTENSIONS = ['png', 'jpg', 'jpeg', 'webp']
 const IMAGE_MIMES = ['image/png', 'image/jpeg', 'image/jpg', 'image/webp']
 
-function isAllowedFile(file: File, allowPdf = false): boolean {
+function isAllowedFile(file: File): boolean {
   const dot = file.name.lastIndexOf('.')
   const ext = dot < 0 ? '' : file.name.slice(dot + 1).toLowerCase()
   if (ext && DOCUMENT_EXTENSIONS.includes(ext)) return true
-  if (allowPdf && (ext === 'pdf' || file.type === 'application/pdf')) return true
   return IMAGE_MIMES.includes((file.type || '').toLowerCase())
 }
 
+/**
+ * 证照选择域：只把 `File` 留在草稿里，提交时随 quick-start 的 multipart 一次性发给后端。
+ *
+ * 证件/营业执照图片**不再上传到服务器**；只有监护人同意书仍走加密上传接口。
+ */
 export function useRealnameMaterials(options: RealnameMaterialsOptions) {
   const auth = useAuthStore()
   const consentUploading = ref(false)
@@ -45,9 +43,9 @@ export function useRealnameMaterials(options: RealnameMaterialsOptions) {
     return true
   }
 
-  function validateFile(file: File, label: string, allowPdf = false): boolean {
-    if (!isAllowedFile(file, allowPdf)) {
-      TMessage.warning(`${label}仅支持 PNG、JPG、WEBP 图片${allowPdf ? '或 PDF' : ''}`)
+  function validateFile(file: File, label: string): boolean {
+    if (!isAllowedFile(file)) {
+      TMessage.warning(`${label}仅支持 PNG、JPG、WEBP 图片`)
       return false
     }
     if (file.size > MAX_MATERIAL_FILE_SIZE) {
@@ -57,68 +55,36 @@ export function useRealnameMaterials(options: RealnameMaterialsOptions) {
     return ensureToken()
   }
 
-  async function handleBusinessLicenseFile(file: File) {
+  function handleBusinessLicenseFile(file: File) {
     if (!validateFile(file, '营业执照')) return
-    businessLicenseUploading.value = true
-    try {
-      const result = await uploadBusinessLicenseFile(auth.token, file)
-      options.form.businessLicenseFile = result.business_license_file
-      TMessage.success('营业执照已上传')
-    } catch (error) {
-      TMessage.error(error instanceof Error ? error.message : '上传营业执照失败')
-    } finally {
-      businessLicenseUploading.value = false
-    }
+    options.form.businessLicenseFile = file
   }
 
-  async function handleLegalCertFrontFile(file: File) {
+  function handleLegalCertFrontFile(file: File) {
     if (!validateFile(file, '身份证人像面')) return
-    legalCertFrontUploading.value = true
-    try {
-      const result = await uploadLegalCertFrontFile(auth.token, file)
-      options.form.legalCertFrontFile = result.front_file
-      TMessage.success('身份证人像面已上传')
-    } catch (error) {
-      TMessage.error(error instanceof Error ? error.message : '上传身份证人像面失败')
-    } finally {
-      legalCertFrontUploading.value = false
-    }
+    options.form.legalCertFrontFile = file
   }
 
-  async function handleLegalCertBackFile(file: File) {
+  function handleLegalCertBackFile(file: File) {
     if (!validateFile(file, '身份证国徽面')) return
-    legalCertBackUploading.value = true
-    try {
-      const result = await uploadLegalCertBackFile(auth.token, file)
-      options.form.legalCertBackFile = result.back_file
-      TMessage.success('身份证国徽面已上传')
-    } catch (error) {
-      TMessage.error(error instanceof Error ? error.message : '上传身份证国徽面失败')
-    } finally {
-      legalCertBackUploading.value = false
-    }
+    options.form.legalCertBackFile = file
   }
 
-  async function handleOperatorCertFrontFile(file: File) {
+  function handleOperatorCertFrontFile(file: File) {
     if (!validateFile(file, '经办人身份证人像面')) return
-    operatorCertFrontUploading.value = true
-    try {
-      const result = await uploadOperatorCertFrontFile(auth.token, file)
-      options.form.operatorCertFrontFile = result.front_file
-      TMessage.success('经办人身份证人像面已上传')
-    } catch (error) {
-      TMessage.error(error instanceof Error ? error.message : '上传经办人身份证人像面失败')
-    } finally {
-      operatorCertFrontUploading.value = false
-    }
+    options.form.operatorCertFrontFile = file
   }
 
   async function handleConsentFile(file: File) {
-    if (!validateFile(file, '监护人同意书', true)) return
+    if (!isAllowedFile(file) && file.type !== 'application/pdf') {
+      TMessage.warning('监护人同意书仅支持 PNG、JPG、WEBP 图片或 PDF')
+      return
+    }
     if (file.size > MAX_CONSENT_FILE_SIZE) {
       TMessage.warning('监护人同意书文件不能超过 5MB')
       return
     }
+    if (!ensureToken()) return
     consentUploading.value = true
     try {
       const result = await uploadGuardianConsentFile(auth.token, file)

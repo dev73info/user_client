@@ -133,7 +133,7 @@
   padding: 9px 11px;
 }
 
-.auth-modal--inapp-oauth .auth-turnstile-row {
+.auth-modal--inapp-oauth .auth-captcha-row {
   margin: 2px 0 8px;
 }
 

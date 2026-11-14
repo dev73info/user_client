@@ -5123,6 +5123,26 @@ export interface paths {
         patch: operations["conversation_update_thread_preference"];
         trace?: never;
     };
+    "/api/conversation/resource/{resource_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 按资源打开插件咨询会话
+         * @description 插件购买者从资源详情页联系作者用。会话不存在时**补建**；一个买家对一个资源只有一个会话。只有仍持有有效购买权益的买家能打开，作者与未购买者回 403。
+         */
+        get: operations["conversation_detail_by_resource"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/conversation/{conversation_id}": {
         parameters: {
             query?: never;
@@ -6095,6 +6115,106 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/payment/admin/breach-compensations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 违约赔付渠道执行记录
+         * @description 管理端查看保证金扣划之后的渠道赔付记录，需要 `payment.admin_breach_compensation_list.get`。只读。可按需求、开发者、客户与状态过滤；`status` 三态：`pending` 未确认、`paid` 渠道明确成功、`failed` 失败可重试。
+         */
+        get: operations["payment_admin_list_breach_compensations"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/payment/admin/breach-compensations/{id}/retry": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 重试违约赔付
+         * @description 对失败或处理中的记录重新发起渠道余额支付，需要 `payment.admin_breach_compensation_retry.post`。**会真的动钱**。幂等：已赔付的直接返回；渠道明确失败的直接重发；结果不明（处理中、超时、回查失败）的先按单号回查，确认没成功才重发——余额支付不幂等，不能盲目重试。
+         */
+        post: operations["payment_admin_retry_breach_compensation"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/payment/admin/channel-refund-discrepancies": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 渠道退款差异列表
+         * @description 管理端查看「渠道已退大于平台记录」的充值单，需要 `payment.admin_channel_refund_list.get`。只读。差异通常来自渠道后台人工退款：平台没有这笔记录，镜像余额不会自动变化。
+         */
+        get: operations["payment_admin_list_channel_refund_discrepancies"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/payment/admin/channel-refund-discrepancies/reconcile": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 触发渠道退款对账
+         * @description 按已支付的保证金充值单向渠道查询退款列表，需要 `payment.admin_channel_refund_reconcile.post`。渠道已退大于平台记录时落差异；渠道回到一致时自动关闭已有差异。渠道查询失败整轮报错并保留已有记录；**不自动调账**。
+         */
+        post: operations["payment_admin_reconcile_channel_refunds"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/payment/admin/channel-refund-discrepancies/{id}/resolve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 处理渠道退款差异
+         * @description 把差异标记为已处理或无需处理，需要 `payment.admin_channel_refund_resolve.post`。**只改记录状态与备注，不动账**：补记镜像、追偿或核销由管理端按资金口径另行执行。
+         */
+        post: operations["payment_admin_resolve_channel_refund_discrepancy"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/payment/auto-withdrawals/run": {
         parameters: {
             query?: never;
@@ -6127,6 +6247,26 @@ export interface paths {
          * @description 三态：`disabled`（平台没开通）/ `credentials_missing`（开通了但凭据没就绪）/ `ready`。需要 `payment.order.list.get`——调用方的能力门槛与「能不能看支付」是同一件事。前端据此决定支付按钮怎么显示：前两态都不该让人点进收银台，但文案要分开——前者是平台没开通，后者是平台配置有问题，不该让用户反复试。
          */
         get: operations["payment_availability"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/payment/breach-compensations/mine": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 我的违约赔付记录
+         * @description 当前登录用户作为**客户**的赔付记录，需要 `payment.dev_order_deposit.get`。只读自己的：用户名取自登录态，接口不接受指定他人。用于让客户看到「平台判给的赔付款有没有真的到账」。
+         */
+        get: operations["payment_my_breach_compensations"];
         put?: never;
         post?: never;
         delete?: never;
@@ -6749,7 +6889,7 @@ export interface paths {
         put?: never;
         /**
          * 回查或重试进件
-         * @description 主动向渠道问一次本人开户的审核结果并刷新本地状态，需要 `payment.settlement.mine.get`。本地为 `failed` 时按已通过的实名资料重试进件；已有会员只回查，不重复创建。还没拿到渠道会员号回 409；渠道未装配回 503。管理端替指定账号发起的同一动作见 `POST /api/admin/payment/settlement-accounts/{username}/sync`。
+         * @description 主动向渠道问一次本人开户的审核结果并刷新本地状态，需要 `payment.settlement.mine.get`。本地为 `failed` 时不再自动重建会员，提示用户重新提交开户资料（证照需重新上传）；已有会员只回查，不重复创建。还没拿到渠道会员号回 409；渠道未装配回 503。管理端替指定账号发起的同一动作见 `POST /api/admin/payment/settlement-accounts/{username}/sync`。
          */
         post: operations["payment_sync_settlement_account"];
         delete?: never;
@@ -7468,7 +7608,7 @@ export interface paths {
         };
         /**
          * 下载指定账号的实名材料（管理端）
-         * @description **需要登录 + `realname.application_detail.get`**。审核要核对材料原件时用。成功时直接返回文件流，不是 JSON。`kind` 只接 `guardian_consent`（监护人同意书）与 `business_license`（营业执照），其它取值回 400；该账号没有实名记录、或记录里没有这类材料回 404。这条会不脱敏地取任何账号的材料，别把它暴露给非审核岗位。
+         * @description **需要登录 + `realname.application_detail.get`**。审核要核对监护人同意书时用。成功时直接返回文件流，不是 JSON；文件在磁盘上是 AES-256-GCM 密文，由本接口解密。`kind` 只接 `guardian_consent`（监护人同意书），其它取值回 400；该账号没有实名记录、或记录里没有同意书回 404。这条会不脱敏地取任何账号的材料，别把它暴露给非审核岗位。
          */
         get: operations["realname_admin_download_document"];
         put?: never;
@@ -7674,7 +7814,7 @@ export interface paths {
         put?: never;
         /**
          * 上传证照并获取爱签认证链接
-         * @description 需要登录和 realname.submit.post。姓名、证件号、工商信息只从本次上传件的 OCR 结果取得，不从已存实名记录回填。
+         * @description 需要登录和 realname.submit.post。请求是 multipart：`data` 字段是 JSON，文件字段为 `legal_cert_front`（必填）、`legal_cert_back`、`business_license`、`operator_cert_front`。姓名、证件号、工商信息只从本次上传件的 OCR 结果取得，证件图片只在内存里处理，不落服务器磁盘。
          */
         post: operations["realname_quick_start_identify"];
         delete?: never;
@@ -7753,8 +7893,8 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * 上传营业执照
-         * @description **需要登录 + `realname.submit.post`**。企业 / 个体工商户认证用的营业执照。**multipart 上传，文件字段名固定为 `file`，单份上限 10 MiB**，接受 PNG / JPG / WEBP 图片或 PDF。失败时回 400 与**纯文本**原因（不是错误信封）。成功返回 `{ "business_license_file": "<地址>" }`，把地址填进提交申请或发起企业扫码的`business_license_file` 字段。这个端点只存文件、不做识别，识别另走 `/business-license-ocr`。
+         * 上传营业执照（已停用）
+         * @description **已停用**：证件与营业执照图片不再落服务器磁盘。本端点保留仅为兼容旧页面，调用一律回 400「实名材料上传方式已升级，请刷新页面后重试」，不读文件、不写盘。新流程把图片放在 `/asign/quick-start` 的 multipart 文件字段里一次性提交。
          */
         post: operations["realname_upload_business_license"];
         delete?: never;
@@ -7774,7 +7914,7 @@ export interface paths {
         put?: never;
         /**
          * 识别营业执照
-         * @description **需要登录 + `realname.submit.post`**。把已上传的营业执照交给渠道识别，回填企业名称、统一社会信用代码、注册地址、经营范围、法人、有效期等字段，省掉手工录入。`business_license_file` 必须是 `/business-license-file` 返回的地址，空串回 400。识别不出来（图片不清、传了 PDF、渠道侧失败）回 **502** `OCR_UNAVAILABLE`——这是上游没给出结果，不是本服务故障，前端引导用户手工填写即可，不用重试整页。
+         * @description **需要登录 + `realname.submit.post`**。multipart 上传一张营业执照（字段 `file`），后端在内存里交给渠道识别，回填企业名称、统一社会信用代码、注册地址、经营范围、法人、有效期等字段，省掉手工录入。**图片不落盘**。识别不出来（图片不清、传了 PDF、渠道侧失败）回 **502** `OCR_UNAVAILABLE`——这是上游没给出结果，不是本服务故障，前端引导用户手工填写即可，不用重试整页。
          */
         post: operations["realname_ocr_business_license"];
         delete?: never;
@@ -7812,7 +7952,7 @@ export interface paths {
         };
         /**
          * 下载本人上传的实名材料
-         * @description **需要登录 + `realname.mine.get`**。把本人实名记录里存的材料原件取回来，成功时直接返回文件流（`Content-Disposition` 带原始文件名），不是 JSON。`kind` 只有两个取值：`guardian_consent`（监护人同意书）、`business_license`（营业执照）；其它取值回 400。记录里没有对应材料回 404。法人身份证正反面不在这条上取——那两份只送给渠道核验，平台不提供下载。
+         * @description **需要登录 + `realname.mine.get`**。把本人实名记录里存的监护人同意书取回来，成功时直接返回文件流（`Content-Disposition` 带原始文件名），不是 JSON；文件在磁盘上是 AES-256-GCM 密文，由本接口解密后返回。`kind` 只支持 `guardian_consent`（监护人同意书），其它取值回 400。记录里没有同意书回 404。身份证、营业执照图片不再保存在平台，无法从这里取。
          */
         get: operations["realname_download_my_document"];
         put?: never;
@@ -7833,8 +7973,8 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * 上传法人身份证国徽面
-         * @description **需要登录 + `realname.submit.post`**。企业认证的法人身份证国徽面。**multipart 上传，文件字段名固定为 `file`，单张上限 10 MiB，只收图片**（PNG / JPG / WEBP）。失败时回 400 与**纯文本**原因。与正面一样，成功即把地址写进实名记录，返回 `{ "back_file": "<地址>" }`。
+         * 上传法人身份证国徽面（已停用）
+         * @description **已停用**：证件图片不再落服务器磁盘。本端点保留仅为兼容旧页面，调用一律回 400「实名材料上传方式已升级，请刷新页面后重试」，不读文件、不写盘。
          */
         post: operations["realname_upload_legal_cert_back"];
         delete?: never;
@@ -7853,8 +7993,8 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * 上传法人身份证人像面
-         * @description **需要登录 + `realname.submit.post`**。企业认证的法人身份证人像面。**multipart 上传，文件字段名固定为 `file`，单张上限 10 MiB，只收图片**（PNG / JPG / WEBP，不收 PDF——渠道核验只要图片）。失败时回 400 与**纯文本**原因。与另两个上传端点不同，这条会**顺手把地址写进实名记录**，所以成功返回的是`{ "front_file": "<地址>" }`，不需要再提交一次。落盘名由服务端生成，原始文件名不参与路径。
+         * 上传法人身份证人像面（已停用）
+         * @description **已停用**：证件图片不再落服务器磁盘。本端点保留仅为兼容旧页面，调用一律回 400「实名材料上传方式已升级，请刷新页面后重试」，不读文件、不写盘。
          */
         post: operations["realname_upload_legal_cert_front"];
         delete?: never;
@@ -7874,7 +8014,7 @@ export interface paths {
         put?: never;
         /**
          * 识别法人身份证有效期
-         * @description **需要登录 + `realname.submit.post`**。识别已上传的法人身份证正 / 反面，只回有效期起止，用来免掉手工填日期。`side` 取 `front`（缺省）或 `back`，两边都识别过才能凑齐开始与结束日期。识别不出来回 **502** `OCR_UNAVAILABLE`，前端引导手工填写即可。
+         * @description **需要登录 + `realname.submit.post`**。multipart 上传一张身份证照片（字段 `file`），通过查询参数 `side=front|back` 指定面；只回有效期起止，用来免掉手工填日期。**图片不落盘**。识别不出来回 **502** `OCR_UNAVAILABLE`，前端引导手工填写即可。
          */
         post: operations["realname_ocr_legal_cert"];
         delete?: never;
@@ -7913,8 +8053,8 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * 上传经办人身份证人像面
-         * @description 需要登录和 realname.submit.post。multipart 字段名为 file，只收 PNG / JPG / WEBP，单张不超过 10 MiB。返回 front_file，供材料认证入口使用。
+         * 上传经办人身份证人像面（已停用）
+         * @description **已停用**：证件图片不再落服务器磁盘。本端点保留仅为兼容旧页面，调用一律回 400「实名材料上传方式已升级，请刷新页面后重试」，不读文件、不写盘。
          */
         post: operations["realname_upload_operator_cert_front"];
         delete?: never;
@@ -12476,26 +12616,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/conversation/resource/{resource_id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * 按资源打开插件咨询会话
-         * @description 插件购买者从资源详情页联系作者用。会话不存在时**补建**；一个买家对一个资源只有一个会话。只有仍持有有效购买权益的买家能打开，作者与未购买者回 403。
-         */
-        get: operations["conversation_detail_by_resource"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -13445,6 +13565,12 @@ export interface components {
          *     `status` / `status_label` 是 2.0 口径——旧页面照旧读，新页面用得准。
          */
         AdminSettlementAccountResponse: {
+            /** @description 收款人姓名（与银行卡一致的户名）。 */
+            account_name: string;
+            /** @description 卡号后四位（完整卡号不落库、不回传）。 */
+            account_no_tail: string;
+            /** @description 开户行。 */
+            bank_name: string;
             /** @description 渠道侧会员号。还没进件时是空串（1.x 同样是空串，不是 `null`）。 */
             member_id: string;
             /** @description `personal` / `enterprise`。 */
@@ -14348,6 +14474,88 @@ export interface components {
             /** @description 需求编号。 */
             requirement_id: string;
         };
+        /** @description 一笔赔付记录。 */
+        BreachCompensationItemResponse: {
+            /**
+             * Format: double
+             * @description 赔付金额（元，两位小数的展示口径）。
+             */
+            amount: number;
+            /**
+             * Format: int64
+             * @description 赔付金额（分）。
+             */
+            amount_fen: number;
+            /**
+             * Format: int32
+             * @description 已向渠道发起过几次。
+             */
+            attempts: number;
+            /** @description 渠道侧余额支付流水号。 */
+            channel_seq_id?: string | null;
+            /** @description 创建时间（东八区）。 */
+            created_time: string;
+            /** @description 客户（收款方）。 */
+            customer: string;
+            /** @description 开发者（付款方）。 */
+            developer: string;
+            /** @description 最近一次失败原因。 */
+            failure_reason?: string | null;
+            /**
+             * Format: int64
+             * @description 主键。
+             */
+            id: number;
+            /** @description 需求编号。 */
+            requirement_id: string;
+            /** @description 状态：`pending` / `paid` / `failed`。 */
+            status: string;
+            /** @description 状态中文说明。 */
+            status_label: string;
+            /** @description 最后更新时间（东八区）。 */
+            updated_time: string;
+        };
+        /** @description 赔付记录一页。 */
+        BreachCompensationPageResponse: {
+            /** @description 本页数据。 */
+            items: components["schemas"]["BreachCompensationItemResponse"][];
+            /**
+             * Format: int64
+             * @description 页码。
+             */
+            page: number;
+            /**
+             * Format: int64
+             * @description 每页条数。
+             */
+            page_size: number;
+            /**
+             * Format: int64
+             * @description 命中总数。
+             */
+            total: number;
+        };
+        /** @description 管理端筛选条件。 */
+        BreachCompensationQuery: {
+            /** @description 客户（精确匹配）。 */
+            customer?: string | null;
+            /** @description 开发者（精确匹配）。 */
+            developer?: string | null;
+            /**
+             * Format: int64
+             * @description 页码，从 1 开始。
+             */
+            page?: number | null;
+            /**
+             * Format: int64
+             * @description 每页条数（上限 100）。
+             */
+            page_size?: number | null;
+            /** @description 需求编号（精确匹配）。 */
+            requirement_id?: string | null;
+            /** @description 状态：`pending` / `paid` / `failed`。 */
+            status?: string | null;
+        };
         /** @description 违约与催告期限。 */
         BreachConfig: {
             /**
@@ -14430,11 +14638,6 @@ export interface components {
              * @default 72
              */
             remediation_hours: number;
-        };
-        /** @description 营业执照 OCR 请求体。 */
-        BusinessLicenseOcrRequest: {
-            /** @description 上传接口返回的地址。 */
-            business_license_file: string;
         };
         /** @description 营业执照 OCR 响应。 */
         BusinessLicenseOcrResponse: {
@@ -14611,6 +14814,105 @@ export interface components {
             probed_time: string;
             /** @description 渠道是否可达。 */
             reachable: boolean;
+        };
+        /** @description 一条渠道退款差异记录。 */
+        ChannelRefundItemResponse: {
+            /**
+             * Format: int64
+             * @description 渠道侧已成功退款合计（分）。
+             */
+            channel_refunded_fen: number;
+            /** @description 首次发现时间（东八区）。 */
+            detected_time: string;
+            /**
+             * Format: double
+             * @description 差额（元，两位小数的展示口径）。
+             */
+            diff: number;
+            /**
+             * Format: int64
+             * @description 差额 = 渠道已退 - 平台已退（分）。
+             */
+            diff_fen: number;
+            /**
+             * Format: int64
+             * @description 主键。
+             */
+            id: number;
+            /**
+             * Format: int64
+             * @description 平台侧已成功退款合计（分）。
+             */
+            local_refunded_fen: number;
+            /** @description 处理备注。 */
+            note?: string | null;
+            /** @description 我方支付单号。 */
+            order_no: string;
+            /** @description 渠道侧支付单号。 */
+            provider_payment_id: string;
+            /** @description 处理人。 */
+            resolved_by?: string | null;
+            /** @description 处理时间（东八区）。 */
+            resolved_time?: string | null;
+            /** @description 状态：`open` / `resolved` / `ignored`。 */
+            status: string;
+            /** @description 状态中文说明。 */
+            status_label: string;
+            /** @description 开发者（充值付款人）。 */
+            username: string;
+        };
+        /** @description 差异记录一页。 */
+        ChannelRefundPageResponse: {
+            /** @description 本页数据。 */
+            items: components["schemas"]["ChannelRefundItemResponse"][];
+            /**
+             * Format: int64
+             * @description 页码。
+             */
+            page: number;
+            /**
+             * Format: int64
+             * @description 每页条数。
+             */
+            page_size: number;
+            /**
+             * Format: int64
+             * @description 命中总数。
+             */
+            total: number;
+        };
+        /** @description 管理端筛选条件。 */
+        ChannelRefundQuery: {
+            /** @description 支付单号（精确匹配）。 */
+            order_no?: string | null;
+            /**
+             * Format: int64
+             * @description 页码，从 1 开始。
+             */
+            page?: number | null;
+            /**
+             * Format: int64
+             * @description 每页条数（上限 100）。
+             */
+            page_size?: number | null;
+            /** @description 状态：`open` / `resolved` / `ignored`。 */
+            status?: string | null;
+            /** @description 用户名（精确匹配）。 */
+            username?: string | null;
+        };
+        /**
+         * @description 一轮对账的结果。
+         *
+         *     注意：与旧批量对账的 `dto::ReconcileResponse` 形状不同，不能同名，
+         *     否则 utoipa 组件表会互相覆盖。
+         */
+        ChannelRefundReconcileResponse: {
+            /** @description 本轮检查过的支付单数。 */
+            checked: number;
+            /** @description 本轮新发现或重新打开的差异数。 */
+            opened: number;
+            /** @description 因渠道回到一致而自动关闭的差异数。 */
+            resolved: number;
         };
         /**
          * @description 渠道签署状态响应（管理端）。
@@ -17274,11 +17576,6 @@ export interface components {
              */
             total_fen: number;
         };
-        /** @description 身份证 OCR 请求体。 */
-        LegalCertOcrRequest: {
-            /** @description `front`（缺省）/ `back`。 */
-            side?: string | null;
-        };
         /** @description 身份证 OCR 响应。 */
         LegalCertOcrResponse: {
             /** @description 有效期起始。 */
@@ -17490,6 +17787,21 @@ export interface components {
             items: components["schemas"]["ActivityRewardItemResponse"][];
             payouts: components["schemas"]["ActivityPayoutItemResponse"][];
             summary: components["schemas"]["MyRewardSummaryResponse"];
+        };
+        /** @description 用户端筛选条件。 */
+        MyBreachCompensationQuery: {
+            /**
+             * Format: int64
+             * @description 页码，从 1 开始。
+             */
+            page?: number | null;
+            /**
+             * Format: int64
+             * @description 每页条数（上限 100）。
+             */
+            page_size?: number | null;
+            /** @description 需求编号（精确匹配）。 */
+            requirement_id?: string | null;
         };
         /**
          * @description 我的通知列表筛选。
@@ -18897,8 +19209,6 @@ export interface components {
         QuickStartIdentifyRequest: {
             /** @description IDENTITY_CARD / ENTERPRISE / SOLE_PROPRIETOR。 */
             auth_type: string;
-            /** @description 本次上传的营业执照（企业必填）。 */
-            business_license_file?: string | null;
             /** @description 监护人同意。 */
             guardian_consent?: boolean | null;
             /** @description 监护人同意书地址。 */
@@ -18908,14 +19218,8 @@ export interface components {
              * @description 个人 151 / 152 / 153；企业 351 / 369（默认 369）。
              */
             identify_type?: number | null;
-            /** @description 本次上传的身份证国徽面（企业必填）。 */
-            legal_cert_back_file?: string | null;
-            /** @description 本次上传的身份证人像面。 */
-            legal_cert_front_file: string;
             /** @description 本人或法定代表人手机号。 */
             mobile: string;
-            /** @description 本次上传的经办人身份证人像面（企业必填）。 */
-            operator_cert_front_file?: string | null;
             /**
              * Format: int32
              * @description 经办人认证方式：151 / 152 / 153（默认 153）。
@@ -19015,8 +19319,6 @@ export interface components {
             birthday?: string | null;
             /** @description 企业进件资料。 */
             business_license_expires_on?: string | null;
-            /** @description 营业执照文件。 */
-            business_license_file?: string | null;
             /** @description 营业执照编号。 */
             business_license_no?: string | null;
             /** @description 企业进件资料。 */
@@ -19103,6 +19405,11 @@ export interface components {
             requirement_id: string;
             /** @description 标题。 */
             title: string;
+        };
+        /** @description 触发对账的入参。 */
+        ReconcileRequest: {
+            /** @description 只对账该开发者的充值单；不传则全量。 */
+            username?: string | null;
         };
         /** @description 批量对账结果。 */
         ReconcileResponse: {
@@ -19409,6 +19716,13 @@ export interface components {
         ResetUserTotpRequest: {
             /** @description 用户名。 */
             username: string;
+        };
+        /** @description 处理差异的入参。 */
+        ResolveRequest: {
+            /** @description 处理备注，可选，最多 500 字。 */
+            note?: string | null;
+            /** @description 目标状态：`resolved`（已处理）/ `ignored`（无需处理）。 */
+            status: string;
         };
         /** @description 资源列表查询参数（公开面：平台过滤 + 偏移分页，对齐 legacy）。 */
         ResourceListQuery: {
@@ -21023,8 +21337,6 @@ export interface components {
             auth_type?: string | null;
             /** @description 营业执照有效期截止。 */
             business_license_expires_on?: string | null;
-            /** @description 营业执照文件地址。 */
-            business_license_file: string;
             /** @description 经营范围。 */
             business_scope?: string | null;
             /** @description 企业注册地址。 */
@@ -21052,8 +21364,6 @@ export interface components {
             legal_person_name?: string | null;
             /** @description 经办人手机号。 */
             mobile: string;
-            /** @description 经办人身份证人像面地址。 */
-            operator_cert_front_file?: string | null;
             /** @description 经办人证件号。 */
             operator_id_card_no: string;
             /**
@@ -21123,8 +21433,6 @@ export interface components {
             auth_type: string;
             /** @description 营业执照有效期截止（YYYYMMDD）。 */
             business_license_expires_on?: string | null;
-            /** @description 营业执照文件地址。 */
-            business_license_file?: string | null;
             /** @description 营业执照编号。 */
             business_license_no?: string | null;
             /** @description 经营范围。 */
@@ -36716,6 +37024,54 @@ export interface operations {
             };
         };
     };
+    conversation_detail_by_resource: {
+        parameters: {
+            query?: {
+                /** @description 每页条数；不传表示一次取全部（legacy 口径）。 */
+                limit?: number | null;
+                /** @description 只取编号小于它（更早）的消息。 */
+                before_id?: number | null;
+            };
+            header?: never;
+            path: {
+                resource_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 会话详情 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConversationDetailResponse"];
+                };
+            };
+            /** @description 没有登录或令牌无效 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 没有购买该资源，或调用者是资源作者 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 资源不存在，或资源会话未启用 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     conversation_detail: {
         parameters: {
             query?: {
@@ -39335,6 +39691,228 @@ export interface operations {
             };
         };
     };
+    payment_admin_list_breach_compensations: {
+        parameters: {
+            query?: {
+                /** @description 需求编号（精确匹配）。 */
+                requirement_id?: string;
+                /** @description 开发者（精确匹配）。 */
+                developer?: string;
+                /** @description 客户（精确匹配）。 */
+                customer?: string;
+                /** @description 状态：`pending` / `paid` / `failed`。 */
+                status?: string;
+                /** @description 页码，从 1 开始。 */
+                page?: number;
+                /** @description 每页条数（上限 100）。 */
+                page_size?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 赔付记录分页 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BreachCompensationPageResponse"];
+                };
+            };
+            /** @description 状态取值无法识别 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 没有该接口权限 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    payment_admin_retry_breach_compensation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description 赔付记录主键 */
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 重试后的记录 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BreachCompensationItemResponse"];
+                };
+            };
+            /** @description 没有该接口权限 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 赔付记录不存在 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 渠道调用失败（记录已标为失败，可再次重试） */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    payment_admin_list_channel_refund_discrepancies: {
+        parameters: {
+            query?: {
+                /** @description 状态：`open` / `resolved` / `ignored`。 */
+                status?: string;
+                /** @description 用户名（精确匹配）。 */
+                username?: string;
+                /** @description 支付单号（精确匹配）。 */
+                order_no?: string;
+                /** @description 页码，从 1 开始。 */
+                page?: number;
+                /** @description 每页条数（上限 100）。 */
+                page_size?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 差异记录分页 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChannelRefundPageResponse"];
+                };
+            };
+            /** @description 状态取值无法识别 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 没有该接口权限 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    payment_admin_reconcile_channel_refunds: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReconcileRequest"];
+            };
+        };
+        responses: {
+            /** @description 对账结果 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChannelRefundReconcileResponse"];
+                };
+            };
+            /** @description 没有该接口权限 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 渠道未就绪或查询失败 */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    payment_admin_resolve_channel_refund_discrepancy: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description 差异记录主键 */
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ResolveRequest"];
+            };
+        };
+        responses: {
+            /** @description 处理后的记录 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChannelRefundItemResponse"];
+                };
+            };
+            /** @description 状态取值不合法或备注过长 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 没有该接口权限 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 差异记录不存在 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     payment_admin_run_auto_withdrawals: {
         parameters: {
             query?: {
@@ -39388,6 +39966,40 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AvailabilityResponse"];
+                };
+            };
+            /** @description 没有该接口权限 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    payment_my_breach_compensations: {
+        parameters: {
+            query?: {
+                /** @description 需求编号（精确匹配）。 */
+                requirement_id?: string;
+                /** @description 页码，从 1 开始。 */
+                page?: number;
+                /** @description 每页条数（上限 100）。 */
+                page_size?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 赔付记录分页 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BreachCompensationPageResponse"];
                 };
             };
             /** @description 没有该接口权限 */
@@ -43084,7 +43696,7 @@ export interface operations {
     realname_admin_download_document: {
         parameters: {
             query: {
-                /** @description 材料类型，只支持 `guardian_consent` / `business_license` */
+                /** @description 材料类型，只支持 `guardian_consent` */
                 kind: string;
             };
             header?: never;
@@ -43751,9 +44363,10 @@ export interface operations {
             path?: never;
             cookie?: never;
         };
+        /** @description `data`（JSON）+ 四个图片文件字段 */
         requestBody: {
             content: {
-                "application/json": components["schemas"]["QuickStartIdentifyRequest"];
+                "multipart/form-data": string;
             };
         };
         responses: {
@@ -44000,21 +44613,14 @@ export interface operations {
             path?: never;
             cookie?: never;
         };
-        /** @description 字段名 `file`，图片或 PDF 二进制（上限 10 MiB） */
+        /** @description 旧版 multipart 请求体，已不再处理 */
         requestBody: {
             content: {
                 "multipart/form-data": string;
             };
         };
         responses: {
-            /** @description `{ "business_license_file": "<地址>" }`：材料地址 */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description 没有 `file` 字段、格式不支持、文件为空或超过 10 MiB（纯文本原因） */
+            /** @description 已停用，请刷新页面使用新的提交方式 */
             400: {
                 headers: {
                     [name: string]: unknown;
@@ -44035,13 +44641,6 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description 校验操作权限失败，或落盘失败 */
-            500: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
         };
     };
     realname_ocr_business_license: {
@@ -44051,9 +44650,10 @@ export interface operations {
             path?: never;
             cookie?: never;
         };
+        /** @description 字段名 `file`，图片或 PDF 二进制 */
         requestBody: {
             content: {
-                "application/json": components["schemas"]["BusinessLicenseOcrRequest"];
+                "multipart/form-data": string;
             };
         };
         responses: {
@@ -44066,7 +44666,7 @@ export interface operations {
                     "application/json": components["schemas"]["BusinessLicenseOcrResponse"];
                 };
             };
-            /** @description 缺少文件地址或地址非法 */
+            /** @description 缺少文件、格式不支持或文件为空 */
             400: {
                 headers: {
                     [name: string]: unknown;
@@ -44157,7 +44757,7 @@ export interface operations {
     realname_download_my_document: {
         parameters: {
             query: {
-                /** @description 材料类型，只支持 `guardian_consent` / `business_license` */
+                /** @description 材料类型，只支持 `guardian_consent` */
                 kind: string;
             };
             header?: never;
@@ -44210,21 +44810,14 @@ export interface operations {
             path?: never;
             cookie?: never;
         };
-        /** @description 字段名 `file`，图片二进制（上限 10 MiB） */
+        /** @description 旧版 multipart 请求体，已不再处理 */
         requestBody: {
             content: {
                 "multipart/form-data": string;
             };
         };
         responses: {
-            /** @description `{ "back_file": "<地址>" }`：材料地址（已写入实名记录） */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description 没有 `file` 字段、不是图片、文件为空或超过 10 MiB（纯文本原因） */
+            /** @description 已停用，请刷新页面使用新的提交方式 */
             400: {
                 headers: {
                     [name: string]: unknown;
@@ -44240,13 +44833,6 @@ export interface operations {
             };
             /** @description 没有 `realname.submit.post` */
             403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description 校验操作权限失败、落盘失败，或写库失败 */
-            500: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -44261,21 +44847,14 @@ export interface operations {
             path?: never;
             cookie?: never;
         };
-        /** @description 字段名 `file`，图片二进制（上限 10 MiB） */
+        /** @description 旧版 multipart 请求体，已不再处理 */
         requestBody: {
             content: {
                 "multipart/form-data": string;
             };
         };
         responses: {
-            /** @description `{ "front_file": "<地址>" }`：材料地址（已写入实名记录） */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description 没有 `file` 字段、不是图片、文件为空或超过 10 MiB（纯文本原因） */
+            /** @description 已停用，请刷新页面使用新的提交方式 */
             400: {
                 headers: {
                     [name: string]: unknown;
@@ -44296,25 +44875,22 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description 校验操作权限失败、落盘失败，或写库失败 */
-            500: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
         };
     };
     realname_ocr_legal_cert: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description `front`（缺省）/ `back` */
+                side?: string;
+            };
             header?: never;
             path?: never;
             cookie?: never;
         };
+        /** @description 字段名 `file`，图片二进制 */
         requestBody: {
             content: {
-                "application/json": components["schemas"]["LegalCertOcrRequest"];
+                "multipart/form-data": string;
             };
         };
         responses: {
@@ -44327,7 +44903,7 @@ export interface operations {
                     "application/json": components["schemas"]["LegalCertOcrResponse"];
                 };
             };
-            /** @description 参数非法 */
+            /** @description 参数非法或文件缺失 */
             400: {
                 headers: {
                     [name: string]: unknown;
@@ -44419,21 +44995,14 @@ export interface operations {
             path?: never;
             cookie?: never;
         };
-        /** @description 字段名 file，图片二进制 */
+        /** @description 旧版 multipart 请求体，已不再处理 */
         requestBody: {
             content: {
                 "multipart/form-data": string;
             };
         };
         responses: {
-            /** @description 经办人证件地址 */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description 文件缺失、格式不支持、空文件或超过 10 MiB */
+            /** @description 已停用，请刷新页面使用新的提交方式 */
             400: {
                 headers: {
                     [name: string]: unknown;
@@ -57575,54 +58144,6 @@ export interface operations {
             };
             /** @description 邀请码无效 */
             400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    conversation_detail_by_resource: {
-        parameters: {
-            query?: {
-                /** @description 每页条数；不传表示一次取全部（legacy 口径）。 */
-                limit?: number | null;
-                /** @description 只取编号小于它（更早）的消息。 */
-                before_id?: number | null;
-            };
-            header?: never;
-            path: {
-                resource_id: number;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description 会话详情 */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ConversationDetailResponse"];
-                };
-            };
-            /** @description 没有登录或令牌无效 */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description 没有购买该资源，或调用者是资源作者 */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description 资源不存在，或资源会话未启用 */
-            404: {
                 headers: {
                     [name: string]: unknown;
                 };

@@ -59,10 +59,17 @@
     margin-inline: auto;
   }
 
-  /* 窄屏（约 375px）：控件 300px 与链接放不进一行时自动换行，链接仍靠右；
+  /* 窄屏（约 375px）：控件 320px 与链接放不进一行时自动换行，链接仍靠右；
      控件不被压扁，宽度由 max-width: 100% 收口 */
-  .auth-turnstile-row {
+  .auth-captcha-row {
     gap: 8px;
+  }
+
+  .auth-captcha-row__actions {
+    flex-direction: row;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 6px 12px;
   }
 }
 

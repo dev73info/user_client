@@ -54,7 +54,6 @@ export function realnameRecord(): UserRealnameVerification {
     company_name: null,
     unified_social_credit_code: null,
     business_license_no: null,
-    business_license_file: null,
     operator_name: null,
     operator_id_card_no_masked: null,
     company_prov_code: null,

@@ -43,7 +43,7 @@ export function useHomePortalAuth(options: HomePortalAuthOptions) {
     authInviteCode,
     authShareType,
     authShareTargetId,
-    authTurnstileToken,
+    authCaptchaToken,
     acceptTerms,
     loginRequiresTwoFactor,
     loginTwoFactorDelivery,
@@ -205,7 +205,7 @@ export function useHomePortalAuth(options: HomePortalAuthOptions) {
     authEmailCode: authEmailCode.value,
     authAuthenticatorCode: authAuthenticatorCode.value,
     authInviteCode: authInviteCode.value,
-    turnstileToken: authTurnstileToken.value,
+    captchaToken: authCaptchaToken.value,
     acceptTerms: acceptTerms.value,
     authLoading: auth.loading,
     loginRequiresTwoFactor: loginRequiresTwoFactor.value,
@@ -248,8 +248,8 @@ export function useHomePortalAuth(options: HomePortalAuthOptions) {
     'onUpdate:authInviteCode': (value: string) => {
       authInviteCode.value = value
     },
-    'onUpdate:turnstileToken': (value: string) => {
-      authTurnstileToken.value = value
+    'onUpdate:captchaToken': (value: string) => {
+      authCaptchaToken.value = value
     },
     'onUpdate:acceptTerms': (value: boolean) => {
       acceptTerms.value = value
