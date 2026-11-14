@@ -30,12 +30,10 @@ const form = defineModel<RealnameDraftFields>('form', { required: true })
 const props = defineProps<{
   businessSelected: boolean
   disabled: boolean
-  businessLicenseUploading: boolean
   consentUploading: boolean
 }>()
 
 const emit = defineEmits<{
-  'business-license-picked': [file: File]
   'consent-picked': [file: File]
 }>()
 
@@ -91,15 +89,6 @@ function onProvinceChange() {
           :disabled="props.disabled"
           :maxlength="18"
           placeholder="请输入经办人身份证号"
-        />
-      </TFormItem>
-      <TFormItem label="营业执照" required>
-        <RealnameMaterialUpload
-          kind="businessLicense"
-          :uploading="props.businessLicenseUploading"
-          :disabled="props.disabled"
-          :file-name="form.businessLicenseFile"
-          @picked="emit('business-license-picked', $event)"
         />
       </TFormItem>
       <TFormItem label="企业所在省市" required>

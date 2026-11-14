@@ -9,6 +9,11 @@ import { LONG_TERM_DATE } from '@/shared/realnameForm'
  */
 export const TODAY = new Date(2026, 4, 20) // 2026-05-20
 
+/** 测试用文件对象：只关心「选了没有」，内容无关。 */
+export function fakeFile(name = 'front.jpg'): File {
+  return new File(['test'], name, { type: 'image/jpeg' })
+}
+
 /** 一份完整的草稿：个人主体、成年、必填齐全；各用例只改自己关心的字段。 */
 export function draft(patch: Partial<RealnameDraftFields> = {}): RealnameDraftFields {
   return {
@@ -24,14 +29,14 @@ export function draft(patch: Partial<RealnameDraftFields> = {}): RealnameDraftFi
     operatorName: '',
     operatorIdCardNo: '',
     operatorIdentifyType: 153,
-    operatorCertFrontFile: '/uploads/realname-operator-certs/test/front.jpg',
+    operatorCertFrontFile: null,
     operatorMobile: '13800000000',
     guardianRequired: false,
     guardianConsent: false,
     guardianConsentFile: '',
-    businessLicenseFile: '',
-    legalCertFrontFile: '/uploads/realname-legal-certs/test/front.jpg',
-    legalCertBackFile: '',
+    businessLicenseFile: null,
+    legalCertFrontFile: fakeFile(),
+    legalCertBackFile: null,
     companyProvCode: '',
     companyAreaCode: '',
     companyAddress: '',
@@ -52,9 +57,10 @@ export function enterpriseDraft(patch: Partial<RealnameDraftFields> = {}): Realn
     unifiedSocialCreditCode: '91310000MA1K35Q64U',
     operatorName: '张三',
     operatorIdCardNo: '110101199001011234',
-    businessLicenseFile: 'https://cdn.example.com/bl.jpg',
-    legalCertFrontFile: 'https://cdn.example.com/front.jpg',
-    legalCertBackFile: 'https://cdn.example.com/back.jpg',
+    businessLicenseFile: fakeFile('license.jpg'),
+    legalCertFrontFile: fakeFile('front.jpg'),
+    legalCertBackFile: fakeFile('back.jpg'),
+    operatorCertFrontFile: fakeFile('operator.jpg'),
     companyProvCode: '0011',
     companyAreaCode: '1100',
     companyAddress: '北京市朝阳区某路 1 号',

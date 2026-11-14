@@ -35,15 +35,15 @@ export type RealnameDraftFields = {
   operatorName: string
   operatorIdCardNo: string
   operatorIdentifyType: number
-  operatorCertFrontFile: string
+  operatorCertFrontFile: File | null
   operatorMobile: string
   guardianRequired: boolean
   guardianConsent: boolean
   guardianConsentFile: string
-  businessLicenseFile: string
-  /** 法人身份证正反面：上传即落库，提交路径供本次认证 OCR 与后续支付进件使用。 */
-  legalCertFrontFile: string
-  legalCertBackFile: string
+  businessLicenseFile: File | null
+  /** 法人身份证正反面：只在本次提交的 multipart 请求里携带，不落服务器磁盘。 */
+  legalCertFrontFile: File | null
+  legalCertBackFile: File | null
   /** 企业进件资料：支付渠道创建企业会员（对公收款账户）时逐项必填，企业 / 个体工商户主体要收齐。 */
   companyProvCode: string
   companyAreaCode: string
@@ -122,7 +122,7 @@ export function idCardAgeBand(
 
 export function isIdentityCardDraftMissing(fields: RealnameDraftFields): boolean {
   if (fields.authType !== 'IDENTITY_CARD') return false
-  return !fields.legalCertFrontFile.trim() || !fields.mobile.trim()
+  return !fields.legalCertFrontFile || !fields.mobile.trim()
 }
 
 /** 收款开户资料缺失检查；认证发起不再由前端回填这些字段。 */
@@ -139,10 +139,10 @@ export function derivedEnterpriseMissing(fields: RealnameDraftFields): string[] 
 export function isEnterpriseDraftMissing(fields: RealnameDraftFields): boolean {
   if (!isBusinessAuthType(fields.authType)) return false
   return (
-    !fields.legalCertFrontFile.trim() ||
-    !fields.legalCertBackFile.trim() ||
-    !fields.businessLicenseFile.trim() ||
-    !fields.operatorCertFrontFile.trim() ||
+    !fields.legalCertFrontFile ||
+    !fields.legalCertBackFile ||
+    !fields.businessLicenseFile ||
+    !fields.operatorCertFrontFile ||
     !fields.mobile.trim() ||
     !fields.operatorMobile.trim()
   )
@@ -160,12 +160,12 @@ export function validateRealnameDraft(fields: RealnameDraftFields): string {
   if (isBusinessAuthType(fields.authType) && ![351, 369].includes(fields.identifyType)) {
     return '请选择企业认证方式'
   }
-  if (!fields.legalCertFrontFile.trim()) return '请上传身份证人像面照片'
+  if (!fields.legalCertFrontFile) return '请上传身份证人像面照片'
   if (isBusinessAuthType(fields.authType)) {
     if (![151, 152, 153].includes(fields.operatorIdentifyType)) return '请选择经办人认证方式'
-    if (!fields.legalCertBackFile.trim()) return '请上传法人身份证国徽面照片'
-    if (!fields.businessLicenseFile.trim()) return '请上传营业执照'
-    if (!fields.operatorCertFrontFile.trim()) return '请上传经办人身份证人像面照片'
+    if (!fields.legalCertBackFile) return '请上传法人身份证国徽面照片'
+    if (!fields.businessLicenseFile) return '请上传营业执照'
+    if (!fields.operatorCertFrontFile) return '请上传经办人身份证人像面照片'
     if (!isValidMobile(fields.operatorMobile)) return '请填写正确的经办人手机号'
   }
   if (!isValidMobile(fields.mobile)) return '请填写正确的手机号'
@@ -191,7 +191,6 @@ export function manualRealnameMissing(fields: RealnameDraftFields): string[] {
     if (!fields.unifiedSocialCreditCode.trim()) missing.push('统一社会信用代码')
     if (!fields.operatorName.trim()) missing.push('经办人姓名')
     if (!fields.operatorIdCardNo.trim()) missing.push('经办人身份证号')
-    if (!fields.businessLicenseFile.trim()) missing.push('营业执照')
     missing.push(...derivedEnterpriseMissing(fields))
     if (!fields.legalCertBeginOn.trim() || !fields.legalCertExpiresOn.trim()) {
       missing.push('法人证件有效期')
@@ -228,9 +227,6 @@ export function buildManualRealnamePayload(
     payload.unified_social_credit_code = fields.unifiedSocialCreditCode.trim()
   }
   if (fields.businessLicenseNo.trim()) payload.business_license_no = fields.businessLicenseNo.trim()
-  if (fields.businessLicenseFile.trim()) {
-    payload.business_license_file = fields.businessLicenseFile.trim()
-  }
   if (fields.operatorName.trim()) payload.operator_name = fields.operatorName.trim()
   if (fields.operatorIdCardNo.trim()) payload.operator_id_card_no = fields.operatorIdCardNo.trim()
   if (isBusinessAuthType(fields.authType)) {
@@ -271,9 +267,6 @@ export function buildRealnamePayload(
     payload.unified_social_credit_code = fields.unifiedSocialCreditCode.trim()
   }
   if (fields.businessLicenseNo.trim()) payload.business_license_no = fields.businessLicenseNo.trim()
-  if (fields.businessLicenseFile.trim()) {
-    payload.business_license_file = fields.businessLicenseFile.trim()
-  }
   if (fields.operatorName.trim()) payload.operator_name = fields.operatorName.trim()
   if (fields.operatorIdCardNo.trim()) payload.operator_id_card_no = fields.operatorIdCardNo.trim()
   // 企业进件资料只在企业 / 个体工商户主体下传；换成个人时后端会把它们清空

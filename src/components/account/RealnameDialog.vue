@@ -138,7 +138,7 @@ watch(
           kind="legalCertFront"
           :uploading="props.legalCertFrontUploading"
           :disabled="props.locked || props.submitting"
-          :file-name="form.legalCertFrontFile"
+          :file-name="form.legalCertFrontFile?.name ?? ''"
           @picked="emit('legal-cert-front-picked', $event)"
         />
       </TFormItem>
@@ -149,7 +149,7 @@ watch(
             kind="legalCertBack"
             :uploading="props.legalCertBackUploading"
             :disabled="props.locked || props.submitting"
-            :file-name="form.legalCertBackFile"
+            :file-name="form.legalCertBackFile?.name ?? ''"
             @picked="emit('legal-cert-back-picked', $event)"
           />
         </TFormItem>
@@ -158,7 +158,7 @@ watch(
             kind="businessLicense"
             :uploading="props.businessLicenseUploading"
             :disabled="props.locked || props.submitting"
-            :file-name="form.businessLicenseFile"
+            :file-name="form.businessLicenseFile?.name ?? ''"
             @picked="emit('business-license-picked', $event)"
           />
         </TFormItem>
@@ -167,7 +167,7 @@ watch(
             kind="operatorCertFront"
             :uploading="props.operatorCertFrontUploading"
             :disabled="props.locked || props.submitting"
-            :file-name="form.operatorCertFrontFile"
+            :file-name="form.operatorCertFrontFile?.name ?? ''"
             @picked="emit('operator-cert-front-picked', $event)"
           />
         </TFormItem>
@@ -217,9 +217,7 @@ watch(
       v-model:form="form"
       :business-selected="props.businessSelected"
       :disabled="props.locked || props.submitting"
-      :business-license-uploading="props.businessLicenseUploading"
       :consent-uploading="props.consentUploading"
-      @business-license-picked="emit('business-license-picked', $event)"
       @consent-picked="emit('consent-picked', $event)"
     />
 

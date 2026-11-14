@@ -11,7 +11,7 @@ import {
 describe('实名材料必填清单', () => {
   it('个人只要求本次身份证与手机号，不要求手填姓名和证件号', () => {
     expect(isIdentityCardDraftMissing(draft({ realName: '', idCardNo: '' }))).toBe(false)
-    expect(isIdentityCardDraftMissing(draft({ legalCertFrontFile: '' }))).toBe(true)
+    expect(isIdentityCardDraftMissing(draft({ legalCertFrontFile: null }))).toBe(true)
     expect(isIdentityCardDraftMissing(draft({ mobile: ' ' }))).toBe(true)
   })
 
@@ -38,10 +38,10 @@ describe('实名材料必填清单', () => {
   it('企业要求法人、经办人材料及各自手机号', () => {
     expect(isEnterpriseDraftMissing(enterpriseDraft())).toBe(false)
     for (const patch of [
-      { legalCertFrontFile: '' },
-      { legalCertBackFile: '' },
-      { businessLicenseFile: '' },
-      { operatorCertFrontFile: '' },
+      { legalCertFrontFile: null },
+      { legalCertBackFile: null },
+      { businessLicenseFile: null },
+      { operatorCertFrontFile: null },
       { mobile: '' },
       { operatorMobile: '' },
     ]) {

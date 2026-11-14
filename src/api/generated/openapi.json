@@ -14032,6 +14032,74 @@
         }
       }
     },
+    "/api/conversation/resource/{resource_id}": {
+      "get": {
+        "tags": [
+          "conversation"
+        ],
+        "summary": "按资源打开插件咨询会话",
+        "description": "插件购买者从资源详情页联系作者用。会话不存在时**补建**；一个买家对一个资源只有一个会话。只有仍持有有效购买权益的买家能打开，作者与未购买者回 403。",
+        "operationId": "conversation_detail_by_resource",
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "每页条数；不传表示一次取全部（legacy 口径）。",
+            "required": false,
+            "schema": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "format": "int64"
+            }
+          },
+          {
+            "name": "before_id",
+            "in": "query",
+            "description": "只取编号小于它（更早）的消息。",
+            "required": false,
+            "schema": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "format": "int64"
+            }
+          },
+          {
+            "name": "resource_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "会话详情",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConversationDetailResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "没有登录或令牌无效"
+          },
+          "403": {
+            "description": "没有购买该资源，或调用者是资源作者"
+          },
+          "404": {
+            "description": "资源不存在，或资源会话未启用"
+          }
+        }
+      }
+    },
     "/api/conversation/{conversation_id}": {
       "get": {
         "tags": [
@@ -16498,6 +16566,303 @@
         }
       }
     },
+    "/api/payment/admin/breach-compensations": {
+      "get": {
+        "tags": [
+          "payment-admin"
+        ],
+        "summary": "违约赔付渠道执行记录",
+        "description": "管理端查看保证金扣划之后的渠道赔付记录，需要 `payment.admin_breach_compensation_list.get`。只读。可按需求、开发者、客户与状态过滤；`status` 三态：`pending` 未确认、`paid` 渠道明确成功、`failed` 失败可重试。",
+        "operationId": "payment_admin_list_breach_compensations",
+        "parameters": [
+          {
+            "name": "requirement_id",
+            "in": "query",
+            "description": "需求编号（精确匹配）。",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "developer",
+            "in": "query",
+            "description": "开发者（精确匹配）。",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "customer",
+            "in": "query",
+            "description": "客户（精确匹配）。",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "description": "状态：`pending` / `paid` / `failed`。",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "description": "页码，从 1 开始。",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "page_size",
+            "in": "query",
+            "description": "每页条数（上限 100）。",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "赔付记录分页",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BreachCompensationPageResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "状态取值无法识别"
+          },
+          "403": {
+            "description": "没有该接口权限"
+          }
+        }
+      }
+    },
+    "/api/payment/admin/breach-compensations/{id}/retry": {
+      "post": {
+        "tags": [
+          "payment-admin"
+        ],
+        "summary": "重试违约赔付",
+        "description": "对失败或处理中的记录重新发起渠道余额支付，需要 `payment.admin_breach_compensation_retry.post`。**会真的动钱**。幂等：已赔付的直接返回；渠道明确失败的直接重发；结果不明（处理中、超时、回查失败）的先按单号回查，确认没成功才重发——余额支付不幂等，不能盲目重试。",
+        "operationId": "payment_admin_retry_breach_compensation",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "赔付记录主键",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "重试后的记录",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BreachCompensationItemResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "没有该接口权限"
+          },
+          "404": {
+            "description": "赔付记录不存在"
+          },
+          "502": {
+            "description": "渠道调用失败（记录已标为失败，可再次重试）"
+          }
+        }
+      }
+    },
+    "/api/payment/admin/channel-refund-discrepancies": {
+      "get": {
+        "tags": [
+          "payment-admin"
+        ],
+        "summary": "渠道退款差异列表",
+        "description": "管理端查看「渠道已退大于平台记录」的充值单，需要 `payment.admin_channel_refund_list.get`。只读。差异通常来自渠道后台人工退款：平台没有这笔记录，镜像余额不会自动变化。",
+        "operationId": "payment_admin_list_channel_refund_discrepancies",
+        "parameters": [
+          {
+            "name": "status",
+            "in": "query",
+            "description": "状态：`open` / `resolved` / `ignored`。",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "username",
+            "in": "query",
+            "description": "用户名（精确匹配）。",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "order_no",
+            "in": "query",
+            "description": "支付单号（精确匹配）。",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "description": "页码，从 1 开始。",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "page_size",
+            "in": "query",
+            "description": "每页条数（上限 100）。",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "差异记录分页",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChannelRefundPageResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "状态取值无法识别"
+          },
+          "403": {
+            "description": "没有该接口权限"
+          }
+        }
+      }
+    },
+    "/api/payment/admin/channel-refund-discrepancies/reconcile": {
+      "post": {
+        "tags": [
+          "payment-admin"
+        ],
+        "summary": "触发渠道退款对账",
+        "description": "按已支付的保证金充值单向渠道查询退款列表，需要 `payment.admin_channel_refund_reconcile.post`。渠道已退大于平台记录时落差异；渠道回到一致时自动关闭已有差异。渠道查询失败整轮报错并保留已有记录；**不自动调账**。",
+        "operationId": "payment_admin_reconcile_channel_refunds",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReconcileRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "对账结果",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChannelRefundReconcileResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "没有该接口权限"
+          },
+          "503": {
+            "description": "渠道未就绪或查询失败"
+          }
+        }
+      }
+    },
+    "/api/payment/admin/channel-refund-discrepancies/{id}/resolve": {
+      "post": {
+        "tags": [
+          "payment-admin"
+        ],
+        "summary": "处理渠道退款差异",
+        "description": "把差异标记为已处理或无需处理，需要 `payment.admin_channel_refund_resolve.post`。**只改记录状态与备注，不动账**：补记镜像、追偿或核销由管理端按资金口径另行执行。",
+        "operationId": "payment_admin_resolve_channel_refund_discrepancy",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "差异记录主键",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResolveRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "处理后的记录",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChannelRefundItemResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "状态取值不合法或备注过长"
+          },
+          "403": {
+            "description": "没有该接口权限"
+          },
+          "404": {
+            "description": "差异记录不存在"
+          }
+        }
+      }
+    },
     "/api/payment/auto-withdrawals/run": {
       "post": {
         "tags": [
@@ -16553,6 +16918,62 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/AvailabilityResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "没有该接口权限"
+          }
+        }
+      }
+    },
+    "/api/payment/breach-compensations/mine": {
+      "get": {
+        "tags": [
+          "payment"
+        ],
+        "summary": "我的违约赔付记录",
+        "description": "当前登录用户作为**客户**的赔付记录，需要 `payment.dev_order_deposit.get`。只读自己的：用户名取自登录态，接口不接受指定他人。用于让客户看到「平台判给的赔付款有没有真的到账」。",
+        "operationId": "payment_my_breach_compensations",
+        "parameters": [
+          {
+            "name": "requirement_id",
+            "in": "query",
+            "description": "需求编号（精确匹配）。",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "description": "页码，从 1 开始。",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "page_size",
+            "in": "query",
+            "description": "每页条数（上限 100）。",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "赔付记录分页",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BreachCompensationPageResponse"
                 }
               }
             }
@@ -18411,7 +18832,7 @@
           "payment"
         ],
         "summary": "回查或重试进件",
-        "description": "主动向渠道问一次本人开户的审核结果并刷新本地状态，需要 `payment.settlement.mine.get`。本地为 `failed` 时按已通过的实名资料重试进件；已有会员只回查，不重复创建。还没拿到渠道会员号回 409；渠道未装配回 503。管理端替指定账号发起的同一动作见 `POST /api/admin/payment/settlement-accounts/{username}/sync`。",
+        "description": "主动向渠道问一次本人开户的审核结果并刷新本地状态，需要 `payment.settlement.mine.get`。本地为 `failed` 时不再自动重建会员，提示用户重新提交开户资料（证照需重新上传）；已有会员只回查，不重复创建。还没拿到渠道会员号回 409；渠道未装配回 503。管理端替指定账号发起的同一动作见 `POST /api/admin/payment/settlement-accounts/{username}/sync`。",
         "operationId": "payment_sync_settlement_account",
         "responses": {
           "200": {
@@ -20395,7 +20816,7 @@
           "realname-admin"
         ],
         "summary": "下载指定账号的实名材料（管理端）",
-        "description": "**需要登录 + `realname.application_detail.get`**。审核要核对材料原件时用。成功时直接返回文件流，不是 JSON。`kind` 只接 `guardian_consent`（监护人同意书）与 `business_license`（营业执照），其它取值回 400；该账号没有实名记录、或记录里没有这类材料回 404。这条会不脱敏地取任何账号的材料，别把它暴露给非审核岗位。",
+        "description": "**需要登录 + `realname.application_detail.get`**。审核要核对监护人同意书时用。成功时直接返回文件流，不是 JSON；文件在磁盘上是 AES-256-GCM 密文，由本接口解密。`kind` 只接 `guardian_consent`（监护人同意书），其它取值回 400；该账号没有实名记录、或记录里没有同意书回 404。这条会不脱敏地取任何账号的材料，别把它暴露给非审核岗位。",
         "operationId": "realname_admin_download_document",
         "parameters": [
           {
@@ -20410,7 +20831,7 @@
           {
             "name": "kind",
             "in": "query",
-            "description": "材料类型，只支持 `guardian_consent` / `business_license`",
+            "description": "材料类型，只支持 `guardian_consent`",
             "required": true,
             "schema": {
               "type": "string"
@@ -20903,13 +21324,14 @@
           "realname"
         ],
         "summary": "上传证照并获取爱签认证链接",
-        "description": "需要登录和 realname.submit.post。姓名、证件号、工商信息只从本次上传件的 OCR 结果取得，不从已存实名记录回填。",
+        "description": "需要登录和 realname.submit.post。请求是 multipart：`data` 字段是 JSON，文件字段为 `legal_cert_front`（必填）、`legal_cert_back`、`business_license`、`operator_cert_front`。姓名、证件号、工商信息只从本次上传件的 OCR 结果取得，证件图片只在内存里处理，不落服务器磁盘。",
         "operationId": "realname_quick_start_identify",
         "requestBody": {
+          "description": "`data`（JSON）+ 四个图片文件字段",
           "content": {
-            "application/json": {
+            "multipart/form-data": {
               "schema": {
-                "$ref": "#/components/schemas/QuickStartIdentifyRequest"
+                "type": "string"
               }
             }
           },
@@ -21079,11 +21501,11 @@
         "tags": [
           "realname"
         ],
-        "summary": "上传营业执照",
-        "description": "**需要登录 + `realname.submit.post`**。企业 / 个体工商户认证用的营业执照。**multipart 上传，文件字段名固定为 `file`，单份上限 10 MiB**，接受 PNG / JPG / WEBP 图片或 PDF。失败时回 400 与**纯文本**原因（不是错误信封）。成功返回 `{ \"business_license_file\": \"<地址>\" }`，把地址填进提交申请或发起企业扫码的`business_license_file` 字段。这个端点只存文件、不做识别，识别另走 `/business-license-ocr`。",
+        "summary": "上传营业执照（已停用）",
+        "description": "**已停用**：证件与营业执照图片不再落服务器磁盘。本端点保留仅为兼容旧页面，调用一律回 400「实名材料上传方式已升级，请刷新页面后重试」，不读文件、不写盘。新流程把图片放在 `/asign/quick-start` 的 multipart 文件字段里一次性提交。",
         "operationId": "realname_upload_business_license",
         "requestBody": {
-          "description": "字段名 `file`，图片或 PDF 二进制（上限 10 MiB）",
+          "description": "旧版 multipart 请求体，已不再处理",
           "content": {
             "multipart/form-data": {
               "schema": {
@@ -21094,20 +21516,14 @@
           "required": true
         },
         "responses": {
-          "200": {
-            "description": "`{ \"business_license_file\": \"<地址>\" }`：材料地址"
-          },
           "400": {
-            "description": "没有 `file` 字段、格式不支持、文件为空或超过 10 MiB（纯文本原因）"
+            "description": "已停用，请刷新页面使用新的提交方式"
           },
           "401": {
             "description": "未登录，或令牌无效 / 已吊销"
           },
           "403": {
             "description": "没有 `realname.submit.post`"
-          },
-          "500": {
-            "description": "校验操作权限失败，或落盘失败"
           }
         }
       }
@@ -21118,13 +21534,14 @@
           "realname"
         ],
         "summary": "识别营业执照",
-        "description": "**需要登录 + `realname.submit.post`**。把已上传的营业执照交给渠道识别，回填企业名称、统一社会信用代码、注册地址、经营范围、法人、有效期等字段，省掉手工录入。`business_license_file` 必须是 `/business-license-file` 返回的地址，空串回 400。识别不出来（图片不清、传了 PDF、渠道侧失败）回 **502** `OCR_UNAVAILABLE`——这是上游没给出结果，不是本服务故障，前端引导用户手工填写即可，不用重试整页。",
+        "description": "**需要登录 + `realname.submit.post`**。multipart 上传一张营业执照（字段 `file`），后端在内存里交给渠道识别，回填企业名称、统一社会信用代码、注册地址、经营范围、法人、有效期等字段，省掉手工录入。**图片不落盘**。识别不出来（图片不清、传了 PDF、渠道侧失败）回 **502** `OCR_UNAVAILABLE`——这是上游没给出结果，不是本服务故障，前端引导用户手工填写即可，不用重试整页。",
         "operationId": "realname_ocr_business_license",
         "requestBody": {
+          "description": "字段名 `file`，图片或 PDF 二进制",
           "content": {
-            "application/json": {
+            "multipart/form-data": {
               "schema": {
-                "$ref": "#/components/schemas/BusinessLicenseOcrRequest"
+                "type": "string"
               }
             }
           },
@@ -21142,7 +21559,7 @@
             }
           },
           "400": {
-            "description": "缺少文件地址或地址非法"
+            "description": "缺少文件、格式不支持或文件为空"
           },
           "401": {
             "description": "未登录，或令牌无效 / 已吊销"
@@ -21203,13 +21620,13 @@
           "realname"
         ],
         "summary": "下载本人上传的实名材料",
-        "description": "**需要登录 + `realname.mine.get`**。把本人实名记录里存的材料原件取回来，成功时直接返回文件流（`Content-Disposition` 带原始文件名），不是 JSON。`kind` 只有两个取值：`guardian_consent`（监护人同意书）、`business_license`（营业执照）；其它取值回 400。记录里没有对应材料回 404。法人身份证正反面不在这条上取——那两份只送给渠道核验，平台不提供下载。",
+        "description": "**需要登录 + `realname.mine.get`**。把本人实名记录里存的监护人同意书取回来，成功时直接返回文件流（`Content-Disposition` 带原始文件名），不是 JSON；文件在磁盘上是 AES-256-GCM 密文，由本接口解密后返回。`kind` 只支持 `guardian_consent`（监护人同意书），其它取值回 400。记录里没有同意书回 404。身份证、营业执照图片不再保存在平台，无法从这里取。",
         "operationId": "realname_download_my_document",
         "parameters": [
           {
             "name": "kind",
             "in": "query",
-            "description": "材料类型，只支持 `guardian_consent` / `business_license`",
+            "description": "材料类型，只支持 `guardian_consent`",
             "required": true,
             "schema": {
               "type": "string"
@@ -21240,11 +21657,11 @@
         "tags": [
           "realname"
         ],
-        "summary": "上传法人身份证国徽面",
-        "description": "**需要登录 + `realname.submit.post`**。企业认证的法人身份证国徽面。**multipart 上传，文件字段名固定为 `file`，单张上限 10 MiB，只收图片**（PNG / JPG / WEBP）。失败时回 400 与**纯文本**原因。与正面一样，成功即把地址写进实名记录，返回 `{ \"back_file\": \"<地址>\" }`。",
+        "summary": "上传法人身份证国徽面（已停用）",
+        "description": "**已停用**：证件图片不再落服务器磁盘。本端点保留仅为兼容旧页面，调用一律回 400「实名材料上传方式已升级，请刷新页面后重试」，不读文件、不写盘。",
         "operationId": "realname_upload_legal_cert_back",
         "requestBody": {
-          "description": "字段名 `file`，图片二进制（上限 10 MiB）",
+          "description": "旧版 multipart 请求体，已不再处理",
           "content": {
             "multipart/form-data": {
               "schema": {
@@ -21255,20 +21672,14 @@
           "required": true
         },
         "responses": {
-          "200": {
-            "description": "`{ \"back_file\": \"<地址>\" }`：材料地址（已写入实名记录）"
-          },
           "400": {
-            "description": "没有 `file` 字段、不是图片、文件为空或超过 10 MiB（纯文本原因）"
+            "description": "已停用，请刷新页面使用新的提交方式"
           },
           "401": {
             "description": "未登录，或令牌无效 / 已吊销"
           },
           "403": {
             "description": "没有 `realname.submit.post`"
-          },
-          "500": {
-            "description": "校验操作权限失败、落盘失败，或写库失败"
           }
         }
       }
@@ -21278,11 +21689,11 @@
         "tags": [
           "realname"
         ],
-        "summary": "上传法人身份证人像面",
-        "description": "**需要登录 + `realname.submit.post`**。企业认证的法人身份证人像面。**multipart 上传，文件字段名固定为 `file`，单张上限 10 MiB，只收图片**（PNG / JPG / WEBP，不收 PDF——渠道核验只要图片）。失败时回 400 与**纯文本**原因。与另两个上传端点不同，这条会**顺手把地址写进实名记录**，所以成功返回的是`{ \"front_file\": \"<地址>\" }`，不需要再提交一次。落盘名由服务端生成，原始文件名不参与路径。",
+        "summary": "上传法人身份证人像面（已停用）",
+        "description": "**已停用**：证件图片不再落服务器磁盘。本端点保留仅为兼容旧页面，调用一律回 400「实名材料上传方式已升级，请刷新页面后重试」，不读文件、不写盘。",
         "operationId": "realname_upload_legal_cert_front",
         "requestBody": {
-          "description": "字段名 `file`，图片二进制（上限 10 MiB）",
+          "description": "旧版 multipart 请求体，已不再处理",
           "content": {
             "multipart/form-data": {
               "schema": {
@@ -21293,20 +21704,14 @@
           "required": true
         },
         "responses": {
-          "200": {
-            "description": "`{ \"front_file\": \"<地址>\" }`：材料地址（已写入实名记录）"
-          },
           "400": {
-            "description": "没有 `file` 字段、不是图片、文件为空或超过 10 MiB（纯文本原因）"
+            "description": "已停用，请刷新页面使用新的提交方式"
           },
           "401": {
             "description": "未登录，或令牌无效 / 已吊销"
           },
           "403": {
             "description": "没有 `realname.submit.post`"
-          },
-          "500": {
-            "description": "校验操作权限失败、落盘失败，或写库失败"
           }
         }
       }
@@ -21317,13 +21722,25 @@
           "realname"
         ],
         "summary": "识别法人身份证有效期",
-        "description": "**需要登录 + `realname.submit.post`**。识别已上传的法人身份证正 / 反面，只回有效期起止，用来免掉手工填日期。`side` 取 `front`（缺省）或 `back`，两边都识别过才能凑齐开始与结束日期。识别不出来回 **502** `OCR_UNAVAILABLE`，前端引导手工填写即可。",
+        "description": "**需要登录 + `realname.submit.post`**。multipart 上传一张身份证照片（字段 `file`），通过查询参数 `side=front|back` 指定面；只回有效期起止，用来免掉手工填日期。**图片不落盘**。识别不出来回 **502** `OCR_UNAVAILABLE`，前端引导手工填写即可。",
         "operationId": "realname_ocr_legal_cert",
+        "parameters": [
+          {
+            "name": "side",
+            "in": "query",
+            "description": "`front`（缺省）/ `back`",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
         "requestBody": {
+          "description": "字段名 `file`，图片二进制",
           "content": {
-            "application/json": {
+            "multipart/form-data": {
               "schema": {
-                "$ref": "#/components/schemas/LegalCertOcrRequest"
+                "type": "string"
               }
             }
           },
@@ -21341,7 +21758,7 @@
             }
           },
           "400": {
-            "description": "参数非法"
+            "description": "参数非法或文件缺失"
           },
           "401": {
             "description": "未登录，或令牌无效 / 已吊销"
@@ -21397,11 +21814,11 @@
         "tags": [
           "realname"
         ],
-        "summary": "上传经办人身份证人像面",
-        "description": "需要登录和 realname.submit.post。multipart 字段名为 file，只收 PNG / JPG / WEBP，单张不超过 10 MiB。返回 front_file，供材料认证入口使用。",
+        "summary": "上传经办人身份证人像面（已停用）",
+        "description": "**已停用**：证件图片不再落服务器磁盘。本端点保留仅为兼容旧页面，调用一律回 400「实名材料上传方式已升级，请刷新页面后重试」，不读文件、不写盘。",
         "operationId": "realname_upload_operator_cert_front",
         "requestBody": {
-          "description": "字段名 file，图片二进制",
+          "description": "旧版 multipart 请求体，已不再处理",
           "content": {
             "multipart/form-data": {
               "schema": {
@@ -21412,11 +21829,8 @@
           "required": true
         },
         "responses": {
-          "200": {
-            "description": "经办人证件地址"
-          },
           "400": {
-            "description": "文件缺失、格式不支持、空文件或超过 10 MiB"
+            "description": "已停用，请刷新页面使用新的提交方式"
           },
           "401": {
             "description": "未登录"
@@ -34055,74 +34469,6 @@
           }
         }
       }
-    },
-    "/api/conversation/resource/{resource_id}": {
-      "get": {
-        "tags": [
-          "conversation"
-        ],
-        "summary": "按资源打开插件咨询会话",
-        "description": "插件购买者从资源详情页联系作者用。会话不存在时**补建**；一个买家对一个资源只有一个会话。只有仍持有有效购买权益的买家能打开，作者与未购买者回 403。",
-        "operationId": "conversation_detail_by_resource",
-        "parameters": [
-          {
-            "name": "limit",
-            "in": "query",
-            "description": "每页条数；不传表示一次取全部（legacy 口径）。",
-            "required": false,
-            "schema": {
-              "type": [
-                "integer",
-                "null"
-              ],
-              "format": "int64"
-            }
-          },
-          {
-            "name": "before_id",
-            "in": "query",
-            "description": "只取编号小于它（更早）的消息。",
-            "required": false,
-            "schema": {
-              "type": [
-                "integer",
-                "null"
-              ],
-              "format": "int64"
-            }
-          },
-          {
-            "name": "resource_id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "format": "int64"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "会话详情",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ConversationDetailResponse"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "没有登录或令牌无效"
-          },
-          "403": {
-            "description": "没有购买该资源，或调用者是资源作者"
-          },
-          "404": {
-            "description": "资源不存在，或资源会话未启用"
-          }
-        }
-      }
     }
   },
   "components": {
@@ -36845,12 +37191,27 @@
           "username",
           "member_type",
           "member_id",
+          "account_name",
+          "bank_name",
+          "account_no_tail",
           "onboarding_status",
           "settlement_ready",
           "status",
           "status_label"
         ],
         "properties": {
+          "account_name": {
+            "type": "string",
+            "description": "收款人姓名（与银行卡一致的户名）。"
+          },
+          "account_no_tail": {
+            "type": "string",
+            "description": "卡号后四位（完整卡号不落库、不回传）。"
+          },
+          "bank_name": {
+            "type": "string",
+            "description": "开户行。"
+          },
           "member_id": {
             "type": "string",
             "description": "渠道侧会员号。还没进件时是空串（1.x 同样是空串，不是 `null`）。"
@@ -39200,6 +39561,171 @@
           }
         }
       },
+      "BreachCompensationItemResponse": {
+        "type": "object",
+        "description": "一笔赔付记录。",
+        "required": [
+          "id",
+          "requirement_id",
+          "developer",
+          "customer",
+          "amount_fen",
+          "amount",
+          "status",
+          "status_label",
+          "attempts",
+          "created_time",
+          "updated_time"
+        ],
+        "properties": {
+          "amount": {
+            "type": "number",
+            "format": "double",
+            "description": "赔付金额（元，两位小数的展示口径）。"
+          },
+          "amount_fen": {
+            "type": "integer",
+            "format": "int64",
+            "description": "赔付金额（分）。"
+          },
+          "attempts": {
+            "type": "integer",
+            "format": "int32",
+            "description": "已向渠道发起过几次。"
+          },
+          "channel_seq_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "渠道侧余额支付流水号。"
+          },
+          "created_time": {
+            "type": "string",
+            "description": "创建时间（东八区）。"
+          },
+          "customer": {
+            "type": "string",
+            "description": "客户（收款方）。"
+          },
+          "developer": {
+            "type": "string",
+            "description": "开发者（付款方）。"
+          },
+          "failure_reason": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "最近一次失败原因。"
+          },
+          "id": {
+            "type": "integer",
+            "format": "int64",
+            "description": "主键。"
+          },
+          "requirement_id": {
+            "type": "string",
+            "description": "需求编号。"
+          },
+          "status": {
+            "type": "string",
+            "description": "状态：`pending` / `paid` / `failed`。"
+          },
+          "status_label": {
+            "type": "string",
+            "description": "状态中文说明。"
+          },
+          "updated_time": {
+            "type": "string",
+            "description": "最后更新时间（东八区）。"
+          }
+        }
+      },
+      "BreachCompensationPageResponse": {
+        "type": "object",
+        "description": "赔付记录一页。",
+        "required": [
+          "total",
+          "page",
+          "page_size",
+          "items"
+        ],
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/BreachCompensationItemResponse"
+            },
+            "description": "本页数据。"
+          },
+          "page": {
+            "type": "integer",
+            "format": "int64",
+            "description": "页码。"
+          },
+          "page_size": {
+            "type": "integer",
+            "format": "int64",
+            "description": "每页条数。"
+          },
+          "total": {
+            "type": "integer",
+            "format": "int64",
+            "description": "命中总数。"
+          }
+        }
+      },
+      "BreachCompensationQuery": {
+        "type": "object",
+        "description": "管理端筛选条件。",
+        "properties": {
+          "customer": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "客户（精确匹配）。"
+          },
+          "developer": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "开发者（精确匹配）。"
+          },
+          "page": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "页码，从 1 开始。"
+          },
+          "page_size": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "每页条数（上限 100）。"
+          },
+          "requirement_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "需求编号（精确匹配）。"
+          },
+          "status": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "状态：`pending` / `paid` / `failed`。"
+          }
+        }
+      },
       "BreachConfig": {
         "type": "object",
         "description": "违约与催告期限。",
@@ -39260,19 +39786,6 @@
           }
         },
         "additionalProperties": false
-      },
-      "BusinessLicenseOcrRequest": {
-        "type": "object",
-        "description": "营业执照 OCR 请求体。",
-        "required": [
-          "business_license_file"
-        ],
-        "properties": {
-          "business_license_file": {
-            "type": "string",
-            "description": "上传接口返回的地址。"
-          }
-        }
       },
       "BusinessLicenseOcrResponse": {
         "type": "object",
@@ -39718,6 +40231,198 @@
           "reachable": {
             "type": "boolean",
             "description": "渠道是否可达。"
+          }
+        }
+      },
+      "ChannelRefundItemResponse": {
+        "type": "object",
+        "description": "一条渠道退款差异记录。",
+        "required": [
+          "id",
+          "username",
+          "order_no",
+          "provider_payment_id",
+          "channel_refunded_fen",
+          "local_refunded_fen",
+          "diff_fen",
+          "diff",
+          "status",
+          "status_label",
+          "detected_time"
+        ],
+        "properties": {
+          "channel_refunded_fen": {
+            "type": "integer",
+            "format": "int64",
+            "description": "渠道侧已成功退款合计（分）。"
+          },
+          "detected_time": {
+            "type": "string",
+            "description": "首次发现时间（东八区）。"
+          },
+          "diff": {
+            "type": "number",
+            "format": "double",
+            "description": "差额（元，两位小数的展示口径）。"
+          },
+          "diff_fen": {
+            "type": "integer",
+            "format": "int64",
+            "description": "差额 = 渠道已退 - 平台已退（分）。"
+          },
+          "id": {
+            "type": "integer",
+            "format": "int64",
+            "description": "主键。"
+          },
+          "local_refunded_fen": {
+            "type": "integer",
+            "format": "int64",
+            "description": "平台侧已成功退款合计（分）。"
+          },
+          "note": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "处理备注。"
+          },
+          "order_no": {
+            "type": "string",
+            "description": "我方支付单号。"
+          },
+          "provider_payment_id": {
+            "type": "string",
+            "description": "渠道侧支付单号。"
+          },
+          "resolved_by": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "处理人。"
+          },
+          "resolved_time": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "处理时间（东八区）。"
+          },
+          "status": {
+            "type": "string",
+            "description": "状态：`open` / `resolved` / `ignored`。"
+          },
+          "status_label": {
+            "type": "string",
+            "description": "状态中文说明。"
+          },
+          "username": {
+            "type": "string",
+            "description": "开发者（充值付款人）。"
+          }
+        }
+      },
+      "ChannelRefundPageResponse": {
+        "type": "object",
+        "description": "差异记录一页。",
+        "required": [
+          "total",
+          "page",
+          "page_size",
+          "items"
+        ],
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ChannelRefundItemResponse"
+            },
+            "description": "本页数据。"
+          },
+          "page": {
+            "type": "integer",
+            "format": "int64",
+            "description": "页码。"
+          },
+          "page_size": {
+            "type": "integer",
+            "format": "int64",
+            "description": "每页条数。"
+          },
+          "total": {
+            "type": "integer",
+            "format": "int64",
+            "description": "命中总数。"
+          }
+        }
+      },
+      "ChannelRefundQuery": {
+        "type": "object",
+        "description": "管理端筛选条件。",
+        "properties": {
+          "order_no": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "支付单号（精确匹配）。"
+          },
+          "page": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "页码，从 1 开始。"
+          },
+          "page_size": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "每页条数（上限 100）。"
+          },
+          "status": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "状态：`open` / `resolved` / `ignored`。"
+          },
+          "username": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "用户名（精确匹配）。"
+          }
+        }
+      },
+      "ChannelRefundReconcileResponse": {
+        "type": "object",
+        "description": "一轮对账的结果。\n\n注意：与旧批量对账的 `dto::ReconcileResponse` 形状不同，不能同名，\n否则 utoipa 组件表会互相覆盖。",
+        "required": [
+          "checked",
+          "opened",
+          "resolved"
+        ],
+        "properties": {
+          "checked": {
+            "type": "integer",
+            "description": "本轮检查过的支付单数。",
+            "minimum": 0
+          },
+          "opened": {
+            "type": "integer",
+            "description": "本轮新发现或重新打开的差异数。",
+            "minimum": 0
+          },
+          "resolved": {
+            "type": "integer",
+            "description": "因渠道回到一致而自动关闭的差异数。",
+            "minimum": 0
           }
         }
       },
@@ -46501,19 +47206,6 @@
           }
         }
       },
-      "LegalCertOcrRequest": {
-        "type": "object",
-        "description": "身份证 OCR 请求体。",
-        "properties": {
-          "side": {
-            "type": [
-              "string",
-              "null"
-            ],
-            "description": "`front`（缺省）/ `back`。"
-          }
-        }
-      },
       "LegalCertOcrResponse": {
         "type": "object",
         "description": "身份证 OCR 响应。",
@@ -47063,6 +47755,35 @@
           },
           "summary": {
             "$ref": "#/components/schemas/MyRewardSummaryResponse"
+          }
+        }
+      },
+      "MyBreachCompensationQuery": {
+        "type": "object",
+        "description": "用户端筛选条件。",
+        "properties": {
+          "page": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "页码，从 1 开始。"
+          },
+          "page_size": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "每页条数（上限 100）。"
+          },
+          "requirement_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "需求编号（精确匹配）。"
           }
         }
       },
@@ -50367,20 +51088,12 @@
         "description": "用本次上传的证照发起认证，姓名与证件信息只从 OCR 结果取得。",
         "required": [
           "auth_type",
-          "mobile",
-          "legal_cert_front_file"
+          "mobile"
         ],
         "properties": {
           "auth_type": {
             "type": "string",
             "description": "IDENTITY_CARD / ENTERPRISE / SOLE_PROPRIETOR。"
-          },
-          "business_license_file": {
-            "type": [
-              "string",
-              "null"
-            ],
-            "description": "本次上传的营业执照（企业必填）。"
           },
           "guardian_consent": {
             "type": [
@@ -50404,27 +51117,9 @@
             "format": "int32",
             "description": "个人 151 / 152 / 153；企业 351 / 369（默认 369）。"
           },
-          "legal_cert_back_file": {
-            "type": [
-              "string",
-              "null"
-            ],
-            "description": "本次上传的身份证国徽面（企业必填）。"
-          },
-          "legal_cert_front_file": {
-            "type": "string",
-            "description": "本次上传的身份证人像面。"
-          },
           "mobile": {
             "type": "string",
             "description": "本人或法定代表人手机号。"
-          },
-          "operator_cert_front_file": {
-            "type": [
-              "string",
-              "null"
-            ],
-            "description": "本次上传的经办人身份证人像面（企业必填）。"
           },
           "operator_identify_type": {
             "type": [
@@ -50576,13 +51271,6 @@
               "null"
             ],
             "description": "企业进件资料。"
-          },
-          "business_license_file": {
-            "type": [
-              "string",
-              "null"
-            ],
-            "description": "营业执照文件。"
           },
           "business_license_no": {
             "type": [
@@ -50820,6 +51508,19 @@
           "title": {
             "type": "string",
             "description": "标题。"
+          }
+        }
+      },
+      "ReconcileRequest": {
+        "type": "object",
+        "description": "触发对账的入参。",
+        "properties": {
+          "username": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "只对账该开发者的充值单；不传则全量。"
           }
         }
       },
@@ -51519,6 +52220,26 @@
           "username": {
             "type": "string",
             "description": "用户名。"
+          }
+        }
+      },
+      "ResolveRequest": {
+        "type": "object",
+        "description": "处理差异的入参。",
+        "required": [
+          "status"
+        ],
+        "properties": {
+          "note": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "处理备注，可选，最多 500 字。"
+          },
+          "status": {
+            "type": "string",
+            "description": "目标状态：`resolved`（已处理）/ `ignored`（无需处理）。"
           }
         }
       },
@@ -54724,8 +55445,7 @@
           "unified_social_credit_code",
           "operator_name",
           "operator_id_card_no",
-          "mobile",
-          "business_license_file"
+          "mobile"
         ],
         "properties": {
           "auth_type": {
@@ -54741,10 +55461,6 @@
               "null"
             ],
             "description": "营业执照有效期截止。"
-          },
-          "business_license_file": {
-            "type": "string",
-            "description": "营业执照文件地址。"
           },
           "business_scope": {
             "type": [
@@ -54824,13 +55540,6 @@
           "mobile": {
             "type": "string",
             "description": "经办人手机号。"
-          },
-          "operator_cert_front_file": {
-            "type": [
-              "string",
-              "null"
-            ],
-            "description": "经办人身份证人像面地址。"
           },
           "operator_id_card_no": {
             "type": "string",
@@ -55005,13 +55714,6 @@
               "null"
             ],
             "description": "营业执照有效期截止（YYYYMMDD）。"
-          },
-          "business_license_file": {
-            "type": [
-              "string",
-              "null"
-            ],
-            "description": "营业执照文件地址。"
           },
           "business_license_no": {
             "type": [

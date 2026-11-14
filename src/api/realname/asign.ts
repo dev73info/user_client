@@ -1,6 +1,7 @@
 import { authHeaders, requestJson } from '@/api/http'
 
 import type {
+  QuickStartIdentifyFiles,
   StartAsignIdentifyPayload,
   StartAsignIdentifyResponse,
   StartCompanyIdentifyPayload,
@@ -43,16 +44,29 @@ export async function startCompanyAsignIdentify(
   )
 }
 
+/**
+ * 用本次选择的证照发起认证。
+ *
+ * 图片走 multipart，和 `data`（JSON）一起提交；后端只在内存里处理，不落服务器磁盘。
+ */
 export async function quickStartAsignIdentify(
   token: string,
   payload: QuickStartIdentifyPayload,
+  files: QuickStartIdentifyFiles,
 ): Promise<StartAsignIdentifyResponse> {
+  const formData = new FormData()
+  formData.append('data', JSON.stringify(payload))
+  formData.append('legal_cert_front', files.legalCertFront)
+  if (files.legalCertBack) formData.append('legal_cert_back', files.legalCertBack)
+  if (files.businessLicense) formData.append('business_license', files.businessLicense)
+  if (files.operatorCertFront) formData.append('operator_cert_front', files.operatorCertFront)
+
   return requestJson<StartAsignIdentifyResponse>(
     '/realname/asign/quick-start',
     {
       method: 'POST',
-      headers: authHeaders(token, { 'Content-Type': 'application/json' }),
-      body: JSON.stringify(payload),
+      headers: authHeaders(token),
+      body: formData,
     },
     '发起爱签实名认证失败',
   )

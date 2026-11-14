@@ -10,10 +10,6 @@ import { useRealnameSubmit } from '@/composables/useRealnameSubmit'
 
 const mocks = vi.hoisted(() => ({
   hydrate: vi.fn(),
-  uploadBusinessLicenseFile: vi.fn(),
-  uploadLegalCertFrontFile: vi.fn(),
-  uploadLegalCertBackFile: vi.fn(),
-  uploadOperatorCertFrontFile: vi.fn(),
   uploadGuardianConsentFile: vi.fn(),
   quickStartAsignIdentify: vi.fn(),
   getMyRealnameVerification: vi.fn(),
@@ -27,10 +23,6 @@ vi.mock('@/stores/auth', () => ({
 }))
 vi.mock('@/api/realname', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/api/realname')>()),
-  uploadBusinessLicenseFile: mocks.uploadBusinessLicenseFile,
-  uploadLegalCertFrontFile: mocks.uploadLegalCertFrontFile,
-  uploadLegalCertBackFile: mocks.uploadLegalCertBackFile,
-  uploadOperatorCertFrontFile: mocks.uploadOperatorCertFrontFile,
   uploadGuardianConsentFile: mocks.uploadGuardianConsentFile,
   quickStartAsignIdentify: mocks.quickStartAsignIdentify,
   getMyRealnameVerification: mocks.getMyRealnameVerification,
@@ -40,18 +32,14 @@ vi.mock('ui_73info', async (importOriginal) => ({
   TMessage: mocks.toast,
 }))
 
-const FRONT_FILE = '/uploads/realname-legal-certs/flow/front.jpg'
-const BACK_FILE = '/uploads/realname-legal-certs/flow/back.jpg'
-const LICENSE_FILE = '/uploads/realname-business-licenses/flow/license.jpg'
-const OPERATOR_FILE = '/uploads/realname-operator-certs/flow/front.jpg'
+const FRONT_FILE = new File(['front'], 'front.jpg', { type: 'image/jpeg' })
+const BACK_FILE = new File(['back'], 'back.jpg', { type: 'image/jpeg' })
+const LICENSE_FILE = new File(['license'], 'license.jpg', { type: 'image/jpeg' })
+const OPERATOR_FILE = new File(['operator'], 'operator.jpg', { type: 'image/jpeg' })
 const OPERATOR_MOBILE = '13900000000'
 
 beforeEach(() => {
   vi.clearAllMocks()
-  mocks.uploadLegalCertFrontFile.mockResolvedValue({ front_file: FRONT_FILE })
-  mocks.uploadLegalCertBackFile.mockResolvedValue({ back_file: BACK_FILE })
-  mocks.uploadOperatorCertFrontFile.mockResolvedValue({ front_file: OPERATOR_FILE })
-  mocks.uploadBusinessLicenseFile.mockResolvedValue({ business_license_file: LICENSE_FILE })
   mocks.uploadGuardianConsentFile.mockResolvedValue({
     guardian_consent_file: '/uploads/consent.pdf',
   })
@@ -59,15 +47,14 @@ beforeEach(() => {
   mocks.getMyRealnameVerification.mockResolvedValue({ status: 'pending' })
 })
 
-describe('实名材料上传', () => {
-  it('只保存本次上传路径，不在前端 OCR 或读取旧实名要素', async () => {
+describe('实名材料选择', () => {
+  it('只保留本次选择的 File，不上传、不读取旧实名要素', async () => {
     const draft = useRealnameFormDraft()
     const materials = useRealnameMaterials({ form: draft.form })
-    const file = new File(['x'], 'front.jpg', { type: 'image/jpeg' })
-    await materials.handleLegalCertFrontFile(file)
-    await materials.handleLegalCertBackFile(file)
-    await materials.handleBusinessLicenseFile(file)
-    await materials.handleOperatorCertFrontFile(file)
+    materials.handleLegalCertFrontFile(FRONT_FILE)
+    materials.handleLegalCertBackFile(BACK_FILE)
+    materials.handleBusinessLicenseFile(LICENSE_FILE)
+    materials.handleOperatorCertFrontFile(OPERATOR_FILE)
     await flushPromises()
 
     expect(draft.form.legalCertFrontFile).toBe(FRONT_FILE)
@@ -78,12 +65,12 @@ describe('实名材料上传', () => {
     expect(draft.form.companyName).toBe('')
   })
 
-  it('营业执照不收 PDF，监护人同意书仍允许 PDF', async () => {
+  it('营业执照不收 PDF，监护人同意书仍允许 PDF 并加密上传', async () => {
     const draft = useRealnameFormDraft()
     const materials = useRealnameMaterials({ form: draft.form })
     const pdf = new File(['x'], 'document.pdf', { type: 'application/pdf' })
-    await materials.handleBusinessLicenseFile(pdf)
-    expect(mocks.uploadBusinessLicenseFile).not.toHaveBeenCalled()
+    materials.handleBusinessLicenseFile(pdf)
+    expect(draft.form.businessLicenseFile).toBeNull()
 
     await materials.handleConsentFile(pdf)
     expect(mocks.uploadGuardianConsentFile).toHaveBeenCalledWith('test-token', pdf)
@@ -114,12 +101,20 @@ describe('材料发起认证', () => {
     draft.form.identifyType = 151
     await submit.submitRealname()
 
-    expect(mocks.quickStartAsignIdentify).toHaveBeenCalledWith('test-token', {
-      auth_type: 'IDENTITY_CARD',
-      identify_type: 151,
-      mobile: '13800000000',
-      legal_cert_front_file: FRONT_FILE,
-    })
+    expect(mocks.quickStartAsignIdentify).toHaveBeenCalledWith(
+      'test-token',
+      {
+        auth_type: 'IDENTITY_CARD',
+        identify_type: 151,
+        mobile: '13800000000',
+      },
+      {
+        legalCertFront: FRONT_FILE,
+        legalCertBack: null,
+        businessLicense: null,
+        operatorCertFront: null,
+      },
+    )
     expect(mocks.beginChallenge).toHaveBeenCalledWith('https://asign.test/auth')
   })
 
@@ -135,17 +130,22 @@ describe('材料发起认证', () => {
     draft.form.operatorMobile = OPERATOR_MOBILE
     await submit.submitRealname()
 
-    expect(mocks.quickStartAsignIdentify).toHaveBeenCalledWith('test-token', {
-      auth_type: 'ENTERPRISE',
-      identify_type: 369,
-      mobile: '13800000000',
-      legal_cert_front_file: FRONT_FILE,
-      legal_cert_back_file: BACK_FILE,
-      business_license_file: LICENSE_FILE,
-      operator_identify_type: 153,
-      operator_mobile: OPERATOR_MOBILE,
-      operator_cert_front_file: OPERATOR_FILE,
-    })
+    expect(mocks.quickStartAsignIdentify).toHaveBeenCalledWith(
+      'test-token',
+      {
+        auth_type: 'ENTERPRISE',
+        identify_type: 369,
+        mobile: '13800000000',
+        operator_identify_type: 153,
+        operator_mobile: OPERATOR_MOBILE,
+      },
+      {
+        legalCertFront: FRONT_FILE,
+        legalCertBack: BACK_FILE,
+        businessLicense: LICENSE_FILE,
+        operatorCertFront: OPERATOR_FILE,
+      },
+    )
     const payload = mocks.quickStartAsignIdentify.mock.calls[0]?.[1]
     expect(payload).not.toHaveProperty('company_name')
     expect(payload).not.toHaveProperty('operator_id_card_no')
@@ -190,6 +190,6 @@ describe('材料发起认证', () => {
     expect(draft.form.realName).toBe('')
     expect(draft.form.companyName).toBe('')
     expect(draft.form.mobile).toBe('')
-    expect(draft.form.businessLicenseFile).toBe('')
+    expect(draft.form.businessLicenseFile).toBeNull()
   })
 })

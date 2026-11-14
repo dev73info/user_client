@@ -6,6 +6,7 @@ import {
   REALNAME_ERROR_CODES,
   quickStartAsignIdentify,
   submitMyRealnameVerification,
+  type QuickStartIdentifyFiles,
   type QuickStartIdentifyPayload,
   type UserRealnameVerification,
 } from '@/api/realname'
@@ -53,20 +54,25 @@ export function useRealnameSubmit(options: RealnameSubmitOptions) {
         auth_type: form.authType,
         identify_type: form.identifyType,
         mobile: form.mobile.trim(),
-        legal_cert_front_file: form.legalCertFrontFile,
       }
       if (form.authType !== 'IDENTITY_CARD') {
-        payload.legal_cert_back_file = form.legalCertBackFile
-        payload.business_license_file = form.businessLicenseFile
         payload.operator_identify_type = form.operatorIdentifyType
         payload.operator_mobile = form.operatorMobile.trim()
-        payload.operator_cert_front_file = form.operatorCertFrontFile
       }
       if (form.guardianConsentFile) {
         payload.guardian_consent = form.guardianConsent
         payload.guardian_consent_file = form.guardianConsentFile
       }
-      const result = await quickStartAsignIdentify(auth.token, payload)
+      if (!form.legalCertFrontFile) {
+        throw new Error('请上传身份证人像面照片')
+      }
+      const files: QuickStartIdentifyFiles = {
+        legalCertFront: form.legalCertFrontFile,
+        legalCertBack: form.legalCertBackFile,
+        businessLicense: form.businessLicenseFile,
+        operatorCertFront: form.operatorCertFrontFile,
+      }
+      const result = await quickStartAsignIdentify(auth.token, payload, files)
       if (!result.auth_url) throw new Error('爱签未返回认证链接，请稍后重试')
       options.applyRecord(await getMyRealnameVerification(auth.token))
       await options.beginChallenge(result.auth_url)
