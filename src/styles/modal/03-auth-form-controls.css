@@ -97,6 +97,18 @@
   max-width: 100%;
 }
 
+/* ALTCHA 内部也用 label 承载文案；在这里复位，避免被表单 label 规则
+   拉成整行、加下边距，导致文字相对勾选框偏上。 */
+.auth-modal .auth-captcha-row__widget label {
+  display: flex;
+  width: auto;
+  margin: 0;
+  gap: normal;
+  color: inherit;
+  font-size: 14px;
+  font-weight: 400;
+}
+
 .auth-captcha-row__actions {
   display: inline-flex;
   flex-direction: column;
