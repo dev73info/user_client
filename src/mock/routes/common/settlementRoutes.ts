@@ -70,8 +70,24 @@ export const settlementRoutes: MockRoute[] = [
   {
     method: 'POST',
     path: '/payment/settlement-account/open',
-    note: '自动开通收款账户：演示里渠道会员视为已就绪，直接回账户',
-    handler: () => jsonResponse(settlementAccount),
+    note: '对私自动开户：完整资料直连渠道，演示里按成功绑卡回写后四位',
+    handler: (request) => {
+      const body = (request.body ?? {}) as {
+        card_name?: string
+        card_id?: string
+        bank_name?: string
+        member_type?: string | null
+      }
+
+      return jsonResponse(
+        bindSettlementAccount({
+          account_name: body.card_name,
+          bank_name: body.bank_name,
+          account_no_tail: (body.card_id ?? '').slice(-4),
+          member_type: body.member_type ?? 'personal',
+        }),
+      )
+    },
   },
   {
     method: 'POST',

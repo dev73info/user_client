@@ -24,6 +24,7 @@ export type {
   MySettlementAccountChangePayload,
   MySettlementAccountPayload,
   MySettlementAccountSnapshot,
+  MySettlementOpenPayload,
 } from './types'
 
 export { createAdapayPayment, getAdapayClientPlatform, getAdapayPayment } from './payment'
@@ -34,6 +35,7 @@ export {
   createMyAdapaySettlementAccount,
   getMyAdapayMember,
   getMySettlementAccountSnapshot,
+  openMyAdapaySettlementAccount,
   syncMyAdapaySettlementAccount,
 } from './member'
 

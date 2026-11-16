@@ -69,6 +69,13 @@ export type AdapayMemberStatus = {
 
 export type MySettlementAccountPayload = Schemas['SettlementApplyRequest']
 export type MySettlementAccountChangePayload = Schemas['SettlementAccountChangeRequest']
+/**
+ * 对私自动开户请求体（`POST /api/payment/settlement-account/open`）。
+ *
+ * 含完整卡号、银行预留手机号与证件号：**只在请求体里出现一次**，后端校验后直接送渠道，
+ * 不落库、不进日志。平台只保存后四位（响应 `SettlementAccountResponse.account_no_tail`）。
+ */
+export type MySettlementOpenPayload = Schemas['SettlementOpenRequest']
 
 /**
  * 已绑定结算账户的**脱敏**快照，用于「收款银行卡」弹窗回填。

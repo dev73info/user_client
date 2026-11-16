@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   getSettlementCities,
   prepareSettlementAccount,
+  prepareSettlementOpen,
   settlementBanks,
   settlementProvinces,
 } from '@/utils/settlementAccount'
@@ -10,6 +11,15 @@ const validForm = {
   card_id: '1234',
   bank_code: '01020000',
   bank_acct_type: '2',
+}
+
+const validOpenForm = {
+  card_id: '6222020200112233445',
+  tel_no: '13800000000',
+  cert_id: '110101199001011234',
+  bank_code: '01020000',
+  prov_code: '0011',
+  area_code: '1100',
 }
 
 describe('settlement account selections', () => {
@@ -54,5 +64,40 @@ describe('settlement account selections', () => {
     expect(
       prepareSettlementAccount({ ...validForm, bank_acct_type: '1' }, '某公司').member_type,
     ).toBe('enterprise')
+  })
+})
+
+describe('personal settlement auto-open', () => {
+  it('submits the full SettlementOpenRequest to the channel', () => {
+    expect(prepareSettlementOpen(validOpenForm, '张三')).toEqual({
+      member_type: 'personal',
+      card_name: '张三',
+      card_id: '6222020200112233445',
+      tel_no: '13800000000',
+      bank_code: '01020000',
+      bank_name: '工商银行',
+      bank_acct_type: 'private',
+      prov_code: '0011',
+      area_code: '1100',
+      cert_id: '110101199001011234',
+      cert_type: null,
+    })
+  })
+
+  it.each([
+    [{ card_id: '' }, '银行卡号'],
+    [{ card_id: '1234' }, '银行卡号'],
+    [{ tel_no: '12345' }, '银行预留手机号'],
+    [{ cert_id: 'abc' }, '证件号'],
+    [{ bank_code: '' }, '开户银行'],
+    [{ prov_code: '' }, '开户省份'],
+    [{ area_code: '' }, '开户城市'],
+    [{ area_code: '9999' }, '开户城市'],
+  ])('rejects invalid open fields: %j', (overrides, message) => {
+    expect(() => prepareSettlementOpen({ ...validOpenForm, ...overrides }, '张三')).toThrow(message)
+  })
+
+  it('requires the realname account holder', () => {
+    expect(() => prepareSettlementOpen(validOpenForm, '')).toThrow('收款户名')
   })
 })

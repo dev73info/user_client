@@ -60,6 +60,7 @@ function mountSettle(overrides: Record<string, unknown> = {}) {
     loading: false,
     saving: false,
     bound: false,
+    openMode: false,
     corporateLocked: false,
     subjectMismatch: false,
     subjectLabel: '个人',
@@ -71,6 +72,11 @@ function mountSettle(overrides: Record<string, unknown> = {}) {
     cardId: '',
     bankCode: '',
     bankAcctType: '2',
+    telNo: '',
+    certId: '',
+    provCode: '',
+    areaCode: '',
+    cities: [],
     ...overrides,
   })
 }
@@ -105,6 +111,48 @@ describe('SettlementDialog：收款银行卡弹窗', () => {
     await nextTick()
 
     expect(wrapper.emitted('update:bank-code')).toEqual([['']])
+    wrapper.unmount()
+  })
+
+  it('自动开户模式收完整卡号、预留手机号、证件号与开户省市', async () => {
+    const wrapper = mountSettle({
+      openMode: true,
+      cardPlaceholder: '请输入收款银行卡号',
+      cities: [{ value: '1100', title: '北京市' }],
+    })
+
+    // 三个文本输入：卡号 / 银行预留手机号 / 证件号（TSelect 内部各带一个搜索输入，排除掉）
+    const inputs = [
+      ...document.querySelectorAll('input:not(.t73-select__input)'),
+    ] as HTMLInputElement[]
+    expect(inputs).toHaveLength(3)
+    // 自动开户收完整卡号，不能再挂「后四位」的 maxlength=4
+    expect(
+      (
+        document.querySelector(
+          'input[inputmode="numeric"]:not(.t73-select__input)',
+        ) as HTMLInputElement
+      ).getAttribute('maxlength'),
+    ).toBeNull()
+
+    inputs.forEach((input, index) => {
+      input.value = ['6222020200112233445', '13800000000', '110101199001011234'][index]!
+      input.dispatchEvent(new Event('input'))
+    })
+    await nextTick()
+    expect(wrapper.emitted('update:card-id')).toEqual([['6222020200112233445']])
+    expect(wrapper.emitted('update:tel-no')).toEqual([['13800000000']])
+    expect(wrapper.emitted('update:cert-id')).toEqual([['110101199001011234']])
+
+    // 开户银行 / 开户省份 / 开户城市三个下拉
+    const selects = wrapper.findAllComponents(TSelect)
+    expect(selects).toHaveLength(3)
+    selects[1]!.vm.$emit('update:modelValue', '0011')
+    await nextTick()
+    expect(wrapper.emitted('update:prov-code')).toEqual([['0011']])
+    selects[2]!.vm.$emit('update:modelValue', '1100')
+    await nextTick()
+    expect(wrapper.emitted('update:area-code')).toEqual([['1100']])
     wrapper.unmount()
   })
 
