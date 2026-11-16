@@ -87,3 +87,22 @@ export function createSessionTokenExchanger(options: ExchangeOptions): () => Pro
     return options.refreshToken(sourceToken)
   }
 }
+
+/**
+ * 请求层 401 续期：换票成功后落盘并返回新的访问令牌；失败返回 `null`，
+ * 请求层沿用原 401。并发 401 由调用方共用同一次换票。
+ */
+export function createRetryRefresher(
+  exchange: () => Promise<AuthPayload>,
+  persist: (token: string, refreshToken?: string) => void,
+): () => Promise<string | null> {
+  return async () => {
+    try {
+      const payload = await exchange()
+      persist(payload.token, payload.refresh_token)
+      return payload.token
+    } catch {
+      return null
+    }
+  }
+}

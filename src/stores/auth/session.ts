@@ -25,12 +25,14 @@ import {
 } from '@/shared/auth/session'
 import {
   clearSessionTokens,
+  createRetryRefresher,
   createSessionTokenExchanger,
   restoreSessionTokens,
   setStoredRefreshToken,
   storeSessionTokens,
   type SessionTokenState,
 } from '@/shared/auth/sessionTokens'
+import { setSessionRefreshHandler } from '@/shared/auth/sessionRefresh'
 import { isTokenExpired } from '@/shared/auth/token'
 import { createTokenRefreshController } from '@/shared/auth/tokenLifecycle'
 import { isAuthRejected } from '@/stores/auth/types'
@@ -78,7 +80,6 @@ export function createAuthSession() {
   function authHeaders(headers: HeadersInit = {}) {
     return createAuthHeaders(token.value, headers)
   }
-
   function hasPermission(permission: string): boolean {
     return isSuperAdmin.value || permissions.value.includes(permission)
   }
@@ -148,12 +149,8 @@ export function createAuthSession() {
   }
 
   /**
-   * 拉取当前登录人的**生效**权限码（`GET /auth/users/privileges`）。
-   *
-   * 后端已经把「角色」与「用户级权限覆盖」合成好了：`permissions` 是最终结果，
-   * `role` / `roles` 只是展示用的角色快照。所以前端的「能不能看到 / 能不能点」
-   * 一律读 `permissions`（`hasPermission(code)`），不要按固定角色名判断。
-   * 请求失败**原样抛出**：权限拿不到就当作没有，绝不放行。
+   * 拉取当前登录人的**生效**权限码；`permissions` 是最终结果，前端一律按它判断。
+   * 请求失败原样抛出：权限拿不到就当作没有，绝不放行。
    */
   async function fetchPrivileges(): Promise<void> {
     const sourceToken = token.value
@@ -182,6 +179,9 @@ export function createAuthSession() {
     refreshSession: refreshSessionApi,
     isAuthRejected,
   })
+  const persistRefreshed = (nextToken: string, nextRefreshToken?: string) =>
+    persist(nextToken, true, nextRefreshToken)
+  setSessionRefreshHandler(createRetryRefresher(exchangeSessionTokens, persistRefreshed))
 
   async function fetchProfile(force = false): Promise<AuthProfile> {
     return fetchAuthProfile({

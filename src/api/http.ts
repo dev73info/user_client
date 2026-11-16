@@ -11,6 +11,7 @@ import {
   toApiErrorShape,
 } from '@/shared/api/httpClient'
 import { dispatchAuthUnauthorized } from '@/shared/api/authEvents'
+import { requestSessionRefresh } from '@/shared/auth/sessionRefresh'
 
 export {
   apiUrl,
@@ -52,6 +53,13 @@ const httpClient = createHttpClient({
     const message = '未登录或登录已过期，请重新登录'
     dispatchAuthUnauthorized({ status: resp.status, path, message })
     throw new HttpError(401, message)
+  },
+  async refreshAccessToken(path) {
+    // 公开接口与换票接口的 401 不是会话失效，不触发续期。
+    if (!shouldRedirectOnUnauthorized(path)) {
+      return null
+    }
+    return requestSessionRefresh()
   },
 })
 
