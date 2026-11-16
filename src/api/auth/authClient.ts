@@ -18,6 +18,7 @@ export const {
   sendRegisterEmailCode,
   sendResetPasswordEmailCode,
   resetPassword,
+  refreshSession,
   refreshToken,
   getGithubAuthorizeUrl,
   getGiteeAuthorizeUrl,

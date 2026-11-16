@@ -12,27 +12,11 @@
 import { defineRouteTable, type MockRequest, type MockRoute } from '../router'
 import { MOCK_IDENTITY_PROFILES, currentMockIdentity, type MockIdentity } from '../identity'
 import { jsonResponse, noContentResponse } from '../response'
-import { createMockToken } from '../token'
 import { platformRuleTitle } from '@/shared/platformRules'
-
-type AuthPayload = {
-  token: string
-  username: string
-  role: string
-}
+import { mockAuthPayload as authPayload } from './common/authPayload'
 
 function identityOf(request: MockRequest): MockIdentity {
   return request.identity ?? currentMockIdentity()
-}
-
-function authPayload(identity: MockIdentity): AuthPayload {
-  const profile = MOCK_IDENTITY_PROFILES[identity]
-
-  return {
-    token: createMockToken(identity),
-    username: profile.username,
-    role: profile.role,
-  }
 }
 
 /** 第三方授权只给一个回到本站的地址：mock 不连任何外部平台。 */
@@ -74,6 +58,12 @@ const routes: MockRoute[] = [
     method: 'POST',
     path: '/auth/refresh',
     note: '刷新令牌：返回用户名与角色，缺少角色会让前端报「未返回完整会话信息」',
+    handler: (request) => jsonResponse(authPayload(identityOf(request))),
+  },
+  {
+    method: 'POST',
+    path: '/auth/refresh-token',
+    note: '用刷新令牌换新会话：mock 不校验刷新令牌，按当前身份返回',
     handler: (request) => jsonResponse(authPayload(identityOf(request))),
   },
   {

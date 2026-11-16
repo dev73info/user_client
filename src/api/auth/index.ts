@@ -59,6 +59,7 @@ export {
   getGithubAuthorizeUrl,
   loginWithAuthenticator,
   recordAgreementAcceptance,
+  refreshSession,
   refreshToken,
   resetPassword,
   sendRegisterEmailCode,

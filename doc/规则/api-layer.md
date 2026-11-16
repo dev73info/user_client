@@ -59,10 +59,13 @@ export async function getMyPoints(token: string): Promise<UserPointsSelf> {
 
 ## 四、鉴权与 401
 
-- 令牌存 localStorage，键是 `AUTH_TOKEN_STORAGE_KEY`（`src/shared/auth/storage.ts`，值 `auth_token_73hub`）。
-  登录态与令牌生命周期在 `src/shared/auth/`（`token` / `session` / `storage` / `client` / `tokenLifecycle`），store 是 `src/stores/auth.ts`。
-- 401 由 `src/shared/api/authEvents.ts` 广播，`App.vue` 监听后**自动登出并弹登录框**。
-  **这是设计行为**（改密后旧令牌即失效），排查时不要当成 bug。登录 / 注册 / 重置密码三条路径不触发这个广播。
+- 令牌存 localStorage，键是 `AUTH_TOKEN_STORAGE_KEY`（`src/shared/auth/storage.ts`，值 `auth_token_73hub`）；
+  刷新令牌单独存 `AUTH_REFRESH_TOKEN_STORAGE_KEY`（值 `auth_refresh_token_73hub`），只能用于 `/auth/refresh-token`，
+  不能当访问令牌用。登录态与令牌生命周期在 `src/shared/auth/`（`token` / `session` / `storage` / `client` /
+  `tokenLifecycle` / `tokenRequests` / `sessionTokens`），store 是 `src/stores/auth.ts`。
+- 401 由 `src/shared/api/authEvents.ts` 广播，`App.vue` 监听后**自动登出并回到首页**（不再弹「登录已过期」提示）。
+  **这是设计行为**（改密后旧令牌即失效），排查时不要当成 bug。登录 / 注册 / 重置密码三条路径不触发这个广播；
+  `/auth/refresh` 与 `/auth/refresh-token` 的 401 由令牌生命周期自己处理（静默登出或回退旧接口），也不广播。
 - 开发者相关的路径守卫是 `installDevRouteGuard`（`src/router/dev.ts`）：未登录跳 `buildUnifiedAuthUrl('login', ...)`，
   `meta.requiresRealname` 查实名状态，`meta.requiresDevAccess` 查 `auth.ensureDevAccess()`。
   **新增开发者页面必须带 `meta.devArea: true`**，否则进页时侧边栏会当它是用户页面、切回用户工作台。
