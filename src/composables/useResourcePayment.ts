@@ -1,7 +1,8 @@
-import { onBeforeUnmount, ref } from 'vue'
+import { computed, onBeforeUnmount, ref } from 'vue'
 import QRCode from 'qrcode'
 
 import { getMyResourcePurchase, type ResourcePurchaseOrder } from '@/api/resourcePurchase'
+import { resourcePaymentCountdownText } from '@/shared/resourcePaymentCountdown'
 
 export type UseResourcePaymentOptions = {
   /** 当前会话令牌。每次轮询时读取，避免闭包持有旧值。 */
@@ -24,6 +25,25 @@ export function useResourcePayment(options: UseResourcePaymentOptions) {
   /** 支付面世代号：每次作废（切渠道 / 重新拉单）递增。 */
   const generation = ref(0)
   let pollTimer: ReturnType<typeof setInterval> | null = null
+  const nowTick = ref(Date.now())
+  const countdownTimer = setInterval(() => {
+    nowTick.value = Date.now()
+  }, 1000)
+
+  /**
+   * 二维码下方的支付倒计时。
+   *
+   * 资源购买订单只回了 `created_at`，没有渠道截止时间；文案由共享函数生成，
+   * 不自动关单，也不把 0 点解释成渠道已失效。
+   */
+  const countdownText = computed(() =>
+    resourcePaymentCountdownText({
+      createdAt: order.value?.created_at ?? '',
+      status: order.value?.status ?? '',
+      hasQr: Boolean(qrDataUrl.value),
+      now: nowTick.value,
+    }),
+  )
 
   function stopPoll() {
     if (pollTimer !== null) {
@@ -109,11 +129,15 @@ export function useResourcePayment(options: UseResourcePaymentOptions) {
     }, 4000)
   }
 
-  onBeforeUnmount(stopPoll)
+  onBeforeUnmount(() => {
+    stopPoll()
+    clearInterval(countdownTimer)
+  })
 
   return {
     order,
     qrDataUrl,
+    countdownText,
     generation,
     stopPoll,
     invalidateSurface,

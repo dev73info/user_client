@@ -92,6 +92,20 @@ export function countdownRemainingMs(expiresAtMs: number, now: number): number {
   return Math.max(0, expiresAtMs - now)
 }
 
+/** 剩余毫秒 → `hh:mm:ss`；非有限值按 0 处理 */
+export function formatCountdownDuration(remainingMs: number): string {
+  const safeMs = Number.isFinite(remainingMs) ? Math.max(0, remainingMs) : 0
+  const totalSeconds = Math.floor(safeMs / 1000)
+  const hours = Math.floor(totalSeconds / 3600)
+  const minutes = Math.floor((totalSeconds % 3600) / 60)
+  const seconds = totalSeconds % 60
+
+  const hh = String(hours).padStart(2, '0')
+  const mm = String(minutes).padStart(2, '0')
+  const ss = String(seconds).padStart(2, '0')
+  return `${hh}:${mm}:${ss}`
+}
+
 /** 剩余时间文案：`hh:mm:ss`，过期 / 缺失 / 格式非法各有一句话 */
 export function formatCountdownText(expiresAt: string, remainingMs: number): string {
   if (!expiresAt.trim()) {
@@ -103,14 +117,5 @@ export function formatCountdownText(expiresAt: string, remainingMs: number): str
   if (remainingMs <= 0) {
     return '已过期'
   }
-
-  const totalSeconds = Math.floor(remainingMs / 1000)
-  const hours = Math.floor(totalSeconds / 3600)
-  const minutes = Math.floor((totalSeconds % 3600) / 60)
-  const seconds = totalSeconds % 60
-
-  const hh = String(hours).padStart(2, '0')
-  const mm = String(minutes).padStart(2, '0')
-  const ss = String(seconds).padStart(2, '0')
-  return `${hh}:${mm}:${ss}`
+  return formatCountdownDuration(remainingMs)
 }

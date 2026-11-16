@@ -27,7 +27,6 @@ import ResourceDetailSummaryCard from '@/components/resource-detail/ResourceDeta
 import ResourcePurchaseDialog from '@/components/resource-detail/ResourcePurchaseDialog.vue'
 import ResourceVersionList from '@/components/resource-detail/ResourceVersionList.vue'
 import { TButton, TLoading } from 'ui_73info'
-
 /**
  * 资源详情面板：资源列表页（ResourceCatalogView）里就地渲染的详情内容。
  *
@@ -71,6 +70,7 @@ const {
   error: purchaseError,
   order: purchaseOrder,
   qrDataUrl: purchaseQrDataUrl,
+  countdownText: purchaseCountdownText,
   targetVersion: purchaseTargetVersion,
   showPromoHint,
   open: openPurchasePanelUnlocked,
@@ -381,6 +381,7 @@ watch(
     :order-no="purchaseOrder?.order_no ?? ''"
     :order-status="purchaseOrder?.status ?? ''"
     :qr-data-url="purchaseQrDataUrl"
+    :countdown-text="purchaseCountdownText"
     @close="closePurchasePanel"
     @select-channel="selectPurchaseChannel"
     @confirm="submitPurchase"
