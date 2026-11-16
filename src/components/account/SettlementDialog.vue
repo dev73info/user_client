@@ -1,17 +1,17 @@
 <script setup lang="ts">
 /**
- * 「收款银行卡」弹窗：渠道原话 / 主体变更与缺资料提示 + 银行卡表单（卡号后四位、开户行、账户类型）。
+ * 「收款银行卡」弹窗：渠道原话 / 主体变更与缺资料提示 + 银行卡表单。
  *
- * 表单只收契约 `SettlementApplyRequest` / `SettlementAccountChangeRequest` 要的那几项：
- * 户名取自实名主体、开户行由银行下拉映射成 `bank_name`、卡号**只收后四位**。
- * 开户省份 / 城市不在这两条请求体里，所以没有这两格——收了也无处可发。
+ * 个人主体首次绑定走**自动开户**（`SettlementOpenRequest`）：卡号（完整）、银行预留手机号、
+ * 证件号、开户银行与省市，由 `SettlementOpenForm` 渲染，后端直接向渠道进件。
+ * 企业主体与已绑账户的改绑仍走人工字段（卡号后四位 / 开户行 / 账户类型）。
  *
  * 从 `AccountCouponsView` 抽出来的**纯展示**弹窗：请求、校验、toast 全在
  * `composables/useSettlementAccount.ts`（组件不碰 `@/api/*`、`TMessage`、`router`）。
  *
  * 状态归属：
  * - `visible` / `loading` / `saving`：弹窗开合与两个加载位由父级持有；
- * - 三个输入框的草稿 + 一组 `update:*`：父级那份 `settleForm` 是唯一草稿（提交处理器读它），
+ * - 表单草稿 + 一组 `update:*`：父级那份 `settleForm` 是唯一草稿（提交处理器读它），
  *   这里只做受控输入并回传，不在组件内另存一份；
  * - 其余 `providerError` / `rejected` / `corporateLocked` / `subjectMismatch` /
  *   `materialMissing*` / `subjectLabel` / `cardPlaceholder`：父级算好传下来
@@ -37,6 +37,8 @@ import {
   TSelect,
 } from 'ui_73info'
 
+import SettlementOpenForm from './SettlementOpenForm.vue'
+
 const props = defineProps<{
   /** 弹窗是否打开：父级持有。 */
   visible: boolean
@@ -46,6 +48,8 @@ const props = defineProps<{
   saving: boolean
   /** 是否已绑卡：决定卡号提示与主按钮文案（「绑定」还是「确认更换」）。 */
   bound: boolean
+  /** 个人主体首次绑定：走自动开户，表单收完整资料。 */
+  openMode: boolean
   /** 企业 / 个体工商户主体：只能绑对公账户。 */
   corporateLocked: boolean
   /** 已绑的卡挂在旧主体上（实名主体变更过）。 */
@@ -62,10 +66,16 @@ const props = defineProps<{
   rejected: boolean
   /** 卡号输入框的提示（已绑账户时带后四位）。 */
   cardPlaceholder: string
-  /** 三份草稿字段（父级那份 `settleForm`）。 */
+  /** 表单草稿字段（父级那份 `settleForm`）。 */
   cardId: string
   bankCode: string
   bankAcctType: string
+  telNo: string
+  certId: string
+  provCode: string
+  areaCode: string
+  /** 当前省份下的城市（自动开户才用）。 */
+  cities: Array<{ value: string; title: string }>
 }>()
 
 const emit = defineEmits<{
@@ -76,6 +86,10 @@ const emit = defineEmits<{
   'update:card-id': [cardId: string]
   'update:bank-code': [bankCode: string]
   'update:bank-acct-type': [bankAcctType: string]
+  'update:tel-no': [telNo: string]
+  'update:cert-id': [certId: string]
+  'update:prov-code': [provCode: string]
+  'update:area-code': [areaCode: string]
   /** 点了主按钮：校验与请求都在父级。 */
   submit: []
   /** 点了「去变更认证类型补齐/核对资料」：父级关本弹窗并打开实名表单。 */
@@ -225,31 +239,50 @@ const rejectedGuide = computed(() => {
         :disabled="props.saving || props.loading"
         @submit="emit('submit')"
       >
-        <TFormItem label="卡号后四位" required>
-          <TInput
-            v-model="cardId"
-            inputmode="numeric"
-            :maxlength="4"
-            :placeholder="props.cardPlaceholder"
-          />
-        </TFormItem>
-        <TFormItem label="开户银行" required>
-          <TSelect
-            v-model="bankCode"
-            :options="settlementBanks"
-            filterable
-            clearable
-            placeholder="搜索或选择银行名称"
-            no-match-text="未找到该银行"
-            style="width: 100%"
-          />
-        </TFormItem>
-        <TFormItem label="账户类型">
-          <TSelect v-model="bankAcctType" style="width: 100%">
-            <TOption label="个人银行卡" value="2" />
-            <TOption label="企业对公账户" value="1" />
-          </TSelect>
-        </TFormItem>
+        <SettlementOpenForm
+          v-if="props.openMode"
+          :card-id="props.cardId"
+          :tel-no="props.telNo"
+          :cert-id="props.certId"
+          :bank-code="props.bankCode"
+          :prov-code="props.provCode"
+          :area-code="props.areaCode"
+          :cities="props.cities"
+          :card-placeholder="props.cardPlaceholder"
+          @update:card-id="emit('update:card-id', $event)"
+          @update:tel-no="emit('update:tel-no', $event)"
+          @update:cert-id="emit('update:cert-id', $event)"
+          @update:bank-code="emit('update:bank-code', $event)"
+          @update:prov-code="emit('update:prov-code', $event)"
+          @update:area-code="emit('update:area-code', $event)"
+        />
+        <template v-else>
+          <TFormItem label="卡号后四位" required>
+            <TInput
+              v-model="cardId"
+              inputmode="numeric"
+              :maxlength="4"
+              :placeholder="props.cardPlaceholder"
+            />
+          </TFormItem>
+          <TFormItem label="开户银行" required>
+            <TSelect
+              v-model="bankCode"
+              :options="settlementBanks"
+              filterable
+              clearable
+              placeholder="搜索或选择银行名称"
+              no-match-text="未找到该银行"
+              style="width: 100%"
+            />
+          </TFormItem>
+          <TFormItem label="账户类型">
+            <TSelect v-model="bankAcctType" style="width: 100%">
+              <TOption label="个人银行卡" value="2" />
+              <TOption label="企业对公账户" value="1" />
+            </TSelect>
+          </TFormItem>
+        </template>
         <TFormItem>
           <div class="settle-form__actions">
             <TButton :disabled="props.saving" @click="emit('cancel')">取消</TButton>

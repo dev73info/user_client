@@ -7,14 +7,8 @@ import { openEntry, stubMatchMedia } from '@/__tests__/accountViewHelpers'
 import { approvedRecord, pendingRecord } from '@/__tests__/helpers/realnameRecords'
 
 /**
- * 「收款银行卡」「人脸核身」两个弹窗**在视图里**的接线（第 2、3 步抽出来的两个域）。
- *
- * 组件级用例已经验过各自的 emit 键与次数；这一层验的是**视图那一侧的监听有没有写对**：
- * 五个 `update:*` 少一个，表单就提交不上去；`@withdraw` / `@open-page` / `@check` 写成驼峰，
- * 点下去什么都不会发生。所以这里从点入口行开始，一直推到接口参数。
- *
- * 两个弹窗都不 stub Teleport：`TDialog` 默认 teleport 到 body，而「收款银行卡」里的
- * `TSelect` 在 stub 掉 Teleport 的测试替身下会自我递归更新（真实 teleport 下正常）。
+ * 「收款银行卡」「人脸核身」两个弹窗**在视图里**的接线：验视图那一侧的监听与接口参数。
+ * 两个弹窗都不 stub Teleport：stub 后「收款银行卡」里的 `TSelect` 会自我递归更新。
  */
 const mocks = vi.hoisted(() => ({
   getProfile: vi.fn(),
@@ -22,6 +16,7 @@ const mocks = vi.hoisted(() => ({
   getMyAdapayMember: vi.fn(),
   getMySettlementAccountSnapshot: vi.fn(),
   createSettle: vi.fn(),
+  openSettle: vi.fn(),
   changeSettle: vi.fn(),
   getMyRealnameVerification: vi.fn(),
   completeAsignIdentify: vi.fn(),
@@ -52,16 +47,8 @@ vi.mock('qrcode', () => ({ default: { toDataURL: vi.fn(async () => 'data:image/p
 
 vi.mock('ui_73info', async (importOriginal) => {
   const actual = await importOriginal<typeof import('ui_73info')>()
-  return {
-    ...actual,
-    TMessage: {
-      ...actual.TMessage,
-      success: vi.fn(),
-      error: vi.fn(),
-      warning: vi.fn(),
-      info: vi.fn(),
-    },
-  }
+  const silent = { success: vi.fn(), error: vi.fn(), warning: vi.fn(), info: vi.fn() }
+  return { ...actual, TMessage: { ...actual.TMessage, ...silent } }
 })
 
 vi.mock('@/api/settings', () => ({
@@ -85,6 +72,7 @@ vi.mock('@/api/adapay', async (importOriginal) => ({
   getMyAdapayMember: mocks.getMyAdapayMember,
   getMySettlementAccountSnapshot: mocks.getMySettlementAccountSnapshot,
   createMyAdapaySettlementAccount: mocks.createSettle,
+  openMyAdapaySettlementAccount: mocks.openSettle,
   changeMyAdapaySettlementAccount: mocks.changeSettle,
 }))
 
@@ -96,13 +84,14 @@ vi.mock('@/api/realname', async (importOriginal) => ({
   withdrawMyRealnameVerification: mocks.withdrawRealname,
 }))
 
-import { settlementBanks } from '@/utils/settlementAccount'
+import {
+  getSettlementCities,
+  settlementBanks,
+  settlementProvinces,
+} from '@/utils/settlementAccount'
 import AccountCouponsView from '@/views/AccountCouponsView.vue'
 
-/**
- * 按可见文案找**弹窗里**的按钮：整页查找会把入口行也匹配进来
- * （「认证已完成，绑定银行卡后即可收取合同款」就含有「绑定银行卡」）。
- */
+/** 按可见文案找**弹窗里**的按钮（整页查找会连入口行一起匹配到）。 */
 function bodyButton(text: string): HTMLElement {
   const found = [...document.querySelectorAll('.t73-dialog button')].find((button) =>
     (button.textContent ?? '').includes(text),
@@ -130,6 +119,12 @@ beforeEach(() => {
   stubMatchMedia()
   vi.spyOn(window, 'open').mockImplementation(mocks.open)
   route.query = {}
+  const member = (status: string, accepts: boolean, tail?: string) => ({
+    username: 'alice',
+    onboardingStatus: status,
+    acceptsSettlement: accepts,
+    accountNoTail: tail,
+  })
   mocks.getProfile.mockResolvedValue({
     username: 'alice',
     email: 'old@example.com',
@@ -139,24 +134,11 @@ beforeEach(() => {
   mocks.getBoundProviders.mockResolvedValue({ providers: [] })
   // 收款户名取实名主体，所以结案这几条用例都先给一份已通过的实名记录
   mocks.getMyRealnameVerification.mockResolvedValue(approvedRecord)
-  mocks.getMyAdapayMember.mockResolvedValue({
-    username: 'alice',
-    onboardingStatus: 'active',
-    acceptsSettlement: false,
-  })
+  mocks.getMyAdapayMember.mockResolvedValue(member('active', false))
   mocks.getMySettlementAccountSnapshot.mockResolvedValue({ bound: false })
-  mocks.createSettle.mockResolvedValue({
-    username: 'alice',
-    onboardingStatus: 'pending',
-    acceptsSettlement: false,
-    accountNoTail: '1234',
-  })
-  mocks.changeSettle.mockResolvedValue({
-    username: 'alice',
-    onboardingStatus: 'pending',
-    acceptsSettlement: false,
-    accountNoTail: '5678',
-  })
+  mocks.createSettle.mockResolvedValue(member('pending', false, '1234'))
+  mocks.openSettle.mockResolvedValue(member('active', true, '3445'))
+  mocks.changeSettle.mockResolvedValue(member('pending', false, '5678'))
   mocks.completeAsignIdentify.mockResolvedValue({ status: 'none' })
   mocks.resumeAsignIdentify.mockResolvedValue({
     auth_url: 'https://faceid.test/x',
@@ -170,32 +152,52 @@ afterEach(() => {
 })
 
 describe('账号与安全页：收款银行卡弹窗的接线', () => {
-  it('点入口打开弹窗，三份草稿都经 update:* 回写，提交时拼出结算账户契约的请求体', async () => {
+  it('点入口打开弹窗，个人首次绑定按完整资料走自动开户', async () => {
     const wrapper = await renderAccountPage()
     await openEntry(wrapper, 'settle')
     await flushPromises()
 
-    // 卡号后四位走 input，开户行 / 账户类型走两个下拉
-    const input = document.querySelector('input[inputmode="numeric"]') as HTMLInputElement
-    input.value = '1234'
-    input.dispatchEvent(new Event('input'))
+    const province = settlementProvinces[0]!
+    const city = getSettlementCities(province.value)[0]!
 
+    // 卡号 / 银行预留手机号 / 证件号三个文本输入（TSelect 内部各带一个搜索输入，排除掉）
+    const inputs = [
+      ...document.querySelectorAll('.t73-dialog input:not(.t73-select__input)'),
+    ] as HTMLInputElement[]
+    expect(inputs).toHaveLength(3)
+    ;['6222020200112233445', '13800000000', '110101199001011234'].forEach((value, index) => {
+      inputs[index]!.value = value
+      inputs[index]!.dispatchEvent(new Event('input'))
+    })
+
+    // 开户银行 / 开户省份 / 开户城市三个下拉
     const selects = wrapper.findAllComponents(TSelect)
-    expect(selects).toHaveLength(2)
+    expect(selects).toHaveLength(3)
     selects[0]!.vm.$emit('update:modelValue', settlementBanks[0]!.value)
     await nextTick()
-    selects[1]!.vm.$emit('update:modelValue', '2')
+    selects[1]!.vm.$emit('update:modelValue', province.value)
+    await nextTick()
+    selects[2]!.vm.$emit('update:modelValue', city.value)
     await nextTick()
 
     bodyButton('绑定银行卡').click()
     await flushPromises()
-    expect(mocks.createSettle).toHaveBeenCalledTimes(1)
-    // SettlementApplyRequest：只收后四位，完整卡号不进请求体，也没有省市字段
-    expect(mocks.createSettle).toHaveBeenCalledWith('test-token', {
-      account_name: '张三',
-      bank_name: settlementBanks[0]!.label,
-      account_no_tail: '1234',
+
+    expect(mocks.openSettle).toHaveBeenCalledTimes(1)
+    expect(mocks.createSettle).not.toHaveBeenCalled()
+    // SettlementOpenRequest：完整卡号 + 预留手机号 + 证件号 + 开户省市，一次性进件
+    expect(mocks.openSettle).toHaveBeenCalledWith('test-token', {
       member_type: 'personal',
+      card_name: '张三',
+      card_id: '6222020200112233445',
+      tel_no: '13800000000',
+      bank_code: settlementBanks[0]!.value,
+      bank_name: settlementBanks[0]!.label,
+      bank_acct_type: 'private',
+      prov_code: province.value,
+      area_code: city.value,
+      cert_id: '110101199001011234',
+      cert_type: null,
     })
     wrapper.unmount()
   })

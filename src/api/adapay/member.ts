@@ -6,6 +6,7 @@ import type {
   MySettlementAccountChangePayload,
   MySettlementAccountPayload,
   MySettlementAccountSnapshot,
+  MySettlementOpenPayload,
 } from './types'
 
 type SettlementAccount = components['schemas']['SettlementAccountResponse']
@@ -90,6 +91,31 @@ export async function createMyAdapaySettlementAccount(
       body: JSON.stringify(payload),
     },
     '提交结算账户资料失败',
+  )
+  return toMemberStatus(account)
+}
+
+/**
+ * 对私自动开户：一次提交完整资料，后端直接向渠道建会员 + 绑卡。
+ *
+ * 与上面那条人工审核通道不同，这条路拿到渠道结算账户号后才算成功；完整卡号、预留手机号
+ * 与证件号只出现在请求体里，后端不落库、不进日志，响应只回后四位。
+ */
+export async function openMyAdapaySettlementAccount(
+  token: string,
+  payload: MySettlementOpenPayload,
+): Promise<AdapayMemberStatus> {
+  const account = await requestJson<SettlementAccount>(
+    '/payment/settlement-account/open',
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...authHeader(token),
+      },
+      body: JSON.stringify(payload),
+    },
+    '开通结算账户失败',
   )
   return toMemberStatus(account)
 }

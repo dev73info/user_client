@@ -250,6 +250,7 @@ declare module 'vue' {
     SearchRequirementDetailModal: typeof import('./src/components/search/SearchRequirementDetailModal.vue')['default']
     SearchResourceCard: typeof import('./src/components/search/SearchResourceCard.vue')['default']
     SettlementDialog: typeof import('./src/components/account/SettlementDialog.vue')['default']
+    SettlementOpenForm: typeof import('./src/components/account/SettlementOpenForm.vue')['default']
     ShareCardGenerator: typeof import('./src/components/ShareCardGenerator.vue')['default']
     ShareStats: typeof import('./src/components/ShareStats.vue')['default']
     SoldPurchaseRefundDialog: typeof import('./src/components/payment/SoldPurchaseRefundDialog.vue')['default']

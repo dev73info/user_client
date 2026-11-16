@@ -137,6 +137,7 @@ export const verifyDialogEntries: AccountDialogEntry[] = [
       loading: d.settle.settleLoading.value,
       saving: d.settle.settleSaving.value,
       bound: d.settle.settleBound.value,
+      openMode: d.settle.settleOpenMode.value,
       corporateLocked: d.settle.settleCorporateLocked.value,
       subjectMismatch: d.settle.settleSubjectMismatch.value,
       subjectLabel: d.settle.settleSubjectLabel.value,
@@ -148,11 +149,24 @@ export const verifyDialogEntries: AccountDialogEntry[] = [
       cardId: d.settle.settleForm.card_id,
       bankCode: d.settle.settleForm.bank_code,
       bankAcctType: d.settle.settleForm.bank_acct_type,
+      telNo: d.settle.settleForm.tel_no,
+      certId: d.settle.settleForm.cert_id,
+      provCode: d.settle.settleForm.prov_code,
+      areaCode: d.settle.settleForm.area_code,
+      cities: d.settle.settleCities.value,
     }),
     (d) => ({
       'update:card-id': (value: string) => (d.settle.settleForm.card_id = value),
       'update:bank-code': (value: string) => (d.settle.settleForm.bank_code = value),
       'update:bank-acct-type': (value: string) => (d.settle.settleForm.bank_acct_type = value),
+      'update:tel-no': (value: string) => (d.settle.settleForm.tel_no = value),
+      'update:cert-id': (value: string) => (d.settle.settleForm.cert_id = value),
+      // 省份一变，旧城市编码就不再属于该省，先清空再让用户重选
+      'update:prov-code': (value: string) => {
+        d.settle.settleForm.prov_code = value
+        d.settle.settleForm.area_code = ''
+      },
+      'update:area-code': (value: string) => (d.settle.settleForm.area_code = value),
       submit: d.settle.saveSettleAccount,
       cancel: d.settle.closeSettleDialog,
       'fix-material': d.page.goFixSettleMaterial,
