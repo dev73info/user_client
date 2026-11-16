@@ -3004,8 +3004,8 @@ export interface paths {
         put?: never;
         post?: never;
         /**
-         * 注销自己的账号
-         * @description **需要登录**（`Authorization: Bearer <平台会话令牌>`），但**不挂端点权限码**——只能注销当前登录的这个账号，归属即权限。注销是**不可逆**的：账号随即进入关闭状态，已签发的全部令牌当场失效，之后用这个账号登录回 403 `ACCOUNT_CLOSED`。唯一的超级管理员不允许注销（否则平台会失去最后一个能管配置的账号），回回 400`CANNOT_DELETE_SUPER_ADMIN`——只有一位超管时这条会命中，有多位时不影响。用户记录不存在（例如令牌指向的账号已被删）回 404 `USER_NOT_FOUND`。
+         * 注销账号（已改为申请制）
+         * @description **已废弃**：注销不再允许直接关闭账号，必须走申请流程：先 `POST /api/auth/account/close-code` 发验证码，再`POST /api/auth/account/close-request` 提交申请。申请期内账号仍可登录，到期后只做软注销（`account_status = 'closed'`），历史合同、支付与业务记录保留。直接调用本端点回 409 `ACCOUNT_CLOSE_REQUEST_REQUIRED`。
          */
         delete: operations["auth_close_account"];
         options?: never;
@@ -4063,7 +4063,7 @@ export interface paths {
         post?: never;
         /**
          * 解绑第三方渠道
-         * @description **需要登录**（`Authorization: Bearer <平台会话令牌>`），**不挂端点权限码**——只能解绑当前登录人自己的绑定，归属即权限。路径参数 `provider` 取 `github` / `gitee` / `qq` / `wechat`（与 `/api/auth/providers` 同值）；其它取值回 400 `OAUTH_PROVIDER_UNSUPPORTED`。解绑不存在的绑定不报错：没有记录也回 200，前端不必先查一遍。解绑后该第三方账号可以再绑到别的平台账号。
+         * @description **已废弃**：解绑必须重新验证当前绑定的第三方账号。微信 / QQ 走扫码验证（`/api/auth/{wechat,qq}/unbind/qr/url`），GitHub / Gitee 走授权验证（`/api/auth/{github,gitee}/unbind/url`）。直接调用本端点一律回 409 `UNBIND_VERIFICATION_REQUIRED`，不会删除任何绑定。
          */
         delete: operations["auth_unbind"];
         options?: never;
@@ -12628,6 +12628,198 @@ export interface paths {
         };
         /** 记录分享访问并跳转 */
         get: operations["invite_redirect"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/auth/account/close-code": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 发送注销申请验证码
+         * @description **需要登录**，验证码发到当前账号的主邮箱。同一账号每小时最多 3 次；账号未绑定邮箱回 400 `CURRENT_EMAIL_REQUIRED`。
+         */
+        post: operations["auth_send_account_close_code"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/auth/account/close-request": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 读取注销申请状态
+         * @description **需要登录**。返回当前账号是否有待生效的注销申请、生效时间与剩余天数。
+         */
+        get: operations["auth_account_close_request"];
+        put?: never;
+        /**
+         * 提交账号注销申请
+         * @description **需要登录**。校验邮箱验证码后写入注销申请，申请期内账号仍可正常登录，到期后惰性落地软注销。生效期由管理端配置（默认 7 天，可在 1–90 天之间调整）。已有待生效申请回 409 `ACCOUNT_CLOSE_ALREADY_PENDING`；唯一超级管理员回 400 `CANNOT_DELETE_SUPER_ADMIN`。
+         */
+        post: operations["auth_request_account_close"];
+        /**
+         * 撤销注销申请
+         * @description **需要登录**。只撤销还没生效的申请；没有待生效申请回 409`ACCOUNT_CLOSE_NOT_PENDING`。
+         */
+        delete: operations["auth_cancel_account_close"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/auth/gitee/unbind/url": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 取 Gitee 解绑验证授权地址
+         * @description **需要登录**：与 GitHub 版同构，渠道换成 Gitee。结果由 `/api/auth/gitee/callback` 带回 `unbind=success` 或 `unbind_error`。
+         */
+        get: operations["auth_gitee_unbind_url"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/auth/github/unbind/url": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 取 GitHub 解绑验证授权地址
+         * @description **需要登录**：解绑 GitHub 前必须重新走一次 GitHub 授权，回调时用授权码换回的账号 ID 与当前绑定比对，一致才真正解绑。这样只拿到平台会话令牌的人无法把别人的 GitHub 直接摘掉。结果由 `/api/auth/github/callback` 带回 `unbind=success` 或 `unbind_error`。
+         */
+        get: operations["auth_github_unbind_url"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/auth/qq/unbind/qr/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 轮询 QQ 扫码解绑状态
+         * @description **免登录**：与微信版同构。
+         */
+        get: operations["auth_qq_unbind_qr_status"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/auth/qq/unbind/qr/url": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 取 QQ 扫码解绑验证二维码地址
+         * @description **需要登录**：与微信版同构，渠道换成 QQ。扫码的 QQ 必须与当前绑定一致。
+         */
+        get: operations["auth_qq_unbind_qr_url"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/auth/users/account-close-policy": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 读取注销申请期（管理端）
+         * @description **需要登录 + `user.config.get`**。返回账号注销的申请期天数（默认 7 天）。
+         */
+        get: operations["identity_admin_account_close_policy"];
+        /**
+         * 修改注销申请期（管理端）
+         * @description **需要登录 + `user.config.put`**。申请期只能在 1–90 天之间，保存后对新提交的申请即时生效；已经提交的申请仍按提交时的生效时间执行。
+         */
+        put: operations["identity_admin_update_account_close_policy"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/auth/wechat/unbind/qr/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 轮询微信扫码解绑状态
+         * @description **免登录**（凭 `state` + `poll_secret`）。`confirmed` 表示已解绑，`failed` 的 `message` 会明确说明「扫的微信不是当前绑定的那个」。
+         */
+        get: operations["auth_wechat_unbind_qr_status"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/auth/wechat/unbind/qr/url": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 取微信扫码解绑验证二维码地址
+         * @description **需要登录**：解绑微信前必须重新扫码验证，且扫码的微信必须与当前绑定一致。与扫码绑定同构（`state` + `poll_secret`、会话 5 分钟过期），但会话模式为 `unbind`，轮询成功后只表示「已解绑」，不签发令牌。
+         */
+        get: operations["auth_wechat_unbind_qr_url"];
         put?: never;
         post?: never;
         delete?: never;
@@ -23237,6 +23429,41 @@ export interface components {
             /** @description 出款条件是否就绪（渠道已装配 + 收款账户可用）。 */
             payout_channel_ready: boolean;
         };
+        /** @description 注销申请状态。 */
+        AccountCloseRequestResponse: {
+            /**
+             * Format: int64
+             * @description 距生效还剩几天（向上取整）；没有申请时为 `null`。
+             */
+            days_remaining?: number | null;
+            /** @description 生效时间（RFC 3339）；没有申请时为 `null`。 */
+            effective_at?: string | null;
+            /** @description 是否有待生效的申请。 */
+            pending: boolean;
+            /** @description 提交时间（RFC 3339）；没有申请时为 `null`。 */
+            requested_at?: string | null;
+        };
+        /** @description 注销申请请求体。 */
+        AccountCloseRequestRequest: {
+            /** @description 发到当前主邮箱的 6 位验证码。 */
+            email_code: string;
+        };
+        /** @description 注销申请期配置。 */
+        AccountClosePolicyResponse: {
+            /**
+             * Format: int64
+             * @description 申请期天数。
+             */
+            grace_days: number;
+        };
+        /** @description 修改注销申请期请求体。 */
+        AccountClosePolicyRequest: {
+            /**
+             * Format: int64
+             * @description 申请期天数（1–90）。
+             */
+            grace_days: number;
+        };
     };
     responses: never;
     parameters: never;
@@ -31473,20 +31700,6 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description 已注销，无响应体 */
-            204: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description 这是平台唯一剩下的超级管理员（`CANNOT_DELETE_SUPER_ADMIN`） */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
             /** @description 未登录，或令牌无效 / 已吊销 */
             401: {
                 headers: {
@@ -31494,8 +31707,8 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description 账号不存在（`USER_NOT_FOUND`） */
-            404: {
+            /** @description 需要先提交注销申请（`ACCOUNT_CLOSE_REQUEST_REQUIRED`） */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -34146,22 +34359,15 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description 已解绑（原本没有绑定时同样回 200），无响应体 */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description 渠道标识不受支持（`OAUTH_PROVIDER_UNSUPPORTED`） */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
             /** @description 未登录，或令牌无效 / 已吊销 */
             401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 解绑需要重新验证（`UNBIND_VERIFICATION_REQUIRED`） */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -58231,6 +58437,514 @@ export interface operations {
             };
             /** @description 邀请码无效 */
             400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    auth_send_account_close_code: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 已提交发信，无响应体 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 账号未绑定邮箱（`CURRENT_EMAIL_REQUIRED`）或邮件发送失败 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 未登录，或令牌无效 / 已吊销 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 触发限流 */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    auth_account_close_request: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 注销申请状态 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AccountCloseRequestResponse"];
+                };
+            };
+            /** @description 未登录，或令牌无效 / 已吊销 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    auth_request_account_close: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AccountCloseRequestRequest"];
+            };
+        };
+        responses: {
+            /** @description 申请已提交 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AccountCloseRequestResponse"];
+                };
+            };
+            /** @description 验证码缺失 / 错误，或这是唯一的超级管理员 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 未登录，或令牌无效 / 已吊销 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 已有待生效的注销申请（`ACCOUNT_CLOSE_ALREADY_PENDING`） */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    auth_cancel_account_close: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 已撤销，无响应体 */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 未登录，或令牌无效 / 已吊销 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 没有待生效的注销申请（`ACCOUNT_CLOSE_NOT_PENDING`） */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    auth_gitee_unbind_url: {
+        parameters: {
+            query?: {
+                /** @description 成功后跳回的地址；必须与落地页同源，否则回落到落地页。 */
+                redirect_to?: string;
+                /** @description 是否同时申请开发者角色。 */
+                request_dev_role?: boolean;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Gitee 授权地址 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AuthorizeUrlResponse"];
+                };
+            };
+            /** @description 渠道凭据不全或回调 / 落地页没配 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 未登录，或令牌无效 / 已吊销 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 该渠道未启用（`OAUTH_DISABLED`） */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 触发限流 */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 内部错误 */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    auth_github_unbind_url: {
+        parameters: {
+            query?: {
+                /** @description 成功后跳回的地址；必须与落地页同源，否则回落到落地页。 */
+                redirect_to?: string;
+                /** @description 是否同时申请开发者角色。 */
+                request_dev_role?: boolean;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description GitHub 授权地址 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AuthorizeUrlResponse"];
+                };
+            };
+            /** @description 渠道凭据不全或回调 / 落地页没配 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 未登录，或令牌无效 / 已吊销 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 该渠道未启用（`OAUTH_DISABLED`） */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 触发限流 */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 内部错误 */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    auth_qq_unbind_qr_status: {
+        parameters: {
+            query: {
+                /** @description 二维码上的 state。 */
+                state: string;
+                /** @description 建码时拿到的轮询凭据。 */
+                poll_secret: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 解绑状态 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["QrStatusResponse"];
+                };
+            };
+        };
+    };
+    auth_qq_unbind_qr_url: {
+        parameters: {
+            query?: {
+                /** @description 登录成功后跳回的前端地址；留空用渠道落地页。 */
+                redirect_to?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 二维码地址与轮询凭据 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["QrUrlResponse"];
+                };
+            };
+            /** @description 渠道凭据或回调配置不全 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 未登录，或令牌无效 / 已吊销 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 该渠道未启用（`OAUTH_DISABLED`） */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 内部错误 */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    identity_admin_account_close_policy: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 当前申请期 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AccountClosePolicyResponse"];
+                };
+            };
+            /** @description 未登录，或令牌无效 / 已吊销 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 没有 `user.config.get` */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 内部错误 */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    identity_admin_update_account_close_policy: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AccountClosePolicyRequest"];
+            };
+        };
+        responses: {
+            /** @description 修改后的申请期 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AccountClosePolicyResponse"];
+                };
+            };
+            /** @description 天数不在 1–90 之间（`INVALID_ARGUMENT`） */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 未登录，或令牌无效 / 已吊销 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 没有 `user.config.put` */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 内部错误 */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    auth_wechat_unbind_qr_status: {
+        parameters: {
+            query: {
+                /** @description 二维码上的 state。 */
+                state: string;
+                /** @description 建码时拿到的轮询凭据。 */
+                poll_secret: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 解绑状态 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["QrStatusResponse"];
+                };
+            };
+        };
+    };
+    auth_wechat_unbind_qr_url: {
+        parameters: {
+            query?: {
+                /** @description 登录成功后跳回的前端地址；留空用渠道落地页。 */
+                redirect_to?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 二维码地址与轮询凭据 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["QrUrlResponse"];
+                };
+            };
+            /** @description 渠道凭据或回调配置不全 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 未登录，或令牌无效 / 已吊销 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 该渠道未启用（`OAUTH_DISABLED`） */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 内部错误 */
+            500: {
                 headers: {
                     [name: string]: unknown;
                 };

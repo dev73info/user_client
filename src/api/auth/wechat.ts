@@ -2,6 +2,8 @@ import { authHeaders, requestJson } from '@/api/http'
 
 import type {
   AuthorizeUrlResp,
+  ProviderUnbindQrStatusResp,
+  ProviderUnbindQrUrlResp,
   WechatBindQrStatusResp,
   WechatBindQrUrlResp,
   WechatLoginQrStatusResp,
@@ -106,5 +108,31 @@ export async function getWechatBindQrStatus(
     `/auth/wechat/bind/qr/status?${query.toString()}`,
     { headers: {}, cache: 'no-store' },
     '查询微信绑定状态失败',
+  )
+}
+
+/** 取微信扫码解绑验证地址（`GET /auth/wechat/unbind/qr/url`，需要登录）。 */
+export async function getWechatUnbindQrUrl(
+  token: string,
+  redirectTo: string,
+): Promise<ProviderUnbindQrUrlResp> {
+  const query = new URLSearchParams({ redirect_to: redirectTo })
+  return requestJson<ProviderUnbindQrUrlResp>(
+    `/auth/wechat/unbind/qr/url?${query.toString()}`,
+    { headers: authHeaders(token) },
+    '微信解绑验证暂不可用',
+  )
+}
+
+/** 轮询微信扫码解绑状态（`GET /auth/wechat/unbind/qr/status`）。 */
+export async function getWechatUnbindQrStatus(
+  state: string,
+  pollSecret: string,
+): Promise<ProviderUnbindQrStatusResp> {
+  const query = new URLSearchParams({ state, poll_secret: pollSecret })
+  return requestJson<ProviderUnbindQrStatusResp>(
+    `/auth/wechat/unbind/qr/status?${query.toString()}`,
+    { headers: {}, cache: 'no-store' },
+    '查询微信解绑状态失败',
   )
 }

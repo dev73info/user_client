@@ -121,6 +121,7 @@ onMounted(async () => {
   auth.hydrate()
   dialogs.consumeWechatBindResult()
   dialogs.consumeProviderBindResult()
+  dialogs.consumeProviderUnbindResult()
   await dialogs.loadProfile()
   await dialogs.loadBoundProviders()
 

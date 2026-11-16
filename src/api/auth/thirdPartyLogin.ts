@@ -1,6 +1,12 @@
-import { requestJson } from '@/api/http'
+import { authHeaders, requestJson } from '@/api/http'
 
-import type { AuthorizeUrlResp, WechatLoginQrStatusResp, WechatLoginQrUrlResp } from './types'
+import type {
+  AuthorizeUrlResp,
+  ProviderUnbindQrStatusResp,
+  ProviderUnbindQrUrlResp,
+  WechatLoginQrStatusResp,
+  WechatLoginQrUrlResp,
+} from './types'
 
 /**
  * 取 QQ 网页授权地址（`GET /auth/qq/login/url`，免登录）。
@@ -41,5 +47,31 @@ export async function getQqLoginQrStatus(
     `/auth/qq/login/qr/status?${query.toString()}`,
     { headers: {}, cache: 'no-store' },
     '查询QQ扫码登录状态失败',
+  )
+}
+
+/** 取 QQ 扫码解绑验证地址（`GET /auth/qq/unbind/qr/url`，需要登录）。 */
+export async function getQqUnbindQrUrl(
+  token: string,
+  redirectTo: string,
+): Promise<ProviderUnbindQrUrlResp> {
+  const query = new URLSearchParams({ redirect_to: redirectTo })
+  return requestJson<ProviderUnbindQrUrlResp>(
+    `/auth/qq/unbind/qr/url?${query.toString()}`,
+    { headers: authHeaders(token) },
+    'QQ 解绑验证暂不可用',
+  )
+}
+
+/** 轮询 QQ 扫码解绑状态（`GET /auth/qq/unbind/qr/status`）。 */
+export async function getQqUnbindQrStatus(
+  state: string,
+  pollSecret: string,
+): Promise<ProviderUnbindQrStatusResp> {
+  const query = new URLSearchParams({ state, poll_secret: pollSecret })
+  return requestJson<ProviderUnbindQrStatusResp>(
+    `/auth/qq/unbind/qr/status?${query.toString()}`,
+    { headers: {}, cache: 'no-store' },
+    '查询 QQ 解绑状态失败',
   )
 }
