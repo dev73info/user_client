@@ -1,7 +1,7 @@
 import { createPinia, setActivePinia } from 'pinia'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { HttpError } from '@/api/http'
+import { HttpError, requestJson } from '@/api/http'
 import {
   AUTH_REFRESH_TOKEN_STORAGE_KEY,
   AUTH_TOKEN_STORAGE_KEY,
@@ -35,6 +35,15 @@ function tokenWithExpiry(delayMs: number): string {
   return 'header.' + payload + '.signature'
 }
 
+function response(status: number, body = ''): Response {
+  return {
+    ok: status >= 200 && status < 300,
+    status,
+    text: async () => body,
+    headers: new Headers({ 'content-type': 'application/json' }),
+  } as unknown as Response
+}
+
 const PRIVILEGES = {
   username: 'flow_user',
   role: 'user',
@@ -53,6 +62,10 @@ describe('刷新令牌持久化与会话恢复', () => {
     mocks.refreshToken.mockReset()
     mocks.getPrivileges.mockReset()
     mocks.getPrivileges.mockResolvedValue(PRIVILEGES)
+  })
+
+  afterEach(() => {
+    vi.unstubAllGlobals()
   })
 
   it('刷新令牌按独立 key 读写与清空', () => {
@@ -209,5 +222,72 @@ describe('刷新令牌持久化与会话恢复', () => {
     expect(mocks.refreshToken).toHaveBeenCalledWith(accessToken)
     expect(auth.token).toBe('legacy-access')
     expect(auth.refreshToken).toBe('legacy-refresh')
+  })
+
+  it('业务请求 401 时静默换票并用新令牌重放原请求', async () => {
+    localStorage.setItem(AUTH_TOKEN_STORAGE_KEY, tokenWithExpiry(60_000))
+    localStorage.setItem(AUTH_REFRESH_TOKEN_STORAGE_KEY, 'stored-refresh')
+    mocks.refreshSession.mockResolvedValue({
+      token: 'fresh-access',
+      refresh_token: 'fresh-refresh',
+      username: 'flow_user',
+      role: 'user',
+      roles: ['user'],
+    })
+
+    const auth = useAuthStore()
+    auth.hydrate()
+
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(
+        response(401, JSON.stringify({ code: 'INVALID_TOKEN', message: '令牌已过期' })),
+      )
+      .mockResolvedValueOnce(response(200, JSON.stringify({ ok: true })))
+    vi.stubGlobal('fetch', fetchMock)
+
+    const result = await requestJson<{ ok: boolean }>('/orders', { headers: auth.authHeaders() })
+
+    expect(result).toEqual({ ok: true })
+    expect(mocks.refreshSession).toHaveBeenCalledWith('stored-refresh')
+    expect(auth.token).toBe('fresh-access')
+    expect(auth.refreshToken).toBe('fresh-refresh')
+    expect(fetchMock).toHaveBeenCalledTimes(2)
+    const replayInit = fetchMock.mock.calls[1]?.[1] as RequestInit
+    expect(new Headers(replayInit.headers).get('Authorization')).toBe('Bearer fresh-access')
+  })
+
+  it('并发 401 只换一次票', async () => {
+    localStorage.setItem(AUTH_TOKEN_STORAGE_KEY, tokenWithExpiry(60_000))
+    localStorage.setItem(AUTH_REFRESH_TOKEN_STORAGE_KEY, 'stored-refresh')
+    let resolveRefresh!: (payload: unknown) => void
+    mocks.refreshSession.mockImplementation(
+      () => new Promise((resolve) => (resolveRefresh = resolve)),
+    )
+
+    const auth = useAuthStore()
+    auth.hydrate()
+
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(response(401, '{}'))
+      .mockResolvedValueOnce(response(401, '{}'))
+      .mockResolvedValueOnce(response(200, JSON.stringify({ ok: 1 })))
+      .mockResolvedValueOnce(response(200, JSON.stringify({ ok: 2 })))
+    vi.stubGlobal('fetch', fetchMock)
+
+    const first = requestJson('/a', { headers: auth.authHeaders() })
+    const second = requestJson('/b', { headers: auth.authHeaders() })
+    await vi.waitFor(() => expect(mocks.refreshSession).toHaveBeenCalledTimes(1))
+    resolveRefresh({
+      token: 'fresh-access',
+      refresh_token: 'fresh-refresh',
+      username: 'flow_user',
+      role: 'user',
+      roles: ['user'],
+    })
+
+    await expect(Promise.all([first, second])).resolves.toEqual([{ ok: 1 }, { ok: 2 }])
+    expect(mocks.refreshSession).toHaveBeenCalledTimes(1)
   })
 })

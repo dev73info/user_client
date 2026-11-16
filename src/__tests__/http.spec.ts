@@ -7,6 +7,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import { HttpError, apiUrl, authHeader, requestBlob, requestJson, requestText } from '@/api/http'
+import { createHttpClient } from '@/shared/api/httpClient'
 import { readErrorShape, toApiErrorShape } from '@/shared/api/httpError'
 import { AUTH_UNAUTHORIZED_EVENT } from '@/shared/api/authEvents'
 
@@ -232,5 +233,60 @@ describe('令牌头', () => {
 
   it('有令牌才发 Bearer', () => {
     expect(authHeader('tk-1')).toEqual({ Authorization: 'Bearer tk-1' })
+  })
+})
+
+describe('请求层：401 静默续期后重放', () => {
+  it('带 Authorization 的 401 换票后用新令牌重放一次', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(
+        response(401, JSON.stringify({ code: 'INVALID_TOKEN', message: '令牌已过期' })),
+      )
+      .mockResolvedValueOnce(response(200, JSON.stringify({ ok: true })))
+    vi.stubGlobal('fetch', fetchMock)
+    const refreshAccessToken = vi.fn(async () => 'new-token')
+    const client = createHttpClient({ refreshAccessToken })
+
+    const result = await client.requestJson<{ ok: boolean }>('/orders', {
+      headers: { Authorization: 'Bearer old-token' },
+    })
+
+    expect(result).toEqual({ ok: true })
+    expect(refreshAccessToken).toHaveBeenCalledTimes(1)
+    expect(fetchMock).toHaveBeenCalledTimes(2)
+    const replayInit = fetchMock.mock.calls[1]?.[1] as RequestInit
+    expect(new Headers(replayInit.headers).get('Authorization')).toBe('Bearer new-token')
+  })
+
+  it('没有 Authorization 的 401 不触发续期', async () => {
+    const fetchMock = vi.fn(async () =>
+      response(401, JSON.stringify({ code: 'INVALID_TOKEN', message: '未登录' })),
+    )
+    vi.stubGlobal('fetch', fetchMock)
+    const refreshAccessToken = vi.fn(async () => 'new-token')
+    const client = createHttpClient({ refreshAccessToken })
+
+    await expect(client.requestJson('/orders', {})).rejects.toMatchObject({ status: 401 })
+    expect(refreshAccessToken).not.toHaveBeenCalled()
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+  })
+
+  it('续期失败沿用原 401，交给未授权出口', async () => {
+    const fetchMock = vi.fn(async () =>
+      response(401, JSON.stringify({ code: 'INVALID_TOKEN', message: '未登录' })),
+    )
+    vi.stubGlobal('fetch', fetchMock)
+    const onUnauthorized = vi.fn()
+    const client = createHttpClient({
+      refreshAccessToken: async () => null,
+      onUnauthorized,
+    })
+
+    await expect(
+      client.requestJson('/orders', { headers: { Authorization: 'Bearer old-token' } }),
+    ).rejects.toMatchObject({ status: 401 })
+    expect(onUnauthorized).toHaveBeenCalledTimes(1)
+    expect(fetchMock).toHaveBeenCalledTimes(1)
   })
 })
