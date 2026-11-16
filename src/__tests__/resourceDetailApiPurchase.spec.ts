@@ -56,6 +56,7 @@ vi.mock('@/composables/useResourcePayment', async () => {
     useResourcePayment: () => ({
       order: ref(null),
       qrDataUrl: ref(''),
+      countdownText: ref(''),
       generation: ref(0),
       stopPoll: vi.fn(),
       invalidateSurface: vi.fn(),

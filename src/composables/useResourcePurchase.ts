@@ -60,6 +60,7 @@ export function useResourcePurchase(options: UseResourcePurchaseOptions) {
   const {
     order,
     qrDataUrl,
+    countdownText,
     generation: surfaceGeneration,
     stopPoll,
     invalidateSurface,
@@ -284,6 +285,7 @@ export function useResourcePurchase(options: UseResourcePurchaseOptions) {
     error,
     order,
     qrDataUrl,
+    countdownText,
     targetVersion,
     promoCode,
     showPromoHint,

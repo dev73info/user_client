@@ -35,6 +35,7 @@ function mountDialog(props: Record<string, unknown> = {}) {
       orderNo: '',
       orderStatus: '',
       qrDataUrl: '',
+      countdownText: '',
       ...props,
     },
     global: { stubs: { teleport: true } },
@@ -68,6 +69,18 @@ describe('ResourcePurchaseDialog', () => {
     expect(
       mountDialog({ showPromoHint: true }).get('.resource-purchase-modal__promo-hint').text(),
     ).toContain('推广者')
+  })
+
+  it('二维码出现时在底部展示支付倒计时', () => {
+    expect(mountDialog().find('.resource-purchase-modal__countdown').exists()).toBe(false)
+
+    const wrapper = mountDialog({
+      qrDataUrl: 'data:image/png;base64,test',
+      orderNo: 'RPTEST',
+      orderStatus: 'pending',
+      countdownText: '建议在 00:14:59 内完成支付',
+    })
+    expect(wrapper.get('.resource-purchase-modal__countdown').text()).toContain('00:14:59')
   })
 
   it('关闭态不渲染任何弹窗节点', () => {
