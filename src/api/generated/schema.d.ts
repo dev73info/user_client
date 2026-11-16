@@ -3455,6 +3455,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/auth/refresh-token": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 用刷新令牌换一对新令牌
+         * @description **免登录**：不读 `Authorization` 头、不用 Cookie，只认请求体里的 `refresh_token`。校验通过返回与登录相同的 `AuthResponse`：新的访问令牌、新的刷新令牌，以及两者各自的有效期（秒）。角色重新从数据库读取，刚改过角色的账号刷新后立即拿到新权限。刷新令牌无效 / 已过期 / 用途不对（例如把访问令牌填进来），或用户的令牌版本号已变化（改密 / 注销后）统一回 401；账户不存在也归到 401，不暴露账号是否存在。账号被停用或注销回 403，与登录同口径。**刷新令牌不能当访问令牌用**：它带 `typ = refresh`，任何需要登录的接口都会拒绝它。
+         */
+        post: operations["auth_refresh_token"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/auth/register": {
         parameters: {
             query?: never;
@@ -14245,6 +14265,18 @@ export interface components {
             updated_at: string;
         };
         AuthResponse: {
+            /**
+             * Format: int64
+             * @description 访问令牌有效期（秒）。
+             */
+            access_token_expires_in: number;
+            /** @description 刷新令牌：只能用于 `/api/auth/refresh-token` 换新令牌，不能当访问令牌用。 */
+            refresh_token: string;
+            /**
+             * Format: int64
+             * @description 刷新令牌有效期（秒）。
+             */
+            refresh_token_expires_in: number;
             /** @description 主角色。 */
             role: string;
             /** @description 全部角色。 */
@@ -17518,6 +17550,11 @@ export interface components {
             access_token_expire_minutes: number;
             /** @description 签名密钥（回显为 `***`；PUT 时传 `***` 或空串表示保持原值）。 */
             jwt_secret: string;
+            /**
+             * Format: int64
+             * @description 刷新令牌有效期（分钟）。
+             */
+            refresh_token_expire_minutes: number;
         };
         KnowledgeArticleResponse: {
             category: string;
@@ -19427,6 +19464,11 @@ export interface components {
         RefreshDailySettlementRequest: {
             /** @description 自然日，`YYYY-MM-DD`（东八区）。 */
             date: string;
+        };
+        /** @description 刷新令牌请求体。 */
+        RefreshTokenRequest: {
+            /** @description 登录 / 刷新时下发的刷新令牌。 */
+            refresh_token: string;
         };
         /** @description 退款请求体（对应 legacy `ResourceRefundRequest`）。 */
         RefundRequest: {
@@ -32429,6 +32471,51 @@ export interface operations {
                 };
             };
             /** @description 未登录，或令牌无效 / 已吊销 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 账号已被停用或注销 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 内部错误 */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    auth_refresh_token: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RefreshTokenRequest"];
+            };
+        };
+        responses: {
+            /** @description 新的访问令牌、刷新令牌与各自有效期 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AuthResponse"];
+                };
+            };
+            /** @description 刷新令牌无效 / 已过期 / 类型不对，或已被吊销 */
             401: {
                 headers: {
                     [name: string]: unknown;

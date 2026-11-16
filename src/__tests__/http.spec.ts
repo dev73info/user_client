@@ -162,24 +162,27 @@ describe('请求层：requestBlob', () => {
 })
 
 describe('请求层：401 分流', () => {
-  it.each(['/auth/login', '/auth/register', '/auth/reset-password'])(
-    '公开接口 %s 的 401 不派发未授权事件',
-    async (path) => {
-      const listener = vi.fn()
-      window.addEventListener(AUTH_UNAUTHORIZED_EVENT, listener)
-      vi.stubGlobal(
-        'fetch',
-        vi.fn(async () => response(401, '用户名或密码错误')),
-      )
+  it.each([
+    '/auth/login',
+    '/auth/register',
+    '/auth/reset-password',
+    '/auth/refresh',
+    '/auth/refresh-token',
+  ])('公开接口与换票接口 %s 的 401 不派发未授权事件', async (path) => {
+    const listener = vi.fn()
+    window.addEventListener(AUTH_UNAUTHORIZED_EVENT, listener)
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => response(401, '用户名或密码错误')),
+    )
 
-      await expect(requestJson(path, {}, '登录失败')).rejects.toMatchObject({
-        status: 401,
-        message: '用户名或密码错误',
-      })
-      expect(listener).not.toHaveBeenCalled()
-      window.removeEventListener(AUTH_UNAUTHORIZED_EVENT, listener)
-    },
-  )
+    await expect(requestJson(path, {}, '登录失败')).rejects.toMatchObject({
+      status: 401,
+      message: '用户名或密码错误',
+    })
+    expect(listener).not.toHaveBeenCalled()
+    window.removeEventListener(AUTH_UNAUTHORIZED_EVENT, listener)
+  })
 
   it('受保护接口的 401 派发未授权事件并抛统一文案', async () => {
     const listener = vi.fn()
