@@ -2,7 +2,13 @@ import { flushPromises } from '@vue/test-utils'
 import { nextTick, reactive } from 'vue'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { buttonByText, openEntry, renderView, stubMatchMedia } from '@/__tests__/accountViewHelpers'
+import {
+  buttonByExactText,
+  buttonByText,
+  openEntry,
+  renderView,
+  stubMatchMedia,
+} from '@/__tests__/accountViewHelpers'
 
 /**
  * 账号与安全页「改用户名 / 改邮箱 / 注销账号 / 注销结算账户」四个弹窗**在视图里**的接线。
@@ -16,7 +22,10 @@ const mocks = vi.hoisted(() => ({
   sendProfileEmailChangeCode: vi.fn(),
   updateProfileEmail: vi.fn(),
   getBoundProviders: vi.fn(),
-  closeAccount: vi.fn(),
+  getAccountCloseRequest: vi.fn(),
+  sendAccountCloseCode: vi.fn(),
+  requestAccountClose: vi.fn(),
+  cancelAccountClose: vi.fn(),
   closeSettle: vi.fn(),
   logout: vi.fn(),
   setToken: vi.fn(),
@@ -71,7 +80,10 @@ vi.mock('@/api/settings', () => ({
 vi.mock('@/api/auth', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/api/auth')>()),
   getBoundProviders: mocks.getBoundProviders,
-  closeAccount: mocks.closeAccount,
+  getAccountCloseRequest: mocks.getAccountCloseRequest,
+  sendAccountCloseCode: mocks.sendAccountCloseCode,
+  requestAccountClose: mocks.requestAccountClose,
+  cancelAccountClose: mocks.cancelAccountClose,
 }))
 
 vi.mock('@/api/adapay', async (importOriginal) => ({
@@ -102,7 +114,20 @@ beforeEach(() => {
   mocks.getBoundProviders.mockResolvedValue({ providers: [] })
   mocks.sendProfileEmailChangeCode.mockResolvedValue({})
   mocks.updateProfileEmail.mockResolvedValue({ email: 'new@example.com' })
-  mocks.closeAccount.mockResolvedValue({})
+  mocks.getAccountCloseRequest.mockResolvedValue({
+    pending: false,
+    requested_at: null,
+    effective_at: null,
+    days_remaining: null,
+  })
+  mocks.sendAccountCloseCode.mockResolvedValue(undefined)
+  mocks.requestAccountClose.mockResolvedValue({
+    pending: true,
+    requested_at: '2026-11-16T10:00:00+08:00',
+    effective_at: '2026-11-23T10:00:00+08:00',
+    days_remaining: 7,
+  })
+  mocks.cancelAccountClose.mockResolvedValue(undefined)
   mocks.closeSettle.mockResolvedValue({})
 })
 
@@ -123,22 +148,29 @@ describe('账号与安全页：改邮箱 / 两个注销弹窗的父子接线', (
     wrapper.unmount()
   })
 
-  it('注销账号：确认词没输对时点不动「确认注销」，输对后注销并退出登录', async () => {
+  it('注销账号：发码 + 确认词 + 验证码后提交申请，不立即退出登录', async () => {
     const wrapper = await renderView(AccountCouponsView)
     await openEntry(wrapper, 'close')
+    await flushPromises()
 
-    const confirm = buttonByText(wrapper, '确认注销')
+    const confirm = buttonByExactText(wrapper, '提交注销申请')
     expect(confirm.attributes('disabled')).toBeDefined()
     await confirm.trigger('click')
     await flushPromises()
-    expect(mocks.closeAccount).not.toHaveBeenCalled()
+    expect(mocks.requestAccountClose).not.toHaveBeenCalled()
 
     await wrapper.find('#account-close-confirmation').setValue('注销账号')
-    await buttonByText(wrapper, '确认注销').trigger('click')
+    await buttonByText(wrapper, '发送验证码').trigger('click')
+    await flushPromises()
+    expect(mocks.sendAccountCloseCode).toHaveBeenCalledWith('test-token')
+
+    await wrapper.find('#account-close-email-code').setValue('123456')
+    await buttonByExactText(wrapper, '提交注销申请').trigger('click')
     await flushPromises()
 
-    expect(mocks.closeAccount).toHaveBeenCalledWith('test-token')
-    expect(mocks.logout).toHaveBeenCalled()
+    expect(mocks.requestAccountClose).toHaveBeenCalledWith('test-token', '123456')
+    expect(mocks.logout).not.toHaveBeenCalled()
+    expect(wrapper.text()).toContain('注销申请处理中')
     wrapper.unmount()
   })
 

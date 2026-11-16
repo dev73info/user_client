@@ -1,5 +1,6 @@
 import type { MockRouteTable } from '../router'
 
+import { accountSecurityRoutes } from './accountSecurity'
 import { activityRoutes } from './activities'
 import { authRoutes } from './auth'
 import { badgeRoutes } from './badges'
@@ -35,6 +36,7 @@ export const mockRouteTables: readonly MockRouteTable[] = [
   communityRoutes,
   notificationRoutes,
   ticketRoutes,
+  accountSecurityRoutes,
   commonRoutes,
   authRoutes,
 ]

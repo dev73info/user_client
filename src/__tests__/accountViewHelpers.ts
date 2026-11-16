@@ -29,6 +29,15 @@ export function buttonByText(wrapper: VueWrapper, text: string) {
   return found
 }
 
+/** 按完整文案找按钮：入口卡片文案里可能包含同名片段，避免误点入口。 */
+export function buttonByExactText(wrapper: VueWrapper, text: string) {
+  const found = wrapper.findAll('button').find((button) => button.text().trim() === text)
+  if (!found) {
+    throw new Error(`弹窗里找不到按钮：${text}`)
+  }
+  return found
+}
+
 /** 挂整页：TDialog 默认 teleport 到 body，这里就地渲染以便按选择器定位弹窗内容。 */
 export async function renderView(component: Component): Promise<VueWrapper> {
   const wrapper = mount(component, {

@@ -1,19 +1,24 @@
 <script setup lang="ts">
-import { onBeforeUnmount, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import QRCode from 'qrcode'
 
-import { getWechatBindQrStatus } from '@/api/auth'
+import { getQqUnbindQrStatus, getWechatBindQrStatus, getWechatUnbindQrStatus } from '@/api/auth'
 import { qrPollDelayMs } from '@/utils/qrPollBackoff'
 
-const props = defineProps<{
-  visible: boolean
-  url: string
-  state: string
-  pollSecret: string
-}>()
+const props = withDefaults(
+  defineProps<{
+    visible: boolean
+    url: string
+    state: string
+    pollSecret: string
+    provider?: 'wechat' | 'qq'
+    mode?: 'bind' | 'unbind'
+  }>(),
+  { provider: 'wechat', mode: 'bind' },
+)
 const emit = defineEmits<{
   (e: 'close'): void
-  (e: 'bound', result: { success: boolean; error?: string }): void
+  (e: 'completed', result: { success: boolean; error?: string }): void
 }>()
 
 const qrDataUrl = ref('')
@@ -22,6 +27,22 @@ const polling = ref(false)
 let pollTimer: ReturnType<typeof setTimeout> | null = null
 let generation = 0
 
+const providerText = computed(() => (props.provider === 'qq' ? 'QQ' : '微信'))
+const actionText = computed(() => (props.mode === 'unbind' ? '解绑' : '绑定'))
+const brandIcon = computed(() =>
+  props.provider === 'qq' ? '/icons/qq_loge.png' : '/icons/wechat.svg',
+)
+
+function readQrStatus(state: string, pollSecret: string) {
+  if (props.provider === 'qq') {
+    return getQqUnbindQrStatus(state, pollSecret)
+  }
+  if (props.mode === 'unbind') {
+    return getWechatUnbindQrStatus(state, pollSecret)
+  }
+  return getWechatBindQrStatus(state, pollSecret)
+}
+
 function stopPolling() {
   if (pollTimer) {
     clearTimeout(pollTimer)
@@ -29,26 +50,28 @@ function stopPolling() {
   }
 }
 
-async function checkBind(): Promise<boolean> {
+async function checkStatus(): Promise<boolean> {
   if (!props.visible || !props.state) return false
   if (polling.value) return true
   const currentGeneration = generation
   polling.value = true
   try {
-    const result = await getWechatBindQrStatus(props.state, props.pollSecret)
+    const result = await readQrStatus(props.state, props.pollSecret)
     if (currentGeneration !== generation || !props.visible) return false
     if (result.status === 'confirmed') {
       stopPolling()
-      emit('bound', { success: true })
+      emit('completed', { success: true })
       return false
     }
     if (result.status === 'failed' || result.status === 'expired') {
       stopPolling()
-      emit('bound', {
+      emit('completed', {
         success: false,
         error:
           result.message ||
-          (result.status === 'expired' ? '二维码已过期，请重新发起绑定' : '绑定未完成'),
+          (result.status === 'expired'
+            ? `二维码已过期，请重新发起${actionText.value}`
+            : `${actionText.value}未完成`),
       })
       return false
     }
@@ -68,7 +91,7 @@ function schedulePoll(attempt: number) {
 }
 
 async function pollOnce(attempt: number) {
-  if (!(await checkBind()) || !props.visible) return
+  if (!(await checkStatus()) || !props.visible) return
   schedulePoll(attempt + 1)
 }
 
@@ -79,7 +102,7 @@ async function prepare() {
   qrError.value = ''
   if (!props.visible || !props.url.trim() || !props.state) return
   if (!props.pollSecret) {
-    qrError.value = '绑定会话缺少轮询凭据，请重新发起绑定'
+    qrError.value = `${actionText.value}会话缺少轮询凭据，请重新发起${actionText.value}`
     return
   }
 
@@ -91,12 +114,12 @@ async function prepare() {
     })
   } catch {
     if (currentGeneration === generation) {
-      qrError.value = '二维码生成失败，请关闭后重新发起绑定'
+      qrError.value = `二维码生成失败，请关闭后重新发起${actionText.value}`
     }
     return
   }
   if (currentGeneration !== generation || !props.visible) return
-  if (await checkBind()) {
+  if (await checkStatus()) {
     if (currentGeneration === generation && props.visible) schedulePoll(1)
   }
 }
@@ -107,9 +130,12 @@ function close() {
   emit('close')
 }
 
-watch(() => [props.visible, props.url, props.state, props.pollSecret] as const, prepare, {
-  immediate: true,
-})
+watch(
+  () =>
+    [props.visible, props.url, props.state, props.pollSecret, props.provider, props.mode] as const,
+  prepare,
+  { immediate: true },
+)
 onBeforeUnmount(() => {
   generation += 1
   stopPolling()
@@ -123,20 +149,22 @@ onBeforeUnmount(() => {
         class="auth-modal wechat-authorization-modal"
         role="dialog"
         aria-modal="true"
-        aria-label="微信扫码绑定"
+        :aria-label="`${providerText}扫码${actionText}`"
       >
         <header class="wechat-authorization-modal__head">
           <span class="wechat-authorization-modal__brand" aria-hidden="true">
-            <img src="/icons/wechat.svg" alt="" />
+            <img :src="brandIcon" alt="" />
           </span>
           <div class="wechat-authorization-modal__titles">
-            <h3>绑定 73Info 微信</h3>
-            <p class="wechat-authorization-modal__subtitle">扫码确认授权</p>
+            <h3>{{ actionText }} 73Info {{ providerText }}</h3>
+            <p class="wechat-authorization-modal__subtitle">
+              {{ mode === 'unbind' ? '扫码确认当前绑定' : '扫码确认授权' }}
+            </p>
           </div>
           <button
             class="wechat-authorization-modal__close"
             type="button"
-            aria-label="关闭微信扫码绑定"
+            :aria-label="`关闭${providerText}扫码${actionText}`"
             @click="close"
           >
             ×
@@ -144,18 +172,20 @@ onBeforeUnmount(() => {
         </header>
         <p class="wechat-authorization-modal__intro">
           <span class="wechat-authorization-modal__intro-text"
-            >请用手机微信扫描二维码，在微信中确认授权后即可完成绑定。</span
+            >请用手机{{ providerText }}扫描二维码，在{{ providerText }}中确认{{
+              mode === 'unbind' ? '这是当前绑定的账号' : '授权'
+            }}后即可完成{{ actionText }}。</span
           >
         </p>
         <div class="wechat-authorization-modal__qr" aria-live="polite">
-          <img v-if="qrDataUrl" :src="qrDataUrl" alt="微信扫码绑定二维码" />
+          <img v-if="qrDataUrl" :src="qrDataUrl" :alt="`${providerText}扫码${actionText}二维码`" />
           <span v-else :role="qrError ? 'alert' : undefined">{{
             qrError || '二维码生成中...'
           }}</span>
         </div>
         <p class="wechat-authorization-modal__hint">
           <span class="wechat-authorization-modal__hint-text"
-            >扫码后请保持本页面打开，授权成功后会自动完成绑定。</span
+            >扫码后请保持本页面打开，{{ actionText }}成功后会自动同步。</span
           >
         </p>
         <div class="auth-modal-actions">

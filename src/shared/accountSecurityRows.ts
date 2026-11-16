@@ -23,7 +23,7 @@ export function buildSecurityGroups(state: SecurityRowsState): AccountEntryGroup
       desc: unavailable
         ? '绑定状态未确认，请重试'
         : bound
-          ? '已绑定，点击可解除绑定'
+          ? '已绑定，解绑需重新验证'
           : '绑定后可扫码快捷登录',
       icon: Connection,
       status: unavailable
@@ -72,7 +72,7 @@ export function buildSecurityGroups(state: SecurityRowsState): AccountEntryGroup
           desc: unavailable
             ? '绑定状态未确认，请重试'
             : state.wechatBound
-              ? '已绑定，点击可解除绑定'
+              ? '已绑定，解绑需扫码验证'
               : '绑定后可扫码快捷登录',
           icon: Connection,
           locked: unavailable,
@@ -95,7 +95,7 @@ export function buildSecurityGroups(state: SecurityRowsState): AccountEntryGroup
         {
           key: 'close',
           title: '注销账号',
-          desc: '注销后账号与数据不可恢复',
+          desc: '提交注销申请，等待期结束后停用账号；历史数据保留',
           icon: Warning,
           danger: true,
         },

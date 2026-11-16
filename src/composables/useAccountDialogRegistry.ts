@@ -169,9 +169,9 @@ export function useAccountDialogRegistry(deps: AccountDialogDeps) {
     twoFactor: twoFactor.twoFactorDialogVisible,
     closeAccount: closeAccount.accountCloseDialogVisible,
     wechatQr: computed({
-      get: () => provider.wechatBindQr.visible,
+      get: () => provider.providerQr.visible,
       set: (next: boolean) => {
-        provider.wechatBindQr.visible = next
+        provider.providerQr.visible = next
       },
     }),
   }
@@ -274,6 +274,7 @@ export function useAccountDialogRegistry(deps: AccountDialogDeps) {
     providerLoadError: provider.loadError,
     consumeWechatBindResult: provider.consumeWechatBindResult,
     consumeProviderBindResult: provider.consumeProviderBindResult,
+    consumeProviderUnbindResult: provider.consumeProviderUnbindResult,
     refreshAdapayMember: settle.refreshAdapayMember,
     openSettleDialog: settle.openSettleDialog,
   }
