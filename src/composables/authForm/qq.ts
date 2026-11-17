@@ -3,6 +3,7 @@ import { onBeforeUnmount, ref } from 'vue'
 import type { Router } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { getQqLoginQrStatus, getQqLoginQrUrl, getQqLoginUrl } from '@/api/auth'
+import { resolveAuthReturn } from '@/shared/auth/portalAuthQuery'
 import { isQqBrowser } from '@/shared/auth/browser'
 import { qrPollDelayMs } from '@/utils/qrPollBackoff'
 import { TMessage } from 'ui_73info'
@@ -44,8 +45,7 @@ export function useQqLogin({
         auth.setToken(result.token)
         TMessage.success('登录成功')
         await auth.fetchProfile(true).catch(() => undefined)
-        const homeHref = router.resolve({ name: 'home' }).href
-        await router.replace(homeHref)
+        await router.replace(resolveAuthReturn(router.currentRoute.value))
         return
       }
     } catch {

@@ -1,5 +1,4 @@
 import { ref } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
 import { TMessage } from 'ui_73info'
 
 import { HttpError } from '@/api/http'
@@ -11,6 +10,7 @@ import {
 } from '@/api/resources'
 import { describeBackendError } from '@/shared/backendErrorText'
 import { useAuthStore } from '@/stores/auth'
+import { usePortalAuthPrompt } from '@/composables/usePortalAuthPrompt'
 
 export type UseResourceLikeOptions = {
   /** 当前资源编号（拿不到就只提示，不请求） */
@@ -33,22 +33,14 @@ export type UseResourceLikeOptions = {
  * 其余错误原样把后端文案 toast 出来。
  */
 export function useResourceLike(options: UseResourceLikeOptions) {
-  const route = useRoute()
-  const router = useRouter()
   const auth = useAuthStore()
+  const { openLogin: promptLogin } = usePortalAuthPrompt()
 
   const submitting = ref(false)
 
   function openLogin() {
     TMessage.info('请先登录后再点赞')
-    void router.push({
-      name: 'home',
-      query: {
-        modal: 'auth',
-        mode: 'login',
-        redirect_to: route.fullPath,
-      },
-    })
+    void promptLogin()
   }
 
   async function toggle() {

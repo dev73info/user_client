@@ -5,7 +5,11 @@ import { useAuthForm } from '@/composables/useAuthForm'
 
 const mocks = vi.hoisted(() => ({
   auth: { loading: false, setToken: vi.fn(), fetchProfile: vi.fn().mockResolvedValue(undefined) },
-  router: { resolve: vi.fn(() => ({ href: '/' })), replace: vi.fn().mockResolvedValue(undefined) },
+  router: {
+    resolve: vi.fn(() => ({ href: '/' })),
+    replace: vi.fn().mockResolvedValue(undefined),
+    currentRoute: { value: { path: '/', query: {}, hash: '' } },
+  },
   showToast: vi.fn(),
   getUrl: vi.fn(),
   getStatus: vi.fn(),
@@ -115,7 +119,7 @@ describe('QQ direct authorization', () => {
     expect(mocks.getStatus).toHaveBeenCalledWith('test', 'test-secret')
     expect(mocks.auth.setToken).toHaveBeenCalledWith('qq-token')
     expect(mocks.auth.fetchProfile).toHaveBeenCalledWith(true)
-    expect(mocks.router.replace).toHaveBeenCalledWith('/')
+    expect(mocks.router.replace).toHaveBeenCalledWith({ path: '/', query: {}, hash: '' })
     const calls = mocks.getStatus.mock.calls.length
     await vi.advanceTimersByTimeAsync(4000)
     expect(mocks.getStatus).toHaveBeenCalledTimes(calls)

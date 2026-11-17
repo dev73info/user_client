@@ -3,6 +3,7 @@ import { onBeforeUnmount, reactive, ref } from 'vue'
 import type { Router } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { getWechatLoginUrl, getWechatMpLoginQrUrl } from '@/api/auth'
+import { resolveAuthReturn } from '@/shared/auth/portalAuthQuery'
 import { isWechatBrowser } from '@/shared/auth/browser'
 import { TMessage } from 'ui_73info'
 
@@ -124,8 +125,7 @@ export function useWechatLogin({
     auth.setToken(token)
     TMessage.success('登录成功')
     await auth.fetchProfile(true).catch(() => undefined)
-    const homeHref = router.resolve({ name: 'home' }).href
-    await router.replace(homeHref)
+    await router.replace(resolveAuthReturn(router.currentRoute.value))
   }
   return {
     wechatLoginLoading,

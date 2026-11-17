@@ -10,6 +10,7 @@ import {
 } from '@/api/resources'
 import { describeBackendError } from '@/shared/backendErrorText'
 import { useAuthStore } from '@/stores/auth'
+import { usePortalAuthPrompt } from '@/composables/usePortalAuthPrompt'
 
 /** 评论区的登录 / 实名栅栏：`action` 为空表示只是一句说明，不给按钮 */
 export type CommentGate = {
@@ -44,6 +45,7 @@ export function useResourceComments(options: UseResourceCommentsOptions) {
   const route = useRoute()
   const router = useRouter()
   const auth = useAuthStore()
+  const { openLogin: promptLogin } = usePortalAuthPrompt()
 
   const comments = ref<PublicMcResourceCommentItem[]>([])
   const loading = ref(false)
@@ -87,14 +89,7 @@ export function useResourceComments(options: UseResourceCommentsOptions) {
 
   function openLogin() {
     TMessage.info('请先登录后再发表评论')
-    void router.push({
-      name: 'home',
-      query: {
-        modal: 'auth',
-        mode: 'login',
-        redirect_to: route.fullPath,
-      },
-    })
+    void promptLogin()
   }
 
   function openRealnamePage() {
