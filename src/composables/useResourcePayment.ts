@@ -22,6 +22,8 @@ export type UseResourcePaymentOptions = {
 export function useResourcePayment(options: UseResourcePaymentOptions) {
   const order = ref<ResourcePurchaseOrder | null>(null)
   const qrDataUrl = ref('')
+  /** 本次支付码真正展示的时间：后端复用旧 pending 单时，倒计时从这里起算。 */
+  const surfaceShownAt = ref(0)
   /** 支付面世代号：每次作废（切渠道 / 重新拉单）递增。 */
   const generation = ref(0)
   let pollTimer: ReturnType<typeof setInterval> | null = null
@@ -33,8 +35,9 @@ export function useResourcePayment(options: UseResourcePaymentOptions) {
   /**
    * 二维码下方的支付倒计时。
    *
-   * 资源购买订单只回了 `created_at`，没有渠道截止时间；文案由共享函数生成，
-   * 不自动关单，也不把 0 点解释成渠道已失效。
+   * 资源购买订单只回了 `created_at`，没有渠道截止时间；且后端会复用 pending 单，
+   * `created_at` 可能远早于本次展示，所以按「created_at 与本次展示时间的较晚者」起算。
+   * 文案由共享函数生成，不自动关单，也不把 0 点解释成渠道已失效。
    */
   const countdownText = computed(() =>
     resourcePaymentCountdownText({
@@ -42,8 +45,14 @@ export function useResourcePayment(options: UseResourcePaymentOptions) {
       status: order.value?.status ?? '',
       hasQr: Boolean(qrDataUrl.value),
       now: nowTick.value,
+      surfaceShownAt: surfaceShownAt.value,
     }),
   )
+
+  /** 记录支付码已展示；由渲染二维码的两条路径（本地画码 / 微信授权码）共用。 */
+  function markSurfaceShown() {
+    surfaceShownAt.value = Date.now()
+  }
 
   function stopPoll() {
     if (pollTimer !== null) {
@@ -61,6 +70,7 @@ export function useResourcePayment(options: UseResourcePaymentOptions) {
     generation.value += 1
     order.value = null
     qrDataUrl.value = ''
+    surfaceShownAt.value = 0
   }
 
   function clearQr() {
@@ -94,6 +104,9 @@ export function useResourcePayment(options: UseResourcePaymentOptions) {
       return
     }
     qrDataUrl.value = dataUrl
+    if (dataUrl) {
+      markSurfaceShown()
+    }
   }
 
   async function pollOnce(orderNo: string, pollGeneration: number = generation.value) {
@@ -141,6 +154,7 @@ export function useResourcePayment(options: UseResourcePaymentOptions) {
     generation,
     stopPoll,
     invalidateSurface,
+    markSurfaceShown,
     clearQr,
     renderQr,
     pollOnce,
