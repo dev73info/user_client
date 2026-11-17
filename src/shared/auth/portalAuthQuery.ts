@@ -1,8 +1,4 @@
-import type {
-  LocationQuery,
-  LocationQueryRaw,
-  RouteLocationRaw,
-} from 'vue-router'
+import type { LocationQuery, LocationQueryRaw, RouteLocationRaw } from 'vue-router'
 
 const AUTH_MODAL_QUERY_KEYS = ['modal', 'mode', 'redirect_to'] as const
 const AUTH_QUERY_KEYS = [
