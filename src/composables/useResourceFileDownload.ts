@@ -1,4 +1,3 @@
-import { useRoute, useRouter } from 'vue-router'
 import { TMessage } from 'ui_73info'
 
 import { HttpError } from '@/api/http'
@@ -12,6 +11,7 @@ import {
 import { describeBackendError } from '@/shared/backendErrorText'
 import { isPurchaseRequiredError } from '@/shared/resourceSale'
 import { useAuthStore } from '@/stores/auth'
+import { usePortalAuthPrompt } from '@/composables/usePortalAuthPrompt'
 import { useResourceDownload } from '@/composables/useResourceDownload'
 
 /**
@@ -49,9 +49,8 @@ export function useResourceFileDownload(options: {
     version: PublicMcResourceVersionItem | null,
   ) => PublicMcResourceVersionItem | null
 }) {
-  const route = useRoute()
-  const router = useRouter()
   const auth = useAuthStore()
+  const { openLogin } = usePortalAuthPrompt()
   const { triggerDownload } = useResourceDownload()
 
   /** 购买目标版本：与 403 兜底同一套换算，避免把不可单卖的 0 价版本送去下单。 */
@@ -79,14 +78,7 @@ export function useResourceFileDownload(options: {
       return true
     }
     TMessage.info('请先登录后再下载资源')
-    void router.push({
-      name: 'home',
-      query: {
-        modal: 'auth',
-        mode: 'login',
-        redirect_to: route.fullPath,
-      },
-    })
+    void openLogin()
     return false
   }
 

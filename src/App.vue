@@ -4,6 +4,7 @@ import { useRoute } from 'vue-router'
 
 import AppDownloadCard from '@/components/app/AppDownloadCard.vue'
 import AppSiteFooter from '@/components/app/AppSiteFooter.vue'
+import PortalAuthModalHost from '@/components/app/PortalAuthModalHost.vue'
 import PortalTopNav from '@/components/PortalTopNav.vue'
 import PortalMobileDock from '@/components/PortalMobileDock.vue'
 import SupportChatWidget from '@/components/SupportChatWidget.vue'
@@ -40,6 +41,10 @@ const showSiteFooter = computed(
 )
 const immersiveWorkbench = computed(() =>
   route.matched.some((record) => record.meta.workbenchShell === true),
+)
+// 首页登录弹窗由 HomeView 自己渲染；其余页面由外壳原地承接 `modal=auth`。
+const showPortalAuthModal = computed(
+  () => route.name !== 'home' && route.query?.modal === 'auth',
 )
 
 watch(
@@ -95,6 +100,7 @@ watch(
     <!-- 全局资源下载进度浮层：切换路由不中断下载，浮层持续展示进度 -->
     <AppDownloadCard />
     <SupportChatWidget />
+    <PortalAuthModalHost v-if="showPortalAuthModal" />
 
     <!-- 语音引导：全站一份状态。Offer 负责首次提示，Overlay 负责遮罩与步骤卡片；
          挂在 App 而不是工作台外壳，门户的需求大厅（/requirement-hall）也能用。 -->

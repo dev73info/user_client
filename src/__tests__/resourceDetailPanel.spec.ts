@@ -30,7 +30,12 @@ const auth = {
 }
 
 vi.mock('vue-router', () => ({
-  useRoute: () => ({ query: {}, fullPath: '/resources?resource=7' }),
+  useRoute: () => ({
+    path: '/resources',
+    query: { resource: '7' },
+    fullPath: '/resources?resource=7',
+    hash: '',
+  }),
   useRouter: () => ({ push: mocks.push }),
 }))
 
@@ -138,8 +143,32 @@ describe('ResourceDetailPanel 挂载烟测', () => {
     await like.trigger('click')
     expect(mocks.push).toHaveBeenCalledTimes(1)
     expect(mocks.push.mock.calls[0]?.[0]).toMatchObject({
-      name: 'home',
-      query: { modal: 'auth', mode: 'login' },
+      path: '/resources',
+      query: {
+        resource: '7',
+        modal: 'auth',
+        mode: 'login',
+        redirect_to: '/resources?resource=7',
+      },
+    })
+  })
+
+  it('未登录点购买：登录弹窗留在当前资源页，不跳回首页', async () => {
+    const wrapper = mountPanel()
+    await flushPromises()
+    mocks.push.mockClear()
+
+    await wrapper.get('.resource-detail-page__primary-btn').trigger('click')
+
+    expect(mocks.push).toHaveBeenCalledTimes(1)
+    expect(mocks.push.mock.calls[0]?.[0]).toMatchObject({
+      path: '/resources',
+      query: {
+        resource: '7',
+        modal: 'auth',
+        mode: 'login',
+        redirect_to: '/resources?resource=7',
+      },
     })
   })
 

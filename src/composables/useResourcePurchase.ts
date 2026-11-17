@@ -5,6 +5,7 @@ import { TMessage } from 'ui_73info'
 import { getAdapayClientPlatform } from '@/api/adapay'
 import { createResourcePurchase, type ResourcePurchaseOrder } from '@/api/resourcePurchase'
 import { useResourcePayment } from '@/composables/useResourcePayment'
+import { usePortalAuthPrompt } from '@/composables/usePortalAuthPrompt'
 import {
   useResourcePurchaseTarget,
   type ResourcePurchaseTargetVersion,
@@ -40,6 +41,7 @@ export function useResourcePurchase(options: UseResourcePurchaseOptions) {
   const route = useRoute()
   const router = useRouter()
   const auth = useAuthStore()
+  const { openLogin } = usePortalAuthPrompt()
   const panelOpen = ref(false)
   const submitting = ref(false)
   const channel = ref<ResourcePayChannelUi>('alipay')
@@ -113,10 +115,7 @@ export function useResourcePurchase(options: UseResourcePurchaseOptions) {
   async function open(target: ResourcePurchaseTargetVersion | null = null) {
     if (!auth.isAuthed) {
       TMessage.info('请先登录后再购买')
-      void router.push({
-        name: 'home',
-        query: { modal: 'auth', mode: 'login', redirect_to: route.fullPath },
-      })
+      void openLogin()
       return
     }
     targetVersion.value = target
