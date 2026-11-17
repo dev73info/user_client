@@ -157,6 +157,7 @@ declare module 'vue' {
     PointsRewardCard: typeof import('./src/components/points/PointsRewardCard.vue')['default']
     PointsSummaryStrip: typeof import('./src/components/points/PointsSummaryStrip.vue')['default']
     PointsTransferDialog: typeof import('./src/components/points/PointsTransferDialog.vue')['default']
+    PortalAuthModalHost: typeof import('./src/components/app/PortalAuthModalHost.vue')['default']
     PortalBetaCard: typeof import('./src/components/home/PortalBetaCard.vue')['default']
     PortalHeroSection: typeof import('./src/components/home/PortalHeroSection.vue')['default']
     PortalMilestoneCard: typeof import('./src/components/home/PortalMilestoneCard.vue')['default']

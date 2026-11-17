@@ -1,11 +1,19 @@
 // 构建期 SEO 产物（sitemap / 静态快照页）共用的工具函数。
 // 注意：资源详情 slug 规则必须与前端 src/api/resourceTags.ts 的
 // getResourceDetailSlug / normalizeResourceOwnerSlug 完全一致。
+import { setDefaultResultOrder } from 'node:dns'
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 
 const DEFAULT_SITE_URL = 'https://73info.cn'
 const DEFAULT_API_BASE_URL = 'https://api.73info.cn'
+const BUILD_FETCH_HEADERS = {
+  Accept: 'application/json',
+  'User-Agent': '73info-seo-build/1.0 (+https://73info.cn)',
+}
+
+// GitHub Actions 出网是双栈；固定 IPv4 避免落到与站点规则不一致的 IPv6 入口。
+setDefaultResultOrder('ipv4first')
 
 let cachedEnv = new Map()
 
@@ -337,11 +345,15 @@ export async function fetchAgreementContent(apiBaseUrl, code) {
 async function fetchJson(apiBaseUrl, path) {
   const url = new URL(`${apiBaseUrl}${path.startsWith('/') ? path : `/${path}`}`)
   const response = await fetch(url, {
-    headers: { Accept: 'application/json' },
+    headers: BUILD_FETCH_HEADERS,
+    signal: AbortSignal.timeout(20_000),
   })
 
   if (!response.ok) {
-    throw new Error(`[seo] ${url} returned HTTP ${response.status}`)
+    const detail = await response.text().catch(() => '')
+    throw new Error(
+      `[seo] ${url} returned HTTP ${response.status}${detail ? `: ${detail.slice(0, 200)}` : ''}`,
+    )
   }
 
   return response.json()

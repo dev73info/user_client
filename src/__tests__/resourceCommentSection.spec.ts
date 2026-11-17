@@ -40,7 +40,12 @@ const comments: PublicMcResourceCommentItem[] = [
 ]
 
 vi.mock('vue-router', () => ({
-  useRoute: () => ({ query: {}, fullPath: '/resources?resource=7' }),
+  useRoute: () => ({
+    path: '/resources',
+    query: { resource: '7' },
+    fullPath: '/resources?resource=7',
+    hash: '',
+  }),
   useRouter: () => ({ push: mocks.push }),
 }))
 
@@ -107,8 +112,13 @@ describe('ResourceCommentSection', () => {
     await gate.get('.resource-detail-page__comment-action').trigger('click')
     expect(mocks.push).toHaveBeenCalledTimes(1)
     expect(mocks.push.mock.calls[0]?.[0]).toMatchObject({
-      name: 'home',
-      query: { modal: 'auth', mode: 'login' },
+      path: '/resources',
+      query: {
+        resource: '7',
+        modal: 'auth',
+        mode: 'login',
+        redirect_to: '/resources?resource=7',
+      },
     })
   })
 

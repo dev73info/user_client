@@ -1,8 +1,13 @@
 import { computed, onBeforeUnmount, watch } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 
 import { useAuthForm } from './useAuthForm'
 import type { AuthMode } from './useRequirementPublish'
+import {
+  buildAuthModalQuery,
+  resolveAuthReturn,
+  stripAuthQuery,
+} from '@/shared/auth/portalAuthQuery'
 import { useAuthStore } from '@/stores/auth'
 
 export type HomePortalAuthOptions = {
@@ -13,11 +18,13 @@ export type HomePortalAuthOptions = {
 }
 
 /**
- * 首页登录 / 微信扫码两个弹窗的**接线**（R047 从 `views/HomeView.vue` 拆出）。
+ * 门户登录 / 微信扫码两个弹窗的**接线**（R047 从 `views/HomeView.vue` 拆出，
+ * 现在首页与门户外壳共用）。
  *
  * 表单状态、OAuth 与短信走 `useAuthForm`；这里管的是视图那一层：路由决定的登录模式与标题、
  * `redirect_to` / 邀请码 / 分享参数的读回、`openAuth` 拼 query、登录成功后的收尾，
  * 以及把两个弹窗要的 props / 事件收成 `authModalBindings` 与 `wechatQrBindings`。
+ * `openAuth` / `closeAuth` 都落在**当前路由**上，不再把用户先送回首页。
  *
  * 行为与拆出前逐条一致：
  * - 注册模式带邀请码时，邀请码与分享参数同时回填表单（`watch`，`immediate`）；
@@ -26,6 +33,7 @@ export type HomePortalAuthOptions = {
  */
 export function useHomePortalAuth(options: HomePortalAuthOptions) {
   const auth = useAuthStore()
+  const route = useRoute()
   const router = useRouter()
 
   const authVisible = computed(() => options.routeQueryValue('modal') === 'auth')
@@ -130,15 +138,7 @@ export function useHomePortalAuth(options: HomePortalAuthOptions) {
     const shareTypeToKeep = authShareType.value.trim() || routeShareType.value
     const shareTargetIdToKeep = authShareTargetId.value.trim() || routeShareTargetId.value
     resetAuthForm()
-    const nextQuery: Record<string, string> = { modal: 'auth', mode }
-    const normalizedRedirectTo = redirectTo.trim()
-    if (
-      normalizedRedirectTo &&
-      normalizedRedirectTo.startsWith('/') &&
-      !normalizedRedirectTo.startsWith('//')
-    ) {
-      nextQuery.redirect_to = normalizedRedirectTo
-    }
+    const nextQuery = buildAuthModalQuery(route.query, mode, redirectTo)
     if (inviteCodeToKeep) {
       nextQuery.invite_code = inviteCodeToKeep
     }
@@ -153,12 +153,16 @@ export function useHomePortalAuth(options: HomePortalAuthOptions) {
       authShareType.value = shareTypeToKeep
       authShareTargetId.value = shareTargetIdToKeep
     }
-    router.push({ name: 'home', query: nextQuery })
+    router.push({ path: route.path, query: nextQuery, hash: route.hash })
   }
 
   function closeAuth() {
     acceptTerms.value = false
-    router.replace({ name: 'home' })
+    router.replace({
+      path: route.path,
+      query: stripAuthQuery(route.query),
+      hash: route.hash,
+    })
   }
 
   async function sendAuthCode() {
@@ -177,12 +181,10 @@ export function useHomePortalAuth(options: HomePortalAuthOptions) {
     const result = await submitAuthAction()
     if (result) {
       acceptTerms.value = false
+      void router.replace(resolveAuthReturn(route))
       if (authRedirectTarget.value) {
-        void router.replace(authRedirectTarget.value)
         return
       }
-
-      void router.replace({ name: 'home' })
       await options.refreshPortalData()
     }
   }

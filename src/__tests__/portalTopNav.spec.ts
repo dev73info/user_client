@@ -104,7 +104,7 @@ describe('门户顶栏最小挂载烟测', () => {
   it('按登录态铺出导航链接，当前路由那条是 active', async () => {
     const { wrapper } = await render()
 
-    expect(navLabels(wrapper)).toEqual(['首页', '资源项目', '需求大厅', '社区中心', '积分商城'])
+    expect(navLabels(wrapper)).toEqual(['首页', '资源项目', '需求大厅', '社区中心'])
     expect(wrapper.find('.portal-nav__link.active').text()).toBe('首页')
     // 未登录：登录 / 注册合并成一个按钮，默认打开登录
     expect(wrapper.find('.portal-text-btn').exists()).toBe(false)
@@ -120,6 +120,38 @@ describe('门户顶栏最小挂载烟测', () => {
 
     expect(wrapper.get('.portal-brand').text()).toContain('柒叁信息')
     expect(wrapper.get('.portal-brand').text()).not.toContain('73info.cn')
+
+    wrapper.unmount()
+  })
+
+  it('社区页点顶栏登录仍在当前页打开弹窗', async () => {
+    const { wrapper, router } = await render()
+    await router.push({ name: 'community', query: { post: '1' } })
+    await flushPromises()
+
+    await wrapper.find('.portal-solid-btn').trigger('click')
+    await flushPromises()
+
+    expect(router.currentRoute.value.name).toBe('community')
+    expect(router.currentRoute.value.query).toMatchObject({
+      post: '1',
+      modal: 'auth',
+      mode: 'login',
+    })
+    expect(router.currentRoute.value.query.redirect_to).toBe('/community?post=1')
+
+    wrapper.unmount()
+  })
+
+  it('首页点顶栏登录不带 redirect_to，登录后仍会重拉首页数据', async () => {
+    const { wrapper, router } = await render()
+
+    await wrapper.find('.portal-solid-btn').trigger('click')
+    await flushPromises()
+
+    expect(router.currentRoute.value.name).toBe('home')
+    expect(router.currentRoute.value.query).toMatchObject({ modal: 'auth', mode: 'login' })
+    expect(router.currentRoute.value.query.redirect_to).toBeUndefined()
 
     wrapper.unmount()
   })

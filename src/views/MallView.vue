@@ -18,10 +18,12 @@ import MallProductCard from '@/components/points/MallProductCard.vue'
 import { describeBackendError } from '@/shared/backendErrorText'
 import { parseBackendDateTime } from '@/shared/datetime'
 import { useAuthStore } from '@/stores/auth'
+import { usePortalAuthPrompt } from '@/composables/usePortalAuthPrompt'
 import { TButton, TEmpty, TMessage, TMessageBox, TTable, TTableColumn, TTag } from 'ui_73info'
 
 const router = useRouter()
 const auth = useAuthStore()
+const { openLogin } = usePortalAuthPrompt()
 const balance = ref(0)
 const products = ref<PointsProduct[]>([])
 const orders = ref<PointsRedeemOrder[]>([])
@@ -116,16 +118,12 @@ function goUsePromoCards() {
 }
 
 function goLogin() {
-  void router.push({
-    name: 'home',
-    query: { modal: 'auth', mode: 'login', redirect_to: '/mall' },
-  })
+  void openLogin()
 }
 
 onMounted(async () => {
   auth.hydrate()
-  // 积分商城挂在顶栏（未登录也看得见），所以这里不再把游客弹回首页：
-  // 页面上给一条「登录后查看」的说明，登录完还能回到这一页。
+  // 顶栏的积分商城入口只对登录用户展示；直达链接仍保留，页面上给一条「登录后查看」的说明。
   if (!auth.isAuthed) {
     return
   }
