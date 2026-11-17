@@ -28,7 +28,7 @@ function mountDialog(props: Record<string, unknown> = {}) {
       title: '红石自动化整合包',
       priceLabel: '¥9.90',
       showPromoHint: false,
-      channel: 'alipay',
+      channel: 'wechat',
       pointsMode: false,
       error: '',
       submitting: false,
@@ -43,14 +43,19 @@ function mountDialog(props: Record<string, unknown> = {}) {
 }
 
 describe('ResourcePurchaseDialog', () => {
-  it('渲染标题、金额与两个渠道；点微信只 emit 一次选渠道', async () => {
+  it('渲染标题、金额与两个渠道；微信在前且点微信只 emit 一次选渠道', async () => {
     const wrapper = mountDialog()
 
     expect(wrapper.get('.resource-purchase-modal__subject').text()).toContain('红石自动化整合包')
     expect(wrapper.get('.resource-purchase-modal__amount').text()).toContain('¥9.90')
     expect(wrapper.findAll('.payment-option')).toHaveLength(2)
+    expect(wrapper.findAll('.payment-option').map((item) => item.text())).toEqual([
+      '微信',
+      '支付宝',
+    ])
+    expect(wrapper.findAll('.payment-option')[0]?.classes()).toContain('active')
 
-    const wechat = wrapper.findAll('.payment-option')[1]
+    const wechat = wrapper.findAll('.payment-option')[0]
     await wechat?.trigger('click')
 
     expect(wrapper.emitted('select-channel')).toHaveLength(1)

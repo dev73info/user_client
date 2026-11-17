@@ -4,7 +4,7 @@ import type { ResourcePayChannelUi } from '@/shared/resourceSale'
 /**
  * 购买确认弹窗（Teleport 到 body）。
  *
- * 纯展示 + 两个动作出口：`close`（点遮罩或 ×）与 `select-channel`（支付宝 / 微信）。
+ * 纯展示 + 两个动作出口：`close`（点遮罩或 ×）与 `select-channel`（微信 / 支付宝）。
  * 下单、串行队列、支付面世代号、轮询都在 `useResourcePurchase` 里，
  * 这一层不碰 router / TMessage / api。
  *
@@ -93,19 +93,6 @@ const emit = defineEmits<{
             type="button"
             class="payment-option"
             :class="{
-              active: channel === 'alipay',
-              'payment-option--alipay': channel === 'alipay',
-            }"
-            :disabled="submitting"
-            @click="emit('select-channel', 'alipay')"
-          >
-            <img class="payment-option-icon" src="/icons/alipay.png" alt="" />
-            支付宝
-          </button>
-          <button
-            type="button"
-            class="payment-option"
-            :class="{
               active: channel === 'wechat',
               'payment-option--wechat': channel === 'wechat',
             }"
@@ -114,6 +101,19 @@ const emit = defineEmits<{
           >
             <img class="payment-option-icon" src="/icons/wechat-pay.png" alt="" />
             微信
+          </button>
+          <button
+            type="button"
+            class="payment-option"
+            :class="{
+              active: channel === 'alipay',
+              'payment-option--alipay': channel === 'alipay',
+            }"
+            :disabled="submitting"
+            @click="emit('select-channel', 'alipay')"
+          >
+            <img class="payment-option-icon" src="/icons/alipay.png" alt="" />
+            支付宝
           </button>
         </div>
         <div v-else class="payment-options" role="radiogroup" aria-label="支付方式选择">

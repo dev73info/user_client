@@ -186,7 +186,7 @@ beforeEach(() => {
     order_no: 'RPO-TEST',
     status: 'pending',
     resource_id: 158089,
-    pay_channel: 'alipay',
+    pay_channel: 'wx_pub',
     pay_url: '',
     amount_fen: 9900,
     amount_points: 0,
@@ -222,6 +222,7 @@ describe('ResourceDetailPanel · 接口资源的平台内购买入口', () => {
     const payload = mocks.createPurchase.mock.calls[0]?.[2] as Record<string, unknown>
     // 买断单不传 version_id，行为不能回归
     expect(payload).not.toHaveProperty('version_id')
+    expect(payload).toMatchObject({ pay_channel: 'wechat' })
 
     wrapper.unmount()
   })
