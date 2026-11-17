@@ -34,6 +34,13 @@ describe('resourcePaymentCountdownText', () => {
     )
   })
 
+  it('后端复用旧 pending 单时，按本次支付码展示时间重新起算', () => {
+    const shownAt = CREATED_AT_MS + 8 * 60 * 60 * 1000
+    expect(countdown({ now: shownAt + 1000, surfaceShownAt: shownAt })).toBe(
+      '建议在 00:14:59 内完成支付',
+    )
+  })
+
   it('创建时间缺失或非法时不展示倒计时', () => {
     expect(countdown({ createdAt: '' })).toBe('')
     expect(countdown({ createdAt: 'not-a-date' })).toBe('')

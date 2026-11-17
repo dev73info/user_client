@@ -64,6 +64,7 @@ export function useResourcePurchase(options: UseResourcePurchaseOptions) {
     generation: surfaceGeneration,
     stopPoll,
     invalidateSurface,
+    markSurfaceShown,
     renderQr,
     startPoll,
   } = useResourcePayment({
@@ -242,6 +243,9 @@ export function useResourcePurchase(options: UseResourcePurchaseOptions) {
         if (requestedGeneration === surfaceGeneration.value) {
           order.value = cashOrder
           qrDataUrl.value = rendered
+          if (rendered) {
+            markSurfaceShown()
+          }
           if (!rendered) {
             error.value = '二维码生成失败，请刷新后重试'
           }
