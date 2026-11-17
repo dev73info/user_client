@@ -2,6 +2,7 @@ import { computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
 import { buildDevPortalUrl } from '@/config/runtime'
+import { usePortalAuthPrompt } from '@/composables/usePortalAuthPrompt'
 import { useAuthStore } from '@/stores/auth'
 
 export type AuthMode = 'login' | 'register'
@@ -25,6 +26,7 @@ export function usePortalTopNavNav() {
   const auth = useAuthStore()
   const route = useRoute()
   const router = useRouter()
+  const { openAuth: promptAuth } = usePortalAuthPrompt()
 
   const authModalVisible = computed(() => route.query.modal === 'auth')
   // 开发者工作台已并入统一工作台外壳（/workbench/developer/**），顶栏跟随整站样式，
@@ -77,15 +79,7 @@ export function usePortalTopNavNav() {
   })
 
   function openAuth(mode: AuthMode) {
-    const nextQuery: Record<string, string> = { modal: 'auth', mode }
-    const redirectTarget =
-      typeof route.query.redirect_to === 'string' ? route.query.redirect_to.trim() : ''
-
-    if (redirectTarget && redirectTarget.startsWith('/') && !redirectTarget.startsWith('//')) {
-      nextQuery.redirect_to = redirectTarget
-    }
-
-    void router.push({ name: 'home', query: nextQuery })
+    void promptAuth(mode)
   }
 
   function goWorkbench() {

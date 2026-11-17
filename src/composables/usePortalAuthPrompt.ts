@@ -1,6 +1,6 @@
 import { useRoute, useRouter } from 'vue-router'
 
-import { buildAuthModalQuery } from '@/shared/auth/portalAuthQuery'
+import { buildAuthModalQuery, isSafeAuthRedirect } from '@/shared/auth/portalAuthQuery'
 
 /**
  * 在当前页面打开登录弹窗，不再先跳回首页。
@@ -12,13 +12,25 @@ export function usePortalAuthPrompt() {
   const route = useRoute()
   const router = useRouter()
 
-  function openLogin(redirectTo = route.fullPath) {
+  function openAuth(mode: 'login' | 'register' | 'reset' = 'login', redirectTo?: string) {
+    const explicitRedirect = redirectTo && isSafeAuthRedirect(redirectTo) ? redirectTo.trim() : ''
+    const existingRedirect =
+      typeof route.query.redirect_to === 'string' ? route.query.redirect_to.trim() : ''
+    // 首页登录后要重拉押金比例 / 待办需求等数据，不能把 `/` 当成需要回跳的地址。
+    const fallbackRedirect = route.name === 'home' ? '' : route.fullPath
+    const returnTo =
+      explicitRedirect ||
+      (isSafeAuthRedirect(existingRedirect) ? existingRedirect : fallbackRedirect)
     return router.push({
       path: route.path,
-      query: buildAuthModalQuery(route.query, 'login', redirectTo),
+      query: buildAuthModalQuery(route.query, mode, returnTo),
       hash: route.hash,
     })
   }
 
-  return { openLogin }
+  function openLogin(redirectTo?: string) {
+    return openAuth('login', redirectTo)
+  }
+
+  return { openAuth, openLogin }
 }

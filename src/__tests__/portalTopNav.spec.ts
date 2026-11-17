@@ -124,6 +124,38 @@ describe('门户顶栏最小挂载烟测', () => {
     wrapper.unmount()
   })
 
+  it('社区页点顶栏登录仍在当前页打开弹窗', async () => {
+    const { wrapper, router } = await render()
+    await router.push({ name: 'community', query: { post: '1' } })
+    await flushPromises()
+
+    await wrapper.find('.portal-solid-btn').trigger('click')
+    await flushPromises()
+
+    expect(router.currentRoute.value.name).toBe('community')
+    expect(router.currentRoute.value.query).toMatchObject({
+      post: '1',
+      modal: 'auth',
+      mode: 'login',
+    })
+    expect(router.currentRoute.value.query.redirect_to).toBe('/community?post=1')
+
+    wrapper.unmount()
+  })
+
+  it('首页点顶栏登录不带 redirect_to，登录后仍会重拉首页数据', async () => {
+    const { wrapper, router } = await render()
+
+    await wrapper.find('.portal-solid-btn').trigger('click')
+    await flushPromises()
+
+    expect(router.currentRoute.value.name).toBe('home')
+    expect(router.currentRoute.value.query).toMatchObject({ modal: 'auth', mode: 'login' })
+    expect(router.currentRoute.value.query.redirect_to).toBeUndefined()
+
+    wrapper.unmount()
+  })
+
   it('登录后追加「工作台」入口，并拉一次个人资料', async () => {
     const { wrapper } = await render({ authed: true })
 
