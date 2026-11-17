@@ -11,6 +11,10 @@ const BUILD_FETCH_HEADERS = {
   Accept: 'application/json',
   'User-Agent': '73info-seo-build/1.0 (+https://73info.cn)',
 }
+// GitHub Actions 出网到国内源的链路会偶发 `fetch failed`（连接层失败，非 4xx）；
+// 同一接口重试几次即可恢复。4xx 是明确的接口错误，不重试。
+const FETCH_ATTEMPTS = 3
+const FETCH_RETRY_DELAYS_MS = [1_000, 4_000]
 
 // GitHub Actions 出网是双栈；固定 IPv4 避免落到与站点规则不一致的 IPv6 入口。
 setDefaultResultOrder('ipv4first')
@@ -344,17 +348,52 @@ export async function fetchAgreementContent(apiBaseUrl, code) {
 
 async function fetchJson(apiBaseUrl, path) {
   const url = new URL(`${apiBaseUrl}${path.startsWith('/') ? path : `/${path}`}`)
-  const response = await fetch(url, {
-    headers: BUILD_FETCH_HEADERS,
-    signal: AbortSignal.timeout(20_000),
-  })
 
-  if (!response.ok) {
-    const detail = await response.text().catch(() => '')
-    throw new Error(
-      `[seo] ${url} returned HTTP ${response.status}${detail ? `: ${detail.slice(0, 200)}` : ''}`,
-    )
+  for (let attempt = 1; ; attempt += 1) {
+    let response
+    try {
+      response = await fetch(url, {
+        headers: BUILD_FETCH_HEADERS,
+        signal: AbortSignal.timeout(20_000),
+      })
+    } catch (error) {
+      // 只有连接层错误才值得重试；超时也算（AbortSignal.timeout 抛 TimeoutError）
+      if (attempt < FETCH_ATTEMPTS) {
+        await sleep(FETCH_RETRY_DELAYS_MS[attempt - 1] ?? 4_000)
+        continue
+      }
+      throw new Error(
+        `[seo] ${url} fetch failed after ${attempt} attempts: ${describeFetchError(error)}`,
+      )
+    }
+
+    if (!response.ok) {
+      const detail = await response.text().catch(() => '')
+      const message = `[seo] ${url} returned HTTP ${response.status}${detail ? `: ${detail.slice(0, 200)}` : ''}`
+      // 5xx 多为网关/源站瞬时故障；429 是限流，退避后也可能恢复。
+      if ((response.status >= 500 || response.status === 429) && attempt < FETCH_ATTEMPTS) {
+        await sleep(FETCH_RETRY_DELAYS_MS[attempt - 1] ?? 4_000)
+        continue
+      }
+      throw new Error(message)
+    }
+
+    return response.json()
   }
+}
 
-  return response.json()
+function describeFetchError(error) {
+  if (!(error instanceof Error)) {
+    return String(error)
+  }
+  const cause = error.cause
+  const causeText =
+    cause instanceof Error
+      ? [cause.name, cause.code, cause.message].filter(Boolean).join(' / ')
+      : String(cause ?? '')
+  return causeText ? `${error.message} (${causeText})` : error.message
+}
+
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms))
 }
