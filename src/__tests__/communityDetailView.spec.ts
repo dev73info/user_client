@@ -219,7 +219,7 @@ describe('社区详情与评论', () => {
     expect(wrapper.find('form.community-comments__composer').exists()).toBe(false)
     await wrapper.get('.community-comments__login').trigger('click')
     await flushPromises()
-    expect(router.currentRoute.value.name).toBe('home')
+    expect(router.currentRoute.value.name).toBe('community-post')
     expect(router.currentRoute.value.query).toMatchObject({
       modal: 'auth',
       mode: 'login',

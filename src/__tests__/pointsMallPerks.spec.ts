@@ -26,6 +26,7 @@ const auth = reactive({ token: 'user-token', username: 'tester', isAuthed: true,
 
 vi.mock('@/stores/auth', () => ({ useAuthStore: () => auth }))
 vi.mock('vue-router', () => ({
+  useRoute: () => ({ path: '/mall', query: {}, fullPath: '/mall', hash: '' }),
   useRouter: () => ({ push: mocks.push, replace: mocks.replace }),
 }))
 vi.mock('@/api/points', () => ({
