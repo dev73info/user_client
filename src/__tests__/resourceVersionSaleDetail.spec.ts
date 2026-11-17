@@ -49,6 +49,7 @@ vi.mock('@/composables/useResourcePayment', async () => {
     useResourcePayment: () => ({
       order: ref(null),
       qrDataUrl: ref(''),
+      countdownText: ref(''),
       generation: ref(0),
       stopPoll: vi.fn(),
       invalidateSurface: vi.fn(),
@@ -202,7 +203,7 @@ beforeEach(() => {
     order_no: 'RPO-TEST',
     status: 'pending',
     resource_id: 158089,
-    pay_channel: 'alipay',
+    pay_channel: 'wx_pub',
     pay_url: '',
     amount_fen: 1,
     amount_points: 0,
@@ -228,7 +229,7 @@ describe('ResourceDetailPanel · 按版本售卖', () => {
     const [token, resourceId, payload] = mocks.createPurchase.mock.calls[0] ?? []
     expect(token).toBe('test-token')
     expect(resourceId).toBe(158089)
-    expect(payload).toMatchObject({ version_id: 501, pay_channel: 'alipay' })
+    expect(payload).toMatchObject({ version_id: 501, pay_channel: 'wechat' })
     // 金额由服务端按版本价取，前端不传 amount_fen
     expect(payload).not.toHaveProperty('amount_fen')
     // 购买面板金额显示目标版本价

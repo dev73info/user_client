@@ -44,7 +44,7 @@ export function useResourcePurchase(options: UseResourcePurchaseOptions) {
   const { openLogin } = usePortalAuthPrompt()
   const panelOpen = ref(false)
   const submitting = ref(false)
-  const channel = ref<ResourcePayChannelUi>('alipay')
+  const channel = ref<ResourcePayChannelUi>('wechat')
   const pointsMode = computed(() => Number(options.getPricePoints()) > 0)
   /** 购买目标版本与「当前支付面属于哪个版本」的复用判定都在这里。 */
   const { targetVersion, canReuse, markSurfaceVersion, resetSurfaceVersion } =
@@ -60,6 +60,7 @@ export function useResourcePurchase(options: UseResourcePurchaseOptions) {
   const {
     order,
     qrDataUrl,
+    countdownText,
     generation: surfaceGeneration,
     stopPoll,
     invalidateSurface,
@@ -122,13 +123,9 @@ export function useResourcePurchase(options: UseResourcePurchaseOptions) {
     panelOpen.value = true
     error.value = ''
 
-    // 优先复用本页已有的待支付码；没有才按默认支付宝拉一次
-    if (hasReusableCashQr(channel.value)) {
-      startReusePoll()
-      return
-    }
-    channel.value = pointsMode.value ? 'points' : 'alipay'
-    if (!pointsMode.value && hasReusableCashQr('alipay')) {
+    // 现金购买默认微信；优先复用本页已有的微信待支付码，没有才重新拉单
+    channel.value = pointsMode.value ? 'points' : 'wechat'
+    if (!pointsMode.value && hasReusableCashQr('wechat')) {
       startReusePoll()
       return
     }
@@ -284,6 +281,7 @@ export function useResourcePurchase(options: UseResourcePurchaseOptions) {
     error,
     order,
     qrDataUrl,
+    countdownText,
     targetVersion,
     promoCode,
     showPromoHint,

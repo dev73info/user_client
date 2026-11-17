@@ -28,13 +28,14 @@ function mountDialog(props: Record<string, unknown> = {}) {
       title: '红石自动化整合包',
       priceLabel: '¥9.90',
       showPromoHint: false,
-      channel: 'alipay',
+      channel: 'wechat',
       pointsMode: false,
       error: '',
       submitting: false,
       orderNo: '',
       orderStatus: '',
       qrDataUrl: '',
+      countdownText: '',
       ...props,
     },
     global: { stubs: { teleport: true } },
@@ -42,14 +43,19 @@ function mountDialog(props: Record<string, unknown> = {}) {
 }
 
 describe('ResourcePurchaseDialog', () => {
-  it('渲染标题、金额与两个渠道；点微信只 emit 一次选渠道', async () => {
+  it('渲染标题、金额与两个渠道；微信在前且点微信只 emit 一次选渠道', async () => {
     const wrapper = mountDialog()
 
     expect(wrapper.get('.resource-purchase-modal__subject').text()).toContain('红石自动化整合包')
     expect(wrapper.get('.resource-purchase-modal__amount').text()).toContain('¥9.90')
     expect(wrapper.findAll('.payment-option')).toHaveLength(2)
+    expect(wrapper.findAll('.payment-option').map((item) => item.text())).toEqual([
+      '微信',
+      '支付宝',
+    ])
+    expect(wrapper.findAll('.payment-option')[0]?.classes()).toContain('active')
 
-    const wechat = wrapper.findAll('.payment-option')[1]
+    const wechat = wrapper.findAll('.payment-option')[0]
     await wechat?.trigger('click')
 
     expect(wrapper.emitted('select-channel')).toHaveLength(1)
@@ -68,6 +74,18 @@ describe('ResourcePurchaseDialog', () => {
     expect(
       mountDialog({ showPromoHint: true }).get('.resource-purchase-modal__promo-hint').text(),
     ).toContain('推广者')
+  })
+
+  it('二维码出现时在底部展示支付倒计时', () => {
+    expect(mountDialog().find('.resource-purchase-modal__countdown').exists()).toBe(false)
+
+    const wrapper = mountDialog({
+      qrDataUrl: 'data:image/png;base64,test',
+      orderNo: 'RPTEST',
+      orderStatus: 'pending',
+      countdownText: '建议在 00:14:59 内完成支付',
+    })
+    expect(wrapper.get('.resource-purchase-modal__countdown').text()).toContain('00:14:59')
   })
 
   it('关闭态不渲染任何弹窗节点', () => {

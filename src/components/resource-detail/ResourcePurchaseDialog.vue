@@ -4,7 +4,7 @@ import type { ResourcePayChannelUi } from '@/shared/resourceSale'
 /**
  * 购买确认弹窗（Teleport 到 body）。
  *
- * 纯展示 + 两个动作出口：`close`（点遮罩或 ×）与 `select-channel`（支付宝 / 微信）。
+ * 纯展示 + 两个动作出口：`close`（点遮罩或 ×）与 `select-channel`（微信 / 支付宝）。
  * 下单、串行队列、支付面世代号、轮询都在 `useResourcePurchase` 里，
  * 这一层不碰 router / TMessage / api。
  *
@@ -31,6 +31,8 @@ const props = defineProps<{
   orderNo: string
   orderStatus: string
   qrDataUrl: string
+  /** 二维码下方的支付倒计时文案；空串不渲染 */
+  countdownText: string
 }>()
 
 const emit = defineEmits<{
@@ -91,19 +93,6 @@ const emit = defineEmits<{
             type="button"
             class="payment-option"
             :class="{
-              active: channel === 'alipay',
-              'payment-option--alipay': channel === 'alipay',
-            }"
-            :disabled="submitting"
-            @click="emit('select-channel', 'alipay')"
-          >
-            <img class="payment-option-icon" src="/icons/alipay.png" alt="" />
-            支付宝
-          </button>
-          <button
-            type="button"
-            class="payment-option"
-            :class="{
               active: channel === 'wechat',
               'payment-option--wechat': channel === 'wechat',
             }"
@@ -112,6 +101,19 @@ const emit = defineEmits<{
           >
             <img class="payment-option-icon" src="/icons/wechat-pay.png" alt="" />
             微信
+          </button>
+          <button
+            type="button"
+            class="payment-option"
+            :class="{
+              active: channel === 'alipay',
+              'payment-option--alipay': channel === 'alipay',
+            }"
+            :disabled="submitting"
+            @click="emit('select-channel', 'alipay')"
+          >
+            <img class="payment-option-icon" src="/icons/alipay.png" alt="" />
+            支付宝
           </button>
         </div>
         <div v-else class="payment-options" role="radiogroup" aria-label="支付方式选择">
@@ -130,7 +132,12 @@ const emit = defineEmits<{
         </p>
 
         <div v-if="qrDataUrl || submitting || orderNo" class="resource-purchase-modal__qr">
-          <img v-if="qrDataUrl" :src="qrDataUrl" alt="支付二维码" width="220" height="220" />
+          <template v-if="qrDataUrl">
+            <img :src="qrDataUrl" alt="支付二维码" width="220" height="220" />
+            <p v-if="props.countdownText" class="resource-purchase-modal__countdown">
+              {{ props.countdownText }}
+            </p>
+          </template>
           <p v-else-if="submitting" class="resource-purchase-modal__order">正在获取支付码…</p>
           <p v-else-if="orderNo" class="resource-purchase-modal__order">
             订单号 {{ orderNo }} · {{ orderStatus }}
@@ -341,6 +348,15 @@ const emit = defineEmits<{
   font-size: 12px;
   color: var(--rdp-purchase-muted);
   text-align: center;
+}
+
+.resource-purchase-modal__countdown {
+  margin: 2px 0 0;
+  color: var(--rdp-purchase-soft-ink);
+  font-size: 13px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.5;
 }
 
 @media (max-width: 640px) {
