@@ -3,7 +3,11 @@ import { useRoute, useRouter } from 'vue-router'
 
 import { useAuthForm } from './useAuthForm'
 import type { AuthMode } from './useRequirementPublish'
-import { buildAuthModalQuery, resolveAuthReturn, stripAuthQuery } from '@/shared/auth/portalAuthQuery'
+import {
+  buildAuthModalQuery,
+  resolveAuthReturn,
+  stripAuthQuery,
+} from '@/shared/auth/portalAuthQuery'
 import { useAuthStore } from '@/stores/auth'
 
 export type HomePortalAuthOptions = {
