@@ -96,24 +96,40 @@ describe('CloseAccountDialog：注销账号弹窗', () => {
       confirmation: '',
       ready: false,
       saving: false,
+      emailCode: '',
+      codeSending: false,
+      request: null,
+      loading: false,
       ...overrides,
     })
   }
 
-  it('警示文案原样保留，确认词输入回传 update:value', async () => {
+  it('警示文案改口径：申请期 + 数据保留，确认词输入回传 update:value', async () => {
     const wrapper = mountClose()
-    expect(wrapper.text()).toContain('注销后将无法登录当前账号')
+    expect(wrapper.text()).toContain('注销申请提交后不会立即生效')
+    expect(wrapper.text()).toContain('历史合同、支付和业务记录会保留')
     expect(wrapper.text()).toContain('请输入“注销账号”确认')
 
-    await wrapper.find('input').setValue('注销账号')
+    await wrapper.find('#account-close-confirmation').setValue('注销账号')
 
     expect(wrapper.emitted('update:value')).toEqual([['注销账号']])
     wrapper.unmount()
   })
 
-  it('确认词没输对时「确认注销」禁用，点了也不发 submit', async () => {
+  it('验证码输入回传 update:email-code，「发送验证码」发 send-code', async () => {
+    const wrapper = mountClose()
+
+    await wrapper.find('#account-close-email-code').setValue('123456')
+    await buttonByText(wrapper, '发送验证码').trigger('click')
+
+    expect(wrapper.emitted('update:email-code')).toEqual([['123456']])
+    expect(wrapper.emitted('send-code')).toHaveLength(1)
+    wrapper.unmount()
+  })
+
+  it('未就绪时「提交注销申请」禁用，点了也不发 submit', async () => {
     const wrapper = mountClose({ ready: false })
-    const confirm = buttonByText(wrapper, '确认注销')
+    const confirm = buttonByText(wrapper, '提交注销申请')
     expect(confirm.attributes('disabled')).toBeDefined()
 
     await confirm.trigger('click')
@@ -122,10 +138,10 @@ describe('CloseAccountDialog：注销账号弹窗', () => {
     wrapper.unmount()
   })
 
-  it('确认词输对后点「确认注销」发一次 submit', async () => {
+  it('确认词与验证码就绪后点「提交注销申请」发一次 submit', async () => {
     const wrapper = mountClose({ ready: true })
 
-    await buttonByText(wrapper, '确认注销').trigger('click')
+    await buttonByText(wrapper, '提交注销申请').trigger('click')
 
     expect(wrapper.emitted('submit')).toHaveLength(1)
     wrapper.unmount()
@@ -141,12 +157,34 @@ describe('CloseAccountDialog：注销账号弹窗', () => {
     wrapper.unmount()
   })
 
-  it('saving 时输入框、取消与「确认注销」全部禁用', () => {
+  it('saving 时两个输入框、取消与「提交注销申请」全部禁用', () => {
     const wrapper = mountClose({ ready: true, saving: true })
 
-    expect(wrapper.find('input').attributes('disabled')).toBeDefined()
+    expect(wrapper.find('#account-close-confirmation').attributes('disabled')).toBeDefined()
+    expect(wrapper.find('#account-close-email-code').attributes('disabled')).toBeDefined()
     expect(buttonByText(wrapper, '取消').attributes('disabled')).toBeDefined()
-    expect(buttonByText(wrapper, '确认注销').attributes('disabled')).toBeDefined()
+    expect(buttonByText(wrapper, '提交注销申请').attributes('disabled')).toBeDefined()
+    wrapper.unmount()
+  })
+
+  it('已有待生效申请时只展示等待期，撤销发 cancel-request', async () => {
+    const wrapper = mountClose({
+      request: {
+        pending: true,
+        requested_at: '2026-11-16T10:00:00+08:00',
+        effective_at: '2026-11-23T10:00:00+08:00',
+        days_remaining: 7,
+      },
+    })
+
+    expect(wrapper.text()).toContain('注销申请处理中')
+    expect(wrapper.text()).toContain('剩余约 7 天')
+    expect(wrapper.find('#account-close-confirmation').exists()).toBe(false)
+
+    await buttonByText(wrapper, '撤销注销申请').trigger('click')
+
+    expect(wrapper.emitted('cancel-request')).toHaveLength(1)
+    expect(wrapper.emitted('submit')).toBeUndefined()
     wrapper.unmount()
   })
 })

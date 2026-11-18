@@ -3,6 +3,7 @@ import { defineComponent } from 'vue'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { useAppShellAuth } from '@/components/app/useAppShellAuth'
+import { AUTH_UNAUTHORIZED_EVENT } from '@/shared/api/authEvents'
 
 const mocks = vi.hoisted(() => ({
   login: vi.fn(),
@@ -11,6 +12,8 @@ const mocks = vi.hoisted(() => ({
   logout: vi.fn(),
   fetchPayload: vi.fn(),
   enabled: vi.fn(),
+  replace: vi.fn(() => Promise.resolve()),
+  warning: vi.fn(),
 }))
 
 vi.mock('@/stores/auth', () => ({
@@ -31,11 +34,11 @@ vi.mock('@/shared/captcha', () => ({
 
 vi.mock('vue-router', () => ({
   useRoute: () => ({ fullPath: '/', path: '/', matched: [], name: 'home', query: {} }),
-  useRouter: () => ({ replace: vi.fn() }),
+  useRouter: () => ({ replace: mocks.replace }),
 }))
 
 vi.mock('ui_73info', () => ({
-  TMessage: { warning: vi.fn() },
+  TMessage: { warning: mocks.warning },
 }))
 
 let wrapper: ReturnType<typeof mount> | undefined
@@ -80,6 +83,27 @@ describe('useAppShellAuth 开发模式自动登录', () => {
       )
     })
     expect(mocks.fetchPayload).toHaveBeenCalledTimes(1)
+  })
+
+  it('收到未授权事件时直接登出，不再提示登录已过期', () => {
+    mountAuth()
+
+    window.dispatchEvent(
+      new CustomEvent(AUTH_UNAUTHORIZED_EVENT, {
+        detail: {
+          status: 401,
+          path: '/requirement/mine',
+          message: '未登录或登录已过期，请重新登录',
+        },
+      }),
+    )
+
+    expect(mocks.logout).toHaveBeenCalledTimes(1)
+    expect(mocks.warning).not.toHaveBeenCalled()
+    expect(mocks.replace).toHaveBeenCalledWith({
+      name: 'home',
+      query: { modal: 'auth', mode: 'login' },
+    })
   })
 
   it('人机校验关闭时不加载挂件，也不带 payload', async () => {

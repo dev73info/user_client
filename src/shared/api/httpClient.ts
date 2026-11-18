@@ -8,8 +8,12 @@ export { readErrorMessage, readErrorShape, toApiErrorShape } from './httpError'
 
 export type UnauthorizedHandler = (response: Response, path: string) => void
 
+/** 401 时返回新的访问令牌则用新令牌重放一次原请求；返回 `null` 表示不重放。 */
+export type UnauthorizedRetryHandler = (path: string) => Promise<string | null>
+
 export type HttpClientOptions = {
   onUnauthorized?: UnauthorizedHandler
+  refreshAccessToken?: UnauthorizedRetryHandler
 }
 
 function isHtmlResponse(body: string): boolean {
@@ -70,6 +74,30 @@ export function createHttpClient(options: HttpClientOptions = {}) {
     }
   }
 
+  /**
+   * 已登录请求的 401 先尝试静默续期：拿不到新令牌就沿用原 401，
+   * 由 `onUnauthorized` 统一清会话。未带 `Authorization` 的请求不续期。
+   */
+  async function fetchWithRetry(path: string, init: RequestInit): Promise<Response> {
+    const resp = await fetch(apiUrl(path), withoutCredentials(init))
+    if (
+      resp.status !== 401 ||
+      !options.refreshAccessToken ||
+      !new Headers(init.headers).has('Authorization')
+    ) {
+      return resp
+    }
+
+    const token = await options.refreshAccessToken(path)
+    if (!token) {
+      return resp
+    }
+
+    const headers = new Headers(init.headers)
+    headers.set('Authorization', `Bearer ${token}`)
+    return fetch(apiUrl(path), withoutCredentials({ ...init, headers }))
+  }
+
   /** 失败时按统一错误结构抛：JSON 错误体按 `{code,message,field?}` 取，纯文本按原文 + `HTTP_<status>` 兜底。 */
   async function throwHttpError(resp: Response, fallbackError: string): Promise<never> {
     const shape = await readErrorShape(resp, fallbackError)
@@ -81,7 +109,7 @@ export function createHttpClient(options: HttpClientOptions = {}) {
     init: RequestInit,
     fallbackError = '请求失败',
   ): Promise<T> {
-    const resp = await fetch(apiUrl(path), withoutCredentials(init))
+    const resp = await fetchWithRetry(path, init)
     handleUnauthorized(resp, path)
 
     if (!resp.ok) {
@@ -100,7 +128,7 @@ export function createHttpClient(options: HttpClientOptions = {}) {
     init: RequestInit,
     fallbackError = '请求失败',
   ): Promise<string> {
-    const resp = await fetch(apiUrl(path), withoutCredentials(init))
+    const resp = await fetchWithRetry(path, init)
     handleUnauthorized(resp, path)
 
     if (!resp.ok) {
@@ -115,7 +143,7 @@ export function createHttpClient(options: HttpClientOptions = {}) {
     init: RequestInit,
     fallbackError = '请求失败',
   ): Promise<void> {
-    const resp = await fetch(apiUrl(path), withoutCredentials(init))
+    const resp = await fetchWithRetry(path, init)
     handleUnauthorized(resp, path)
 
     if (!resp.ok) {
@@ -129,7 +157,7 @@ export function createHttpClient(options: HttpClientOptions = {}) {
     init: RequestInit,
     fallbackError = '请求失败',
   ): Promise<Blob> {
-    const resp = await fetch(apiUrl(path), withoutCredentials(init))
+    const resp = await fetchWithRetry(path, init)
     handleUnauthorized(resp, path)
 
     if (!resp.ok) {

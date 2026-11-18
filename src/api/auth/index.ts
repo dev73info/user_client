@@ -15,12 +15,15 @@ export type {
 export { detectClientPlatform, isTwoFactorRequiredPayload } from '@/shared/auth/client'
 
 export type {
+  AccountCloseRequestResp,
   AuthorizeUrlResp,
   BoundProvidersResp,
   DevAccessStatus,
   OAuthProvider,
   OauthStatusResp,
   PrivilegesResponse,
+  ProviderUnbindQrStatusResp,
+  ProviderUnbindQrUrlResp,
   UserServiceAgreement,
   WechatBindQrStatusResp,
   WechatBindQrUrlResp,
@@ -31,11 +34,14 @@ export type {
 } from './types'
 
 export {
-  closeAccount,
+  cancelAccountClose,
   getBoundProviders,
   getOauthStatus,
+  getAccountCloseRequest,
   getProviderBindUrl,
-  unbindProvider,
+  getProviderUnbindUrl,
+  requestAccountClose,
+  sendAccountCloseCode,
 } from './oauth'
 
 export {
@@ -46,9 +52,17 @@ export {
   getWechatLoginUrl,
   getWechatMpLoginQrStatus,
   getWechatMpLoginQrUrl,
+  getWechatUnbindQrStatus,
+  getWechatUnbindQrUrl,
 } from './wechat'
 
-export { getQqLoginQrStatus, getQqLoginQrUrl, getQqLoginUrl } from './thirdPartyLogin'
+export {
+  getQqLoginQrStatus,
+  getQqLoginQrUrl,
+  getQqLoginUrl,
+  getQqUnbindQrStatus,
+  getQqUnbindQrUrl,
+} from './thirdPartyLogin'
 
 export { fetchAgreementContent, fetchUserServiceAgreement } from './agreements'
 export { getDevAccessStatus, getPrivileges, requestDevRole } from './devAccess'
@@ -59,6 +73,7 @@ export {
   getGithubAuthorizeUrl,
   loginWithAuthenticator,
   recordAgreementAcceptance,
+  refreshSession,
   refreshToken,
   resetPassword,
   sendRegisterEmailCode,

@@ -5,10 +5,9 @@
  */
 import { onBeforeUnmount, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { TMessage } from 'ui_73info'
 
 import { useAuthStore } from '@/stores/auth'
-import { AUTH_UNAUTHORIZED_EVENT, type AuthUnauthorizedEventDetail } from '@/shared/api/authEvents'
+import { AUTH_UNAUTHORIZED_EVENT } from '@/shared/api/authEvents'
 import { fetchCaptchaPayload, isCaptchaEnabled } from '@/shared/captcha'
 
 export function useAppShellAuth() {
@@ -83,7 +82,7 @@ export function useAppShellAuth() {
     return fullPath
   }
 
-  function handleUnauthorizedSession(event: Event) {
+  function handleUnauthorizedSession() {
     const isDeveloperRoute =
       route.path.startsWith('/dev') || route.matched.some((record) => Boolean(record.meta.devArea))
 
@@ -101,15 +100,14 @@ export function useAppShellAuth() {
     }
 
     handlingUnauthorized = true
-    const detail = (event as CustomEvent<AuthUnauthorizedEventDetail>).detail
     const redirectTarget = currentRedirectTarget()
     const nextQuery: Record<string, string> = { modal: 'auth', mode: 'login' }
     if (redirectTarget) {
       nextQuery.redirect_to = redirectTarget
     }
 
+    // 会话失效不弹提示：直接退出登录，回到首页由用户自己决定要不要重新登录。
     auth.logout()
-    TMessage.warning(detail?.message || '未登录或登录已过期，请重新登录')
 
     void router.replace({ name: 'home', query: nextQuery }).finally(() => {
       window.setTimeout(() => {

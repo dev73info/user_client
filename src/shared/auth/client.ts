@@ -2,19 +2,9 @@ import { requestAuthenticatorLogin } from './authenticator'
 import { detectClientPlatform } from './clientPlatform'
 import { md5Hex } from './md5'
 import { buildAuthBody, type AuthPath } from './requestBody'
+import { createTokenRequests, type AuthPayload } from './tokenRequests'
 
-/**
- * 登录 / 注册 / 刷新的响应（契约 `AuthResponse`）。
- *
- * `role` 是主角色、`roles` 是全部角色；**权限判定不要用它们**——生效权限一律以
- * `GET /auth/users/privileges` 的 `permissions` 为准（角色只是展示用的快照）。
- */
-export type AuthPayload = {
-  token: string
-  username?: string
-  role?: string
-  roles?: string[]
-}
+export type { AuthPayload } from './tokenRequests'
 
 export type TwoFactorRequiredPayload = {
   requires_two_factor: true
@@ -77,6 +67,7 @@ type AuthApiOptions = {
 
 export function createAuthApiClient(deps: AuthApiDependencies, options: AuthApiOptions = {}) {
   const defaultRequestDevRole = options.defaultRequestDevRole ?? false
+  const { refreshToken, refreshSession } = createTokenRequests(deps.requestJson, deps.authHeaders)
 
   async function authRequest(
     path: AuthPath,
@@ -124,17 +115,6 @@ export function createAuthApiClient(deps: AuthApiDependencies, options: AuthApiO
 
       throw err
     }
-  }
-
-  function refreshToken(currentToken: string): Promise<AuthPayload> {
-    return deps.requestJson<AuthPayload>(
-      '/auth/refresh',
-      {
-        method: 'POST',
-        headers: deps.authHeaders(currentToken),
-      },
-      '刷新令牌失败',
-    )
   }
 
   /**
@@ -288,6 +268,7 @@ export function createAuthApiClient(deps: AuthApiDependencies, options: AuthApiO
     authRequest,
     loginWithAuthenticator,
     refreshToken,
+    refreshSession,
     sendRegisterEmailCode,
     sendResetPasswordEmailCode,
     resetPassword,

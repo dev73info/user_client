@@ -1,7 +1,11 @@
 /** mock 的登录态准备：按当前身份写一个假令牌，省掉没有 `.env.local` 时的登录步骤。 */
 
 import { clearPersistedAuthProfile } from '@/shared/auth/session'
-import { AUTH_TOKEN_STORAGE_KEY } from '@/shared/auth/storage'
+import {
+  AUTH_TOKEN_STORAGE_KEY,
+  readAuthRefreshToken,
+  writeAuthRefreshToken,
+} from '@/shared/auth/storage'
 
 import type { MockIdentity } from './identity'
 import { createMockToken, parseMockToken } from './token'
@@ -29,10 +33,11 @@ export function prepareMockSession(identity: MockIdentity): void {
   const existing = localStorage.getItem(AUTH_TOKEN_STORAGE_KEY) ?? ''
   const subject = existing ? parseMockToken(existing) : null
 
-  if (subject?.identity === identity) {
+  if (subject?.identity === identity && readAuthRefreshToken()) {
     return
   }
 
   localStorage.setItem(AUTH_TOKEN_STORAGE_KEY, createMockToken(identity))
+  writeAuthRefreshToken(createMockToken(identity))
   clearPersistedAuthProfile()
 }

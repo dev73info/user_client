@@ -11,6 +11,7 @@ import {
   type AuthPayload,
   getPrivileges,
   isTwoFactorRequiredPayload,
+  refreshSession as refreshSessionApi,
   refreshToken as refreshTokenApi,
 } from '@/api/auth'
 import { authHeaders as createAuthHeaders } from '@/api/http'
@@ -22,13 +23,24 @@ import {
   restorePersistedAuthProfile,
   type AuthProfile,
 } from '@/shared/auth/session'
-import { AUTH_TOKEN_STORAGE_KEY, clearObsoleteAuthTokenStorage } from '@/shared/auth/storage'
+import {
+  clearSessionTokens,
+  createRetryRefresher,
+  createSessionTokenExchanger,
+  restoreSessionTokens,
+  setStoredRefreshToken,
+  storeSessionTokens,
+  type SessionTokenState,
+} from '@/shared/auth/sessionTokens'
+import { setSessionRefreshHandler } from '@/shared/auth/sessionRefresh'
 import { isTokenExpired } from '@/shared/auth/token'
 import { createTokenRefreshController } from '@/shared/auth/tokenLifecycle'
 import { isAuthRejected } from '@/stores/auth/types'
 
 export function createAuthSession() {
   const token = ref('')
+  const refreshToken = ref('')
+  const tokenState: SessionTokenState = { token, refreshToken }
   const username = ref('')
   const role = ref('')
   const loading = ref(false)
@@ -53,7 +65,9 @@ export function createAuthSession() {
 
   const tokenLifecycle = createTokenRefreshController({
     getToken: () => token.value,
+    getRefreshToken: () => refreshToken.value,
     refreshToken: refreshTokenApi,
+    refreshSession: refreshSessionApi,
     applyRefreshedToken: (payload, sourceToken) => {
       if (token.value === sourceToken) {
         applyAuthPayload(payload, true)
@@ -66,11 +80,9 @@ export function createAuthSession() {
   function authHeaders(headers: HeadersInit = {}) {
     return createAuthHeaders(token.value, headers)
   }
-
   function hasPermission(permission: string): boolean {
     return isSuperAdmin.value || permissions.value.includes(permission)
   }
-
   function resetProfile() {
     resetAuthProfileState(profileState)
     permissions.value = []
@@ -81,32 +93,29 @@ export function createAuthSession() {
   function resetAuthState() {
     tokenLifecycle.dispose()
     token.value = ''
+    refreshToken.value = ''
     resetProfile()
   }
-
   function hydrate(force = false) {
     if (hydrated.value && !force) {
       return
     }
 
     hydrated.value = true
-    clearObsoleteAuthTokenStorage()
-    const saved = localStorage.getItem(AUTH_TOKEN_STORAGE_KEY)
-    if (!saved) {
+    if (!restoreSessionTokens(tokenState)) {
       resetAuthState()
       clearPersistedAuthProfile()
       return
     }
 
-    token.value = saved
     resetProfile()
     restorePersistedAuthProfile(profileState)
-    tokenLifecycle.schedule(saved)
+    tokenLifecycle.schedule(token.value)
     tokenLifecycle.setupVisibility()
   }
 
-  function persist(newToken: string, preserveProfile = false) {
-    token.value = newToken
+  function persist(newToken: string, preserveProfile = false, nextRefreshToken?: string) {
+    storeSessionTokens(tokenState, newToken, nextRefreshToken)
     if (!preserveProfile) {
       resetProfile()
       clearPersistedAuthProfile()
@@ -115,9 +124,7 @@ export function createAuthSession() {
         profileState,
         { token: newToken, username: username.value, role: role.value },
         (nextToken) => {
-          token.value = nextToken
-          localStorage.setItem(AUTH_TOKEN_STORAGE_KEY, nextToken)
-          clearObsoleteAuthTokenStorage()
+          storeSessionTokens(tokenState, nextToken)
           tokenLifecycle.schedule(nextToken)
           tokenLifecycle.setupVisibility()
         },
@@ -125,23 +132,25 @@ export function createAuthSession() {
       )
       return
     }
-    localStorage.setItem(AUTH_TOKEN_STORAGE_KEY, newToken)
-    clearObsoleteAuthTokenStorage()
     tokenLifecycle.schedule(newToken)
     tokenLifecycle.setupVisibility()
   }
 
   function applyAuthPayload(payload: AuthPayload, preserveProfile = false) {
-    applyAuthPayloadToState(profileState, payload, persist, preserveProfile)
+    // 新登录的响应没有刷新令牌（旧后端）时清掉上一份，避免留下无法使用的旧凭证；
+    // 续期场景没有新刷新令牌则保留原值。
+    const nextRefreshToken = payload.refresh_token ?? (preserveProfile ? undefined : '')
+    applyAuthPayloadToState(
+      profileState,
+      payload,
+      (newToken, keepProfile) => persist(newToken, keepProfile, nextRefreshToken),
+      preserveProfile,
+    )
   }
 
   /**
-   * 拉取当前登录人的**生效**权限码（`GET /auth/users/privileges`）。
-   *
-   * 后端已经把「角色」与「用户级权限覆盖」合成好了：`permissions` 是最终结果，
-   * `role` / `roles` 只是展示用的角色快照。所以前端的「能不能看到 / 能不能点」
-   * 一律读 `permissions`（`hasPermission(code)`），不要按固定角色名判断。
-   * 请求失败**原样抛出**：权限拿不到就当作没有，绝不放行。
+   * 拉取当前登录人的**生效**权限码；`permissions` 是最终结果，前端一律按它判断。
+   * 请求失败原样抛出：权限拿不到就当作没有，绝不放行。
    */
   async function fetchPrivileges(): Promise<void> {
     const sourceToken = token.value
@@ -163,6 +172,17 @@ export function createAuthSession() {
     privilegesLoaded.value = true
   }
 
+  const exchangeSessionTokens = createSessionTokenExchanger({
+    getToken: () => token.value,
+    getRefreshToken: () => refreshToken.value,
+    refreshToken: refreshTokenApi,
+    refreshSession: refreshSessionApi,
+    isAuthRejected,
+  })
+  const persistRefreshed = (nextToken: string, nextRefreshToken?: string) =>
+    persist(nextToken, true, nextRefreshToken)
+  setSessionRefreshHandler(createRetryRefresher(exchangeSessionTokens, persistRefreshed))
+
   async function fetchProfile(force = false): Promise<AuthProfile> {
     return fetchAuthProfile({
       token: token.value,
@@ -170,11 +190,11 @@ export function createAuthSession() {
       state: profileState,
       loadProfile: async () => {
         const sourceToken = token.value
-        const payload = await refreshTokenApi(sourceToken)
+        const payload = await exchangeSessionTokens()
         if (token.value !== sourceToken) {
           throw new Error('会话已更新')
         }
-        persist(payload.token, true)
+        persist(payload.token, true, payload.refresh_token)
         await fetchPrivileges()
 
         if (payload.username && payload.role) {
@@ -213,12 +233,12 @@ export function createAuthSession() {
     apiUsageAgreementSigned.value = false
     resetAuthState()
     clearPersistedAuthProfile()
-    localStorage.removeItem(AUTH_TOKEN_STORAGE_KEY)
-    clearObsoleteAuthTokenStorage()
+    clearSessionTokens(tokenState)
   }
 
   function setToken(newToken: string) {
-    persist(newToken)
+    // 外部登录拿到的是新账号的令牌：先清掉上一份刷新令牌，避免随后用旧刷新令牌把账号换回去。
+    persist(newToken, false, '')
     void initializeSession(true).catch(() => undefined)
   }
 
@@ -248,6 +268,7 @@ export function createAuthSession() {
 
   return {
     token,
+    refreshToken,
     username,
     role,
     loading,
@@ -268,6 +289,7 @@ export function createAuthSession() {
     fetchPrivileges,
     initializeSession,
     setToken,
+    setRefreshToken: (value: string) => setStoredRefreshToken(tokenState, value),
     applyExternalSession,
     logout,
     applyAuthPayload,

@@ -75,6 +75,15 @@ export type WechatBindQrUrlResp = Schemas['QrUrlResponse']
 /** 微信扫码绑定结果；`confirmed` 表示已绑定，`message` 是失败原因。 */
 export type WechatBindQrStatusResp = Schemas['QrStatusResponse']
 
+/** 微信 / QQ 扫码解绑的二维码地址与轮询凭据（与绑定同形）。 */
+export type ProviderUnbindQrUrlResp = Schemas['QrUrlResponse']
+
+/** 微信 / QQ 扫码解绑结果；`confirmed` 表示已解绑。 */
+export type ProviderUnbindQrStatusResp = Schemas['QrStatusResponse']
+
+/** 注销申请状态（`GET/POST /auth/account/close-request`）。 */
+export type AccountCloseRequestResp = Schemas['AccountCloseRequestResponse']
+
 /** 用户服务协议与通用协议正文。 */
 export type UserServiceAgreement = Schemas['AgreementContentResponse']
 

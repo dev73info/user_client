@@ -12,27 +12,11 @@
 import { defineRouteTable, type MockRequest, type MockRoute } from '../router'
 import { MOCK_IDENTITY_PROFILES, currentMockIdentity, type MockIdentity } from '../identity'
 import { jsonResponse, noContentResponse } from '../response'
-import { createMockToken } from '../token'
 import { platformRuleTitle } from '@/shared/platformRules'
-
-type AuthPayload = {
-  token: string
-  username: string
-  role: string
-}
+import { mockAuthPayload as authPayload } from './common/authPayload'
 
 function identityOf(request: MockRequest): MockIdentity {
   return request.identity ?? currentMockIdentity()
-}
-
-function authPayload(identity: MockIdentity): AuthPayload {
-  const profile = MOCK_IDENTITY_PROFILES[identity]
-
-  return {
-    token: createMockToken(identity),
-    username: profile.username,
-    role: profile.role,
-  }
 }
 
 /** 第三方授权只给一个回到本站的地址：mock 不连任何外部平台。 */
@@ -74,6 +58,12 @@ const routes: MockRoute[] = [
     method: 'POST',
     path: '/auth/refresh',
     note: '刷新令牌：返回用户名与角色，缺少角色会让前端报「未返回完整会话信息」',
+    handler: (request) => jsonResponse(authPayload(identityOf(request))),
+  },
+  {
+    method: 'POST',
+    path: '/auth/refresh-token',
+    note: '用刷新令牌换新会话：mock 不校验刷新令牌，按当前身份返回',
     handler: (request) => jsonResponse(authPayload(identityOf(request))),
   },
   {
@@ -146,30 +136,6 @@ const routes: MockRoute[] = [
   },
   {
     method: 'GET',
-    path: '/auth/oauth-status',
-    note: '第三方登录开关：mock 打开微信/QQ，便于预览端内一键登录布局；真正授权仍走真实后端',
-    handler: () => jsonResponse({ github: false, wechat: true, qq: true, gitee: false }),
-  },
-  {
-    method: 'GET',
-    path: '/auth/wechat/login/url',
-    note: '微信端内授权入口（占位）：浏览器直接跳这里时不会被 fetch mock 拦截',
-    handler: () => jsonResponse(mockAuthorizeUrl('wechat')),
-  },
-  {
-    method: 'GET',
-    path: '/auth/qq/login/url',
-    note: 'QQ 端内授权入口（占位）',
-    handler: () => jsonResponse(mockAuthorizeUrl('qq')),
-  },
-  {
-    method: 'GET',
-    path: '/auth/providers',
-    note: '已绑定的第三方账号',
-    handler: () => jsonResponse({ providers: [] }),
-  },
-  {
-    method: 'GET',
     path: '/auth/user-service-agreement',
     note: '用户服务协议正文',
     handler: () =>
@@ -218,70 +184,6 @@ const routes: MockRoute[] = [
         agreed_at: '2026-01-01 00:00:00',
       })
     },
-  },
-  {
-    method: 'GET',
-    path: '/auth/github/url',
-    note: 'GitHub 授权地址（占位）',
-    handler: () => jsonResponse(mockAuthorizeUrl('github')),
-  },
-  {
-    method: 'GET',
-    path: '/auth/gitee/url',
-    note: 'Gitee 授权地址（占位）',
-    handler: () => jsonResponse(mockAuthorizeUrl('gitee')),
-  },
-  {
-    method: 'GET',
-    path: '/auth/:provider/bind/url',
-    note: '第三方绑定授权地址（占位）',
-    handler: (_request, params) => jsonResponse(mockAuthorizeUrl(params.provider ?? 'provider')),
-  },
-  {
-    method: 'DELETE',
-    path: '/auth/:provider/bind',
-    note: '解绑第三方账号',
-    handler: () => noContentResponse(),
-  },
-  {
-    method: 'GET',
-    path: '/auth/wechat/login/qr/url',
-    note: '微信扫码登录：占位二维码（不会被轮询到成功）',
-    handler: () =>
-      jsonResponse({
-        url: mockAuthorizeUrl('wechat').url,
-        state: 'mock-state',
-        poll_secret: 'mock-secret',
-      }),
-  },
-  {
-    method: 'GET',
-    path: '/auth/wechat/login/qr/status',
-    note: '微信扫码状态：mock 不自动登录，保持未扫码',
-    handler: () => jsonResponse({ token: null, status: 'pending' }),
-  },
-  {
-    method: 'GET',
-    path: '/auth/qq/login/qr/url',
-    note: 'QQ 扫码登录（占位）',
-    handler: () =>
-      jsonResponse({
-        url: mockAuthorizeUrl('qq').url,
-        state: 'mock-state',
-        poll_secret: 'mock-secret',
-      }),
-  },
-  {
-    method: 'GET',
-    path: '/auth/qq/login/qr/status',
-    note: 'QQ 扫码状态：保持未扫码',
-    handler: () => jsonResponse({ token: null, status: 'pending' }),
-  },
-  {
-    method: 'DELETE',
-    path: '/auth/account',
-    note: '注销账号',
-    handler: () => noContentResponse(),
   },
 ]
 

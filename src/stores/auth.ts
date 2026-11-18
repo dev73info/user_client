@@ -18,6 +18,7 @@ export const useAuthStore = defineStore('auth', () => {
 
   return {
     token: session.token,
+    refreshToken: session.refreshToken,
     username: session.username,
     role: session.role,
     loading: session.loading,
@@ -46,6 +47,7 @@ export const useAuthStore = defineStore('auth', () => {
     resetPasswordWithEmail: actions.resetPasswordWithEmail,
     registerWithEmail: actions.registerWithEmail,
     setToken: session.setToken,
+    setRefreshToken: session.setRefreshToken,
     applyExternalSession: session.applyExternalSession,
     logout: session.logout,
   }

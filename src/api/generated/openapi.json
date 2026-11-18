@@ -8619,21 +8619,15 @@
         "tags": [
           "auth"
         ],
-        "summary": "注销自己的账号",
-        "description": "**需要登录**（`Authorization: Bearer <平台会话令牌>`），但**不挂端点权限码**——只能注销当前登录的这个账号，归属即权限。注销是**不可逆**的：账号随即进入关闭状态，已签发的全部令牌当场失效，之后用这个账号登录回 403 `ACCOUNT_CLOSED`。唯一的超级管理员不允许注销（否则平台会失去最后一个能管配置的账号），回回 400`CANNOT_DELETE_SUPER_ADMIN`——只有一位超管时这条会命中，有多位时不影响。用户记录不存在（例如令牌指向的账号已被删）回 404 `USER_NOT_FOUND`。",
+        "summary": "注销账号（已改为申请制）",
+        "description": "**已废弃**：注销不再允许直接关闭账号，必须走申请流程：先 `POST /api/auth/account/close-code` 发验证码，再`POST /api/auth/account/close-request` 提交申请。申请期内账号仍可登录，到期后只做软注销（`account_status = 'closed'`），历史合同、支付与业务记录保留。直接调用本端点回 409 `ACCOUNT_CLOSE_REQUEST_REQUIRED`。",
         "operationId": "auth_close_account",
         "responses": {
-          "204": {
-            "description": "已注销，无响应体"
-          },
-          "400": {
-            "description": "这是平台唯一剩下的超级管理员（`CANNOT_DELETE_SUPER_ADMIN`）"
-          },
           "401": {
             "description": "未登录，或令牌无效 / 已吊销"
           },
-          "404": {
-            "description": "账号不存在（`USER_NOT_FOUND`）"
+          "409": {
+            "description": "需要先提交注销申请（`ACCOUNT_CLOSE_REQUEST_REQUIRED`）"
           },
           "500": {
             "description": "内部错误"
@@ -9604,6 +9598,47 @@
           },
           "401": {
             "description": "未登录，或令牌无效 / 已吊销"
+          },
+          "403": {
+            "description": "账号已被停用或注销"
+          },
+          "500": {
+            "description": "内部错误"
+          }
+        }
+      }
+    },
+    "/api/auth/refresh-token": {
+      "post": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "用刷新令牌换一对新令牌",
+        "description": "**免登录**：不读 `Authorization` 头、不用 Cookie，只认请求体里的 `refresh_token`。校验通过返回与登录相同的 `AuthResponse`：新的访问令牌、新的刷新令牌，以及两者各自的有效期（秒）。角色重新从数据库读取，刚改过角色的账号刷新后立即拿到新权限。刷新令牌无效 / 已过期 / 用途不对（例如把访问令牌填进来），或用户的令牌版本号已变化（改密 / 注销后）统一回 401；账户不存在也归到 401，不暴露账号是否存在。账号被停用或注销回 403，与登录同口径。**刷新令牌不能当访问令牌用**：它带 `typ = refresh`，任何需要登录的接口都会拒绝它。",
+        "operationId": "auth_refresh_token",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RefreshTokenRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "新的访问令牌、刷新令牌与各自有效期",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "刷新令牌无效 / 已过期 / 类型不对，或已被吊销"
           },
           "403": {
             "description": "账号已被停用或注销"
@@ -11010,7 +11045,7 @@
           "auth"
         ],
         "summary": "解绑第三方渠道",
-        "description": "**需要登录**（`Authorization: Bearer <平台会话令牌>`），**不挂端点权限码**——只能解绑当前登录人自己的绑定，归属即权限。路径参数 `provider` 取 `github` / `gitee` / `qq` / `wechat`（与 `/api/auth/providers` 同值）；其它取值回 400 `OAUTH_PROVIDER_UNSUPPORTED`。解绑不存在的绑定不报错：没有记录也回 200，前端不必先查一遍。解绑后该第三方账号可以再绑到别的平台账号。",
+        "description": "**已废弃**：解绑必须重新验证当前绑定的第三方账号。微信 / QQ 走扫码验证（`/api/auth/{wechat,qq}/unbind/qr/url`），GitHub / Gitee 走授权验证（`/api/auth/{github,gitee}/unbind/url`）。直接调用本端点一律回 409 `UNBIND_VERIFICATION_REQUIRED`，不会删除任何绑定。",
         "operationId": "auth_unbind",
         "parameters": [
           {
@@ -11024,14 +11059,11 @@
           }
         ],
         "responses": {
-          "200": {
-            "description": "已解绑（原本没有绑定时同样回 200），无响应体"
-          },
-          "400": {
-            "description": "渠道标识不受支持（`OAUTH_PROVIDER_UNSUPPORTED`）"
-          },
           "401": {
             "description": "未登录，或令牌无效 / 已吊销"
+          },
+          "409": {
+            "description": "解绑需要重新验证（`UNBIND_VERIFICATION_REQUIRED`）"
           },
           "500": {
             "description": "内部错误"
@@ -34469,6 +34501,474 @@
           }
         }
       }
+    },
+    "/api/auth/account/close-code": {
+      "post": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "发送注销申请验证码",
+        "description": "**需要登录**，验证码发到当前账号的主邮箱。同一账号每小时最多 3 次；账号未绑定邮箱回 400 `CURRENT_EMAIL_REQUIRED`。",
+        "operationId": "auth_send_account_close_code",
+        "responses": {
+          "200": {
+            "description": "已提交发信，无响应体"
+          },
+          "400": {
+            "description": "账号未绑定邮箱（`CURRENT_EMAIL_REQUIRED`）或邮件发送失败"
+          },
+          "401": {
+            "description": "未登录，或令牌无效 / 已吊销"
+          },
+          "429": {
+            "description": "触发限流"
+          }
+        }
+      }
+    },
+    "/api/auth/account/close-request": {
+      "get": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "读取注销申请状态",
+        "description": "**需要登录**。返回当前账号是否有待生效的注销申请、生效时间与剩余天数。",
+        "operationId": "auth_account_close_request",
+        "responses": {
+          "200": {
+            "description": "注销申请状态",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AccountCloseRequestResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "未登录，或令牌无效 / 已吊销"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "提交账号注销申请",
+        "description": "**需要登录**。校验邮箱验证码后写入注销申请，申请期内账号仍可正常登录，到期后惰性落地软注销。生效期由管理端配置（默认 7 天，可在 1–90 天之间调整）。已有待生效申请回 409 `ACCOUNT_CLOSE_ALREADY_PENDING`；唯一超级管理员回 400 `CANNOT_DELETE_SUPER_ADMIN`。",
+        "operationId": "auth_request_account_close",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AccountCloseRequestRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "申请已提交",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AccountCloseRequestResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "验证码缺失 / 错误，或这是唯一的超级管理员"
+          },
+          "401": {
+            "description": "未登录，或令牌无效 / 已吊销"
+          },
+          "409": {
+            "description": "已有待生效的注销申请（`ACCOUNT_CLOSE_ALREADY_PENDING`）"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "撤销注销申请",
+        "description": "**需要登录**。只撤销还没生效的申请；没有待生效申请回 409`ACCOUNT_CLOSE_NOT_PENDING`。",
+        "operationId": "auth_cancel_account_close",
+        "responses": {
+          "204": {
+            "description": "已撤销，无响应体"
+          },
+          "401": {
+            "description": "未登录，或令牌无效 / 已吊销"
+          },
+          "409": {
+            "description": "没有待生效的注销申请（`ACCOUNT_CLOSE_NOT_PENDING`）"
+          }
+        }
+      }
+    },
+    "/api/auth/gitee/unbind/url": {
+      "get": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "取 Gitee 解绑验证授权地址",
+        "description": "**需要登录**：与 GitHub 版同构，渠道换成 Gitee。结果由 `/api/auth/gitee/callback` 带回 `unbind=success` 或 `unbind_error`。",
+        "operationId": "auth_gitee_unbind_url",
+        "parameters": [
+          {
+            "name": "redirect_to",
+            "in": "query",
+            "description": "成功后跳回的地址；必须与落地页同源，否则回落到落地页。",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "request_dev_role",
+            "in": "query",
+            "description": "是否同时申请开发者角色。",
+            "required": false,
+            "schema": {
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Gitee 授权地址",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthorizeUrlResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "渠道凭据不全或回调 / 落地页没配"
+          },
+          "401": {
+            "description": "未登录，或令牌无效 / 已吊销"
+          },
+          "404": {
+            "description": "该渠道未启用（`OAUTH_DISABLED`）"
+          },
+          "429": {
+            "description": "触发限流"
+          },
+          "500": {
+            "description": "内部错误"
+          }
+        }
+      }
+    },
+    "/api/auth/github/unbind/url": {
+      "get": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "取 GitHub 解绑验证授权地址",
+        "description": "**需要登录**：解绑 GitHub 前必须重新走一次 GitHub 授权，回调时用授权码换回的账号 ID 与当前绑定比对，一致才真正解绑。这样只拿到平台会话令牌的人无法把别人的 GitHub 直接摘掉。结果由 `/api/auth/github/callback` 带回 `unbind=success` 或 `unbind_error`。",
+        "operationId": "auth_github_unbind_url",
+        "parameters": [
+          {
+            "name": "redirect_to",
+            "in": "query",
+            "description": "成功后跳回的地址；必须与落地页同源，否则回落到落地页。",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "request_dev_role",
+            "in": "query",
+            "description": "是否同时申请开发者角色。",
+            "required": false,
+            "schema": {
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "GitHub 授权地址",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthorizeUrlResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "渠道凭据不全或回调 / 落地页没配"
+          },
+          "401": {
+            "description": "未登录，或令牌无效 / 已吊销"
+          },
+          "404": {
+            "description": "该渠道未启用（`OAUTH_DISABLED`）"
+          },
+          "429": {
+            "description": "触发限流"
+          },
+          "500": {
+            "description": "内部错误"
+          }
+        }
+      }
+    },
+    "/api/auth/qq/unbind/qr/status": {
+      "get": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "轮询 QQ 扫码解绑状态",
+        "description": "**免登录**：与微信版同构。",
+        "operationId": "auth_qq_unbind_qr_status",
+        "parameters": [
+          {
+            "name": "state",
+            "in": "query",
+            "description": "二维码上的 state。",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "poll_secret",
+            "in": "query",
+            "description": "建码时拿到的轮询凭据。",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "解绑状态",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QrStatusResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/qq/unbind/qr/url": {
+      "get": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "取 QQ 扫码解绑验证二维码地址",
+        "description": "**需要登录**：与微信版同构，渠道换成 QQ。扫码的 QQ 必须与当前绑定一致。",
+        "operationId": "auth_qq_unbind_qr_url",
+        "parameters": [
+          {
+            "name": "redirect_to",
+            "in": "query",
+            "description": "登录成功后跳回的前端地址；留空用渠道落地页。",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "二维码地址与轮询凭据",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QrUrlResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "渠道凭据或回调配置不全"
+          },
+          "401": {
+            "description": "未登录，或令牌无效 / 已吊销"
+          },
+          "404": {
+            "description": "该渠道未启用（`OAUTH_DISABLED`）"
+          },
+          "500": {
+            "description": "内部错误"
+          }
+        }
+      }
+    },
+    "/api/auth/users/account-close-policy": {
+      "get": {
+        "tags": [
+          "identity-admin"
+        ],
+        "summary": "读取注销申请期（管理端）",
+        "description": "**需要登录 + `user.config.get`**。返回账号注销的申请期天数（默认 7 天）。",
+        "operationId": "identity_admin_account_close_policy",
+        "responses": {
+          "200": {
+            "description": "当前申请期",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AccountClosePolicyResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "未登录，或令牌无效 / 已吊销"
+          },
+          "403": {
+            "description": "没有 `user.config.get`"
+          },
+          "500": {
+            "description": "内部错误"
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "identity-admin"
+        ],
+        "summary": "修改注销申请期（管理端）",
+        "description": "**需要登录 + `user.config.put`**。申请期只能在 1–90 天之间，保存后对新提交的申请即时生效；已经提交的申请仍按提交时的生效时间执行。",
+        "operationId": "identity_admin_update_account_close_policy",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AccountClosePolicyRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "修改后的申请期",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AccountClosePolicyResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "天数不在 1–90 之间（`INVALID_ARGUMENT`）"
+          },
+          "401": {
+            "description": "未登录，或令牌无效 / 已吊销"
+          },
+          "403": {
+            "description": "没有 `user.config.put`"
+          },
+          "500": {
+            "description": "内部错误"
+          }
+        }
+      }
+    },
+    "/api/auth/wechat/unbind/qr/status": {
+      "get": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "轮询微信扫码解绑状态",
+        "description": "**免登录**（凭 `state` + `poll_secret`）。`confirmed` 表示已解绑，`failed` 的 `message` 会明确说明「扫的微信不是当前绑定的那个」。",
+        "operationId": "auth_wechat_unbind_qr_status",
+        "parameters": [
+          {
+            "name": "state",
+            "in": "query",
+            "description": "二维码上的 state。",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "poll_secret",
+            "in": "query",
+            "description": "建码时拿到的轮询凭据。",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "解绑状态",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QrStatusResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/wechat/unbind/qr/url": {
+      "get": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "取微信扫码解绑验证二维码地址",
+        "description": "**需要登录**：解绑微信前必须重新扫码验证，且扫码的微信必须与当前绑定一致。与扫码绑定同构（`state` + `poll_secret`、会话 5 分钟过期），但会话模式为 `unbind`，轮询成功后只表示「已解绑」，不签发令牌。",
+        "operationId": "auth_wechat_unbind_qr_url",
+        "parameters": [
+          {
+            "name": "redirect_to",
+            "in": "query",
+            "description": "登录成功后跳回的前端地址；留空用渠道落地页。",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "二维码地址与轮询凭据",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QrUrlResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "渠道凭据或回调配置不全"
+          },
+          "401": {
+            "description": "未登录，或令牌无效 / 已吊销"
+          },
+          "404": {
+            "description": "该渠道未启用（`OAUTH_DISABLED`）"
+          },
+          "500": {
+            "description": "内部错误"
+          }
+        }
+      }
     }
   },
   "components": {
@@ -39024,11 +39524,28 @@
         "type": "object",
         "required": [
           "token",
+          "refresh_token",
+          "access_token_expires_in",
+          "refresh_token_expires_in",
           "username",
           "role",
           "roles"
         ],
         "properties": {
+          "access_token_expires_in": {
+            "type": "integer",
+            "format": "int64",
+            "description": "访问令牌有效期（秒）。"
+          },
+          "refresh_token": {
+            "type": "string",
+            "description": "刷新令牌：只能用于 `/api/auth/refresh-token` 换新令牌，不能当访问令牌用。"
+          },
+          "refresh_token_expires_in": {
+            "type": "integer",
+            "format": "int64",
+            "description": "刷新令牌有效期（秒）。"
+          },
           "role": {
             "type": "string",
             "description": "主角色。"
@@ -47059,7 +47576,8 @@
         "description": "JWT 配置的对外形状（密钥掩码）。",
         "required": [
           "jwt_secret",
-          "access_token_expire_minutes"
+          "access_token_expire_minutes",
+          "refresh_token_expire_minutes"
         ],
         "properties": {
           "access_token_expire_minutes": {
@@ -47071,6 +47589,12 @@
           "jwt_secret": {
             "type": "string",
             "description": "签名密钥（回显为 `***`；PUT 时传 `***` 或空串表示保持原值）。"
+          },
+          "refresh_token_expire_minutes": {
+            "type": "integer",
+            "format": "int64",
+            "description": "刷新令牌有效期（分钟）。",
+            "minimum": 0
           }
         }
       },
@@ -51571,6 +52095,19 @@
           "date": {
             "type": "string",
             "description": "自然日，`YYYY-MM-DD`（东八区）。"
+          }
+        }
+      },
+      "RefreshTokenRequest": {
+        "type": "object",
+        "description": "刷新令牌请求体。",
+        "required": [
+          "refresh_token"
+        ],
+        "properties": {
+          "refresh_token": {
+            "type": "string",
+            "description": "登录 / 刷新时下发的刷新令牌。"
           }
         }
       },
@@ -60483,6 +61020,82 @@
           "payout_channel_ready": {
             "type": "boolean",
             "description": "出款条件是否就绪（渠道已装配 + 收款账户可用）。"
+          }
+        }
+      },
+      "AccountCloseRequestResponse": {
+        "type": "object",
+        "description": "注销申请状态。",
+        "required": [
+          "pending"
+        ],
+        "properties": {
+          "days_remaining": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "距生效还剩几天（向上取整）；没有申请时为 `null`。"
+          },
+          "effective_at": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "生效时间（RFC 3339）；没有申请时为 `null`。"
+          },
+          "pending": {
+            "type": "boolean",
+            "description": "是否有待生效的申请。"
+          },
+          "requested_at": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "提交时间（RFC 3339）；没有申请时为 `null`。"
+          }
+        }
+      },
+      "AccountCloseRequestRequest": {
+        "type": "object",
+        "description": "注销申请请求体。",
+        "required": [
+          "email_code"
+        ],
+        "properties": {
+          "email_code": {
+            "type": "string",
+            "description": "发到当前主邮箱的 6 位验证码。"
+          }
+        }
+      },
+      "AccountClosePolicyResponse": {
+        "type": "object",
+        "description": "注销申请期配置。",
+        "required": [
+          "grace_days"
+        ],
+        "properties": {
+          "grace_days": {
+            "type": "integer",
+            "format": "int64",
+            "description": "申请期天数。"
+          }
+        }
+      },
+      "AccountClosePolicyRequest": {
+        "type": "object",
+        "description": "修改注销申请期请求体。",
+        "required": [
+          "grace_days"
+        ],
+        "properties": {
+          "grace_days": {
+            "type": "integer",
+            "format": "int64",
+            "description": "申请期天数（1–90）。"
           }
         }
       }

@@ -3,9 +3,11 @@ import { useRoute, useRouter } from 'vue-router'
 
 import {
   getBoundProviders,
+  getProviderUnbindUrl,
   getProviderBindUrl,
+  getQqUnbindQrUrl,
+  getWechatUnbindQrUrl,
   getWechatBindQrUrl,
-  unbindProvider,
 } from '@/api/auth'
 import { describeBackendError } from '@/shared/backendErrorText'
 import { providerLabel } from '@/shared/accountEntries'
@@ -22,7 +24,21 @@ export function useAccountProviderBinding() {
   const boundProviders = ref<string[]>([])
   const providerBindingLoading = ref(false)
   const loadError = ref('')
-  const wechatBindQr = reactive({ visible: false, url: '', state: '', pollSecret: '' })
+  const providerQr = reactive<{
+    visible: boolean
+    provider: 'wechat' | 'qq'
+    mode: 'bind' | 'unbind'
+    url: string
+    state: string
+    pollSecret: string
+  }>({
+    visible: false,
+    provider: 'wechat',
+    mode: 'bind',
+    url: '',
+    state: '',
+    pollSecret: '',
+  })
 
   async function loadBoundProviders() {
     if (!auth.isAuthed) return
@@ -45,12 +61,16 @@ export function useAccountProviderBinding() {
     if (boundProviders.value.includes(provider)) {
       providerBindingLoading.value = true
       try {
-        await unbindProvider(auth.token, provider)
-        boundProviders.value = boundProviders.value.filter((item) => item !== provider)
-        TMessage.success(`${providerLabel(provider)} 已解除绑定`)
+        if (provider === 'github' || provider === 'gitee') {
+          const { url } = await getProviderUnbindUrl(auth.token, provider, window.location.href)
+          if (!url.trim()) throw new Error('解绑验证地址为空')
+          window.location.assign(url)
+          return
+        }
+        await openProviderQr('qq', 'unbind')
       } catch (err) {
         TMessage.error(
-          err instanceof Error ? err.message : `解除 ${providerLabel(provider)} 绑定失败`,
+          err instanceof Error ? err.message : `发起 ${providerLabel(provider)} 解绑验证失败`,
         )
       } finally {
         providerBindingLoading.value = false
@@ -71,32 +91,50 @@ export function useAccountProviderBinding() {
     }
   }
 
-  async function openWechatBinding() {
+  async function openProviderQr(provider: 'wechat' | 'qq', mode: 'bind' | 'unbind') {
+    const qr =
+      provider === 'qq'
+        ? await getQqUnbindQrUrl(auth.token, window.location.href)
+        : mode === 'unbind'
+          ? await getWechatUnbindQrUrl(auth.token, window.location.href)
+          : await getWechatBindQrUrl(auth.token, window.location.href)
+    if (!qr.url.trim() || !qr.state.trim() || !qr.poll_secret.trim()) {
+      throw new Error(
+        `${providerLabel(provider)}${mode === 'unbind' ? '解绑' : '绑定'}二维码或轮询凭据为空`,
+      )
+    }
+    Object.assign(providerQr, {
+      visible: true,
+      provider,
+      mode,
+      url: qr.url,
+      state: qr.state,
+      pollSecret: qr.poll_secret,
+    })
+  }
+
+  async function openWechatBinding(mode: 'bind' | 'unbind' = 'bind') {
     if (!auth.isAuthed) {
-      TMessage.error('请先登录后再绑定微信')
+      TMessage.error(`请先登录后再${mode === 'unbind' ? '解绑' : '绑定'}微信`)
       return
     }
     if (wechatBindingLoading.value) return
     wechatBindingLoading.value = true
     try {
       if (/MicroMessenger/i.test(navigator.userAgent)) {
-        const { url } = await getProviderBindUrl(auth.token, 'wechat', window.location.href)
+        const { url } =
+          mode === 'unbind'
+            ? await getWechatUnbindQrUrl(auth.token, window.location.href)
+            : await getProviderBindUrl(auth.token, 'wechat', window.location.href)
         if (!url.trim()) throw new Error('微信授权地址为空')
         window.location.assign(url)
         return
       }
-      const qr = await getWechatBindQrUrl(auth.token, window.location.href)
-      if (!qr.url.trim() || !qr.state.trim() || !qr.poll_secret.trim()) {
-        throw new Error('微信绑定二维码或轮询凭据为空')
-      }
-      Object.assign(wechatBindQr, {
-        visible: true,
-        url: qr.url,
-        state: qr.state,
-        pollSecret: qr.poll_secret,
-      })
+      await openProviderQr('wechat', mode)
     } catch (err) {
-      TMessage.error(err instanceof Error ? err.message : '发起微信绑定失败')
+      TMessage.error(
+        err instanceof Error ? err.message : `发起微信${mode === 'unbind' ? '解绑' : '绑定'}失败`,
+      )
     } finally {
       wechatBindingLoading.value = false
     }
@@ -104,34 +142,33 @@ export function useAccountProviderBinding() {
 
   async function toggleWechatBinding() {
     if (!wechatBound.value) {
-      await openWechatBinding()
+      await openWechatBinding('bind')
       return
     }
-    if (wechatBindingLoading.value) return
-    wechatBindingLoading.value = true
-    try {
-      await unbindProvider(auth.token, 'wechat')
-      wechatBound.value = false
-      boundProviders.value = boundProviders.value.filter((item) => item !== 'wechat')
-      TMessage.success('微信已解除绑定')
-    } catch (err) {
-      TMessage.error(err instanceof Error ? err.message : '解除微信绑定失败')
-    } finally {
-      wechatBindingLoading.value = false
-    }
+    await openWechatBinding('unbind')
   }
 
-  function closeWechatBindQr() {
-    Object.assign(wechatBindQr, { visible: false, url: '', state: '', pollSecret: '' })
+  function closeProviderQr() {
+    Object.assign(providerQr, {
+      visible: false,
+      provider: 'wechat',
+      mode: 'bind',
+      url: '',
+      state: '',
+      pollSecret: '',
+    })
   }
 
-  async function handleWechatBound(result: { success: boolean; error?: string }) {
-    closeWechatBindQr()
+  async function handleProviderQrCompleted(result: { success: boolean; error?: string }) {
+    const { provider, mode } = providerQr
+    closeProviderQr()
+    const label = providerLabel(provider)
+    const action = mode === 'unbind' ? '解绑' : '绑定'
     if (!result.success) {
-      TMessage.error(`微信绑定失败：${result.error ?? '未完成'}`)
+      TMessage.error(`${label}${action}失败：${result.error ?? '未完成'}`)
       return
     }
-    TMessage.success('微信绑定成功')
+    TMessage.success(`${label}${mode === 'unbind' ? '已解除绑定' : '绑定成功'}`)
     await loadBoundProviders()
   }
 
@@ -170,19 +207,38 @@ export function useAccountProviderBinding() {
     }
   }
 
+  function consumeProviderUnbindResult() {
+    const result = typeof route.query.unbind === 'string' ? route.query.unbind.trim() : ''
+    const error =
+      typeof route.query.unbind_error === 'string' ? route.query.unbind_error.trim() : ''
+    if (result === 'success') {
+      TMessage.success('第三方账号已解除绑定')
+      void loadBoundProviders()
+    } else if (error) {
+      TMessage.error(`第三方账号解绑失败：${error}`)
+    }
+    if (result || error) {
+      const nextQuery = { ...route.query }
+      delete nextQuery.unbind
+      delete nextQuery.unbind_error
+      void router.replace({ query: nextQuery })
+    }
+  }
+
   return {
     wechatBound,
     boundProviders,
     wechatBindingLoading,
     providerBindingLoading,
     loadError,
-    wechatBindQr,
+    providerQr,
     loadBoundProviders,
     handleProviderBinding,
     toggleWechatBinding,
-    closeWechatBindQr,
-    handleWechatBound,
+    closeProviderQr,
+    handleProviderQrCompleted,
     consumeWechatBindResult,
     consumeProviderBindResult,
+    consumeProviderUnbindResult,
   }
 }
