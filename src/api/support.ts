@@ -51,15 +51,13 @@ export async function createSupportGuestSession(): Promise<{
   token: string
   display_name: string
 }> {
-  return requestJson(
-    '/support/guest/session',
-    { method: 'POST' },
-    '创建访客咨询失败',
-  )
+  return requestJson('/support/guest/session', { method: 'POST' }, '创建访客咨询失败')
 }
 
 export function listMySupportConversations(token: string): Promise<SupportConversation[]> {
-  const path = isSupportGuestToken(token) ? '/support/guest/conversations' : '/support/conversations/mine'
+  const path = isSupportGuestToken(token)
+    ? '/support/guest/conversations'
+    : '/support/conversations/mine'
   return requestJson(path, { headers: authHeaders(token) }, '加载会话失败')
 }
 

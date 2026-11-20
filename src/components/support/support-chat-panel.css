@@ -174,10 +174,7 @@
   overflow-y: auto;
   overscroll-behavior: contain;
   background:
-    linear-gradient(
-      color-mix(in srgb, var(--73-surface) 48%, transparent) 1px,
-      transparent 1px
-    ),
+    linear-gradient(color-mix(in srgb, var(--73-surface) 48%, transparent) 1px, transparent 1px),
     var(--73-surface-strong);
   background-size: 100% 32px;
   scrollbar-width: thin;

@@ -48,8 +48,7 @@ function decorateMessages(items: SupportMessage[]): SupportChatMessage[] {
     previousDay = day.key
     return {
       ...message,
-      time:
-        parsed?.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' }) ?? '',
+      time: parsed?.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' }) ?? '',
       day: day.label,
       showDay,
       continuation,
