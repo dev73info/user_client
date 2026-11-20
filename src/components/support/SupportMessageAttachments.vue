@@ -2,11 +2,12 @@
 import { onBeforeUnmount, ref, watch } from 'vue'
 
 import { downloadSupportAttachment, type SupportAttachment } from '@/api/support'
-import { useAuthStore } from '@/stores/auth'
 
-const props = defineProps<{ attachments: SupportAttachment[] }>()
+const props = defineProps<{
+  attachments: SupportAttachment[]
+  token: string
+}>()
 
-const auth = useAuthStore()
 const imageUrls = ref<Record<number, string>>({})
 const failedImages = ref<Set<number>>(new Set())
 const downloading = ref<number | null>(null)
@@ -33,12 +34,12 @@ async function loadImages(items: SupportAttachment[]) {
   const current = ++generation
   revokeImages()
   failedImages.value = new Set()
-  const token = auth.token.trim()
+  const token = props.token.trim()
   if (!token) return
   for (const attachment of items.filter(isImage)) {
     try {
       const blob = await downloadSupportAttachment(token, attachment.id)
-      if (disposed || current !== generation || auth.token.trim() !== token) return
+      if (disposed || current !== generation || props.token.trim() !== token) return
       imageUrls.value[attachment.id] = URL.createObjectURL(blob)
     } catch {
       if (current === generation) failedImages.value.add(attachment.id)
@@ -47,7 +48,7 @@ async function loadImages(items: SupportAttachment[]) {
 }
 
 async function download(attachment: SupportAttachment) {
-  const token = auth.token.trim()
+  const token = props.token.trim()
   if (!token || downloading.value !== null) return
   downloading.value = attachment.id
   error.value = ''
@@ -66,7 +67,11 @@ async function download(attachment: SupportAttachment) {
   }
 }
 
-watch(() => props.attachments, loadImages, { immediate: true })
+watch(
+  () => [props.attachments, props.token] as const,
+  () => void loadImages(props.attachments),
+  { immediate: true },
+)
 
 onBeforeUnmount(() => {
   disposed = true

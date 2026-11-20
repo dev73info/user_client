@@ -41,7 +41,7 @@ function shouldRedirectOnUnauthorized(path: string): boolean {
     '/auth/reset-password',
     '/auth/refresh',
     '/auth/refresh-token',
-  ]).has(authPath)
+  ]).has(authPath) && !authPath.startsWith('/support/guest/')
 }
 
 const httpClient = createHttpClient({

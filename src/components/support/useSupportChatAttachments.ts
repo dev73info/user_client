@@ -41,7 +41,7 @@ export function useSupportChatAttachments(token: () => string) {
   async function upload(files: FileList | File[]) {
     const authToken = token().trim()
     if (!authToken) {
-      error.value = '请先登录后再上传附件'
+      error.value = '咨询会话正在建立，请稍候再上传'
       return
     }
     const remaining = MAX_SUPPORT_ATTACHMENTS - pending.value.length

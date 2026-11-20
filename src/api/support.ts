@@ -4,6 +4,7 @@ import { authHeaders, requestBlob, requestJson } from '@/api/http'
 type GeneratedConversation = components['schemas']['SupportConversationResponse']
 
 export type SupportConversation = GeneratedConversation & {
+  is_guest?: boolean
   satisfaction_rating?: number | null
   satisfaction_comment?: string | null
   satisfaction_rated_at?: string | null
@@ -36,8 +37,30 @@ export type SupportAvailability = {
 }
 export type PublicSupportChannel = components['schemas']['PublicChannelResponse']
 
+export const SUPPORT_GUEST_TOKEN_PREFIX = '73sg_'
+
+export function isSupportGuestToken(token: string): boolean {
+  return token.trim().startsWith(SUPPORT_GUEST_TOKEN_PREFIX)
+}
+
+function supportPath(token: string, path: string): string {
+  return isSupportGuestToken(token) ? `/support/guest${path}` : `/support${path}`
+}
+
+export async function createSupportGuestSession(): Promise<{
+  token: string
+  display_name: string
+}> {
+  return requestJson(
+    '/support/guest/session',
+    { method: 'POST' },
+    '创建访客咨询失败',
+  )
+}
+
 export function listMySupportConversations(token: string): Promise<SupportConversation[]> {
-  return requestJson('/support/conversations/mine', { headers: authHeaders(token) }, '加载会话失败')
+  const path = isSupportGuestToken(token) ? '/support/guest/conversations' : '/support/conversations/mine'
+  return requestJson(path, { headers: authHeaders(token) }, '加载会话失败')
 }
 
 export function getSupportConversationDetail(
@@ -45,7 +68,7 @@ export function getSupportConversationDetail(
   id: number,
 ): Promise<SupportConversationDetail> {
   return requestJson(
-    `/support/conversations/${id}`,
+    supportPath(token, `/conversations/${id}`),
     { headers: authHeaders(token) },
     '加载会话详情失败',
   )
@@ -58,7 +81,7 @@ export function createSupportConversation(
 ): Promise<SupportConversation> {
   const body = attachmentIds.length ? { content, attachment_ids: attachmentIds } : { content }
   return requestJson(
-    '/support/conversations',
+    supportPath(token, '/conversations'),
     {
       method: 'POST',
       headers: authHeaders(token, { 'Content-Type': 'application/json' }),
@@ -76,7 +99,7 @@ export function sendSupportMessage(
 ): Promise<SupportMessage> {
   const body = attachmentIds.length ? { content, attachment_ids: attachmentIds } : { content }
   return requestJson(
-    `/support/conversations/${id}/messages`,
+    supportPath(token, `/conversations/${id}/messages`),
     {
       method: 'POST',
       headers: authHeaders(token, { 'Content-Type': 'application/json' }),
@@ -93,7 +116,7 @@ export function rateSupportConversation(
   comment: string | null,
 ): Promise<SupportConversation> {
   return requestJson(
-    `/support/conversations/${id}/satisfaction`,
+    supportPath(token, `/conversations/${id}/satisfaction`),
     {
       method: 'POST',
       headers: authHeaders(token, { 'Content-Type': 'application/json' }),
@@ -111,7 +134,7 @@ export function uploadSupportAttachment(token: string, file: File): Promise<Supp
   const form = new FormData()
   form.append('file', file)
   return requestJson(
-    '/support/attachments',
+    supportPath(token, '/attachments'),
     { method: 'POST', headers: authHeaders(token), body: form },
     '上传附件失败',
   )
@@ -119,7 +142,7 @@ export function uploadSupportAttachment(token: string, file: File): Promise<Supp
 
 export function downloadSupportAttachment(token: string, id: number): Promise<Blob> {
   return requestBlob(
-    `/support/attachments/${encodeURIComponent(String(id))}`,
+    supportPath(token, `/attachments/${encodeURIComponent(String(id))}`),
     { headers: authHeaders(token) },
     '下载附件失败',
   )
@@ -131,5 +154,8 @@ export function listPublicSupportChannels(): Promise<PublicSupportChannel[]> {
 
 export function supportConversationWsUrl(token: string): string {
   const protocol = window.location.protocol === 'https:' ? 'wss' : 'ws'
-  return `${protocol}://${window.location.host}/api/support/conversations/ws?token=${encodeURIComponent(token.trim())}`
+  const path = isSupportGuestToken(token)
+    ? '/api/support/guest/conversations/ws'
+    : '/api/support/conversations/ws'
+  return `${protocol}://${window.location.host}${path}?token=${encodeURIComponent(token.trim())}`
 }

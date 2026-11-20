@@ -14,7 +14,11 @@ function stars(rating: number | null | undefined) {
 
 <template>
   <div class="support-history">
-    <p v-if="!conversations.length" class="support-hint">还没有历史会话</p>
+    <div v-if="!conversations.length" class="support-history__empty">
+      <span aria-hidden="true">○</span>
+      <p>还没有历史咨询</p>
+      <small>发送第一条消息后会自动保存</small>
+    </div>
     <button
       v-for="item in conversations"
       :key="item.id"
@@ -29,7 +33,7 @@ function stars(rating: number | null | undefined) {
         </span>
       </span>
       <span class="support-history__sub">
-        <span>{{ item.conversation_no }}</span>
+        <span>{{ item.last_message_at || item.created_at }}</span>
         <span v-if="item.agent_username">客服 {{ item.agent_username }}</span>
         <span v-if="item.satisfaction_rating" class="support-history__stars">
           {{ stars(item.satisfaction_rating) }}
@@ -49,6 +53,37 @@ function stars(rating: number | null | undefined) {
   background: var(--73-surface-strong);
 }
 
+.support-history__empty {
+  display: grid;
+  justify-items: center;
+  gap: 5px;
+  padding: 54px 16px;
+  color: var(--73-ink-muted);
+  text-align: center;
+}
+
+.support-history__empty span {
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  margin-bottom: 3px;
+  border: 1px dashed var(--73-border);
+  border-radius: 13px;
+  color: var(--73-ink-disabled);
+  font-size: 22px;
+}
+
+.support-history__empty p {
+  margin: 0;
+  color: var(--73-ink-soft);
+  font-size: 13px;
+}
+
+.support-history__empty small {
+  font-size: 11px;
+}
+
 .support-history__item {
   display: grid;
   gap: 4px;
@@ -60,6 +95,10 @@ function stars(rating: number | null | undefined) {
   color: var(--73-ink);
   text-align: left;
   cursor: pointer;
+}
+
+.support-history__item:hover {
+  background: var(--73-inset);
 }
 
 .support-history__top,

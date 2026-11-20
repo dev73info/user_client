@@ -1,4 +1,4 @@
-import { computed, ref, watch } from 'vue'
+import { ref, watch } from 'vue'
 
 import {
   createSupportConversation,
@@ -9,19 +9,17 @@ import {
   type SupportConversation,
   type SupportConversationDetail,
 } from '@/api/support'
-import { useAuthStore } from '@/stores/auth'
-import { useSupportChatRealtime } from './useSupportChatRealtime'
 import { useSupportChatAttachments } from './useSupportChatAttachments'
 import { useSupportChatAvailability } from './useSupportChatAvailability'
+import { useSupportChatCredential } from './useSupportChatCredential'
 import { useSupportChatMessages } from './useSupportChatMessages'
+import { useSupportChatRealtime } from './useSupportChatRealtime'
 import { useSupportChatSatisfaction } from './useSupportChatSatisfaction'
 import { useSupportUnread } from './useSupportUnread'
-
-const LOGIN_REQUIRED_MESSAGE = '请先登录后再使用在线客服'
-const REALTIME_UNAVAILABLE_MESSAGE = '实时连接已断开'
-
+const REALTIME_UNAVAILABLE_MESSAGE = '实时连接已断开，消息仍可正常发送'
 export function useSupportChatSession() {
-  const auth = useAuthStore()
+  const credential = useSupportChatCredential()
+  const { auth, guest, token: supportToken, isGuest } = credential
   const channelEnabled = ref(false)
   const opened = ref(false)
   const loading = ref(false)
@@ -35,9 +33,9 @@ export function useSupportChatSession() {
   const error = ref('')
   let disposed = false
   const availability = useSupportChatAvailability()
-  const attachments = useSupportChatAttachments(() => auth.token)
+  const attachments = useSupportChatAttachments(() => supportToken.value)
   const satisfaction = useSupportChatSatisfaction(
-    () => auth.token,
+    () => supportToken.value,
     activeConversation,
     setActiveConversation,
   )
@@ -53,7 +51,8 @@ export function useSupportChatSession() {
     refresh: refreshConversations,
     start: startUnread,
     stop: stopUnread,
-  } = useSupportUnread()
+  } = useSupportUnread(() => supportToken.value)
+
   function toStatus(value: string): 'open' | 'closed' {
     return value === 'closed' ? 'closed' : 'open'
   }
@@ -70,13 +69,27 @@ export function useSupportChatSession() {
     activeStatus.value = null
   }
 
+  function resetTransientState() {
+    realtime.disconnect()
+    stopUnread()
+    clearActiveConversation()
+    historyOpen.value = false
+    unavailable.value = false
+    messages.value = []
+    input.value = ''
+    error.value = ''
+    attachments.clear()
+    loading.value = false
+    sending.value = false
+  }
+
   async function syncActiveConversation() {
     const id = activeConversationId.value
-    const token = auth.token.trim()
+    const token = supportToken.value.trim()
     if (!opened.value || id === null || !token) return
     try {
       const detail = await getSupportConversationDetail(token, id)
-      if (activeConversationId.value === id && auth.token.trim() === token) {
+      if (activeConversationId.value === id && supportToken.value.trim() === token) {
         activeConversation.value = detail.conversation
         setMessages(detail.messages)
         activeStatus.value = toStatus(detail.conversation.status)
@@ -87,7 +100,7 @@ export function useSupportChatSession() {
   }
 
   function receiveDetail(detail: SupportConversationDetail) {
-    activeConversationId.value ??= detail.conversation.id
+    if (activeConversationId.value === null) activeConversationId.value = detail.conversation.id
     if (activeConversationId.value !== detail.conversation.id) return
     setActiveConversation(detail.conversation)
     setMessages(detail.messages)
@@ -100,7 +113,9 @@ export function useSupportChatSession() {
 
   const realtime = useSupportChatRealtime({
     url: () =>
-      channelEnabled.value && auth.token.trim() ? supportConversationWsUrl(auth.token) : null,
+      channelEnabled.value && supportToken.value.trim()
+        ? supportConversationWsUrl(supportToken.value)
+        : null,
     onOpen: () => {
       unavailable.value = false
       void syncActiveConversation()
@@ -116,72 +131,65 @@ export function useSupportChatSession() {
     () => auth.token,
     (token, previousToken) => {
       if (token === previousToken) return
-      realtime.disconnect()
-      clearActiveConversation()
-      historyOpen.value = false
-      unavailable.value = false
-      messages.value = []
-      input.value = ''
-      error.value = ''
-      attachments.clear()
-      opened.value = false
-      loading.value = false
-      sending.value = false
-      if (token.trim() && channelEnabled.value) {
+      resetTransientState()
+      supportToken.value = token.trim() || guest.session.value?.token || ''
+      if (!channelEnabled.value) return
+      if (opened.value) {
+        void openCurrentConversation()
+      } else if (supportToken.value) {
         realtime.connect()
         startUnread()
       }
     },
   )
 
-  async function ensureConversation() {
-    const token = auth.token.trim()
-    if (!token) {
-      error.value = LOGIN_REQUIRED_MESSAGE
-      return
-    }
+  async function openCurrentConversation() {
+    if (loading.value) return
     loading.value = true
     error.value = ''
     try {
-      const list = await refreshConversations()
-      if (auth.token.trim() !== token || !opened.value) return
-      const current = list.find((item) => item.status === 'open')
-      if (!current) {
-        clearActiveConversation()
-        messages.value = []
-        return
-      }
-      const detail = await getSupportConversationDetail(token, current.id)
-      if (auth.token.trim() !== token) return
-      setActiveConversation(detail.conversation)
-      setMessages(detail.messages)
+      await credential.ensure()
+      if (disposed || !opened.value) return
+      realtime.connect()
+      startUnread()
+      await loadConversationForToken(supportToken.value)
     } catch (cause) {
-      if (auth.token.trim() === token) {
-        error.value = cause instanceof Error ? cause.message : '加载会话失败'
-      }
+      error.value = cause instanceof Error ? cause.message : '加载客服会话失败'
     } finally {
-      if (auth.token.trim() === token) loading.value = false
+      if (!disposed) loading.value = false
     }
+  }
+  async function loadConversationForToken(token: string) {
+    const list = await refreshConversations()
+    if (supportToken.value !== token || !opened.value) return
+    const current = list.find((item) => item.status === 'open')
+    if (!current) {
+      clearActiveConversation()
+      messages.value = []
+      return
+    }
+    const detail = await getSupportConversationDetail(token, current.id)
+    if (supportToken.value !== token) return
+    setActiveConversation(detail.conversation)
+    setMessages(detail.messages)
   }
 
   async function openConversation(id: number) {
-    const token = auth.token.trim()
     const target = conversations.value.find((item) => item.id === id)
-    if (!token || !target || loading.value) return
+    if (!target || loading.value) return
     historyOpen.value = false
     loading.value = true
     error.value = ''
     try {
+      const token = await credential.ensure()
       const detail = await getSupportConversationDetail(token, id)
-      if (auth.token.trim() !== token) return
+      if (supportToken.value !== token) return
       setActiveConversation(detail.conversation)
       setMessages(detail.messages)
     } catch (cause) {
-      if (auth.token.trim() === token) {
-        error.value = cause instanceof Error ? cause.message : '加载会话失败'
-      }
+      error.value = cause instanceof Error ? cause.message : '加载会话失败'
     } finally {
-      if (auth.token.trim() === token) loading.value = false
+      loading.value = false
     }
   }
 
@@ -194,51 +202,42 @@ export function useSupportChatSession() {
     if (disposed) return
     opened.value = !opened.value
     if (!opened.value) return
-    if (!auth.token.trim()) {
-      error.value = LOGIN_REQUIRED_MESSAGE
-      return
-    }
-    if (!loading.value) await ensureConversation()
+    await openCurrentConversation()
   }
 
-  async function send() {
-    const text = input.value.trim()
+  async function send(textOverride?: string) {
+    const text = (textOverride ?? input.value).trim()
     const attachmentIds = attachments.pending.value.map((attachment) => attachment.id)
     if ((!text && attachmentIds.length === 0) || loading.value || sending.value || disposed) return
-    const token = auth.token.trim()
-    if (!token) {
-      error.value = LOGIN_REQUIRED_MESSAGE
-      return
-    }
     sending.value = true
     error.value = ''
     try {
-      // 会话被客服结束后不能继续发；用这条内容新建一个会话。
+      const token = await credential.ensure()
+      if (disposed || supportToken.value !== token) return
       const canContinue = activeConversationId.value !== null && activeStatus.value === 'open'
       const id = canContinue
         ? activeConversationId.value!
         : (await createSupportConversation(token, text, attachmentIds)).id
-      if (auth.token.trim() !== token) return
+      if (supportToken.value !== token) return
       activeConversationId.value = id
       activeStatus.value = 'open'
       if (canContinue) {
         const sent = await sendSupportMessage(token, id, text, attachmentIds)
-        if (auth.token.trim() !== token) return
+        if (supportToken.value !== token) return
         appendMessage(sent)
       } else {
         const detail = await getSupportConversationDetail(token, id)
-        if (auth.token.trim() !== token) return
+        if (supportToken.value !== token) return
+        setActiveConversation(detail.conversation)
         setMessages(detail.messages)
       }
       input.value = ''
       attachments.clear()
       void refreshConversations()
     } catch (cause) {
-      if (auth.token.trim() === token) {
-        error.value = cause instanceof Error ? cause.message : '发送消息失败'
-      }
+      error.value = cause instanceof Error ? cause.message : '发送消息失败'
     } finally {
-      if (auth.token.trim() === token) sending.value = false
+      sending.value = false
     }
   }
 
@@ -250,7 +249,7 @@ export function useSupportChatSession() {
     } catch {
       channelEnabled.value = true
     }
-    if (!disposed && channelEnabled.value && auth.token.trim()) {
+    if (!disposed && channelEnabled.value && supportToken.value) {
       realtime.connect()
       startUnread()
     }
@@ -275,7 +274,8 @@ export function useSupportChatSession() {
     messages,
     input,
     error,
-    authenticated: computed(() => Boolean(auth.token.trim())),
+    supportToken,
+    isGuest,
     connected: realtime.connected,
     conversations,
     unread,

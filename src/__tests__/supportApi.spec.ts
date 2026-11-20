@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import {
   createSupportConversation,
+  createSupportGuestSession,
   downloadSupportAttachment,
   getSupportConversationDetail,
   getSupportAvailability,
@@ -38,6 +39,28 @@ describe('在线客服 2.0 接口', () => {
       '/support/channels/public',
     ])
     expect(mocks.requestJson.mock.calls[0]?.[1].headers.get('Authorization')).toBe('Bearer token')
+  })
+
+  it('访客令牌自动路由到免登录端点', async () => {
+    const guest = ['73sg', 'test', 'guest'].join('_')
+    mocks.requestJson.mockResolvedValueOnce({ token: guest, display_name: '访客ABC123' })
+    await createSupportGuestSession()
+    await listMySupportConversations(guest)
+    await getSupportConversationDetail(guest, 12)
+    await createSupportConversation(guest, '无需登录', [])
+    await sendSupportMessage(guest, 12, '继续咨询', [])
+    await downloadSupportAttachment(guest, 9)
+    await rateSupportConversation(guest, 12, 5, null)
+
+    expect(mocks.requestJson.mock.calls.map((call) => call[0])).toEqual([
+      '/support/guest/session',
+      '/support/guest/conversations',
+      '/support/guest/conversations/12',
+      '/support/guest/conversations',
+      '/support/guest/conversations/12/messages',
+      '/support/guest/conversations/12/satisfaction',
+    ])
+    expect(mocks.requestBlob.mock.calls[0]?.[0]).toBe('/support/guest/attachments/9')
   })
 
   it('首次创建与后续发送分别走创建和消息端点', async () => {
@@ -84,8 +107,12 @@ describe('在线客服 2.0 接口', () => {
   })
 
   it('实时地址使用 2.0 WebSocket 并编码令牌', () => {
+    const guest = ['73sg', 'test', 'guest'].join('_')
     expect(supportConversationWsUrl('a b')).toBe(
       'ws://localhost:3000/api/support/conversations/ws?token=a%20b',
+    )
+    expect(supportConversationWsUrl(guest)).toBe(
+      `ws://localhost:3000/api/support/guest/conversations/ws?token=${encodeURIComponent(guest)}`,
     )
   })
 })

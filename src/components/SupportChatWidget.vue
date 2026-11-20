@@ -4,7 +4,6 @@ import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import SupportChatPanel from '@/components/support/SupportChatPanel.vue'
 import { useSupportChatDrag } from '@/components/support/useSupportChatDrag'
 import { useSupportChatSession } from '@/components/support/useSupportChatSession'
-import { usePortalAuthPrompt } from '@/composables/usePortalAuthPrompt'
 
 const session = useSupportChatSession()
 const {
@@ -18,7 +17,8 @@ const {
   connected,
   conversations,
   unread,
-  authenticated,
+  supportToken,
+  isGuest,
   activeStatus,
   activeConversation,
   availabilityOnline,
@@ -46,7 +46,6 @@ const {
   error: satisfactionError,
   submit: submitSatisfaction,
 } = session.satisfaction
-const { openLogin } = usePortalAuthPrompt()
 const {
   side,
   dragging,
@@ -96,7 +95,8 @@ onBeforeUnmount(() => {
       <SupportChatPanel
         v-if="opened"
         :side="side"
-        :authenticated="authenticated"
+        :support-token="supportToken"
+        :is-guest="isGuest"
         :connected="connected"
         :loading="loading"
         :sending="sending"
@@ -118,9 +118,9 @@ onBeforeUnmount(() => {
         :satisfaction-error="satisfactionError"
         :set-body-ref="setChatBodyRef"
         @close="toggleOpen"
-        @login="openLogin()"
         @update:input="input = $event"
         @send="send"
+        @quick-send="send"
         @attach="uploadAttachment"
         @remove-attachment="removeAttachment"
         @rate="submitSatisfaction"
