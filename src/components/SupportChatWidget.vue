@@ -4,7 +4,9 @@ import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import SupportChatPanel from '@/components/support/SupportChatPanel.vue'
 import { useSupportChatDrag } from '@/components/support/useSupportChatDrag'
 import { useSupportChatSession } from '@/components/support/useSupportChatSession'
+import { usePortalAuthPrompt } from '@/composables/usePortalAuthPrompt'
 
+const session = useSupportChatSession()
 const {
   channelEnabled,
   opened,
@@ -16,7 +18,12 @@ const {
   connected,
   conversations,
   unread,
+  authenticated,
   activeStatus,
+  activeConversation,
+  availabilityOnline,
+  availabilityLoaded,
+  onlineAgents,
   historyOpen,
   unavailable,
   toggleOpen,
@@ -26,7 +33,20 @@ const {
   resolveChannelEnabled,
   setChatBodyRef,
   dispose,
-} = useSupportChatSession()
+} = session
+const {
+  pending: pendingAttachments,
+  uploading: attachmentUploading,
+  error: attachmentError,
+  upload: uploadAttachment,
+  remove: removeAttachment,
+} = session.attachments
+const {
+  submitting: satisfactionSubmitting,
+  error: satisfactionError,
+  submit: submitSatisfaction,
+} = session.satisfaction
+const { openLogin } = usePortalAuthPrompt()
 const {
   side,
   dragging,
@@ -76,20 +96,34 @@ onBeforeUnmount(() => {
       <SupportChatPanel
         v-if="opened"
         :side="side"
+        :authenticated="authenticated"
         :connected="connected"
         :loading="loading"
         :sending="sending"
+        :uploading="attachmentUploading"
         :messages="messages"
         :input="input"
         :error="error"
         :conversations="conversations"
+        :active-conversation="activeConversation"
         :active-status="activeStatus"
         :history-open="historyOpen"
         :unavailable="unavailable"
+        :availability-online="availabilityOnline"
+        :availability-loaded="availabilityLoaded"
+        :online-agents="onlineAgents"
+        :pending-attachments="pendingAttachments"
+        :attachment-error="attachmentError"
+        :satisfaction-submitting="satisfactionSubmitting"
+        :satisfaction-error="satisfactionError"
         :set-body-ref="setChatBodyRef"
         @close="toggleOpen"
+        @login="openLogin()"
         @update:input="input = $event"
         @send="send"
+        @attach="uploadAttachment"
+        @remove-attachment="removeAttachment"
+        @rate="submitSatisfaction"
         @toggle-history="toggleHistory"
         @open-conversation="openConversation"
       />

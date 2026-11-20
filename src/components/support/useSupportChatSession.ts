@@ -1,4 +1,4 @@
-import { nextTick, ref, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
 
 import {
   createSupportConversation,
@@ -6,13 +6,15 @@ import {
   listPublicSupportChannels,
   sendSupportMessage,
   supportConversationWsUrl,
+  type SupportConversation,
   type SupportConversationDetail,
-  type SupportMessage,
 } from '@/api/support'
-import { parseBackendDateTime } from '@/shared/datetime'
 import { useAuthStore } from '@/stores/auth'
-
 import { useSupportChatRealtime } from './useSupportChatRealtime'
+import { useSupportChatAttachments } from './useSupportChatAttachments'
+import { useSupportChatAvailability } from './useSupportChatAvailability'
+import { useSupportChatMessages } from './useSupportChatMessages'
+import { useSupportChatSatisfaction } from './useSupportChatSatisfaction'
 import { useSupportUnread } from './useSupportUnread'
 
 const LOGIN_REQUIRED_MESSAGE = '请先登录后再使用在线客服'
@@ -26,14 +28,25 @@ export function useSupportChatSession() {
   const sending = ref(false)
   const activeConversationId = ref<number | null>(null)
   const activeStatus = ref<'open' | 'closed' | null>(null)
+  const activeConversation = ref<SupportConversation | null>(null)
   const historyOpen = ref(false)
   const unavailable = ref(false)
-  const messages = ref<Array<SupportMessage & { time: string }>>([])
-  const chatBodyRef = ref<HTMLElement | null>(null)
   const input = ref('')
   const error = ref('')
   let disposed = false
-
+  const availability = useSupportChatAvailability()
+  const attachments = useSupportChatAttachments(() => auth.token)
+  const satisfaction = useSupportChatSatisfaction(
+    () => auth.token,
+    activeConversation,
+    setActiveConversation,
+  )
+  const {
+    messages,
+    setBodyRef: setChatBodyRef,
+    setMessages,
+    appendMessage,
+  } = useSupportChatMessages()
   const {
     conversations,
     unread,
@@ -41,32 +54,20 @@ export function useSupportChatSession() {
     start: startUnread,
     stop: stopUnread,
   } = useSupportUnread()
-
-  function setChatBodyRef(el: unknown) {
-    chatBodyRef.value = (el as HTMLElement | null) ?? null
-  }
-
-  function formatTime(value: string): string {
-    const date = parseBackendDateTime(value)
-    return date?.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' }) ?? ''
-  }
-
-  /** 契约里的 status 是 string；面板只区分「进行中 / 已结束」。 */
   function toStatus(value: string): 'open' | 'closed' {
     return value === 'closed' ? 'closed' : 'open'
   }
 
-  async function scrollToBottom() {
-    await nextTick()
-    if (chatBodyRef.value) chatBodyRef.value.scrollTop = chatBodyRef.value.scrollHeight
+  function setActiveConversation(next: SupportConversation) {
+    activeConversation.value = next
+    activeConversationId.value = next.id
+    activeStatus.value = toStatus(next.status)
   }
 
-  function setMessages(items: SupportMessage[]) {
-    messages.value = items.map((message) => ({
-      ...message,
-      time: formatTime(message.created_at),
-    }))
-    void scrollToBottom()
+  function clearActiveConversation() {
+    activeConversation.value = null
+    activeConversationId.value = null
+    activeStatus.value = null
   }
 
   async function syncActiveConversation() {
@@ -76,20 +77,20 @@ export function useSupportChatSession() {
     try {
       const detail = await getSupportConversationDetail(token, id)
       if (activeConversationId.value === id && auth.token.trim() === token) {
+        activeConversation.value = detail.conversation
         setMessages(detail.messages)
         activeStatus.value = toStatus(detail.conversation.status)
       }
     } catch {
-      // 已读同步失败保留未读，下一次打开或重连再试。
+      /* 已读同步失败保留未读，下一次打开或重连再试。 */
     }
   }
 
   function receiveDetail(detail: SupportConversationDetail) {
     activeConversationId.value ??= detail.conversation.id
     if (activeConversationId.value !== detail.conversation.id) return
-    activeStatus.value = toStatus(detail.conversation.status)
+    setActiveConversation(detail.conversation)
     setMessages(detail.messages)
-    // 面板关着时也要把未读角标刷出来，不能等下一次 30s 轮询。
     void refreshConversations()
     if (!opened.value) return
     const lastRead = detail.conversation.user_last_read_message_id ?? 0
@@ -116,13 +117,13 @@ export function useSupportChatSession() {
     (token, previousToken) => {
       if (token === previousToken) return
       realtime.disconnect()
-      activeConversationId.value = null
-      activeStatus.value = null
+      clearActiveConversation()
       historyOpen.value = false
       unavailable.value = false
       messages.value = []
       input.value = ''
       error.value = ''
+      attachments.clear()
       opened.value = false
       loading.value = false
       sending.value = false
@@ -133,7 +134,6 @@ export function useSupportChatSession() {
     },
   )
 
-  /** 打开面板时只接管「进行中」的会话；只有已结束会话时不自动续用，发送会自动新建。 */
   async function ensureConversation() {
     const token = auth.token.trim()
     if (!token) {
@@ -147,15 +147,13 @@ export function useSupportChatSession() {
       if (auth.token.trim() !== token || !opened.value) return
       const current = list.find((item) => item.status === 'open')
       if (!current) {
-        activeConversationId.value = null
-        activeStatus.value = null
+        clearActiveConversation()
         messages.value = []
         return
       }
       const detail = await getSupportConversationDetail(token, current.id)
       if (auth.token.trim() !== token) return
-      activeConversationId.value = current.id
-      activeStatus.value = toStatus(current.status)
+      setActiveConversation(detail.conversation)
       setMessages(detail.messages)
     } catch (cause) {
       if (auth.token.trim() === token) {
@@ -166,7 +164,6 @@ export function useSupportChatSession() {
     }
   }
 
-  /** 从历史会话里打开一条；已结束的只读展示，发送时会新建会话。 */
   async function openConversation(id: number) {
     const token = auth.token.trim()
     const target = conversations.value.find((item) => item.id === id)
@@ -177,8 +174,7 @@ export function useSupportChatSession() {
     try {
       const detail = await getSupportConversationDetail(token, id)
       if (auth.token.trim() !== token) return
-      activeConversationId.value = id
-      activeStatus.value = toStatus(target.status)
+      setActiveConversation(detail.conversation)
       setMessages(detail.messages)
     } catch (cause) {
       if (auth.token.trim() === token) {
@@ -207,7 +203,8 @@ export function useSupportChatSession() {
 
   async function send() {
     const text = input.value.trim()
-    if (!text || loading.value || sending.value || disposed) return
+    const attachmentIds = attachments.pending.value.map((attachment) => attachment.id)
+    if ((!text && attachmentIds.length === 0) || loading.value || sending.value || disposed) return
     const token = auth.token.trim()
     if (!token) {
       error.value = LOGIN_REQUIRED_MESSAGE
@@ -220,23 +217,21 @@ export function useSupportChatSession() {
       const canContinue = activeConversationId.value !== null && activeStatus.value === 'open'
       const id = canContinue
         ? activeConversationId.value!
-        : (await createSupportConversation(token, text)).id
+        : (await createSupportConversation(token, text, attachmentIds)).id
       if (auth.token.trim() !== token) return
       activeConversationId.value = id
       activeStatus.value = 'open'
       if (canContinue) {
-        const sent = await sendSupportMessage(token, id, text)
+        const sent = await sendSupportMessage(token, id, text, attachmentIds)
         if (auth.token.trim() !== token) return
-        if (!messages.value.some((message) => message.id === sent.id)) {
-          messages.value.push({ ...sent, time: formatTime(sent.created_at) })
-        }
-        await scrollToBottom()
+        appendMessage(sent)
       } else {
         const detail = await getSupportConversationDetail(token, id)
         if (auth.token.trim() !== token) return
         setMessages(detail.messages)
       }
       input.value = ''
+      attachments.clear()
       void refreshConversations()
     } catch (cause) {
       if (auth.token.trim() === token) {
@@ -259,6 +254,7 @@ export function useSupportChatSession() {
       realtime.connect()
       startUnread()
     }
+    if (!disposed && channelEnabled.value) availability.start()
     return channelEnabled.value
   }
 
@@ -266,6 +262,7 @@ export function useSupportChatSession() {
     disposed = true
     stopAuthWatch()
     stopUnread()
+    availability.stop()
     realtime.disconnect()
   }
 
@@ -278,9 +275,16 @@ export function useSupportChatSession() {
     messages,
     input,
     error,
+    authenticated: computed(() => Boolean(auth.token.trim())),
     connected: realtime.connected,
     conversations,
     unread,
+    availabilityOnline: availability.online,
+    availabilityLoaded: availability.loaded,
+    onlineAgents: availability.onlineAgents,
+    activeConversation,
+    attachments,
+    satisfaction,
     activeStatus,
     historyOpen,
     unavailable,

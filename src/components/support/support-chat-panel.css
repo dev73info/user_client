@@ -45,9 +45,29 @@
 }
 
 .support-panel__status {
-  display: block;
+  display: flex;
+  align-items: center;
+  gap: 5px;
   font-size: 12px;
   opacity: 0.9;
+}
+
+.support-panel__dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--73-accent-contrast) 55%, transparent);
+}
+
+.support-panel__dot.is-online {
+  background: var(--73-success);
+}
+
+.support-panel__session {
+  display: block;
+  margin-top: 2px;
+  font-size: 11px;
+  opacity: 0.78;
 }
 
 .support-panel__head-actions {
@@ -140,48 +160,6 @@
   background: var(--73-danger-soft);
 }
 
-.support-panel__foot {
-  display: flex;
-  gap: 8px;
-  padding: 12px;
-  align-items: flex-end;
-  border-top: 1px solid var(--73-border);
-  margin-top: 0;
-  background: var(--73-surface-strong);
-  text-align: left;
-}
-
-.support-input {
-  flex: 1;
-  min-width: 0;
-  border: 1px solid var(--73-border);
-  border-radius: 8px;
-  padding: 8px 10px;
-  font-size: 14px;
-  resize: none;
-  outline: none;
-}
-
-.support-input:focus {
-  border-color: var(--73-accent);
-}
-
-.support-send {
-  height: 36px;
-  padding: 0 16px;
-  border: none;
-  border-radius: 8px;
-  background: var(--73-accent);
-  color: var(--73-accent-contrast);
-  font-size: 14px;
-  cursor: pointer;
-}
-
-.support-send:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
 .support-pop-enter-active,
 .support-pop-leave-active {
   transition: all 0.2s ease;
@@ -191,44 +169,6 @@
 .support-pop-leave-to {
   opacity: 0;
   transform: translateY(12px);
-}
-
-.support-history {
-  flex: 1;
-  min-height: 0;
-  padding: 8px;
-  overflow-y: auto;
-  overscroll-behavior: contain;
-  background: var(--73-surface-strong);
-}
-
-.support-history__item {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  width: 100%;
-  padding: 10px 12px;
-  border: none;
-  border-bottom: 1px solid var(--73-border);
-  background: transparent;
-  color: var(--73-ink);
-  text-align: left;
-  cursor: pointer;
-}
-
-.support-history__text {
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  font-size: 13px;
-}
-
-.support-history__meta {
-  flex-shrink: 0;
-  font-size: 11px;
-  color: var(--73-ink-muted);
 }
 
 @media (max-width: 640px) {
@@ -267,21 +207,5 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
-  }
-
-  .support-panel__foot {
-    gap: 6px;
-    padding: 10px;
-    padding-bottom: calc(10px + env(safe-area-inset-bottom));
-  }
-
-  .support-send {
-    min-height: 44px;
-    padding: 0 12px;
-  }
-
-  .support-history__item {
-    min-height: 44px;
-    padding-block: 12px;
   }
 }

@@ -19,6 +19,9 @@ const mocks = vi.hoisted(() => ({
   detail: vi.fn(),
   create: vi.fn(),
   send: vi.fn(),
+  availability: vi.fn(),
+  upload: vi.fn(),
+  rate: vi.fn(),
 }))
 
 vi.mock('@/api/support', async (importOriginal) => ({
@@ -28,6 +31,9 @@ vi.mock('@/api/support', async (importOriginal) => ({
   getSupportConversationDetail: mocks.detail,
   createSupportConversation: mocks.create,
   sendSupportMessage: mocks.send,
+  getSupportAvailability: mocks.availability,
+  uploadSupportAttachment: mocks.upload,
+  rateSupportConversation: mocks.rate,
 }))
 
 let wrapper: VueWrapper | undefined
@@ -66,6 +72,7 @@ describe('在线客服浮窗', () => {
       { channel_key: 'web_widget', label: '网页在线客服', enabled: true },
     ])
     mocks.listMine.mockResolvedValue([])
+    mocks.availability.mockResolvedValue({ online: true, online_agents: 2 })
     mocks.detail.mockImplementation(async (_token, id: number) =>
       supportDetail(id, [supportMessage({ conversation_id: id, content: '需要协助' })]),
     )
@@ -119,14 +126,14 @@ describe('在线客服浮窗', () => {
     await target.find('.support-send').trigger('click')
     await flushPromises()
 
-    expect(mocks.create).toHaveBeenCalledWith('test-token', '需要协助')
+    expect(mocks.create).toHaveBeenCalledWith('test-token', '需要协助', [])
     expect(target.text()).toContain('需要协助')
 
     await target.find('textarea').setValue('补充说明')
     await target.find('.support-send').trigger('click')
     await flushPromises()
 
-    expect(mocks.send).toHaveBeenCalledWith('test-token', 1, '补充说明')
+    expect(mocks.send).toHaveBeenCalledWith('test-token', 1, '补充说明', [])
     expect(target.findAll('.support-msg')).toHaveLength(2)
     expect(target.text()).toContain('补充说明')
     expect((target.find('textarea').element as HTMLTextAreaElement).value).toBe('')
@@ -167,6 +174,53 @@ describe('在线客服浮窗', () => {
     expect(target.find('.support-msg--agent').text()).toContain('客服回复')
     expect(target.findAll('.support-msg')).toHaveLength(2)
     expect(mocks.detail).toHaveBeenCalledWith('test-token', 1)
+  })
+
+  it('面板展示客服在线状态', async () => {
+    const target = await mountWidget()
+    await openPanel(target)
+
+    expect(target.find('.support-panel').text()).toContain('客服在线')
+  })
+
+  it('会话结束后可提交满意度评价', async () => {
+    mocks.listMine.mockResolvedValue([
+      supportConversation({
+        status: 'closed',
+        satisfaction_rating: null,
+        satisfaction_comment: null,
+      }),
+    ])
+    mocks.detail.mockResolvedValue(
+      supportDetail(1, [supportMessage()], {
+        status: 'closed',
+        satisfaction_rating: null,
+        satisfaction_comment: null,
+      }),
+    )
+    mocks.rate.mockResolvedValue(
+      supportConversation({
+        status: 'closed',
+        satisfaction_rating: 5,
+        satisfaction_comment: '很好',
+        satisfaction_rated_at: '2026-10-28 10:00:00',
+        satisfaction_rated_by: 'alice',
+      }),
+    )
+    const target = await mountWidget()
+    await openPanel(target)
+    await target.find('.support-panel__history-toggle').trigger('click')
+    await target.find('.support-history__item').trigger('click')
+    await flushPromises()
+
+    const stars = target.findAll('.support-rating__picker button')
+    expect(stars).toHaveLength(5)
+    await stars[4]!.trigger('click')
+    await target.find('.support-rating__submit').trigger('click')
+    await flushPromises()
+
+    expect(mocks.rate).toHaveBeenCalledWith('test-token', 1, 5, null)
+    expect(target.text()).toContain('很好')
   })
 
   it('退出登录清理旧会话且不重连，换账号后使用新令牌', async () => {
