@@ -1,15 +1,18 @@
 .support-widget {
   position: fixed;
-  /* 低于移动 Dock（60），不挡工作台底部操作区 */
+  /* 低于移动 Dock（60）；桌面收成贴边竖签，≤900px 用完整吉祥物入口 */
   z-index: 55;
-  --support-tab-width: 96px;
+  --support-tab-width: 24px;
+  --support-tab-height: 88px;
+  --support-frame-1: -20px;
+  --support-frame-2: -40px;
+  --support-frame-4: -80px;
 }
 
 /* 面板打开时提升到 Dock 之上：移动端是全屏面板，不能被底部导航压住输入框 */
 .support-widget.is-open {
   z-index: 70;
 }
-
 .support-fab {
   position: absolute;
   top: 0;
@@ -17,10 +20,10 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 0;
+  gap: 4px;
   width: var(--support-tab-width);
-  height: 120px;
-  padding: 0;
+  height: var(--support-tab-height);
+  padding: 4px 0;
   border: none;
   background: transparent;
   color: var(--73-ink);
@@ -83,9 +86,12 @@
 .support-fab__stage {
   position: relative;
   flex: none;
-  width: 96px;
-  height: 96px;
+  width: 20px;
+  height: 20px;
   display: block;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--73-surface-strong);
   pointer-events: none;
 }
 
@@ -113,7 +119,7 @@
     background-position: 0 0;
   }
   to {
-    background-position: -384px 0;
+    background-position: var(--support-frame-4) 0;
   }
 }
 
@@ -124,41 +130,44 @@
   }
   10.01%,
   55% {
-    background-position: -96px 0;
+    background-position: var(--support-frame-1) 0;
   }
   55.01%,
   100% {
-    background-position: -192px 0;
+    background-position: var(--support-frame-2) 0;
   }
 }
 
 .support-fab__text {
   display: inline-block;
   flex: none;
-  margin-top: 2px;
-  padding: 2px 10px;
+  margin-top: 0;
+  padding: 3px 5px;
   border-radius: 999px;
   background: var(--73-accent);
   color: var(--73-accent-contrast);
   font-size: 12px;
-  line-height: 18px;
+  line-height: 1;
+  letter-spacing: 1px;
+  text-orientation: upright;
   white-space: nowrap;
+  writing-mode: vertical-rl;
 }
 
 .support-fab__badge {
   position: absolute;
-  top: 0;
-  right: 0;
-  min-width: 18px;
-  height: 18px;
-  padding: 0 5px;
+  top: -2px;
+  right: -2px;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
   border-radius: 999px;
   background: var(--73-danger);
   color: var(--73-ink-inverse);
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
-  line-height: 18px;
+  line-height: 16px;
   text-align: center;
   pointer-events: none;
 }
@@ -166,13 +175,13 @@
 /* 浮窗右上角的关闭入口：收起整个浮窗（本次页面会话内不再出现） */
 .support-widget__dismiss {
   position: absolute;
-  top: 2px;
+  top: -18px;
   z-index: 2;
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 20px;
-  height: 20px;
+  width: 16px;
+  height: 16px;
   padding: 0;
   border-radius: 999px;
   border: 1px solid var(--73-border);
@@ -184,18 +193,27 @@
   font-weight: 700;
   line-height: 1;
   cursor: pointer;
+  opacity: 0;
+  pointer-events: none;
   transition:
     color 140ms ease,
     border-color 140ms ease,
-    background-color 140ms ease;
+    background-color 140ms ease,
+    opacity 140ms ease;
 }
 
 .support-widget__dismiss--right {
-  right: 2px;
+  right: 0;
 }
 
 .support-widget__dismiss--left {
-  left: 2px;
+  left: 0;
+}
+
+.support-widget:hover .support-widget__dismiss,
+.support-widget:focus-within .support-widget__dismiss {
+  opacity: 1;
+  pointer-events: auto;
 }
 
 .support-widget__dismiss:hover,
@@ -210,6 +228,58 @@
   /* 全屏面板自带关闭按钮，侧签只保留「打开」用途 */
   .support-widget.is-open .support-fab {
     display: none;
+  }
+}
+
+@media (max-width: 900px) {
+  .support-widget {
+    --support-tab-width: 96px;
+    --support-tab-height: 120px;
+    --support-frame-1: -96px;
+    --support-frame-2: -192px;
+    --support-frame-4: -384px;
+  }
+
+  .support-fab {
+    gap: 0;
+    padding: 0;
+  }
+  .support-fab__stage {
+    width: 96px;
+    height: 96px;
+    border-radius: 0;
+    background: transparent;
+  }
+  .support-fab__text {
+    margin-top: 2px;
+    padding: 2px 10px;
+    font-size: 12px;
+    line-height: 18px;
+    letter-spacing: normal;
+    text-orientation: mixed;
+    writing-mode: horizontal-tb;
+  }
+  .support-fab__badge {
+    top: 0;
+    right: 0;
+    min-width: 18px;
+    height: 18px;
+    padding: 0 5px;
+    font-size: 11px;
+    line-height: 18px;
+  }
+  .support-widget__dismiss {
+    top: 2px;
+    width: 20px;
+    height: 20px;
+    opacity: 1;
+    pointer-events: auto;
+  }
+  .support-widget__dismiss--right {
+    right: 2px;
+  }
+  .support-widget__dismiss--left {
+    left: 2px;
   }
 }
 

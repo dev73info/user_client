@@ -1,20 +1,37 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 
-import type { SupportConversation, SupportMessage } from '@/api/support'
+import type { SupportAttachment, SupportConversation } from '@/api/support'
+import type { SupportChatMessage } from './useSupportChatMessages'
+
+import SupportChatComposer from './SupportChatComposer.vue'
+import SupportHistoryList from './SupportHistoryList.vue'
+import SupportMessageAttachments from './SupportMessageAttachments.vue'
+import SupportSatisfactionCard from './SupportSatisfactionCard.vue'
 
 const props = defineProps<{
   side: 'left' | 'right'
+  supportToken: string
+  isGuest: boolean
   connected: boolean
   loading: boolean
   sending: boolean
-  messages: Array<SupportMessage & { time: string }>
+  uploading: boolean
+  messages: SupportChatMessage[]
   input: string
   error: string
   conversations: SupportConversation[]
+  activeConversation: SupportConversation | null
   activeStatus: 'open' | 'closed' | null
   historyOpen: boolean
   unavailable: boolean
+  availabilityOnline: boolean
+  availabilityLoaded: boolean
+  onlineAgents: number
+  pendingAttachments: SupportAttachment[]
+  attachmentError: string
+  satisfactionSubmitting: boolean
+  satisfactionError: string
   setBodyRef: (el: unknown) => void
 }>()
 
@@ -22,40 +39,40 @@ const emit = defineEmits<{
   (event: 'close'): void
   (event: 'update:input', value: string): void
   (event: 'send'): void
+  (event: 'quick-send', value: string): void
+  (event: 'attach', files: FileList): void
+  (event: 'remove-attachment', id: number): void
+  (event: 'rate', rating: number, comment: string): void
   (event: 'toggle-history'): void
   (event: 'open-conversation', id: number): void
 }>()
 
-const inputModel = computed({
-  get: () => props.input,
-  set: (value: string) => emit('update:input', value),
-})
-
+const quickTopics = ['如何发布需求？', '如何购买资源？', '支付遇到问题']
 const textareaRef = ref<HTMLTextAreaElement | null>(null)
 const isPhone = ref(false)
 let scrollWrap: HTMLElement | null = null
 let scrollLocked = false
 
-const statusText = computed(() => {
-  // 断线时由下方的 role="alert" 横幅播报，头部不再重复一句。
-  if (props.unavailable) return ''
-  if (!props.connected) return '连接中…'
-  if (props.activeStatus === 'closed') return '会话已结束，发送将创建新会话'
-  return '已连接'
+const availabilityText = computed(() => {
+  if (props.availabilityOnline) {
+    return props.onlineAgents > 0 ? `客服在线 · ${props.onlineAgents} 人` : '客服在线'
+  }
+  if (props.availabilityLoaded) return '客服离线，留言会尽快处理'
+  return props.connected ? '正在获取客服状态…' : '正在连接客服…'
 })
+
+const sessionText = computed(() => {
+  if (props.activeStatus === 'closed') return '本次咨询已结束，继续发送会开启新咨询'
+  if (!props.connected) return '消息可正常发送，实时连接重连中'
+  return ''
+})
+
+const identityText = computed(() => (props.isGuest ? '访客咨询' : '账号咨询'))
 
 function onKeydown(event: KeyboardEvent) {
   if (event.key === 'Escape') emit('close')
 }
 
-/** Enter 发送、Shift+Enter 换行；输入法组合期内的回车不算发送。 */
-function onInputKeydown(event: KeyboardEvent) {
-  if (event.key !== 'Enter' || event.shiftKey || event.isComposing) return
-  event.preventDefault()
-  if (props.input.trim() && !props.sending && !props.loading) emit('send')
-}
-
-/** 本仓真正滚动的是工作台滚动容器，body 锁不住它。 */
 function lockScroll() {
   if (scrollLocked) return
   scrollLocked = true
@@ -77,7 +94,6 @@ function unlockScroll() {
   document.body.style.overflow = ''
 }
 
-/** 全屏只在手机档生效；跨档时同步滚动锁与 aria-modal。 */
 function syncPhone() {
   const next = window.innerWidth <= 640
   if (next && !isPhone.value) lockScroll()
@@ -109,13 +125,37 @@ onBeforeUnmount(() => {
     aria-label="在线客服"
   >
     <header class="support-panel__head">
+      <div class="support-panel__avatar" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none">
+          <path
+            d="M12 3.25a8.75 8.75 0 0 0-8.75 8.75v3.25c0 2.62 2.13 4.75 4.75 4.75h.75v-6.5H6.25V12A5.75 5.75 0 0 1 12 6.25c3.18 0 5.75 2.57 5.75 5.75v1.5H15v6.5h.75c2.62 0 4.75-2.13 4.75-4.75V12A8.75 8.75 0 0 0 12 3.25Z"
+            fill="currentColor"
+          />
+        </svg>
+      </div>
       <div class="support-panel__heading">
-        <h2 class="support-panel__title">在线客服</h2>
-        <span v-if="statusText" class="support-panel__status">{{ statusText }}</span>
+        <div class="support-panel__title-row">
+          <h2 class="support-panel__title">在线客服</h2>
+          <span class="support-panel__identity">{{ identityText }}</span>
+        </div>
+        <span class="support-panel__status">
+          <i
+            class="support-panel__dot"
+            :class="{ 'is-online': availabilityOnline }"
+            aria-hidden="true"
+          />
+          {{ availabilityText }}
+        </span>
+        <span class="support-panel__session">{{ sessionText }}</span>
       </div>
       <div class="support-panel__head-actions">
-        <button type="button" class="support-panel__history-toggle" @click="emit('toggle-history')">
-          {{ historyOpen ? '返回会话' : '历史会话' }}
+        <button
+          type="button"
+          class="support-panel__history-toggle"
+          :aria-pressed="historyOpen"
+          @click="emit('toggle-history')"
+        >
+          {{ historyOpen ? '返回咨询' : '历史咨询' }}
         </button>
         <button
           type="button"
@@ -128,61 +168,104 @@ onBeforeUnmount(() => {
       </div>
     </header>
 
-    <div v-if="historyOpen" class="support-history">
-      <p v-if="!conversations.length" class="support-hint">还没有历史会话</p>
-      <button
-        v-for="item in conversations"
-        :key="item.id"
-        type="button"
-        class="support-history__item"
-        @click="emit('open-conversation', item.id)"
-      >
-        <span class="support-history__text">{{ item.last_message || '（无消息）' }}</span>
-        <span class="support-history__meta">
-          {{ item.status === 'open' ? '进行中' : '已结束' }}
-        </span>
-      </button>
-    </div>
+    <SupportHistoryList
+      v-if="historyOpen"
+      :conversations="conversations"
+      @open="(id) => emit('open-conversation', id)"
+    />
 
-    <div v-else :ref="setBodyRef" class="support-panel__body">
-      <div v-if="loading" class="support-hint">加载中…</div>
-      <div v-else-if="messages.length === 0" class="support-hint">
-        您好，请输入您的问题，我们会尽快回复您。
+    <template v-else>
+      <div :ref="setBodyRef" class="support-panel__body">
+        <div v-if="loading && !messages.length" class="support-loading">
+          <span class="support-loading__dot" />
+          <span class="support-loading__dot" />
+          <span class="support-loading__dot" />
+        </div>
+        <section v-else-if="messages.length === 0" class="support-welcome">
+          <span class="support-welcome__eyebrow">无需登录 · 对话自动保存</span>
+          <h3>您好，请告诉我遇到的问题</h3>
+          <p>客服在线时会立即接入；离线时也可以先留言，我们会尽快回复。</p>
+          <div class="support-welcome__topics">
+            <button
+              v-for="topic in quickTopics"
+              :key="topic"
+              type="button"
+              @click="emit('quick-send', topic)"
+            >
+              <span>{{ topic }}</span>
+              <svg viewBox="0 0 20 20" fill="none" aria-hidden="true">
+                <path
+                  d="m7.5 5 5 5-5 5"
+                  stroke="currentColor"
+                  stroke-width="1.7"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                />
+              </svg>
+            </button>
+          </div>
+        </section>
+
+        <template v-for="message in messages" :key="message.id">
+          <div v-if="message.showDay" class="support-day">{{ message.day }}</div>
+          <div
+            class="support-msg"
+            :class="[
+              `support-msg--${message.sender_role === 'user' ? 'user' : 'agent'}`,
+              { 'is-continuation': message.continuation },
+            ]"
+          >
+            <span
+              v-if="message.sender_role !== 'user' && !message.continuation"
+              class="support-msg__avatar"
+              aria-hidden="true"
+            >
+              客
+            </span>
+            <div class="support-msg__main">
+              <span
+                v-if="message.sender_role !== 'user' && !message.continuation"
+                class="support-msg__sender"
+              >
+                在线客服
+              </span>
+              <div v-if="message.content" class="support-msg__bubble">{{ message.content }}</div>
+              <SupportMessageAttachments
+                :attachments="message.attachments ?? []"
+                :token="supportToken"
+              />
+              <span v-if="!message.continuation" class="support-msg__time">
+                {{ message.time }}
+              </span>
+            </div>
+          </div>
+        </template>
+
+        <SupportSatisfactionCard
+          :conversation="activeConversation"
+          :submitting="satisfactionSubmitting"
+          :error="satisfactionError"
+          @submit="(rating, comment) => emit('rate', rating, comment)"
+        />
       </div>
-      <div
-        v-for="message in messages"
-        :key="message.id"
-        class="support-msg"
-        :class="`support-msg--${message.sender_role === 'user' ? 'user' : 'agent'}`"
-      >
-        <div class="support-msg__bubble">{{ message.content }}</div>
-        <span class="support-msg__time">{{ message.time }}</span>
-      </div>
-    </div>
 
-    <p v-if="error" class="support-error" role="alert">{{ error }}</p>
+      <p v-if="error" class="support-error" role="alert">{{ error }}</p>
+      <p v-else-if="unavailable" class="support-error" role="alert">实时连接已断开</p>
 
-    <footer v-if="!historyOpen" class="support-panel__foot">
-      <textarea
-        ref="textareaRef"
-        v-model="inputModel"
-        class="support-input"
-        rows="2"
-        maxlength="5000"
-        placeholder="请输入消息，Enter 发送，Shift+Enter 换行"
-        aria-label="客服消息"
-        @keydown="onInputKeydown"
+      <SupportChatComposer
+        :input="input"
+        :sending="sending"
+        :uploading="uploading"
+        :pending-attachments="pendingAttachments"
+        :attachment-error="attachmentError"
+        @update:input="(value) => emit('update:input', value)"
+        @send="emit('send')"
+        @attach="(files) => emit('attach', files)"
+        @remove-attachment="(id) => emit('remove-attachment', id)"
       />
-      <button
-        type="button"
-        class="support-send"
-        :disabled="!input.trim() || loading || sending"
-        @click="emit('send')"
-      >
-        {{ sending ? '发送中…' : '发送' }}
-      </button>
-    </footer>
+    </template>
   </section>
 </template>
 
 <style scoped src="./support-chat-panel.css"></style>
+<style scoped src="./support-chat-messages.css"></style>

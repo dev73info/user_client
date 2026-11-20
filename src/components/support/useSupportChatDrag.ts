@@ -1,8 +1,9 @@
 import { computed, ref } from 'vue'
 
-const TAB_WIDTH = 96
 const MOBILE_BREAKPOINT_PX = 900
-const DESKTOP_FAB_HEIGHT = 120
+const DESKTOP_FAB_WIDTH = 24
+const MOBILE_FAB_WIDTH = 96
+const DESKTOP_FAB_HEIGHT = 88
 const MOBILE_FAB_HEIGHT = 120
 const CLICK_DISTANCE_PX = 6
 /** 移动端底部 Dock：bottom 8px + 高度约 58px + 8px 间距。 */
@@ -22,17 +23,26 @@ export function useSupportChatDrag(onTap: () => void) {
   let startY = 0
   let startTop = 0
   let startContainerLeft = 0
+  let dragTabWidth = DESKTOP_FAB_WIDTH
   let moveHandler: ((event: PointerEvent) => void) | null = null
   let upHandler: ((event: PointerEvent) => void) | null = null
 
-  function currentContainerLeft(): number {
-    return side.value === 'right' ? window.innerWidth - TAB_WIDTH : 0
+  function isMobile(): boolean {
+    return window.matchMedia(`(max-width: ${MOBILE_BREAKPOINT_PX}px)`).matches
+  }
+
+  function currentFabWidth(): number {
+    const width = document.querySelector<HTMLElement>('.support-fab')?.getBoundingClientRect().width
+    if (width && width > 0) return width
+    return isMobile() ? MOBILE_FAB_WIDTH : DESKTOP_FAB_WIDTH
   }
 
   function currentFabHeight(): number {
-    return window.matchMedia(`(max-width: ${MOBILE_BREAKPOINT_PX}px)`).matches
-      ? MOBILE_FAB_HEIGHT
-      : DESKTOP_FAB_HEIGHT
+    const height = document
+      .querySelector<HTMLElement>('.support-fab')
+      ?.getBoundingClientRect().height
+    if (height && height > 0) return height
+    return isMobile() ? MOBILE_FAB_HEIGHT : DESKTOP_FAB_HEIGHT
   }
 
   /** Dock 实际占高（含安全区）；取不到时用固定预留值兜底。 */
@@ -46,7 +56,7 @@ export function useSupportChatDrag(onTap: () => void) {
   }
 
   function clampFabTop(value: number): number {
-    const mobile = window.matchMedia(`(max-width: ${MOBILE_BREAKPOINT_PX}px)`).matches
+    const mobile = isMobile()
     // 移动端给底部 Dock 留位，避免拖到最底部后按钮被 Dock 盖住点不到。
     const bottomGap = mobile ? mobileDockReserve() : 8
     return clamp(value, 8, Math.max(8, window.innerHeight - currentFabHeight() - bottomGap))
@@ -81,7 +91,8 @@ export function useSupportChatDrag(onTap: () => void) {
     startX = event.clientX
     startY = event.clientY
     startTop = top.value
-    startContainerLeft = currentContainerLeft()
+    dragTabWidth = currentFabWidth()
+    startContainerLeft = side.value === 'right' ? window.innerWidth - dragTabWidth : 0
     dragging.value = true
     dragLeft.value = startContainerLeft
     dragTop.value = startTop
@@ -97,7 +108,7 @@ export function useSupportChatDrag(onTap: () => void) {
     dragLeft.value = clamp(
       startContainerLeft + event.clientX - startX,
       0,
-      window.innerWidth - TAB_WIDTH,
+      window.innerWidth - dragTabWidth,
     )
     dragTop.value = clampFabTop(startTop + event.clientY - startY)
   }
@@ -115,7 +126,7 @@ export function useSupportChatDrag(onTap: () => void) {
       onTap()
       return
     }
-    side.value = left + TAB_WIDTH / 2 < window.innerWidth / 2 ? 'left' : 'right'
+    side.value = left + dragTabWidth / 2 < window.innerWidth / 2 ? 'left' : 'right'
     top.value = clampFabTop(topNow)
   }
 
