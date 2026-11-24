@@ -1,6 +1,6 @@
 import { apiUrl, authHeader, requestJson } from '@/api/http'
 
-import type { ContractDetail, MyContractSummary } from './types'
+import type { ContractDetail, MyContractSummary, SigningLogItem } from './types'
 
 export function listMyContracts(token: string): Promise<MyContractSummary[]> {
   return requestJson<MyContractSummary[]>(
@@ -15,6 +15,18 @@ export function fetchMyContract(token: string, contractId: number): Promise<Cont
     `/contracts/mine/${contractId}`,
     { headers: authHeader(token) },
     '获取合同详情失败',
+  )
+}
+
+/** 当事人读取自己合同的签署流水（只读；非当事人后端按 404 处理）。 */
+export function fetchMyContractSigningLogs(
+  token: string,
+  contractId: number,
+): Promise<SigningLogItem[]> {
+  return requestJson<SigningLogItem[]>(
+    `/contracts/mine/${contractId}/signing-logs`,
+    { headers: authHeader(token) },
+    '获取签署记录失败',
   )
 }
 

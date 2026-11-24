@@ -66,8 +66,10 @@ export function useResourceCatalogPage() {
     selectedResourceId.value = id
     // R029：换一条资源就等于放弃这次推广归因——推广码只对分享链接指向的那条资源有效，
     // 跟着选中项一起写下去会让 B 的订单带上 A 的码（错误归因）。
+    // `pay` 同理：支付深链只对链接里那一条资源成立，换资源后不得继续自动拉起支付。
     const query: LocationQueryRaw = { ...route.query, resource: String(id) }
     delete query.promo
+    delete query.pay
     void router.replace({ query })
   }
 

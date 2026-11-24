@@ -8,10 +8,13 @@ import PortalAuthModalHost from '@/components/app/PortalAuthModalHost.vue'
 import PortalTopNav from '@/components/PortalTopNav.vue'
 import PortalMobileDock from '@/components/PortalMobileDock.vue'
 import SupportChatWidget from '@/components/SupportChatWidget.vue'
-import TourOffer from '@/features/tour/TourOffer.vue'
 import TourOverlay from '@/features/tour/TourOverlay.vue'
 import MockIdentitySwitcher from '@/mock/MockIdentitySwitcher.vue'
-import { PORTAL_CONTENT_ANCHORS, scrollToPortalAnchor } from '@/utils/portalScroll'
+import {
+  PORTAL_CONTENT_ANCHORS,
+  resetPortalScroll,
+  scrollToPortalAnchor,
+} from '@/utils/portalScroll'
 import { TScrollbar } from 'ui_73info'
 import { useAppShellAuth } from '@/components/app/useAppShellAuth'
 
@@ -43,16 +46,16 @@ const immersiveWorkbench = computed(() =>
   route.matched.some((record) => record.meta.workbenchShell === true),
 )
 // 首页登录弹窗由 HomeView 自己渲染；其余页面由外壳原地承接 `modal=auth`。
-const showPortalAuthModal = computed(
-  () => route.name !== 'home' && route.query?.modal === 'auth',
-)
+const showPortalAuthModal = computed(() => route.name !== 'home' && route.query?.modal === 'auth')
 
 watch(
   () => route.path,
-  async () => {
+  async (path) => {
+    resetPortalScroll()
     const anchor = PORTAL_CONTENT_ANCHORS[String(route.name ?? '')]
     if (!anchor) return
     await nextTick()
+    if (route.path !== path) return
     scrollToPortalAnchor(anchor)
   },
   { immediate: true },
@@ -102,9 +105,7 @@ watch(
     <SupportChatWidget />
     <PortalAuthModalHost v-if="showPortalAuthModal" />
 
-    <!-- 语音引导：全站一份状态。Offer 负责首次提示，Overlay 负责遮罩与步骤卡片；
-         挂在 App 而不是工作台外壳，门户的需求大厅（/requirement-hall）也能用。 -->
-    <TourOffer />
+    <!-- 语音引导：只由页面帮助按钮手动启动，不再自动弹首次提示。 -->
     <TourOverlay />
   </div>
 </template>

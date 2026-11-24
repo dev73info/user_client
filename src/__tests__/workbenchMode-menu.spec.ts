@@ -126,6 +126,7 @@ describe('workbench mode switch', () => {
     expect(devLinks.map((link) => link.text())).toEqual([
       '工作台总览',
       '资源项目',
+      '售出订单',
       '接入客户端',
       '需求大厅',
       '我的接单',

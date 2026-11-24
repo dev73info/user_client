@@ -7,6 +7,8 @@ import {
   isPointsPurchaseOrder,
   refundInitiatorLabel,
   resourcePurchaseStatusLabel,
+  splitFailureReasonLabel,
+  splitStatusLabel,
 } from '@/shared/resourceSale'
 
 import { TButton, TTable, TTableColumn, TTag } from 'ui_73info'
@@ -112,6 +114,29 @@ function sellerNetLabel(order: ResourcePurchaseOrder): string {
         <TTag variant="outline" :tone="scope.row.status === 'refunded' ? 'warning' : 'accent'">
           {{ resourcePurchaseStatusLabel(scope.row.status) }}
         </TTag>
+      </template>
+    </TTableColumn>
+    <TTableColumn label="分账" min-width="150">
+      <template #default="scope">
+        <div class="sold-purchases__split">
+          <TTag
+            variant="outline"
+            :tone="
+              scope.row.split_status === 'failed'
+                ? 'danger'
+                : scope.row.split_status === 'succeeded'
+                  ? 'success'
+                  : scope.row.split_status === 'pending'
+                    ? 'warning'
+                    : 'accent'
+            "
+          >
+            {{ splitStatusLabel(scope.row) }}
+          </TTag>
+          <span v-if="splitFailureReasonLabel(scope.row)" class="sold-purchases__split-reason">
+            {{ splitFailureReasonLabel(scope.row) }}
+          </span>
+        </div>
       </template>
     </TTableColumn>
     <TTableColumn label="可退余额" min-width="120">

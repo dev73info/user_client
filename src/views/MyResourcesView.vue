@@ -1,7 +1,17 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 
-import { RefreshLeft, Search, TAlert, TButton, TIcon, TInput, TOption, TSelect } from 'ui_73info'
+import {
+  RefreshLeft,
+  Search,
+  TAlert,
+  TButton,
+  TIcon,
+  TInput,
+  TOption,
+  TSelect,
+  type SelectModelValue,
+} from 'ui_73info'
 
 import { getResourceSaleFee } from '@/api/resourceSale'
 import DevResourcePublishVersionDialog from '@/components/dev/DevResourcePublishVersionDialog.vue'
@@ -11,7 +21,10 @@ import WorkbenchPager from '@/components/workbench/WorkbenchPager.vue'
 import { useDevResourceList } from '@/composables/useDevResourceList'
 import { useDevResourcePublishVersion } from '@/composables/useDevResourcePublishVersion'
 import { useDevResourceRowActions } from '@/composables/useDevResourceRowActions'
-import { DEV_RESOURCE_VISIBILITY_OPTIONS } from '@/shared/devResourceList'
+import {
+  DEV_RESOURCE_VISIBILITY_OPTIONS,
+  type DevResourceVisibilityFilter,
+} from '@/shared/devResourceList'
 import {
   isClaimedCustomResource,
   RESOURCE_ARCHIVE_LOCKED_MESSAGE,
@@ -47,6 +60,23 @@ const {
   archiveLockedCount,
   loadResources,
 } = useDevResourceList({ keep: isClaimedCustomResource })
+
+type VisibilityFilterValue = DevResourceVisibilityFilter | 'all'
+
+/** 工具栏下拉与顶部读数格共用 `filters.visibility`：顶部「资源总数」对应空串，
+    下拉里用一个真实的 `all` 选项表达，避免未选择时显示成字段名（占位文字）。 */
+const visibilityFilter = computed<VisibilityFilterValue>({
+  get: () => filters.visibility || 'all',
+  set: (value: SelectModelValue) => {
+    filters.visibility =
+      value === 'published' || value === 'review' || value === 'draft' ? value : ''
+  },
+})
+
+const visibilityOptions = [
+  { value: 'all', label: '全部' },
+  ...DEV_RESOURCE_VISIBILITY_OPTIONS,
+] as const
 
 /** 空态按需求方口径写，不复用开发者的「当前还没有资源记录」。 */
 const emptyText = computed(() => {
@@ -132,15 +162,9 @@ async function loadPlatformFee() {
       />
 
       <div class="wb-toolbar">
-        <TSelect
-          v-model="filters.visibility"
-          clearable
-          placeholder="资源状态"
-          class="wb-toolbar__field"
-          aria-label="按资源状态筛选"
-        >
+        <TSelect v-model="visibilityFilter" class="wb-toolbar__field" aria-label="按资源状态筛选">
           <TOption
-            v-for="option in DEV_RESOURCE_VISIBILITY_OPTIONS"
+            v-for="option in visibilityOptions"
             :key="option.value"
             :label="option.label"
             :value="option.value"

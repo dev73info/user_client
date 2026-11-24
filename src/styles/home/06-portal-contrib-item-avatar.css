@@ -2,13 +2,14 @@
    顺序与原文一致；跨文件级联依赖顺序。 */
 
 .portal-contrib-item__avatar {
+  position: relative;
   display: inline-flex;
   flex: 0 0 24px;
   align-items: center;
   justify-content: center;
   width: 24px;
   height: 24px;
-  overflow: hidden;
+  overflow: visible;
   border-radius: var(--73-radius-pill);
   background: var(--73-accent-soft);
   color: var(--73-accent);
@@ -19,21 +20,27 @@
 .portal-contrib-item__avatar img {
   width: 100%;
   height: 100%;
+  border-radius: inherit;
   object-fit: cover;
 }
 
 .portal-contrib-item__meta {
+  display: flex;
+  align-items: center;
   flex: 1;
   min-width: 0;
 }
 
-.portal-contrib-item__meta strong {
-  display: block;
-  overflow: hidden;
-  color: var(--73-ink);
-  font-size: 12px;
-  font-weight: 600;
-  text-overflow: ellipsis;
+.portal-contrib-item__badge {
+  flex: 0 0 auto;
+  padding: 1px 6px;
+  border: 1px solid var(--73-border-soft);
+  border-radius: 4px;
+  background: var(--73-bg-soft);
+  color: var(--73-ink-muted);
+  font-family: var(--73-font-family-mono);
+  font-size: 10px;
+  line-height: 1.5;
   white-space: nowrap;
 }
 
@@ -159,6 +166,27 @@
 
   .portal-workflow-grid {
     grid-template-columns: repeat(3, minmax(0, 1fr));
+    row-gap: 16px;
+  }
+
+  .portal-workflow-item {
+    padding: 0 14px;
+  }
+
+  .portal-workflow-item + .portal-workflow-item::before {
+    display: none;
+  }
+
+  .portal-workflow-item:not(:nth-child(3n + 1))::before {
+    display: block;
+  }
+
+  .portal-workflow-item:nth-child(3n + 1) {
+    padding-left: 0;
+  }
+
+  .portal-workflow-item:nth-child(3n) {
+    padding-right: 0;
   }
 
   .portal-spotlight-grid {

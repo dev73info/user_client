@@ -1,5 +1,5 @@
-/* home 入口：整份按顶层规则边界切成 7 个分片，@import 顺序 = 原文书写顺序。
-   分片只搬运、不改声明；改顺序会让级联悄悄变样。 */
+/* home 入口：基础样式按顶层规则边界切成 7 个分片，@import 顺序 = 原文书写顺序。
+   09 是首页 unslop 的侧栏覆盖，放在最后保证级联优先。 */
 @import './home/01-part.css';
 @import './home/02-portal-primary-action.css';
 @import './home/03-portal-step-card-no.css';
@@ -7,3 +7,5 @@
 @import './home/05-portal-card-title-icon-tea.css';
 @import './home/06-portal-contrib-item-avatar.css';
 @import './home/07-media.css';
+@import './home/09-unslop-chrome.css';
+@import './home/10-portal-sidebar-badges.css';

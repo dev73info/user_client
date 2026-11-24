@@ -15,11 +15,11 @@ import { fetchRequirementDetail, type RequirementItem } from '@/api/requirements
 import { CONTRACT_STATUS } from '@/shared/contracts'
 import { contractStatusTone, hasInitiatedSigning } from '@/shared/contractSign'
 import { useAuthStore } from '@/stores/auth'
-
 import { useContractSignDisplay } from './useContractSignDisplay'
 import { useContractFeeCard } from './useContractFeeCard'
 import { useContractSignNavigation } from './useContractSignNavigation'
 import { useContractSignPolling } from './useContractSignPolling'
+import { hydrateSigningLogs } from './useContractSigningLogs'
 
 /**
  * 合同签署页的取数与动作（R047 从 `ContractSignView` 迁出）。
@@ -27,8 +27,7 @@ import { useContractSignPolling } from './useContractSignPolling'
  * 页面有三种入口（工作台签署详情 / 需求合同 / 平台内置协议），数据来源各不相同，
  * 但签署闸门、附件放行、到期归档、爱签轮询是同一套。这里只做编排：展示口径在
  * `useContractSignDisplay`，路由身份在 `useContractSignNavigation`，轮询在
- * `useContractSignPolling`，
- * 纯展示换算在 `shared/contractSign`。**整页跳转留在视图**：去爱签签署 / 看爱签预览
+ * `useContractSignPolling`，纯展示换算在 `shared/contractSign`。**整页跳转留在视图**：去爱签签署 / 看爱签预览
  * 都是 `window.location` 级跳转，由视图注入 `openPage`，composable 只把 URL 交出去。
  */
 type UseContractSignOptions = {
@@ -147,6 +146,7 @@ export function useContractSign(options: UseContractSignOptions) {
           }
         }
       }
+      await hydrateSigningLogs(contract, auth.token)
       // R014：读一次需求详情拿「超期锁定 / 已清除」标记（读取即触发后端收口）。失败不阻断合同展示。
       const rid = contract.value?.requirement_id?.trim() || nav.requirementId
       if (!nav.isPlatformAgreement.value && rid) {

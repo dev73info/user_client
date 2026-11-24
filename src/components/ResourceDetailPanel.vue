@@ -1,19 +1,12 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed } from 'vue'
 
-import { HttpError, apiUrl } from '@/api/http'
-import {
-  getPublicMcResource,
-  invalidateResourceListCache,
-  listPublicMcResourceVersions,
-  type PublicMcResourceItem,
-  type PublicMcResourceVersionItem,
-} from '@/api/resources'
+import { apiUrl } from '@/api/http'
 import { resolveVersionPurchaseTarget } from '@/shared/resourceSale'
-import { useResourceOwnerFee } from '@/composables/useResourceOwnerFee'
-import { useAuthStore } from '@/stores/auth'
+import { useResourceDetailData } from '@/composables/useResourceDetailData'
 import { useResourceFileDownload } from '@/composables/useResourceFileDownload'
 import { useResourceLike } from '@/composables/useResourceLike'
+import { useResourcePayDeepLink } from '@/composables/useResourcePayDeepLink'
 import { useResourcePurchase } from '@/composables/useResourcePurchase'
 import { useResourcePurchaseGate } from '@/composables/useResourcePurchaseGate'
 import { useResourceVersionSaleDetail } from '@/composables/useResourceVersionSaleDetail'
@@ -34,7 +27,8 @@ import { TButton, TLoading } from 'ui_73info'
  * 那两个地址改为轻量重定向到本面板的页内形态（见 ResourceDetailRedirectView）；
  * 所以这里不再有 page 形态：宽度跟随列表页内容区、不写 SEO；面板内不再渲染收起入口。
  *
- * 这一层只留「取数与动作编排」：取详情 / 版本、购买会话、点赞、下载，以及把它们接到各块视图上。
+ * 这一层只留「动作编排与视图接线」：取数在 `useResourceDetailData`，购买会话、点赞、下载
+ * 各自在对应 composable 里，这里负责把它们接到各块视图上（以及支付深链的落点判定）。
  */
 const props = defineProps<{
   /** 要展示的资源编号（列表页传选中项） */
@@ -51,17 +45,26 @@ const emit = defineEmits<{
   (e: 'close'): void
 }>()
 
-const auth = useAuthStore()
-const loading = ref(false)
-/** 面板形态下取数失败时的兜底文案（详情页形态失败会退回首页，不用这个） */
-const loadError = ref('')
-const resource = ref<PublicMcResourceItem | null>(null)
-const versions = ref<PublicMcResourceVersionItem[]>([])
+/**
+ * 详情 / 版本 / 卖家费率：取数、失败文案、重试与登录后的赞态重取都在这个 composable 里
+ * （从本组件原样搬出，行为不变；面板只留动作编排与视图接线）。
+ */
+const {
+  loading,
+  loadError,
+  resource,
+  versions,
+  isOwner,
+  ownerFeeHint,
+  ownerFeeError,
+  loadResource,
+  refreshResourceDetail,
+} = useResourceDetailData({ getResourceId: () => props.resourceId })
 
 /**
  * 购买（下单 / 渠道 / 支付面与轮询）全在 `useResourcePurchase` 里：
  * 下单串行队列、支付面世代号、切渠道防抖都原样搬了过去，这里只接状态与动作。
- * `refreshDetail` 留在本组件——资源实体由这里持有，付完要重取一次详情（含 `purchased_by_me`）。
+ * `refreshDetail` 由取数层（`useResourceDetailData`）提供，付完重取一次详情（含 `purchased_by_me`）。
  */
 const {
   panelOpen: purchasePanelOpen,
@@ -92,24 +95,6 @@ const resourceCoverUrl = computed(() =>
 const pageContentHtml = computed(() => formatHomepageContent(resource.value?.release_note || ''))
 const isPublishedResource = computed(() => resource.value?.visibility === 'published')
 
-const isOwner = computed(() => {
-  const creator = resource.value?.creator?.trim() ?? ''
-  const username = auth.username?.trim() ?? ''
-  return Boolean(creator && username && creator === username)
-})
-
-/** 卖家本人看详情时的费率提示；访客不请求也不展示。 */
-const {
-  hint: ownerFeeHint,
-  feeError: ownerFeeError,
-  load: loadOwnerFee,
-} = useResourceOwnerFee({
-  isOwner: () => isOwner.value,
-  token: () => auth.token,
-  pricePoints: () => Number(resource.value?.price_points ?? 0),
-  buyoutPriceFen: () => Number(resource.value?.buyout_price_fen ?? 0),
-  versionPrices: () => versions.value.map((item) => Number(item.price_fen ?? 0)),
-})
 /**
  * 按版本售卖：资源级买断价 / 积分价都为 0，但版本列表里存在可单卖的版本。
  * 标价、价格徽标档位、主按钮购买闸与面板金额都收在 composable 里，
@@ -136,6 +121,20 @@ const { isApiResource, needsPurchase, openPurchasePanel } = useResourcePurchaseG
   resource,
   isOwner,
   openPurchasePanelUnlocked,
+})
+
+/**
+ * 支付深链 `?pay=wechat|alipay`：已登录且这条资源确实要买时自动拉起购买弹窗并选中渠道。
+ * 地址上只认渠道、不认任何身份；免费 / 已购 / 作者本人 / 接口资源 / 积分资源只摘参数不弹窗。
+ */
+useResourcePayDeepLink({
+  resolveTarget: () => {
+    if (!resource.value) return undefined
+    if (Number(resource.value.price_points ?? 0) > 0) return null
+    if (needsPurchase.value) return { version: null }
+    return needsVersionPurchase.value ? { version: versionSaleTargetVersion.value } : null
+  },
+  openPurchasePanel,
 })
 
 /**
@@ -186,91 +185,6 @@ function handlePrimaryCta() {
   }
   void openResourceFile()
 }
-
-function getCurrentResourceId(): number | null {
-  return Number.isInteger(props.resourceId) && props.resourceId > 0 ? props.resourceId : null
-}
-
-async function refreshResourceDetail() {
-  if (!resource.value) {
-    return
-  }
-  const token = auth.token?.trim() ? auth.token : null
-  resource.value = await getPublicMcResource(resource.value.id, token)
-  invalidateResourceListCache()
-}
-
-async function refreshResourceLikeState(resourceId: number) {
-  try {
-    const token = auth.token?.trim() ? auth.token : null
-    resource.value = await getPublicMcResource(resourceId, token)
-  } catch (error) {
-    if (error instanceof HttpError && error.status === 401) {
-      auth.logout()
-    }
-  }
-}
-
-async function loadResource() {
-  const resourceId = getCurrentResourceId()
-  if (!resourceId) {
-    // 不接管导航：由列表页决定选中是否合法（URL 里的 `?resource=` 可能是脏数据）
-    loadError.value = '没有拿到有效的资源编号。'
-    return
-  }
-  if (loading.value) {
-    return
-  }
-
-  loading.value = true
-  loadError.value = ''
-  try {
-    const token = auth.token?.trim() ? auth.token : null
-    const [resourceDetail, resourceVersions] = await Promise.all([
-      getPublicMcResource(resourceId, token),
-      listPublicMcResourceVersions(resourceId, token),
-    ])
-    resource.value = resourceDetail
-    // 列表按时间倒序：`latestVersion` 取 `versions[0]`，页面展示也与设计稿一致（新版本在上）
-    versions.value = [...resourceVersions].sort((a, b) => b.created_at.localeCompare(a.created_at))
-    await loadOwnerFee()
-  } catch (error) {
-    // 就地报错，不把整个列表页带回首页
-    resource.value = null
-    versions.value = []
-    // 404 同时覆盖「资源不存在」与「私有 / 待审资源无权查看」，按后端原文显示「not found」对访客没意义
-    loadError.value =
-      error instanceof HttpError && error.status === 404
-        ? '资源不存在或无权访问'
-        : error instanceof Error
-          ? error.message
-          : '加载资源主页失败'
-  } finally {
-    loading.value = false
-  }
-}
-
-onMounted(() => {
-  auth.hydrate()
-  void loadResource()
-})
-
-watch(
-  () => props.resourceId,
-  () => {
-    void loadResource()
-  },
-)
-
-watch(
-  () => auth.token,
-  () => {
-    // 评论由 ResourceCommentSection 自己 watch 令牌重拉，这里只管赞态（需要整份资源重取）
-    if (resource.value?.id) {
-      void refreshResourceLikeState(resource.value.id)
-    }
-  },
-)
 </script>
 
 <template>

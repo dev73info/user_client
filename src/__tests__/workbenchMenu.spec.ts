@@ -93,6 +93,7 @@ describe('开发者菜单', () => {
     expect(devWorkbenchItems.map((item) => item.label)).toEqual([
       '工作台总览',
       '资源项目',
+      '售出订单',
       '接入客户端',
       '需求大厅',
       '我的接单',
@@ -107,14 +108,20 @@ describe('开发者菜单', () => {
     expect(assistant?.redirect).toEqual({ name: 'dev-home' })
   })
 
-  it('资源项目的子页面（版本 / 编辑主页 / 售出订单）都高亮这一条', () => {
+  it('资源项目的子页面（版本 / 编辑主页）都高亮这一条', () => {
     const resourceItem = devWorkbenchItems.find((item) => item.name === 'dev-resource-list')
 
     expect(resourceItem?.activeNames).toEqual([
       'dev-resource-homepage-edit',
       'dev-resource-versions',
-      'dev-resource-sold-purchases',
     ])
+  })
+
+  it('售出订单是开发者一级入口，不再藏在资源项目下', () => {
+    const sold = devWorkbenchItems.find((item) => item.name === 'dev-resource-sold-purchases')
+
+    expect(sold?.label).toBe('售出订单')
+    expect(sold?.activeNames).toBeUndefined()
   })
 
   it('财务中心与团队服务各三条 / 两条子项', () => {

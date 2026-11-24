@@ -21,6 +21,8 @@ interface ImportMetaEnv {
   readonly VITE_CAPTCHA_ENABLED?: string
   /** 值为 'false' 时隐藏左上角 mock 身份切换悬浮窗（mock 仍生效），用于截图对照与演示 */
   readonly VITE_MOCK_SWITCHER?: string
+  /** 值为 'false' 时关闭运营 Web 埋点；缺省启用 */
+  readonly VITE_OPS_TELEMETRY_ENABLED?: string
 }
 
 interface ImportMeta {

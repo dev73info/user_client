@@ -1,13 +1,15 @@
 import { computed, ref } from 'vue'
 
 const MOBILE_BREAKPOINT_PX = 900
-const DESKTOP_FAB_WIDTH = 24
-const MOBILE_FAB_WIDTH = 96
-const DESKTOP_FAB_HEIGHT = 88
-const MOBILE_FAB_HEIGHT = 120
+const DESKTOP_FAB_WIDTH = 32
+const MOBILE_FAB_WIDTH = 30
+const DESKTOP_FAB_HEIGHT = 92
+const MOBILE_FAB_HEIGHT = 88
 const CLICK_DISTANCE_PX = 6
 /** 移动端底部 Dock：bottom 8px + 高度约 58px + 8px 间距。 */
 const MOBILE_DOCK_RESERVE = 74
+const MOBILE_TOP_INSET = 48
+const DESKTOP_TOP_INSET = 30
 
 function clamp(value: number, min: number, max: number): number {
   return Math.min(Math.max(value, min), max)
@@ -59,7 +61,12 @@ export function useSupportChatDrag(onTap: () => void) {
     const mobile = isMobile()
     // 移动端给底部 Dock 留位，避免拖到最底部后按钮被 Dock 盖住点不到。
     const bottomGap = mobile ? mobileDockReserve() : 8
-    return clamp(value, 8, Math.max(8, window.innerHeight - currentFabHeight() - bottomGap))
+    const topInset = mobile ? MOBILE_TOP_INSET : DESKTOP_TOP_INSET
+    return clamp(
+      value,
+      topInset,
+      Math.max(topInset, window.innerHeight - currentFabHeight() - bottomGap),
+    )
   }
 
   function handleViewportResize() {
@@ -71,10 +78,17 @@ export function useSupportChatDrag(onTap: () => void) {
       return { top: `${dragTop.value}px`, left: `${dragLeft.value}px` }
     }
     const style: Record<string, string> = { top: `${top.value}px` }
-    if (side.value === 'right') style.right = '0px'
-    else style.left = '0px'
+    if (side.value === 'right') style.right = 'max(0px, env(safe-area-inset-right, 0px))'
+    else style.left = 'max(0px, env(safe-area-inset-left, 0px))'
     return style
   })
+
+  function currentContainerLeft(): number | null {
+    const widget = document.querySelector<HTMLElement>('.support-widget')
+    if (!widget) return null
+    const rect = widget.getBoundingClientRect()
+    return rect.width > 0 ? rect.left : null
+  }
 
   function detachDragListeners() {
     if (moveHandler) window.removeEventListener('pointermove', moveHandler)
@@ -92,7 +106,8 @@ export function useSupportChatDrag(onTap: () => void) {
     startY = event.clientY
     startTop = top.value
     dragTabWidth = currentFabWidth()
-    startContainerLeft = side.value === 'right' ? window.innerWidth - dragTabWidth : 0
+    startContainerLeft =
+      currentContainerLeft() ?? (side.value === 'right' ? window.innerWidth - dragTabWidth : 0)
     dragging.value = true
     dragLeft.value = startContainerLeft
     dragTop.value = startTop

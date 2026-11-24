@@ -21,6 +21,7 @@ import {
 const mocks = vi.hoisted(() => ({
   requirementContract: vi.fn(),
   createRequirementContract: vi.fn(),
+  mySigningLogs: vi.fn(),
   requirementDetail: vi.fn(),
   initiateSign: vi.fn(),
   syncStatus: vi.fn(),
@@ -32,6 +33,7 @@ vi.mock('@/api/contracts', async (orig) => ({
   ...(await orig<typeof import('@/api/contracts')>()),
   fetchMyRequirementContract: mocks.requirementContract,
   createRequirementContract: mocks.createRequirementContract,
+  fetchMyContractSigningLogs: mocks.mySigningLogs,
   initiateAsignSign: mocks.initiateSign,
   syncAsignSignStatus: mocks.syncStatus,
   fetchAsignContractPreviewUrl: mocks.previewUrl,
@@ -75,6 +77,7 @@ beforeEach(() => {
 
   mocks.requirementContract.mockResolvedValue(contractDetail())
   mocks.requirementDetail.mockResolvedValue(requirementDetail())
+  mocks.mySigningLogs.mockResolvedValue([])
   mocks.initiateSign.mockResolvedValue({
     contract_id: 88,
     contract_no: 'HT-2026-0001',

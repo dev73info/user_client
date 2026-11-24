@@ -27,11 +27,14 @@ const props = defineProps<{
   resources: PublicMcResourceItem[]
   /** 正在提交点赞的资源 id：按钮据此置灰并显示 busy */
   likeSubmittingIds: ReadonlySet<number>
+  /** 正在准备下载的资源 id */
+  downloadSubmittingIds?: ReadonlySet<number>
 }>()
 
 const emit = defineEmits<{
   (e: 'open', card: SpotlightCard): void
   (e: 'like', card: SpotlightCard): void
+  (e: 'download', card: SpotlightCard): void
   (e: 'more'): void
 }>()
 
@@ -56,6 +59,9 @@ const {
 
 const isLikeSubmitting = (resourceId?: number) =>
   resourceId != null && props.likeSubmittingIds.has(resourceId)
+
+const isDownloadSubmitting = (resourceId?: number) =>
+  resourceId != null && !!props.downloadSubmittingIds?.has(resourceId)
 
 /** 作者名溢出时启用横向滚动的资源 id 集合 */
 const authorMarqueeIds = ref<Set<number>>(new Set())
@@ -158,7 +164,9 @@ onBeforeUnmount(() => {
             <span v-else class="portal-spotlight-card__cover-text">{{
               card.title.slice(0, 1).toUpperCase()
             }}</span>
-            <span v-if="card.badge" class="portal-spotlight-card__badge">{{ card.badge }}</span>
+            <div v-if="card.badge" class="portal-spotlight-card__cover-tags">
+              <span v-if="card.badge" class="portal-spotlight-card__badge">{{ card.badge }}</span>
+            </div>
             <span
               v-if="card.mark"
               class="portal-spotlight-card__mark portal-spotlight-card__mark--featured"
@@ -177,7 +185,7 @@ onBeforeUnmount(() => {
             <h3>{{ card.title }}</h3>
             <p v-if="card.summary">{{ card.summary }}</p>
             <div v-if="card.tags.length" class="portal-spotlight-card__meta-row">
-              <strong v-for="tag in card.tags" :key="tag">{{ tag }}</strong>
+              <strong v-for="tag in card.tags" :key="tag" class="portal-tag">{{ tag }}</strong>
             </div>
           </div>
           <div class="portal-spotlight-card__footer">
@@ -195,12 +203,6 @@ onBeforeUnmount(() => {
               >
                 <span class="portal-spotlight-card__author-text">{{ card.authorLabel }}</span>
               </span>
-              <span
-                v-if="card.originLabel"
-                class="portal-spotlight-card__origin"
-                :class="{ 'is-repost': card.originRepost }"
-                >{{ card.originLabel }}</span
-              >
               <time v-if="card.metaTime" class="portal-spotlight-card__time">{{
                 card.metaTime
               }}</time>
@@ -224,7 +226,16 @@ onBeforeUnmount(() => {
                   </svg>
                   {{ card.viewCount }}
                 </span>
-                <span class="portal-spotlight-card__stat" title="下载量">
+                <button
+                  type="button"
+                  class="portal-spotlight-card__stat portal-spotlight-card__stat--download"
+                  :title="card.free ? '下载资源' : '查看详情并购买'"
+                  :aria-label="card.free ? `下载 ${card.title}` : `查看 ${card.title} 并购买`"
+                  :disabled="isDownloadSubmitting(card.resourceId)"
+                  @click.stop="emit('download', card)"
+                  @keydown.enter.stop
+                  @keydown.space.stop
+                >
                   <svg
                     viewBox="0 0 24 24"
                     width="14"
@@ -241,44 +252,49 @@ onBeforeUnmount(() => {
                     <line x1="12" y1="15" x2="12" y2="3"></line>
                   </svg>
                   {{ card.downloadCount }}
-                </span>
+                </button>
               </span>
-              <button
-                type="button"
-                class="portal-spotlight-card__likes"
-                :class="{
-                  'is-liked': card.likedByMe,
-                  'is-busy': isLikeSubmitting(card.resourceId),
-                }"
-                :title="card.likedByMe ? '取消点赞' : '点赞'"
-                :aria-pressed="card.likedByMe"
-                :aria-label="
-                  card.likedByMe
-                    ? `已点赞 ${card.likeCount}，点击取消`
-                    : `点赞，当前 ${card.likeCount}`
-                "
-                :disabled="isLikeSubmitting(card.resourceId)"
-                @click.stop="emit('like', card)"
-                @keydown.enter.stop
-                @keydown.space.stop
-              >
-                <svg
-                  viewBox="0 0 24 24"
-                  width="13"
-                  height="13"
-                  :fill="card.likedByMe ? 'currentColor' : 'none'"
-                  stroke="currentColor"
-                  stroke-width="2"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  aria-hidden="true"
+              <span class="portal-spotlight-card__engagement">
+                <span v-if="card.originLabel" class="portal-spotlight-card__origin is-repost">{{
+                  card.originLabel
+                }}</span>
+                <button
+                  type="button"
+                  class="portal-spotlight-card__likes"
+                  :class="{
+                    'is-liked': card.likedByMe,
+                    'is-busy': isLikeSubmitting(card.resourceId),
+                  }"
+                  :title="card.likedByMe ? '取消点赞' : '点赞'"
+                  :aria-pressed="card.likedByMe"
+                  :aria-label="
+                    card.likedByMe
+                      ? `已点赞 ${card.likeCount}，点击取消`
+                      : `点赞，当前 ${card.likeCount}`
+                  "
+                  :disabled="isLikeSubmitting(card.resourceId)"
+                  @click.stop="emit('like', card)"
+                  @keydown.enter.stop
+                  @keydown.space.stop
                 >
-                  <path
-                    d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"
-                  ></path>
-                </svg>
-                {{ card.likeCount }}
-              </button>
+                  <svg
+                    viewBox="0 0 24 24"
+                    width="13"
+                    height="13"
+                    :fill="card.likedByMe ? 'currentColor' : 'none'"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    aria-hidden="true"
+                  >
+                    <path
+                      d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"
+                    ></path>
+                  </svg>
+                  {{ card.likeCount }}
+                </button>
+              </span>
             </div>
           </div>
         </article>

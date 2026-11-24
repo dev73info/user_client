@@ -31,7 +31,12 @@ describe('PortalNoticeCard', () => {
     tag: 'Minecraft',
     to: { name: 'resources', query: { sale: 'free' } },
   }
-  const withoutTarget: PortalNotice = { title: '最新成交：做个工具', date: '3/5 15:00', tag: 'HOT' }
+  const withoutTarget: PortalNotice = {
+    title: '最新成交：做个工具',
+    date: '3/5 15:00',
+    tag: 'HOT',
+    tagTone: 'hot',
+  }
 
   it('只有带跳转目标的条目才挂可点击样式与 role', () => {
     const wrapper = mount(PortalNoticeCard, {
@@ -44,6 +49,11 @@ describe('PortalNoticeCard', () => {
     expect(items[0]?.attributes('style')).toContain('--notice-index: 0')
     expect(items[1]?.classes()).not.toContain('portal-notice-item--clickable')
     expect(items[1]?.attributes('role')).toBeUndefined()
+    expect(items[0]?.find('.portal-notice-item__main time').text()).toBe('3/5 14:30')
+    expect(items[1]?.find('.portal-notice-item__main time').text()).toBe('3/5 15:00')
+    expect(wrapper.find('.portal-card__chip--muted').exists()).toBe(false)
+    expect(items[0]?.find('.portal-tag').classes()).not.toContain('portal-tag--hot')
+    expect(items[1]?.find('.portal-tag').classes()).toContain('portal-tag--hot')
   })
 
   it('点击与回车都只回抛一次 open-notice，携带整条目标', async () => {

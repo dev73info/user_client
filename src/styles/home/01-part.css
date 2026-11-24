@@ -69,6 +69,7 @@
     linear-gradient(to bottom, var(--73-grid-line) 1px, transparent 1px);
   background-size: 24px 24px;
   box-shadow: var(--73-shadow-card);
+  font-size: var(--73-font-size-sm);
 }
 
 .portal-hero::after {
@@ -84,7 +85,7 @@
   pointer-events: none;
 }
 
-/* 右侧插画：复用首页原来的 `/icons/hero_r.png`（左侧为空、右侧是主视觉），
+/* 右侧插画：复用首页原来的 `/icons/hero_r.*`（左侧为空、右侧是主视觉），
    放在 Hero 右侧并做左缘渐隐，避免与左侧文案和网格纹理生硬拼接。
    纯装饰，不参与布局；窄屏下隐藏。 */
 
@@ -95,7 +96,18 @@
   right: 0;
   bottom: 0;
   width: min(64%, 800px);
-  background: url('/icons/hero_r.png') right center / cover no-repeat;
+  background-image: url('/icons/hero_r.png');
+  background-image: -webkit-image-set(
+    url('/icons/hero_r-800.webp') 1x,
+    url('/icons/hero_r.webp') 2x
+  );
+  background-image: image-set(
+    url('/icons/hero_r-800.webp') 1x,
+    url('/icons/hero_r.webp') 2x
+  );
+  background-position: right center;
+  background-repeat: no-repeat;
+  background-size: cover;
   pointer-events: none;
   opacity: 0.95;
   -webkit-mask-image: linear-gradient(to left, var(--73-app-shade) 68%, transparent 100%);
@@ -215,6 +227,11 @@
   display: flex;
   align-items: center;
   gap: 12px;
+}
+
+.portal-hero__actions .portal-primary-action,
+.portal-hero__actions .portal-secondary-action {
+  font-size: var(--73-font-size-sm);
 }
 
 .portal-primary-action,

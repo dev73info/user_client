@@ -103,15 +103,17 @@ export function withSaleQuery(
 }
 
 /**
- * 摘掉页内详情带来的 `resource` 与推广码 `promo`。
+ * 摘掉页内详情带来的 `resource`、推广码 `promo` 与支付深链 `pay`。
  *
  * 选中项只在当前列表里成立，换专区 / 子分区 / 免费付费分区时一起摘掉
  * （否则会出现「地址上选中的是付费资源、左边却在看免费分区」这种对不上的状态）；
  * R029：推广码只对分享链接指向的那条资源有效，跟着选中项一起改写会把别人的订单记成这条资源带来的。
+ * `pay` 同理：它只对链接里那一条资源成立，换资源后不得把「自动拉起支付」带给下一条。
  */
 export function withoutSelectionQuery(query: LocationQueryRaw): LocationQueryRaw {
   const next = { ...query }
   delete next.resource
   delete next.promo
+  delete next.pay
   return next
 }

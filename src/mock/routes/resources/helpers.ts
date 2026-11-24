@@ -24,6 +24,8 @@ const MOCK_CREATOR_CREDITS: Record<string, number> = {
   toolsmith_demo: 108,
   zhang_demo: 92,
   mochi_dev: 96,
+  lin_demo: 88,
+  chen_demo: 94,
 }
 
 export function nowIso(): string {

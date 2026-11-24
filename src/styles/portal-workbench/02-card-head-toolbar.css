@@ -64,7 +64,10 @@
   max-width: 340px;
 }
 
-/* 下拉筛选的宽度要写成 flex 基宽，不能只写 min-width：TSelect 自带 width: 100%，
+/* 工作台所有筛选下拉共用这一档规格：150×36、TSelect 默认字号 / 描边 / 圆角。
+   不要再按页面加收窄修饰类；窄屏由 06-responsive 统一切到固定档位。
+
+   宽度要写成 flex 基宽，不能只写 min-width：TSelect 自带 width: 100%，
    而 __field 直接挂在 TSelect 根节点上，`flex: 0 0 auto` 会让 flex-basis 回落到 width，
    于是每个筛选各占一整行、工具栏被撑成竖排。 */
 .wb-toolbar__field {
@@ -74,14 +77,6 @@
 
 .wb-toolbar__field--small {
   flex: 0 0 112px;
-}
-
-/* 需求状态下拉只有两三字：宽度跟着当前文字走，不占 150px 定宽。
-   直接落在 TSelect 根节点（子组件根）上，组件内的 scoped 规则够不到，
-   所以这条放在统一工具栏层。 */
-.wb-toolbar__field--requirement-state {
-  flex: 0 0 auto;
-  width: fit-content;
 }
 
 /* 筛选是胶囊组时，组本身不抢占空间：宽度够就整组一行，摆不下就让组收缩并靠自己的 flex-wrap

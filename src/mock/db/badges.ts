@@ -17,6 +17,7 @@ import type {
 } from '@/api/inviteReward'
 
 import { currentMockProfile, type MockIdentity } from '../identity'
+import { publicOwned } from './publicBadges'
 import { datetime } from './shared'
 
 export const badgeDefinitions: BadgeDefinition[] = [
@@ -74,6 +75,27 @@ export function myBadges(): UserBadge[] {
 
     return definition
       ? [{ ...definition, equipped: entry.equipped, awarded_at: entry.awardedAt }]
+      : []
+  })
+}
+
+/** 某个用户的公开徽章：贡献榜据此展示名称下方的已佩戴徽章。 */
+export function userBadges(username: string): UserBadge[] {
+  if (username === currentMockProfile().username) {
+    return myBadges()
+  }
+
+  return (publicOwned[username] ?? []).flatMap((entry, index) => {
+    const definition = badgeDefinitions.find((badge) => badge.code === entry.code)
+
+    return definition
+      ? [
+          {
+            ...definition,
+            equipped: entry.equipped,
+            awarded_at: datetime(-30 - index * 7),
+          },
+        ]
       : []
   })
 }

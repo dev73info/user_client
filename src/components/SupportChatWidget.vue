@@ -46,6 +46,20 @@ const {
   error: satisfactionError,
   submit: submitSatisfaction,
 } = session.satisfaction
+const iconOnly = ref(false)
+const openLabel = computed(() => {
+  const unreadSuffix = unread.value > 0 ? `（${unread.value} 条未读）` : ''
+  if (opened.value) return `关闭在线客服${unreadSuffix}`
+  if (iconOnly.value) return `打开在线客服${unreadSuffix}`
+  return `在线客服${unreadSuffix}，点击打开`
+})
+const dismissLabel = computed(() => (opened.value ? '关闭并收为竖浮窗' : '收起为竖浮窗'))
+
+function handleFabTap() {
+  if (!opened.value) iconOnly.value = true
+  void toggleOpen()
+}
+
 const {
   side,
   dragging,
@@ -54,19 +68,12 @@ const {
   handleViewportResize,
   detachDragListeners,
   centerVertically,
-} = useSupportChatDrag(() => {
-  void toggleOpen()
-})
-const openLabel = computed(() => {
-  if (opened.value) return '收起在线客服'
-  return unread.value > 0 ? `在线客服（${unread.value} 条未读）` : '在线客服'
-})
+} = useSupportChatDrag(handleFabTap)
 let disposed = false
-/** 「关闭」只收起整个浮窗（本次页面会话内不再出现），刷新页面后恢复。 */
-const dismissed = ref(false)
 
 function dismiss() {
-  dismissed.value = true
+  if (opened.value) void toggleOpen()
+  iconOnly.value = false
 }
 
 onMounted(async () => {
@@ -86,9 +93,9 @@ onBeforeUnmount(() => {
 
 <template>
   <div
-    v-if="channelEnabled && !dismissed"
+    v-if="channelEnabled"
     class="support-widget"
-    :class="{ 'is-open': opened }"
+    :class="{ 'is-open': opened, 'is-icon': iconOnly }"
     :style="widgetStyle"
   >
     <Transition name="support-pop">
@@ -138,26 +145,27 @@ onBeforeUnmount(() => {
       ]"
       :aria-label="openLabel"
       :aria-expanded="opened"
+      :title="iconOnly ? '在线客服' : undefined"
       @pointerdown="onDragStart"
-      @keydown.enter.prevent="toggleOpen"
-      @keydown.space.prevent="toggleOpen"
+      @keydown.enter.prevent="handleFabTap"
+      @keydown.space.prevent="handleFabTap"
     >
-      <span class="support-fab__stage" aria-hidden="true">
+      <span v-if="iconOnly" class="support-fab__stage" aria-hidden="true">
         <span class="support-fab__sprite support-fab__sprite--idle"></span>
         <span class="support-fab__sprite support-fab__sprite--wave"></span>
-        <span v-if="unread > 0 && !opened" class="support-fab__badge">{{
-          unread > 99 ? '99+' : unread
-        }}</span>
       </span>
-      <span class="support-fab__text">在线客服</span>
+      <span v-else class="support-fab__text">在线客服</span>
+      <span v-if="unread > 0 && !opened" class="support-fab__badge">{{
+        unread > 99 ? '99+' : unread
+      }}</span>
     </button>
 
     <button
+      v-if="iconOnly"
       type="button"
       class="support-widget__dismiss"
-      :class="side === 'left' ? 'support-widget__dismiss--left' : 'support-widget__dismiss--right'"
-      aria-label="关闭在线客服"
-      title="关闭在线客服"
+      :aria-label="dismissLabel"
+      :title="dismissLabel"
       @pointerdown.stop.prevent
       @click.stop="dismiss"
     >
@@ -167,3 +175,5 @@ onBeforeUnmount(() => {
 </template>
 
 <style scoped src="./support/support-chat-fab.css"></style>
+<style scoped src="./support/support-chat-fab-actions.css"></style>
+<style scoped src="./support/support-chat-fab-responsive.css"></style>

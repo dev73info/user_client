@@ -93,10 +93,10 @@ describe('query 改写', () => {
     expect(withSaleQuery({ resource: '7' }, 'paid')).toEqual({ resource: '7', sale: 'paid' })
   })
 
-  it('withoutSelectionQuery 摘掉 resource 与推广码，其余原样保留', () => {
-    expect(withoutSelectionQuery({ resource: '7', promo: 'A1', sale: 'free' })).toEqual({
-      sale: 'free',
-    })
+  it('withoutSelectionQuery 摘掉 resource / 推广码 / 支付深链，其余原样保留', () => {
+    expect(
+      withoutSelectionQuery({ resource: '7', promo: 'A1', pay: 'wechat', sale: 'free' }),
+    ).toEqual({ sale: 'free' })
   })
 })
 

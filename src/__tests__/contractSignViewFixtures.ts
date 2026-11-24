@@ -1,10 +1,23 @@
 import { createMemoryHistory, createRouter } from 'vue-router'
 
-import type { ContractDetail } from '@/api/contracts'
+import type { ContractDetail, SigningLogItem } from '@/api/contracts'
 import type { RequirementItem } from '@/api/requirements'
 import { CONTRACT_STATUS } from '@/shared/contracts'
 
 export const SIGN_URL = 'https://asign.example/sign/HT-2026-0001'
+
+export function signingLog(patch: Partial<SigningLogItem> = {}): SigningLogItem {
+  return {
+    id: 7,
+    contract_id: 88,
+    contract_no: 'HT-2026-0001',
+    contract_title: '需求开发合同',
+    action: 'sign_initiated',
+    operator: 'alice',
+    created_at: '2026-10-20 11:30:00',
+    ...patch,
+  }
+}
 
 export function contractDetail(patch: Partial<ContractDetail> = {}): ContractDetail {
   return {

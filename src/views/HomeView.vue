@@ -24,8 +24,10 @@ import {
 } from '@/composables/useHomePortalLoaders'
 import { useHomePortalLifecycle } from '@/composables/useHomePortalLifecycle'
 import { useHomePublishCard } from '@/composables/useHomePublishCard'
+import { useDeveloperRankBadges } from '@/composables/useDeveloperRankBadges'
 import { usePortalRanks } from '@/composables/usePortalRanks'
 import { usePublicResources } from '@/composables/usePublicResources'
+import { useSpotlightDownload } from '@/composables/useSpotlightDownload'
 import { buildPortalNotices, type PortalNotice } from '@/shared/home/portalDisplay'
 import {
   HOME_HERO_SIGNALS,
@@ -98,6 +100,7 @@ const {
 
 /** 侧栏两张榜单：资源由本视图统一请求后传进去，composable 只做聚合，不再发资源请求。 */
 const { developerRanks, teamRanks, totalContribResources } = usePortalRanks(publicResources)
+const { badgesByUsername: developerBadges } = useDeveloperRankBadges(developerRanks)
 
 /**
  * 首屏、登录态变化、5 分钟轮询与卸载清理整块在 `useHomePortalLifecycle`：视图只交出四路 loader、
@@ -170,6 +173,10 @@ const portalActions = useHomePortalActions({
 
 /** 精选卡片的点赞提交态是 ref，模板里要自动解包，故在 setup 顶层留一份引用。 */
 const spotlightLikeSubmittingIds = portalActions.spotlightLikeSubmittingIds
+const { spotlightDownloadSubmittingIds, downloadSpotlight } = useSpotlightDownload({
+  publicResources,
+  openSpotlight: portalActions.openSpotlight,
+})
 
 const portalNotices = computed<PortalNotice[]>(() => {
   const resource = publicResources.value[0]
@@ -205,8 +212,10 @@ const portalNotices = computed<PortalNotice[]>(() => {
           <SpotlightResourceSection
             :resources="publicResources"
             :like-submitting-ids="spotlightLikeSubmittingIds"
+            :download-submitting-ids="spotlightDownloadSubmittingIds"
             @open="portalActions.openSpotlight"
             @like="portalActions.toggleSpotlightLike"
+            @download="downloadSpotlight"
             @more="portalActions.openFreeResources"
           />
         </div>
@@ -214,6 +223,7 @@ const portalNotices = computed<PortalNotice[]>(() => {
         <PortalSidebarColumn
           :notices="portalNotices"
           :developer-ranks="developerRanks"
+          :developer-badges="developerBadges"
           :total-contrib-resources="totalContribResources"
           :team-ranks="teamRanks"
           :checkin-status="checkinStatus"

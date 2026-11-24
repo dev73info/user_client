@@ -59,7 +59,7 @@ export default defineConfig({
   ],
   build: {
     chunkSizeWarningLimit: 1200,
-    cssCodeSplit: false,
+    cssCodeSplit: true,
     rollupOptions: {
       output: {
         // 文件名带内容 hash：改版后旧 chunk 与新 chunk 的 URL 互不冲突，
@@ -68,85 +68,13 @@ export default defineConfig({
         //
         // 注意：spa-fallback.html 与各条 SEO 快照都是构建期从 dist/index.html
         // 派生的（scripts/generate-seo-pages.mjs），会跟着拿到新文件名，不用单独改。
+        //
+        // 不手工给开发者页面 / 第三方库分组：manualChunks 会把共享依赖塞进某个路由块，
+        // 那个块随后被所有入口静态依赖，首页反而预加载整套开发者工作台。让 Rollup
+        // 按动态 import 自动切块，入口只带当前页面真正需要的模块。
         entryFileNames: 'assets/[name]-[hash].js',
         chunkFileNames: 'assets/[name]-[hash].js',
         assetFileNames: 'assets/[name]-[hash].[ext]',
-        manualChunks(id) {
-          const normalizedId = id.replace(/\\/g, '/')
-
-          if (
-            normalizedId.includes('/@vue/') ||
-            normalizedId.includes('/vue/') ||
-            normalizedId.includes('vue-router')
-          ) {
-            return 'vue-vendor'
-          }
-
-          if (normalizedId.includes('pinia')) {
-            return 'pinia'
-          }
-
-          // 自研组件库单独成块。它发的是源码、被 link 进来（真实路径在 node_modules 之外），
-          // 不在这里挑出来就会落进下面的 vendor 兜底，与第三方库混在一起。
-          if (normalizedId.includes('/ui_73info/')) {
-            return 'ui-73info'
-          }
-
-          if (normalizedId.includes('@tiptap/')) {
-            return 'tiptap'
-          }
-
-          if (
-            normalizedId.includes('markdown-it') ||
-            normalizedId.includes('qrcode') ||
-            normalizedId.includes('tags-wasm')
-          ) {
-            return 'dev-tools'
-          }
-
-          if (normalizedId.includes('/src/views/Dev')) {
-            if (normalizedId.includes('DevResource')) {
-              return 'dev-resources'
-            }
-
-            if (
-              normalizedId.includes('DevRequirement') ||
-              normalizedId.includes('DevMyRequirements')
-            ) {
-              return 'dev-requirements'
-            }
-
-            if (
-              normalizedId.includes('DevWallet') ||
-              normalizedId.includes('DevWithdrawal') ||
-              normalizedId.includes('DevReleases')
-            ) {
-              return 'dev-wallet'
-            }
-
-            return 'dev-shell'
-          }
-
-          if (normalizedId.includes('/src/views/')) {
-            if (
-              normalizedId.includes('ProfileView') ||
-              normalizedId.includes('TicketCenterView')
-            ) {
-              return 'user-account'
-            }
-
-            if (
-              normalizedId.includes('ResourceCatalogView') ||
-              normalizedId.includes('ResourcesView')
-            ) {
-              return 'user-resources'
-            }
-          }
-
-          if (normalizedId.includes('node_modules')) {
-            return 'vendor'
-          }
-        },
       },
     },
   },

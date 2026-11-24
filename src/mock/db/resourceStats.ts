@@ -32,4 +32,6 @@ export const mcResourcePortalInfo: Record<number, MockResourcePortalInfo> = {
   9012: { view_count: 736, download_count: 57, like_count: 23 },
   9013: { view_count: 389, download_count: 33, like_count: 14 },
   9014: { view_count: 214, download_count: 12, like_count: 5 },
+  9015: { view_count: 186, download_count: 9, like_count: 4 },
+  9016: { view_count: 142, download_count: 7, like_count: 3 },
 }

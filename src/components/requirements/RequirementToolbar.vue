@@ -27,11 +27,7 @@ const selectedState = defineModel<RequirementFilterKey>('selectedState', { requi
 
 <template>
   <div class="wb-toolbar">
-    <TSelect
-      v-model="selectedState"
-      class="wb-toolbar__field wb-toolbar__field--requirement-state"
-      aria-label="需求状态"
-    >
+    <TSelect v-model="selectedState" class="wb-toolbar__field" aria-label="需求状态">
       <TOption
         v-for="option in options"
         :key="option.value"

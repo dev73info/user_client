@@ -55,6 +55,7 @@ const STATUS_FILTER_OPTIONS: { label: string; value: string }[] = [
 const {
   isLoading,
   filters,
+  resourceOptions,
   scopedOrders,
   paidCount,
   refundableCount,
@@ -129,6 +130,22 @@ function openResource(order: ResourcePurchaseOrder) {
       </div>
 
       <div class="dev-toolbar">
+        <TSelect
+          v-model="filters.resourceId"
+          placeholder="全部资源"
+          class="dev-toolbar__field"
+          aria-label="按资源筛选"
+          @change="resetPage"
+        >
+          <TOption label="全部资源" value="" />
+          <TOption
+            v-for="option in resourceOptions"
+            :key="option.value"
+            :label="option.label"
+            :value="String(option.value)"
+          />
+        </TSelect>
+
         <TSelect
           v-model="filters.status"
           clearable

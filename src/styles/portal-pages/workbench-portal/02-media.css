@@ -7,25 +7,6 @@
     font-weight: 700;
   }
 
-  .portal-page.portal-page--nav .requirement-hall__view span {
-    transition: transform var(--73-transition);
-  }
-
-  .portal-page.portal-page--nav .requirement-hall__view:hover span {
-    transform: translateX(2px);
-  }
-
-  .portal-page.portal-page--nav .requirement-hall__meta-row {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 4px 12px;
-    padding: 10px 0 12px;
-    color: var(--73-ink-muted);
-    font-family: inherit;
-    font-size: 12px;
-    font-weight: 400;
-  }
-
   .portal-page.portal-page--nav .requirement-hall__card-actions span {
     color: var(--73-accent);
     font-size: 12px;

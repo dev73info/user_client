@@ -1,0 +1,65 @@
+@media (hover: none), (max-width: 900px) {
+  /* 触屏和窄屏没有稳定的 hover，关闭入口直接常驻。 */
+  .support-widget__dismiss {
+    opacity: 1;
+    pointer-events: auto;
+  }
+}
+
+@media (max-width: 900px) {
+  .support-widget {
+    --support-label-width: 30px;
+    --support-label-height: clamp(80px, 10vh, 96px);
+    --support-icon-size: clamp(50px, 7vw, 60px);
+    --support-dismiss-size: 28px;
+  }
+
+  .support-fab__text {
+    padding: 8px 0;
+    font-size: 12px;
+    letter-spacing: 1px;
+  }
+
+  .support-fab__badge {
+    min-width: 18px;
+    height: 18px;
+    padding: 0 5px;
+    font-size: 11px;
+    line-height: 18px;
+  }
+}
+
+@media (max-width: 640px) {
+  .support-widget {
+    --support-icon-size: clamp(48px, 14vw, 58px);
+  }
+
+  /* 全屏面板自带关闭按钮，侧签只保留「打开」用途 */
+  .support-widget.is-open .support-fab,
+  .support-widget.is-open .support-widget__dismiss {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .support-widget,
+  .support-fab {
+    transition: none;
+  }
+
+  .support-fab__stage,
+  .support-fab__text {
+    animation: none;
+  }
+
+  .support-fab__sprite,
+  .support-fab:hover .support-fab__sprite,
+  .support-fab:focus-visible .support-fab__sprite {
+    animation: none;
+    background-position: 0 0;
+  }
+
+  .support-fab__text {
+    transition: none;
+  }
+}

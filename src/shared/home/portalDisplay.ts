@@ -18,6 +18,8 @@ export type PortalNotice = {
   title: string
   date: string
   tag?: string
+  /** 标签语义：HOT 用红色强调，其余沿用统一的中性展示标签。 */
+  tagTone?: 'hot'
   to?: RouteLocationRaw
 }
 
@@ -60,6 +62,7 @@ export function buildPortalNotices(sources: PortalNoticeSources): PortalNotice[]
       title: `最新成交：${sources.latestDeal.title}`,
       date: sources.latestDeal.at,
       tag: 'HOT',
+      tagTone: 'hot',
     })
   }
 
@@ -89,7 +92,6 @@ export function buildPortalNotices(sources: PortalNoticeSources): PortalNotice[]
     notices.push({
       title: `需求：${spotlight.title}`,
       date: formatTimeLabel(spotlight.updated_at),
-      tag: statusToLabel(spotlight.status, spotlight.payment_mode),
       to: { name: 'requirement-hall' },
     })
   }

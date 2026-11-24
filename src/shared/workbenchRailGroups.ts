@@ -148,9 +148,14 @@ export function buildDevRailGroups(): RailGroup[] {
         'dev-plugins-api',
         'dev-resource-versions',
         'dev-resource-homepage-edit',
-        'dev-resource-sold-purchases',
         'dev-tip-settings',
       ],
+    },
+    {
+      key: 'dev-sold-purchases',
+      label: '售出订单',
+      name: 'dev-resource-sold-purchases',
+      description: '查看售出订单、分账与退款',
     },
     {
       key: 'dev-requirements',

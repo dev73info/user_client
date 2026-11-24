@@ -63,8 +63,8 @@
       :has(> .wb-chip-group)
     ):not(:has(.wb-toolbar__actions .t73-button--solid))
     > .wb-toolbar__field {
-    flex: 0 0 auto;
-    width: auto;
+    flex: 0 0 112px;
+    width: 112px;
     padding-right: 6px;
   }
 

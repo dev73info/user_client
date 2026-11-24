@@ -1,5 +1,5 @@
 import { computed, onMounted, reactive, ref, watch } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
+import { useRoute } from 'vue-router'
 
 import { listSellerResourcePurchases, type ResourcePurchaseOrder } from '@/api/resourcePurchase'
 import { useClientPagination } from '@/composables/useClientPagination'
@@ -12,13 +12,13 @@ import { TMessage } from 'ui_73info'
 const SELLER_ORDER_FETCH_LIMIT = 100
 
 /**
- * 「售出订单」页的取数与筛选：订单拉取、资源范围（`?resourceId=`）、状态 / 关键词筛选、
+ * 「售出订单」页的取数与筛选：订单拉取、资源筛选（`?resourceId=` 预选）、状态 / 关键词筛选、
  * 读数四格、客户端分页与空态文案。
  *
  * 与买家侧「我的已购资源」是一件事的两面：那边的筛选走服务端，这边一次取回后在前端收窄。
+ * 没有 `resourceId` 时展示全部售出订单，不再把用户踢回资源列表。
  */
 export function useDevSoldResourcePurchases() {
-  const router = useRouter()
   const route = useRoute()
   const auth = useAuthStore()
 
@@ -26,11 +26,12 @@ export function useDevSoldResourcePurchases() {
   const orders = ref<ResourcePurchaseOrder[]>([])
 
   const filters = reactive({
+    resourceId: '',
     status: '',
     keyword: '',
   })
 
-  /** 从资源「更多 → 售出订单」带入；无 resourceId 时回资源列表。 */
+  /** 从资源「更多 → 售出订单」带入；无 resourceId 时不筛资源。 */
   const resourceIdFilter = computed(() => {
     const raw = route.query.resourceId ?? route.query.resource_id
     const value = Array.isArray(raw) ? raw[0] : raw
@@ -38,10 +39,34 @@ export function useDevSoldResourcePurchases() {
     return Number.isFinite(id) && id > 0 ? Math.trunc(id) : null
   })
 
+  /** 订单里出现过的资源（按首次出现顺序），标题为空时用编号兜底。 */
+  const resourceOptions = computed(() => {
+    const titles = new Map<number, string>()
+    for (const order of orders.value) {
+      const id = order.resource_id
+      if (!Number.isFinite(id) || id <= 0) {
+        continue
+      }
+      const title = (order.resource_title ?? '').trim()
+      if (!titles.has(id) || (!titles.get(id) && title)) {
+        titles.set(id, title)
+      }
+    }
+    return [...titles.entries()].map(([value, title]) => ({
+      value,
+      label: title || `资源 #${value}`,
+    }))
+  })
+
+  const selectedResourceId = computed(() => {
+    const id = Number(filters.resourceId)
+    return Number.isFinite(id) && id > 0 ? Math.trunc(id) : null
+  })
+
   const scopedOrders = computed(() => {
-    const resourceId = resourceIdFilter.value
+    const resourceId = selectedResourceId.value
     if (resourceId == null) {
-      return []
+      return orders.value
     }
     return orders.value.filter((order) => order.resource_id === resourceId)
   })
@@ -87,22 +112,17 @@ export function useDevSoldResourcePurchases() {
     resetPage,
   } = useClientPagination(filteredOrders)
 
-  const emptyText = computed(() =>
-    scopedOrders.value.length ? '没有符合筛选条件的售出订单' : '该资源还没有售出订单',
-  )
-
-  function ensureResourceScoped() {
-    if (resourceIdFilter.value != null) {
-      return true
+  const emptyText = computed(() => {
+    if (!orders.value.length) {
+      return '还没有售出订单'
     }
-    void router.replace({ name: 'dev-resource-list' })
-    return false
-  }
+    if (selectedResourceId.value != null && !scopedOrders.value.length) {
+      return '该资源还没有售出订单'
+    }
+    return '没有符合筛选条件的售出订单'
+  })
 
   async function loadOrders() {
-    if (!ensureResourceScoped()) {
-      return
-    }
     auth.hydrate()
     if (!auth.token.trim()) {
       return
@@ -112,11 +132,26 @@ export function useDevSoldResourcePurchases() {
       orders.value = await listSellerResourcePurchases(auth.token, {
         limit: SELLER_ORDER_FETCH_LIMIT,
       })
+      // 刷新时保留用户当前选择；只有选中的资源已经不在订单里才回落全部。
+      const selected = selectedResourceId.value
+      if (selected != null && !orders.value.some((order) => order.resource_id === selected)) {
+        filters.resourceId = ''
+      }
     } catch (error) {
       TMessage.error(error instanceof Error ? error.message : '加载售出订单失败')
     } finally {
       isLoading.value = false
     }
+  }
+
+  /** 路由带 `?resourceId=` 时预选该资源；订单里没有这个资源时回落「全部资源」。 */
+  function applyRouteResourceFilter() {
+    const id = resourceIdFilter.value
+    if (id != null && orders.value.some((order) => order.resource_id === id)) {
+      filters.resourceId = String(id)
+      return
+    }
+    filters.resourceId = ''
   }
 
   /** 退款成功后把这一单换成本地最新值：列表不重拉，退款留痕与状态就地更新。 */
@@ -125,23 +160,25 @@ export function useDevSoldResourcePurchases() {
   }
 
   onMounted(() => {
-    void loadOrders()
+    void loadOrders().then(() => applyRouteResourceFilter())
   })
 
-  watch(resourceIdFilter, (next, prev) => {
-    if (next === prev) {
-      return
-    }
+  watch(resourceIdFilter, () => {
+    applyRouteResourceFilter()
     filters.status = ''
     filters.keyword = ''
     resetPage()
-    void loadOrders()
+    if (!orders.value.length) {
+      void loadOrders()
+    }
   })
 
   return {
     isLoading,
     orders,
     filters,
+    resourceOptions,
+    selectedResourceId,
     scopedOrders,
     paidCount,
     refundableCount,
