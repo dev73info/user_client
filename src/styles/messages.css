@@ -5,12 +5,13 @@
      与「我的需求」「我的合同」「我的发票」等页同一套结构与配色；
    - 开发者工作台侧用 dev-base.css 的 .dev-*（读数条 → 提示条 → 内容卡 → 工具栏 → .dev-stack-list）。
    只剩统一层里没有的三件事收在这里：待我确认的历史沟通公开申请提示条（.messages-disclosure*）、
-   独立入口的读数条手机档（.messages-page），以及两侧会话行各自的排布
-   （.messages-thread-row* / .dev-messages__thread*）。
+   独立入口的页面留白（.messages-page），以及两侧会话行各自的排布
+   （.messages-thread-row* / .dev-messages__thread*）。手机档（≤640px）的规则
+   全部在同目录 messages-mobile.css，由 MessagesView.vue 在本文之后 import。
 
    为什么是全局 css 而不是各区块组件的 `<style scoped>`：读数条会经 WorkbenchBarSlot 直挂
    页面根节点下，`<style scoped>` 的属性选择器只覆盖到子组件根元素，往后代写的规则
-   （`.messages-page > .wb-strip .wb-strip__label` 这类）会静默失效。整页样式收在一个文件里、
+   （`.messages-page > .wb-strip .wb-strip__label` 这类）会静默失效。整页样式收在一处、
    选择器与拆分前逐字相同，手机档才和拆分前一模一样。 */
 
 /* 待我确认的历史沟通公开申请：会话列表上方一条待办，配色取统一层的「提醒」档。
@@ -66,12 +67,7 @@
   gap: 8px;
 }
 
-@media (max-width: 640px) {
-  .messages-disclosure {
-    flex-direction: column;
-    align-items: stretch;
-  }
-}
+/* 手机档（读数条隐藏、会话行两行栅格等）全部收在同目录的 messages-mobile.css */
 
 /* 页面是带 min-height 的网格：不钉住 align-content，内容不满一屏时各行会被拉高平分余量，
    读数条就被撑成一大块空卡片（独立的 /messages 入口在手机上实测撑到 281px） */
@@ -79,54 +75,10 @@
   align-content: start;
 }
 
-/* 独立 /messages 入口（不在工作台里，读数条留在页内）：手机上三项读数等分成三列，
-   标签在上、数字在下，刷新键贴右侧居中，与「我的需求」顶栏读数同一形态 */
-@media (max-width: 640px) {
-  /* 外层容器已留 24px 边，页面自身再留 24px，窄屏两侧白边会吃掉近四分之一宽度 */
-  .messages-page {
-    padding-right: 0;
-    padding-left: 0;
-  }
-
-  .messages-page > .wb-strip {
-    position: relative;
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 0;
-    padding: 10px 44px 10px 6px;
-  }
-
-  .messages-page > .wb-strip .wb-strip__divider {
-    display: none;
-  }
-
-  .messages-page > .wb-strip .wb-strip__item:not(.wb-strip__action) {
-    flex-direction: column;
-    align-items: center;
-    gap: 2px;
-    min-width: 0;
-  }
-
-  .messages-page > .wb-strip .wb-strip__label {
-    color: var(--73-ink-placeholder);
-    font-size: 11px;
-    font-weight: 500;
-    white-space: nowrap;
-  }
-
-  .messages-page > .wb-strip .wb-strip__value {
-    color: var(--73-ink);
-    font-size: 15px;
-    font-weight: 700;
-  }
-
-  .messages-page > .wb-strip .wb-strip__action {
-    position: absolute;
-    top: 50%;
-    right: 6px;
-    margin: 0;
-    transform: translateY(-50%);
-  }
+/* 工具栏刷新键：桌面端读数条上已有刷新，这里只在手机档露出（见 messages-mobile.css）。
+   选择器带上 .t73-button 提权：组件库的 `.t73-button[data-v-*]` 也是两票，单靠类名压不过。 */
+.wb-toolbar__actions .t73-button.messages-toolbar-refresh {
+  display: none;
 }
 
 /* ===== 门户工作台模式的会话行 =====
@@ -185,19 +137,6 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-
-@media (max-width: 640px) {
-  /* 触屏档：统一层已经把行竖排、把右列改成左对齐（portal-workbench.css 的 .wb-item/.wb-item__side），
-     这里跟着退回它那套横排一行，不要留着桌面那套「右对齐竖排」把行撑高 */
-  .messages-thread-row .wb-item__side {
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: flex-start;
-    gap: 10px;
-    min-width: 0;
-    text-align: left;
-  }
 }
 
 /* ===== 开发者工作台模式的会话行 =====
