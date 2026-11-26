@@ -21,9 +21,7 @@ function getHeaderBottom(wrapTop: number) {
 function isVisible(element: HTMLElement) {
   const style = window.getComputedStyle(element)
   return (
-    style.display !== 'none' &&
-    style.visibility !== 'hidden' &&
-    element.getClientRects().length > 0
+    style.display !== 'none' && style.visibility !== 'hidden' && element.getClientRects().length > 0
   )
 }
 

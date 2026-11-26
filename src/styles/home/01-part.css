@@ -101,10 +101,7 @@
     url('/icons/hero_r-800.webp') 1x,
     url('/icons/hero_r.webp') 2x
   );
-  background-image: image-set(
-    url('/icons/hero_r-800.webp') 1x,
-    url('/icons/hero_r.webp') 2x
-  );
+  background-image: image-set(url('/icons/hero_r-800.webp') 1x, url('/icons/hero_r.webp') 2x);
   background-position: right center;
   background-repeat: no-repeat;
   background-size: cover;
