@@ -1,0 +1,87 @@
+/* === 消息中心 · 手机档（≤640px）===
+   从 messages.css 拆出来的触屏规则，import 在 messages.css 之后（MessagesView.vue 里两条
+   import 的先后就是级联顺序），因此这里的同优先级规则压过主文件的桌面口径。
+
+   只收三件事：读数条隐藏与页面留白、会话行的 IM 式两行栅格、历史沟通提示条的竖排。 */
+
+/* 短时间只在手机档出现（桌面右列继续用完整口径） */
+.messages-thread-row__time-short {
+  display: none;
+  font-variant-numeric: tabular-nums;
+}
+
+@media (max-width: 640px) {
+  /* 待我确认的历史沟通公开申请：手机上主文与按钮竖排 */
+  .messages-disclosure {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  /* 外层容器已留 24px 边，页面自身再留 24px，窄屏两侧白边会吃掉近四分之一宽度 */
+  .messages-page {
+    padding-right: 0;
+    padding-left: 0;
+  }
+
+  /* 独立 /messages 入口（不在工作台里，读数条留在页内）：手机上直接隐掉读数条，
+     首屏只留工具栏与会话列表；刷新改由工具栏右侧的图标键承担（桌面端仍在读数条上） */
+  .messages-page > .wb-strip {
+    display: none;
+  }
+
+  /* 工具栏刷新键：桌面端读数条上已有刷新，这里只在手机档露出。
+     选择器带上 .t73-button 提权：组件库的 `.t73-button[data-v-*]` 也是两票，单靠类名压不过。 */
+  .wb-toolbar__actions .t73-button.messages-toolbar-refresh {
+    display: inline-flex;
+  }
+
+  /* 触屏档：会话行改成 IM 式两行（标题行 / 预览行），main 与 side 用 display: contents
+     拆开参与同一张栅格。统一层（06-responsive-900-640）已把 .wb-item 改成竖排 flex，
+     这里提权到 .messages-thread-row.wb-item 换成栅格，不再两层叠加。
+     只留两列：一行里再塞「状态 + 完整时间」时，标题只剩几个字；
+     时间换短口径（今天只有时刻）与预览同行，标题吃满整行宽度。 */
+  .messages-thread-row.wb-item {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 4px 10px;
+    padding: 14px 16px;
+  }
+
+  .messages-thread-row .wb-item__main,
+  .messages-thread-row .wb-item__side {
+    display: contents;
+  }
+
+  .messages-thread-row__head {
+    grid-area: 1 / 1;
+  }
+
+  .messages-thread-row__status {
+    grid-area: 1 / 2;
+    justify-self: end;
+  }
+
+  .messages-thread-row__preview {
+    grid-area: 2 / 1;
+    min-width: 0;
+  }
+
+  .messages-thread-row__time-short {
+    display: block;
+    grid-area: 2 / 2;
+    justify-self: end;
+  }
+
+  /* 手机行内只留「标题 / 状态 / 预览 / 短时间」四件：编号、对方名与完整时间省掉 */
+  .messages-thread-row__meta,
+  .messages-thread-row__partner,
+  .messages-thread-row__time {
+    display: none;
+  }
+
+  .messages-thread-row__status,
+  .messages-thread-row__time-short {
+    white-space: nowrap;
+  }
+}

@@ -7,6 +7,8 @@ import MessagesDevPanel from '@/components/messages/MessagesDevPanel.vue'
 import MessagesPortalPanel from '@/components/messages/MessagesPortalPanel.vue'
 import { useMessagesPage } from '@/composables/useMessagesPage'
 import '@/styles/messages.css'
+// 手机档规则单独一份，必须在 messages.css 之后 import：同优先级时靠加载顺序压过桌面口径
+import '@/styles/messages-mobile.css'
 
 /**
  * 消息中心（三个入口共用：独立 /messages、用户工作台、开发者工作台）。

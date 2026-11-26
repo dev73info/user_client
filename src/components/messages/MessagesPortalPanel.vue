@@ -149,6 +149,10 @@ const emit = defineEmits<{
           }}</span>
           <span class="wb-item__meta messages-thread-row__partner">{{ item.partnerLabel }}</span>
           <span class="wb-item__meta messages-thread-row__time">{{ item.lastLabel }}</span>
+          <!-- 手机档与预览同行，完整的「月/日 时:分 · 我」会把预览压没，换短口径 -->
+          <span class="wb-item__meta messages-thread-row__time-short">{{
+            item.lastShortLabel
+          }}</span>
         </div>
       </li>
     </ul>

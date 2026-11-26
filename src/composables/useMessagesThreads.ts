@@ -3,11 +3,11 @@ import type { RequirementConversation } from '@/shared/conversations'
 import type { ThreadPreference } from '@/shared/conversationPreferences'
 import type { RequirementItem } from '@/api/requirements'
 import { useClientPagination } from '@/composables/useClientPagination'
+import { isRecent } from '@/shared/messageTime'
 import {
   buildConversationThread,
   buildPendingThread,
   hasBoundResource,
-  isRecent,
   messagesEmptyTitle,
   type MessageFilter,
   type MessageThread,

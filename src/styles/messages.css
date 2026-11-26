@@ -5,12 +5,13 @@
      与「我的需求」「我的合同」「我的发票」等页同一套结构与配色；
    - 开发者工作台侧用 dev-base.css 的 .dev-*（读数条 → 提示条 → 内容卡 → 工具栏 → .dev-stack-list）。
    只剩统一层里没有的三件事收在这里：待我确认的历史沟通公开申请提示条（.messages-disclosure*）、
-   独立入口的读数条手机档（.messages-page），以及两侧会话行各自的排布
-   （.messages-thread-row* / .dev-messages__thread*）。
+   独立入口的页面留白（.messages-page），以及两侧会话行各自的排布
+   （.messages-thread-row* / .dev-messages__thread*）。手机档（≤640px）的规则
+   全部在同目录 messages-mobile.css，由 MessagesView.vue 在本文之后 import。
 
    为什么是全局 css 而不是各区块组件的 `<style scoped>`：读数条会经 WorkbenchBarSlot 直挂
    页面根节点下，`<style scoped>` 的属性选择器只覆盖到子组件根元素，往后代写的规则
-   （`.messages-page > .wb-strip .wb-strip__label` 这类）会静默失效。整页样式收在一个文件里、
+   （`.messages-page > .wb-strip .wb-strip__label` 这类）会静默失效。整页样式收在一处、
    选择器与拆分前逐字相同，手机档才和拆分前一模一样。 */
 
 /* 待我确认的历史沟通公开申请：会话列表上方一条待办，配色取统一层的「提醒」档。
@@ -66,12 +67,7 @@
   gap: 8px;
 }
 
-@media (max-width: 640px) {
-  .messages-disclosure {
-    flex-direction: column;
-    align-items: stretch;
-  }
-}
+/* 手机档（读数条隐藏、会话行两行栅格等）全部收在同目录的 messages-mobile.css */
 
 /* 页面是带 min-height 的网格：不钉住 align-content，内容不满一屏时各行会被拉高平分余量，
    读数条就被撑成一大块空卡片（独立的 /messages 入口在手机上实测撑到 281px） */
@@ -79,21 +75,7 @@
   align-content: start;
 }
 
-/* 独立 /messages 入口（不在工作台里，读数条留在页内）：手机上直接隐掉读数条，
-   首屏只留工具栏与会话列表；刷新改由工具栏右侧的图标键承担（桌面端仍在读数条上） */
-@media (max-width: 640px) {
-  /* 外层容器已留 24px 边，页面自身再留 24px，窄屏两侧白边会吃掉近四分之一宽度 */
-  .messages-page {
-    padding-right: 0;
-    padding-left: 0;
-  }
-
-  .messages-page > .wb-strip {
-    display: none;
-  }
-}
-
-/* 工具栏刷新键：桌面端读数条上已有刷新，这里只在手机档露出（见下方 640px 档）。
+/* 工具栏刷新键：桌面端读数条上已有刷新，这里只在手机档露出（见 messages-mobile.css）。
    选择器带上 .t73-button 提权：组件库的 `.t73-button[data-v-*]` 也是两票，单靠类名压不过。 */
 .wb-toolbar__actions .t73-button.messages-toolbar-refresh {
   display: none;
@@ -155,64 +137,6 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-
-@media (max-width: 640px) {
-  /* 触屏档：会话行改成 IM 式两行（标题行 / 预览行），main 与 side 用 display: contents
-     拆开参与同一张栅格。统一层（06-responsive-900-640）已把 .wb-item 改成竖排 flex，
-     这里提权到 .messages-thread-row.wb-item 换成栅格，不再两层叠加。 */
-  .messages-thread-row.wb-item {
-    display: grid;
-    /* 第三列收在 40% 以内：对方名（开发者：dev_flow_03562487 这类长名）不封顶时
-       会把标题压到只剩一个字；fit-content 保证时间（nowrap）先占满，再截对方名 */
-    grid-template-columns: minmax(0, 1fr) auto fit-content(40%);
-    align-items: center;
-    gap: 4px 10px;
-    padding: 14px 16px;
-  }
-
-  .messages-thread-row .wb-item__main,
-  .messages-thread-row .wb-item__side {
-    display: contents;
-  }
-
-  .messages-thread-row__head {
-    grid-area: 1 / 1;
-  }
-
-  .messages-thread-row__status {
-    grid-area: 1 / 2;
-    justify-self: end;
-  }
-
-  .messages-thread-row__time {
-    grid-area: 1 / 3;
-    justify-self: end;
-  }
-
-  .messages-thread-row__preview {
-    grid-area: 2 / 1 / 3 / 3;
-    min-width: 0;
-  }
-
-  .messages-thread-row__partner {
-    grid-area: 2 / 3;
-    justify-self: end;
-  }
-
-  .messages-thread-row__meta {
-    display: none; /* 编号 · 模式 在手机上行内省掉 */
-  }
-
-  .messages-thread-row__status,
-  .messages-thread-row__time,
-  .messages-thread-row__partner {
-    white-space: nowrap;
-  }
-
-  .wb-toolbar__actions .t73-button.messages-toolbar-refresh {
-    display: inline-flex;
-  }
 }
 
 /* ===== 开发者工作台模式的会话行 =====
