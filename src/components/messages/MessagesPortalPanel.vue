@@ -6,6 +6,7 @@ import {
   TOption,
   TPagination,
   TSelect,
+  Refresh,
   RefreshLeft,
   Search,
 } from 'ui_73info'
@@ -43,6 +44,7 @@ const pageSize = defineModel<number>('pageSize', { required: true })
 const emit = defineEmits<{
   open: [thread: MessageThread]
   reset: []
+  refresh: []
   vote: [item: ConversationHistoryDisclosure, decision: 'approved' | 'rejected']
 }>()
 </script>
@@ -83,6 +85,19 @@ const emit = defineEmits<{
             <RefreshLeft />
           </TIcon>
           <span>重置</span>
+        </TButton>
+        <!-- 桌面端刷新在顶部读数条上；移动端读数条隐藏，这里补一颗（仅 640px 以下显示） -->
+        <TButton
+          class="messages-toolbar-refresh"
+          icon-only
+          aria-label="刷新消息"
+          title="刷新消息"
+          :loading="loading"
+          @click="emit('refresh')"
+        >
+          <TIcon>
+            <Refresh />
+          </TIcon>
         </TButton>
       </div>
     </div>
@@ -125,11 +140,13 @@ const emit = defineEmits<{
               >{{ item.unreadCount > 99 ? '99+' : item.unreadCount }}</em
             >
           </span>
-          <span class="wb-item__meta">{{ item.metaLabel }}</span>
+          <span class="wb-item__meta messages-thread-row__meta">{{ item.metaLabel }}</span>
           <span class="wb-item__meta messages-thread-row__preview">{{ item.description }}</span>
         </div>
         <div class="wb-item__side">
-          <span :class="toneBadgeClass(item.tone)">{{ item.statusLabel }}</span>
+          <span :class="[toneBadgeClass(item.tone), 'messages-thread-row__status']">{{
+            item.statusLabel
+          }}</span>
           <span class="wb-item__meta messages-thread-row__partner">{{ item.partnerLabel }}</span>
           <span class="wb-item__meta messages-thread-row__time">{{ item.lastLabel }}</span>
         </div>

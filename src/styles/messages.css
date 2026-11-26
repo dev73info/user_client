@@ -79,8 +79,8 @@
   align-content: start;
 }
 
-/* 独立 /messages 入口（不在工作台里，读数条留在页内）：手机上三项读数等分成三列，
-   标签在上、数字在下，刷新键贴右侧居中，与「我的需求」顶栏读数同一形态 */
+/* 独立 /messages 入口（不在工作台里，读数条留在页内）：手机上直接隐掉读数条，
+   首屏只留工具栏与会话列表；刷新改由工具栏右侧的图标键承担（桌面端仍在读数条上） */
 @media (max-width: 640px) {
   /* 外层容器已留 24px 边，页面自身再留 24px，窄屏两侧白边会吃掉近四分之一宽度 */
   .messages-page {
@@ -89,44 +89,14 @@
   }
 
   .messages-page > .wb-strip {
-    position: relative;
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 0;
-    padding: 10px 44px 10px 6px;
-  }
-
-  .messages-page > .wb-strip .wb-strip__divider {
     display: none;
   }
+}
 
-  .messages-page > .wb-strip .wb-strip__item:not(.wb-strip__action) {
-    flex-direction: column;
-    align-items: center;
-    gap: 2px;
-    min-width: 0;
-  }
-
-  .messages-page > .wb-strip .wb-strip__label {
-    color: var(--73-ink-placeholder);
-    font-size: 11px;
-    font-weight: 500;
-    white-space: nowrap;
-  }
-
-  .messages-page > .wb-strip .wb-strip__value {
-    color: var(--73-ink);
-    font-size: 15px;
-    font-weight: 700;
-  }
-
-  .messages-page > .wb-strip .wb-strip__action {
-    position: absolute;
-    top: 50%;
-    right: 6px;
-    margin: 0;
-    transform: translateY(-50%);
-  }
+/* 工具栏刷新键：桌面端读数条上已有刷新，这里只在手机档露出（见下方 640px 档）。
+   选择器带上 .t73-button 提权：组件库的 `.t73-button[data-v-*]` 也是两票，单靠类名压不过。 */
+.wb-toolbar__actions .t73-button.messages-toolbar-refresh {
+  display: none;
 }
 
 /* ===== 门户工作台模式的会话行 =====
@@ -188,15 +158,60 @@
 }
 
 @media (max-width: 640px) {
-  /* 触屏档：统一层已经把行竖排、把右列改成左对齐（portal-workbench.css 的 .wb-item/.wb-item__side），
-     这里跟着退回它那套横排一行，不要留着桌面那套「右对齐竖排」把行撑高 */
+  /* 触屏档：会话行改成 IM 式两行（标题行 / 预览行），main 与 side 用 display: contents
+     拆开参与同一张栅格。统一层（06-responsive-900-640）已把 .wb-item 改成竖排 flex，
+     这里提权到 .messages-thread-row.wb-item 换成栅格，不再两层叠加。 */
+  .messages-thread-row.wb-item {
+    display: grid;
+    /* 第三列收在 40% 以内：对方名（开发者：dev_flow_03562487 这类长名）不封顶时
+       会把标题压到只剩一个字；fit-content 保证时间（nowrap）先占满，再截对方名 */
+    grid-template-columns: minmax(0, 1fr) auto fit-content(40%);
+    align-items: center;
+    gap: 4px 10px;
+    padding: 14px 16px;
+  }
+
+  .messages-thread-row .wb-item__main,
   .messages-thread-row .wb-item__side {
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: flex-start;
-    gap: 10px;
+    display: contents;
+  }
+
+  .messages-thread-row__head {
+    grid-area: 1 / 1;
+  }
+
+  .messages-thread-row__status {
+    grid-area: 1 / 2;
+    justify-self: end;
+  }
+
+  .messages-thread-row__time {
+    grid-area: 1 / 3;
+    justify-self: end;
+  }
+
+  .messages-thread-row__preview {
+    grid-area: 2 / 1 / 3 / 3;
     min-width: 0;
-    text-align: left;
+  }
+
+  .messages-thread-row__partner {
+    grid-area: 2 / 3;
+    justify-self: end;
+  }
+
+  .messages-thread-row__meta {
+    display: none; /* 编号 · 模式 在手机上行内省掉 */
+  }
+
+  .messages-thread-row__status,
+  .messages-thread-row__time,
+  .messages-thread-row__partner {
+    white-space: nowrap;
+  }
+
+  .wb-toolbar__actions .t73-button.messages-toolbar-refresh {
+    display: inline-flex;
   }
 }
 

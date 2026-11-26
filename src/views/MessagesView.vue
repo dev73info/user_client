@@ -131,6 +131,7 @@ const {
       :voting-id="historyVotingId"
       @open="openThread"
       @reset="resetThreadFilters"
+      @refresh="refresh"
       @vote="respondHistoryDisclosure"
     />
   </main>
