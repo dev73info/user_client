@@ -50,6 +50,7 @@ describe('DeveloperRankCard', () => {
     expect(items[1]?.classes()).toContain('portal-contrib-item--rank-2')
     expect(items[0]?.attributes('style')).toContain('--rank-index: 0')
     expect(items[1]?.attributes('style')).toContain('--rank-index: 1')
+    expect(wrapper.find('.portal-contrib-item__rank').exists()).toBe(false)
   })
 
   it('点行只回抛一次 open-developer（不会连点两次跳两次）', async () => {
@@ -112,6 +113,65 @@ describe('DeveloperRankCard', () => {
     )
   })
 
+  it('名称下方展示已佩戴徽章，贡献数仍保留在名称行', () => {
+    const wrapper = mount(DeveloperRankCard, {
+      props: {
+        ranks: [developerRank({ username: 'ali', resourceCount: 3 })],
+        totalResources: 3,
+        badgesByUsername: {
+          ali: [
+            {
+              code: 'early_bird',
+              name: '早期用户',
+              description: '平台上线首月注册',
+              icon: '🕊️',
+              tier: 1,
+              category: '特殊徽章',
+              awarded_at: '2026-10-01 10:00:00',
+              equipped: true,
+            },
+          ],
+        },
+      },
+    })
+
+    expect(wrapper.find('.portal-contrib-item__badge').text()).toBe('贡献 3')
+    const badge = wrapper.find('.portal-contrib-item__user-badge')
+    expect(badge.attributes('title')).toBeUndefined()
+    expect(badge.attributes('aria-label')).toBe('早期用户：平台上线首月注册')
+    expect(badge.attributes('tabindex')).toBe('0')
+    expect(badge.find('.portal-contrib-item__user-badge-icon').text()).toBe('🕊️')
+    expect(badge.find('.portal-contrib-item__user-badge-tooltip strong').text()).toBe('早期用户')
+    expect(badge.find('.portal-contrib-item__user-badge-tooltip span').text()).toBe(
+      '平台上线首月注册',
+    )
+  })
+
+  it('展示贡献资源徽章，前三名头像佩戴奖牌', () => {
+    const wrapper = mount(DeveloperRankCard, {
+      props: {
+        ranks: [
+          developerRank({ username: 'a', name: '甲', resourceCount: 5 }),
+          developerRank({ username: 'b', name: '乙', resourceCount: 3 }),
+          developerRank({ username: 'c', name: '丙', resourceCount: 2 }),
+          developerRank({ username: 'd', name: '丁', resourceCount: 1 }),
+        ],
+        totalResources: 11,
+      },
+    })
+
+    expect(wrapper.findAll('.portal-contrib-item__badge').map((item) => item.text())).toEqual([
+      '贡献 5',
+      '贡献 3',
+      '贡献 2',
+      '贡献 1',
+    ])
+    expect(wrapper.findAll('.portal-contrib-item__medal')).toHaveLength(3)
+    expect(
+      wrapper.findAll('.portal-contrib-item')[0]?.find('.portal-contrib-item__medal').classes(),
+    ).toContain('is-rank-1')
+  })
+
   it('信用分低于 100 走警示色，缺值显示占位', () => {
     const wrapper = mount(DeveloperRankCard, {
       props: {
@@ -160,11 +220,15 @@ describe('TeamRankCard', () => {
     expect(wrapper.find('.portal-rank-item__avatar').text()).toBe('柒')
   })
 
-  it('资源数行按入参渲染', () => {
+  it('资源数不再显示文字，改为带名次的团队徽章', () => {
     const wrapper = mount(TeamRankCard, {
       props: { ranks: [teamRank({ resourceCount: 7 })] },
     })
 
-    expect(wrapper.find('.portal-rank-item__score').text()).toBe('7 个资源')
+    const badge = wrapper.find('.portal-rank-item__badge')
+    expect(wrapper.text()).not.toContain('7 个资源')
+    expect(badge.classes()).toContain('is-rank-1')
+    expect(badge.attributes('title')).toBe('活跃团队第 1 名 · 7 个公开资源')
+    expect(badge.text()).toBe('1')
   })
 })

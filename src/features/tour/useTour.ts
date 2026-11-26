@@ -1,7 +1,7 @@
 /**
- * 语音引导的状态机：高亮定位、步骤推进、语音播放与首次提示的持久化。
+ * 语音引导的状态机：高亮定位、步骤推进、语音播放与完成状态持久化。
  *
- * 全站共用一份状态（模块级单例），`TourOverlay` / `TourOffer` / `TourButton` 读同一实例。
+ * 全站共用一份状态（模块级单例），`TourOverlay` / `TourButton` 读同一实例。
  * 定位按 `data-tour="<key>:<step>"` 锚点走：先平滑滚到视口中央，再延迟约 260ms 测量，
  * 这样滚动动画未结束时不会量到旧位置；resize 与任意容器滚动都会重新测量（rAF 节流）。
  */
@@ -27,7 +27,6 @@ export type TourState = {
 export type TourAudioState = { playing: boolean }
 
 const SEEN_PREFIX = '73info:tour:seen:'
-const OFFERED_PREFIX = '73info:tour:offered:'
 const VOICE_KEY = '73info:tour:voice'
 const MEASURE_DELAY = 260
 const SPOTLIGHT_PAD = 8
@@ -236,15 +235,6 @@ export function createTourEngine() {
     return readStorage(`${SEEN_PREFIX}${key}`) === '1'
   }
 
-  function shouldOffer(key: string): boolean {
-    if (!getTour(key)) return false
-    return !hasSeen(key) && readStorage(`${OFFERED_PREFIX}${key}`) !== '1'
-  }
-
-  function markOffered(key: string) {
-    writeStorage(`${OFFERED_PREFIX}${key}`, '1')
-  }
-
   function finish() {
     markSeen()
     close()
@@ -279,8 +269,6 @@ export function createTourEngine() {
     dismiss,
     markSeen,
     hasSeen,
-    shouldOffer,
-    markOffered,
     setVoice,
     replayNarration,
     stopNarration,

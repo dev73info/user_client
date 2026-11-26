@@ -32,7 +32,12 @@ export type {
   SigningLogItem,
 } from './types'
 
-export { fetchMyContract, fetchMyRequirementContract, listMyContracts } from './mine'
+export {
+  fetchMyContract,
+  fetchMyContractSigningLogs,
+  fetchMyRequirementContract,
+  listMyContracts,
+} from './mine'
 
 export {
   fetchAsignContractPreviewUrl,

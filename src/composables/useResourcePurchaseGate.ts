@@ -1,8 +1,13 @@
 import { computed, type Ref } from 'vue'
 import { TMessage } from 'ui_73info'
 
-import type { PublicMcResourceItem, PublicMcResourceVersionItem } from '@/api/resources'
-import { API_RESOURCE_PURCHASE_HINT, canPurchaseOnPlatform } from '@/shared/resourceSale'
+import type { PublicMcResourceItem } from '@/api/resources'
+import type { ResourcePurchaseTargetVersion } from '@/composables/useResourcePurchaseTarget'
+import {
+  API_RESOURCE_PURCHASE_HINT,
+  canPurchaseOnPlatform,
+  type ResourcePayChannelUi,
+} from '@/shared/resourceSale'
 import { isApiResourceKind } from '@/shared/resourceApi'
 
 /**
@@ -23,7 +28,10 @@ export function useResourcePurchaseGate(options: {
   /** 当前用户是不是资源作者（作者不买自己的资源） */
   isOwner: Ref<boolean>
   /** 打开购买面板的原动作（`useResourcePurchase` 的 `open`，未做接口资源拦截） */
-  openPurchasePanelUnlocked: (version?: PublicMcResourceVersionItem | null) => Promise<void>
+  openPurchasePanelUnlocked: (
+    version?: ResourcePurchaseTargetVersion | null,
+    channel?: ResourcePayChannelUi,
+  ) => Promise<void>
 }) {
   const isApiResource = computed(() => isApiResourceKind(options.resource.value?.resource_kind))
   const needsPurchase = computed(() => {
@@ -43,15 +51,17 @@ export function useResourcePurchaseGate(options: {
   /**
    * 打开购买面板前再挡一道接口资源。`version` 是本次购买的目标版本：
    * 版本售卖资源按版本价下单，买断 / 积分资源传空。
+   * `channel` 只是渠道偏好（深链 `?pay=`），身份与金额都不经过它。
    */
   async function openPurchasePanel(
-    version: PublicMcResourceVersionItem | null = null,
+    version: ResourcePurchaseTargetVersion | null = null,
+    channel?: ResourcePayChannelUi,
   ): Promise<void> {
     if (isApiResource.value) {
       TMessage.info(API_RESOURCE_PURCHASE_HINT)
       return
     }
-    await options.openPurchasePanelUnlocked(version)
+    await options.openPurchasePanelUnlocked(version, channel)
   }
 
   return { isApiResource, needsPurchase, openPurchasePanel }

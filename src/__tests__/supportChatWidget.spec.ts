@@ -110,13 +110,10 @@ describe('在线客服浮窗', () => {
     expect(FakeSupportSocket.instances).toHaveLength(0)
   })
 
-  it('浮窗右上角的关闭入口收起整个浮窗', async () => {
+  it('默认竖签不渲染关闭入口', async () => {
     const target = await mountWidget()
     expect(target.find('.support-widget').exists()).toBe(true)
-
-    await target.find('.support-widget__dismiss').trigger('click')
-
-    expect(target.find('.support-widget').exists()).toBe(false)
+    expect(target.find('.support-widget__dismiss').exists()).toBe(false)
   })
 
   it('未登录自动建立访客会话，无需登录即可发送', async () => {
@@ -264,23 +261,32 @@ describe('在线客服浮窗', () => {
   it('侧签支持指针点击展开与关闭', async () => {
     const target = await mountWidget()
     const fab = target.find('.support-fab')
-    const pointerDown = Object.assign(new Event('pointerdown', { bubbles: true }), {
-      pointerType: 'mouse',
-      button: 0,
-      clientX: 1000,
-      clientY: 300,
-    })
-    fab.element.dispatchEvent(pointerDown)
-    const pointerUp = Object.assign(new Event('pointerup', { bubbles: true }), {
-      pointerType: 'mouse',
-      clientX: 1000,
-      clientY: 300,
-    })
-    fab.element.dispatchEvent(pointerUp)
+    const tap = () => {
+      const pointerDown = Object.assign(new Event('pointerdown', { bubbles: true }), {
+        pointerType: 'mouse',
+        button: 0,
+        clientX: 1000,
+        clientY: 300,
+      })
+      fab.element.dispatchEvent(pointerDown)
+      const pointerUp = Object.assign(new Event('pointerup', { bubbles: true }), {
+        pointerType: 'mouse',
+        clientX: 1000,
+        clientY: 300,
+      })
+      fab.element.dispatchEvent(pointerUp)
+    }
+    tap()
     await flushPromises()
+    expect(target.find('.support-widget').classes()).toContain('is-icon')
     expect(target.find('.support-panel').exists()).toBe(true)
 
     await target.find('.support-panel__close').trigger('click')
     expect(target.find('.support-panel').exists()).toBe(false)
+    expect(target.find('.support-widget').classes()).toContain('is-icon')
+
+    tap()
+    await flushPromises()
+    expect(target.find('.support-panel').exists()).toBe(true)
   })
 })

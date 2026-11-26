@@ -110,8 +110,9 @@ describe('buildPortalNotices', () => {
       '公开资源：联机工具',
       '需求：做个联机工具',
     ])
-    expect(notices[2]?.tag).toBe('待审核')
+    expect(notices[2]?.tag).toBeUndefined()
     expect(notices[0]?.tag).toBe('HOT')
+    expect(notices[0]?.tagTone).toBe('hot')
   })
 
   it('资源能解析出标签路由时深链到详情，解析不到时回落免费资源列表', () => {

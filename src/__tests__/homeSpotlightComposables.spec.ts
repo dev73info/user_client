@@ -68,6 +68,36 @@ describe('useSpotlightCards', () => {
     expect(cards.value).toHaveLength(2)
   })
 
+  it('免费标记排除积分价与版本价资源', () => {
+    const resources = ref([
+      resourceFixture({ id: 1 }),
+      resourceFixture({ id: 2, price_points: 50 }),
+      resourceFixture({ id: 3, min_version_price_fen: 500 }),
+    ])
+    const { cards } = useSpotlightCards({ resources })
+
+    expect(Object.fromEntries(cards.value.map((card) => [card.resourceId, card.free]))).toEqual({
+      1: true,
+      2: false,
+      3: false,
+    })
+  })
+
+  it('只有转载资源产出角标文案，原创不再输出「原创」', () => {
+    const resources = ref([
+      resourceFixture({ id: 1, origin_type: 'original' }),
+      resourceFixture({ id: 2, origin_type: 'repost' }),
+    ])
+    const { cards } = useSpotlightCards({ resources })
+
+    expect(
+      Object.fromEntries(cards.value.map((card) => [card.resourceId, card.originLabel])),
+    ).toEqual({
+      1: '',
+      2: '转载',
+    })
+  })
+
   it('封面失败过就回落首字：coverSrc 给空串，且封面地址进过 apiUrl', () => {
     const resources = ref([resourceFixture({ id: 1, cover_url: '/uploads/cover.png' })])
     const { cards, coverSrc, handleCoverError } = useSpotlightCards({

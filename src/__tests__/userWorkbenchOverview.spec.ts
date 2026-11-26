@@ -148,6 +148,33 @@ describe('用户工作台总览', () => {
     expect(wrapper.get('.overview-recent').text()).toContain('数据看板改版')
   })
 
+  it('担保待付定金按接单 / 签约 / 付款三件事显示，与我的需求一致', async () => {
+    const wrapper = await render()
+    expect(wrapper.get('.overview-recent').text()).toContain('待付定金')
+
+    // 还没绑定资源：其实还在等开发者接单，不能显示成「待付定金」
+    mocks.requirements.mockResolvedValue([
+      {
+        ...requirements[0],
+        bound_resource_id: null,
+      },
+    ])
+    const unbound = await render()
+    expect(unbound.get('.overview-recent').text()).toContain('待接单')
+    expect(unbound.get('.overview-recent').text()).not.toContain('待付定金')
+
+    // 已接单但合同没双签：先等签约，付款按钮不能出现
+    mocks.requirements.mockResolvedValue([requirements[0]])
+    mocks.contractStatus.mockResolvedValue({
+      has_contract: true,
+      party_a_signed: true,
+      party_b_signed: false,
+    })
+    const unsigned = await render()
+    expect(unsigned.get('.overview-recent').text()).toContain('待签合同')
+    expect(unsigned.get('.overview-recent').text()).not.toContain('待付定金')
+  })
+
   it('快捷入口进入对应工作台路由', async () => {
     const wrapper = await render()
 

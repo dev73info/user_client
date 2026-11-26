@@ -136,6 +136,49 @@ describe('ResourceDetailRedirectView', () => {
     wrapper.unmount()
   })
 
+  it('支付深链的合法渠道随资源带到页内详情态', async () => {
+    mocks.getResource.mockResolvedValue(
+      resource({
+        tag_selections: [
+          tagSelection({ root: '矿物', entry: '矿石', aliases: ['mineral', 'ore'] }),
+        ],
+        buyout_price_fen: 1200,
+      }),
+    )
+
+    const wrapper = await mountView({ resourceSlug: 'dev-flow--55' }, { pay: 'alipay' })
+
+    expect(mocks.replace).toHaveBeenCalledWith({
+      name: 'resource-catalog',
+      params: { rootSlug: 'mineral', entrySlug: 'ore' },
+      query: { sale: 'paid', resource: '55', pay: 'alipay' },
+    })
+    wrapper.unmount()
+  })
+
+  it('非法支付渠道与身份类参数一律丢弃，不写回地址栏', async () => {
+    mocks.getResource.mockResolvedValue(
+      resource({
+        tag_selections: [
+          tagSelection({ root: '矿物', entry: '矿石', aliases: ['mineral', 'ore'] }),
+        ],
+        buyout_price_fen: 1200,
+      }),
+    )
+
+    const wrapper = await mountView(
+      { resourceSlug: 'dev-flow--55' },
+      { pay: 'token', open_id: 'attacker-open-id' },
+    )
+
+    expect(mocks.replace).toHaveBeenCalledWith({
+      name: 'resource-catalog',
+      params: { rootSlug: 'mineral', entrySlug: 'ore' },
+      query: { sale: 'paid', resource: '55' },
+    })
+    wrapper.unmount()
+  })
+
   it('买断价 0、按版本售卖的资源落付费厅（详情响应的 min_version_price_fen 作第三参）', async () => {
     mocks.getResource.mockResolvedValue(
       resource({

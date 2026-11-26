@@ -15,6 +15,7 @@ import {
   myBadges,
   setEquippedBadges,
   syncInviteRewardPayouts,
+  userBadges,
 } from '../db/badges'
 import { currentMockProfile } from '../identity'
 import { defineRouteTable, type MockRoute } from '../router'
@@ -36,8 +37,8 @@ const routes: MockRoute[] = [
   {
     method: 'GET',
     path: '/badges/user/:username',
-    note: '某个用户的徽章：他人视角看不到佩戴状态以外的差别，直接按当前身份返回',
-    handler: () => jsonResponse({ badges: myBadges() }),
+    note: '某个用户的公开徽章：贡献榜据此展示已佩戴徽章',
+    handler: (_request, params) => jsonResponse({ badges: userBadges(params.username ?? '') }),
   },
   {
     method: 'PUT',

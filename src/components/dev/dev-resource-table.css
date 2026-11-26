@@ -1,0 +1,52 @@
+/* 整行可点：给出行可点击的视觉提示 */
+.dev-resource-table :deep(.t73-table__row) {
+  cursor: pointer;
+}
+
+.dev-resource-table__title-link {
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: var(--dev-blue);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+  text-align: left;
+}
+
+/* 悬停色由视图挂在页容器上的自定义属性给（全站只有这一处用这支蓝，
+   不往令牌层再加一档；见 `views/DevResourceListView.vue` 的 style）。 */
+.dev-resource-table__title-link:hover {
+  color: var(--dev-resource-link-hover);
+}
+
+.dev-resource-table__exposure {
+  margin-top: 4px;
+  font-size: 12px;
+  color: var(--dev-muted);
+  line-height: 1.4;
+}
+
+/* 状态列里「可见性」与「已锁定」两个标签并排时要留缝 */
+.dev-resource-table__status-tags {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* 售价列：价格胶囊与 BETA 同一行，留 6px。 */
+.dev-resource-table__price-cell {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.dev-resource-table__net {
+  color: var(--dev-ink);
+  font-variant-numeric: tabular-nums;
+  font-weight: 650;
+}
+
+.dev-resource-table__meta--error {
+  color: var(--73-warning);
+}

@@ -67,9 +67,18 @@ function avatarSrc(team: TeamRank): string {
         <div class="portal-rank-item__meta">
           <strong>{{ team.teamName }}</strong>
         </div>
-        <div class="portal-rank-item__score">
-          <strong>{{ team.resourceCount }} 个资源</strong>
-        </div>
+        <span
+          class="portal-rank-item__badge"
+          :class="`is-rank-${index + 1}`"
+          :title="`活跃团队第 ${index + 1} 名 · ${team.resourceCount} 个公开资源`"
+          :aria-label="`活跃团队第 ${index + 1} 名 · ${team.resourceCount} 个公开资源`"
+        >
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M8 3h8v6a4 4 0 0 1-8 0V3Z" />
+            <path d="M8 5H5v2a3 3 0 0 0 3 3M16 5h3v2a3 3 0 0 1-3 3M12 13v5M8 21h8M9 18h6" />
+          </svg>
+          <span aria-hidden="true">{{ index + 1 }}</span>
+        </span>
       </li>
     </ul>
   </section>

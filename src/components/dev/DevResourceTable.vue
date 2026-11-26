@@ -80,6 +80,19 @@ function actionVisible(action: string): boolean {
   return props.visibleActions == null || props.visibleActions.includes(action)
 }
 
+/** 资源副标题：平台为空时回落「未知平台」，作者为空时不再留一个孤零零的斜杠。 */
+function resourceMetaLabel(resource: McResourcePayload): string {
+  return [resourcePlatformLabel(resource.platform), resource.author].filter(Boolean).join(' / ')
+}
+
+/** 状态列可能同时有可见性、BETA、锁定和曝光行程；悬浮提示给完整一行。 */
+function resourceStatusTitle(resource: McResourcePayload): string {
+  const parts = [resourceVisibilityLabel(resource.visibility)]
+  if (isApiResourceKind(resource.resource_kind)) parts.push('BETA')
+  if (isResourceArchiveLocked(resource)) parts.push('已锁定')
+  return [...parts, formatExposureStatus(resource)].filter(Boolean).join(' · ')
+}
+
 /** 整行点击进入编辑；行内按钮、链接、下拉自己处理点击，不触发行跳转。 */
 function handleRowClick(event: MouseEvent) {
   const target = event.target as HTMLElement | null
@@ -111,9 +124,9 @@ function handleRowClick(event: MouseEvent) {
     <template #empty>
       <p class="dev-empty-state">{{ emptyText }}</p>
     </template>
-    <!-- 列宽可拖：`resizable` 打开表头右边缘的拖拽手柄；固定宽度留给内容，
-         弹性宽度留给「资源」列，窄窗口下表格横向滚动而不是把标签挤到隔壁列。 -->
-    <TTableColumn label="资源" min-width="200" resizable>
+    <!-- 列宽按容器弹性分配：只有右侧固定操作列写死宽度，其余列用下限参与分配，
+         内容超出单元格时统一单行省略，完整值挂在 title 上。 -->
+    <TTableColumn label="资源" min-width="190" resizable>
       <template #default="scope">
         <div class="dev-resource-table__title-cell">
           <img
@@ -127,6 +140,7 @@ function handleRowClick(event: MouseEvent) {
               <button
                 class="dev-resource-table__title-link"
                 type="button"
+                :title="scope.row.title"
                 @click="emit('edit', scope.row)"
               >
                 {{ scope.row.title }}
@@ -139,25 +153,28 @@ function handleRowClick(event: MouseEvent) {
                 "
               />
             </div>
-            <div class="dev-resource-table__meta">
-              {{ resourcePlatformLabel(scope.row.platform) }} / {{ scope.row.author }}
+            <div class="dev-resource-table__meta" :title="resourceMetaLabel(scope.row)">
+              {{ resourceMetaLabel(scope.row) }}
             </div>
           </div>
         </div>
       </template>
     </TTableColumn>
-    <!-- 标签最多两行，超出省略；完整值放在 title 里，避免把整行撑高。列宽不写死，按内容自动分配 -->
-    <TTableColumn label="标签" min-width="120" resizable>
+    <!-- 标签只占一行，超出省略；完整值放在 title 里，避免把整行撑高。 -->
+    <TTableColumn label="标签" min-width="100" resizable>
       <template #default="scope">
         <span class="dev-resource-table__tags" :title="resourceTagColumnLabel(scope.row)">
           {{ resourceTagColumnLabel(scope.row) }}
         </span>
       </template>
     </TTableColumn>
-    <!-- 售价胶囊只留价格本身（BETA 已移到标题后），200px 足够最宽的「单版本 ¥19999.00」组合 -->
-    <TTableColumn label="售价" width="200" resizable>
+    <!-- 售价胶囊只留价格本身（BETA 已移到标题后）；宽度弹性，长价格省略后悬浮看全。 -->
+    <TTableColumn label="售价" min-width="82" resizable>
       <template #default="scope">
-        <span class="dev-resource-table__price-cell">
+        <span
+          class="dev-resource-table__price-cell"
+          :title="formatDevResourcePrice(scope.row, versionPrices)"
+        >
           <TTag
             variant="outline"
             :tone="hasDevResourcePrice(scope.row, versionPrices) ? 'accent' : 'neutral'"
@@ -168,24 +185,32 @@ function handleRowClick(event: MouseEvent) {
       </template>
     </TTableColumn>
     <!-- 预计到手：按当前费率对成交价做整数分估算，标「预计」，真实金额以落单快照为准。 -->
-    <TTableColumn label="预计到手" width="140" resizable>
+    <TTableColumn label="预计到手" min-width="84" resizable>
       <template #default="scope">
-        <span v-if="!hasDevResourcePrice(scope.row, versionPrices)" class="dev-resource-table__meta"
+        <span
+          v-if="!hasDevResourcePrice(scope.row, versionPrices)"
+          class="dev-resource-table__meta"
+          title="—"
           >—</span
         >
         <span
           v-else-if="props.platformFeeBps == null && props.platformFeeError"
           class="dev-resource-table__meta dev-resource-table__meta--error"
+          title="费率暂不可用"
           >费率暂不可用</span
         >
-        <span v-else class="dev-resource-table__net">
+        <span
+          v-else
+          class="dev-resource-table__net"
+          :title="formatDevResourceNetLabel(scope.row, versionPrices, props.platformFeeBps) || '—'"
+        >
           {{ formatDevResourceNetLabel(scope.row, versionPrices, props.platformFeeBps) || '—' }}
         </span>
       </template>
     </TTableColumn>
-    <TTableColumn label="状态" width="190" resizable>
+    <TTableColumn label="状态" min-width="100" resizable>
       <template #default="scope">
-        <div class="dev-resource-table__status-tags">
+        <div class="dev-resource-table__status-tags" :title="resourceStatusTitle(scope.row)">
           <!-- 接口资源与普通资源共用同一套可见性标签，样式完全一致 -->
           <TTag
             variant="outline"
@@ -206,13 +231,23 @@ function handleRowClick(event: MouseEvent) {
             已锁定
           </TTag>
         </div>
-        <div v-if="formatExposureStatus(scope.row)" class="dev-resource-table__exposure">
+        <div
+          v-if="formatExposureStatus(scope.row)"
+          class="dev-resource-table__exposure"
+          :title="formatExposureStatus(scope.row)"
+        >
           {{ formatExposureStatus(scope.row) }}
         </div>
       </template>
     </TTableColumn>
-    <TTableColumn prop="created_at" label="创建时间" width="150" resizable show-overflow-tooltip />
-    <TTableColumn label="操作" width="118" fixed="right" resizable>
+    <TTableColumn
+      prop="created_at"
+      label="创建时间"
+      min-width="92"
+      resizable
+      show-overflow-tooltip
+    />
+    <TTableColumn label="操作" width="118" fixed="right">
       <template #default="scope">
         <TDropdown
           trigger="click"
@@ -302,58 +337,4 @@ function handleRowClick(event: MouseEvent) {
   </TTable>
 </template>
 
-<style scoped>
-/* 整行可点：给出行可点击的视觉提示 */
-.dev-resource-table :deep(.t73-table__row) {
-  cursor: pointer;
-}
-
-.dev-resource-table__title-link {
-  padding: 0;
-  border: none;
-  background: transparent;
-  color: var(--dev-blue);
-  font: inherit;
-  font-weight: 700;
-  cursor: pointer;
-  text-align: left;
-}
-
-/* 悬停色由视图挂在页容器上的自定义属性给（全站只有这一处用这支蓝，
-   不往令牌层再加一档；见 `views/DevResourceListView.vue` 的 style）。 */
-.dev-resource-table__title-link:hover {
-  color: var(--dev-resource-link-hover);
-}
-
-.dev-resource-table__exposure {
-  margin-top: 4px;
-  font-size: 12px;
-  color: var(--dev-muted);
-  line-height: 1.4;
-}
-
-/* 状态列里「可见性」与「已锁定」两个标签并排时要留缝 */
-.dev-resource-table__status-tags {
-  display: inline-flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 6px;
-}
-
-/* 售价列：价格胶囊与 BETA 同一行，留 6px。 */
-.dev-resource-table__price-cell {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.dev-resource-table__net {
-  color: var(--dev-ink);
-  font-variant-numeric: tabular-nums;
-  font-weight: 650;
-}
-
-.dev-resource-table__meta--error {
-  color: var(--73-warning);
-}
-</style>
+<style scoped src="./dev-resource-table.css"></style>

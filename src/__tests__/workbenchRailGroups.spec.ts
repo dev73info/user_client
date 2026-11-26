@@ -95,9 +95,10 @@ describe('buildDevRailGroups', () => {
     expect(buildDevRailGroups().map((group) => group.label)).toEqual(['接单与交付', '收益与服务'])
   })
 
-  it('接单与交付按资源 → 接单 → 大厅排（总览走图标栏独立入口）', () => {
+  it('接单与交付按资源 → 售出订单 → 接单 → 大厅排（总览走图标栏独立入口）', () => {
     expect(buildDevRailGroups()[0]?.items.map((item) => item.label)).toEqual([
       '资源项目',
+      '售出订单',
       '我的接单',
       '需求大厅',
     ])

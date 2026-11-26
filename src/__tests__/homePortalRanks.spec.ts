@@ -11,7 +11,7 @@ import {
 /**
  * 首页侧栏两张榜单的聚合纯函数（R047 从 `views/HomeView.vue` 下沉）。
  *
- * 这个视图没有组件级回归网，榜单的排序、并列时的兜底次序、前 4 名截断、
+ * 这个视图没有组件级回归网，榜单的排序、并列时的兜底次序、前 RANK_LIMIT 名截断、
  * 「先到先得」的字段合并都压在这里；同时钉住「资源从入参进来」这个约定——
  * 函数签名里没有请求，就不会出现第二份数据源。
  */
@@ -77,13 +77,13 @@ describe('buildDeveloperRanks', () => {
 
   it(`只留前 ${RANK_LIMIT} 名`, () => {
     const ranks = buildDeveloperRanks([
-      ...Array.from({ length: 6 }, (_, index) =>
+      ...Array.from({ length: 8 }, (_, index) =>
         resource({ creator: `dev${index}`, updated_at: localIso(index + 1, 10) }),
       ),
     ])
 
     expect(ranks).toHaveLength(RANK_LIMIT)
-    expect(ranks.map((rank) => rank.username)).toEqual(['dev5', 'dev4', 'dev3', 'dev2'])
+    expect(ranks.map((rank) => rank.username)).toEqual(['dev7', 'dev6', 'dev5', 'dev4', 'dev3'])
   })
 
   it('展示名优先级 creator → author → 「匿名开发者」', () => {
@@ -151,10 +151,10 @@ describe('buildDeveloperRanks', () => {
 })
 
 describe('countContribResources', () => {
-  it('只累加入榜开发者，第 5 名之后不计', () => {
-    const resources = Array.from({ length: 5 }, (_, index) => {
+  it('只累加入榜开发者，第 6 名之后不计', () => {
+    const resources = Array.from({ length: 7 }, (_, index) => {
       const creator = `dev${index}`
-      // dev0 有 5 个资源（稳进榜），其余各 1 个，最后按时间决定谁掉出前 4
+      // dev0 有 5 个资源（稳进榜），其余各 1 个，最后按时间决定谁掉出前 5
       return Array.from({ length: index === 0 ? 5 : 1 }, () =>
         resource({ creator, updated_at: localIso(index + 1, 10) }),
       )
@@ -162,7 +162,7 @@ describe('countContribResources', () => {
 
     const ranks = buildDeveloperRanks(resources)
     expect(ranks).toHaveLength(RANK_LIMIT)
-    expect(countContribResources(ranks)).toBe(8)
+    expect(countContribResources(ranks)).toBe(9)
   })
 
   it('空榜给 0', () => {
@@ -184,7 +184,7 @@ describe('buildTeamRanks', () => {
     expect(buildTeamRanks([resource({ team_id: 7, team_name: '' })])).toEqual([])
   })
 
-  it('按团队资源数降序，只留前 4', () => {
+  it('按团队资源数降序，只留前 RANK_LIMIT', () => {
     const ranks = buildTeamRanks([
       resource({ team_id: 1, team_name: 'A', updated_at: localIso(1, 10) }),
       resource({ team_id: 2, team_name: 'B', updated_at: localIso(2, 10) }),
@@ -200,6 +200,7 @@ describe('buildTeamRanks', () => {
       ['A', 1],
       ['T3', 1],
       ['T4', 1],
+      ['T5', 1],
     ])
   })
 

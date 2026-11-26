@@ -64,3 +64,18 @@
   line-height: 1.4;
   white-space: nowrap;
 }
+
+.sold-purchases__split {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  min-width: 0;
+}
+
+.sold-purchases__split-reason {
+  color: var(--73-danger, #c0392b);
+  font-size: 12px;
+  line-height: 1.5;
+  word-break: break-word;
+}

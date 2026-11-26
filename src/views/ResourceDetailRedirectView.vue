@@ -9,8 +9,13 @@ import {
   getTagRouteSlug,
   parseResourceIdFromSlug,
 } from '@/api/resourceTags'
+import { parseResourceIdParam } from '@/shared/resourceCatalogDisplay'
 import { resourceListingSaleOf } from '@/shared/resourceNavigation'
-import { normalizePromoCode, type ResourceListingSale } from '@/shared/resourceSale'
+import {
+  normalizePromoCode,
+  parseResourcePayChannel,
+  type ResourceListingSale,
+} from '@/shared/resourceSale'
 import { useAuthStore } from '@/stores/auth'
 import { useTagTreeStore } from '@/stores/tagTree'
 import { TMessage } from 'ui_73info'
@@ -77,6 +82,10 @@ function categoryQuery(): LocationQueryRaw {
   const promoCode = normalizePromoCode(route.query.promo)
   delete query.promo
   if (promoCode) query.promo = promoCode
+  // 分类别名地址本身没有具体资源；只有同时指向一条有效 `?resource=<id>` 时支付深链才有落点
+  const payChannel = parseResourcePayChannel(route.query.pay)
+  delete query.pay
+  if (payChannel && parseResourceIdParam(route.query.resource) !== null) query.pay = payChannel
   return query
 }
 
@@ -102,6 +111,9 @@ async function redirectToCatalog() {
   // R029：分享短链把推广码写在 `?promo=` 上（后端 302 / 前端 `/r/:code` 兜底两条路都带）。
   // 先按 `normalizePromoCode` 校验格式再往下带，别把任意字符串写回地址栏。
   const promoCode = normalizePromoCode(route.query.promo)
+  // 支付深链（`?pay=wechat|alipay`）只认白名单渠道，随资源一起带到页内详情态；
+  // 它只是渠道偏好，不带任何身份 —— 身份永远来自当前登录会话。
+  const payChannel = parseResourcePayChannel(route.query.pay)
   const resourceId = parseResourceId(route.params.resourceSlug)
   if (!resourceId && route.name === 'resource-detail-direct') {
     const entrySlug = paramSlug(route.params.resourceSlug)
@@ -159,6 +171,7 @@ async function redirectToCatalog() {
         resource: String(resourceId),
         // 推广码只在「详情就是分享链接指向的那条资源」时随行；格式不合格的码不进地址栏
         ...(promoCode ? { promo: promoCode } : {}),
+        ...(payChannel ? { pay: payChannel } : {}),
       },
     })
   } catch (error) {

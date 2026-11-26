@@ -85,13 +85,14 @@ export const devWorkbenchItems: DevWorkbenchItem[] = [
     label: '资源项目',
     name: 'dev-resource-list',
     description: '管理主页、版本与资源状态',
-    // 售出订单从资源「更多」进入，侧栏仍高亮「资源项目」
-    activeNames: [
-      'dev-resource-homepage-edit',
-      'dev-resource-versions',
-      'dev-resource-sold-purchases',
-    ],
+    activeNames: ['dev-resource-homepage-edit', 'dev-resource-versions'],
     icon: Files,
+  },
+  {
+    label: '售出订单',
+    name: 'dev-resource-sold-purchases',
+    description: '查看卖出的付费资源订单与分账状态',
+    icon: Tickets,
   },
   {
     label: '接入客户端',

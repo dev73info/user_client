@@ -131,22 +131,13 @@ const emit = defineEmits<{
 }
 
 .conversation-date-pill {
-  max-width: 880px;
-}
-
-.conversation-date-pill {
   flex: 0 0 auto;
   width: max-content;
   max-width: 100%;
-  border-radius: 999px;
   font-size: 11px;
   font-weight: 800;
-  margin-bottom: 10px;
   margin: 2px auto 12px;
   padding: 4px 11px;
-  border: 1px solid color-mix(in srgb, var(--73-accent-soft) 86%, transparent);
-  background: color-mix(in srgb, var(--73-surface-strong) 90%, transparent);
   color: var(--73-ink-muted);
-  box-shadow: 0 8px 18px color-mix(in srgb, var(--73-accent) 8%, transparent);
 }
 </style>

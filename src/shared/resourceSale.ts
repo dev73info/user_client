@@ -49,9 +49,11 @@ export {
   canSellerRefundPurchase,
   refundInitiatorLabel,
   resourcePurchaseStatusLabel,
+  splitStatusLabel,
+  splitFailureReasonLabel,
   isApiResourcePurchaseOrder,
 } from './resourceSale/purchase'
-export type { SellerRefundOrderLike } from './resourceSale/purchase'
+export type { SellerRefundOrderLike, SplitStatusOrderLike } from './resourceSale/purchase'
 export {
   PROMO_SHARE_MAX_BPS,
   PROMO_SHARE_RANGE_MESSAGE,
@@ -73,8 +75,16 @@ export {
   needsVersionPurchase,
 } from './resourceSale/versionSale'
 export type { ResourceSaleVersionLike } from './resourceSale/versionSale'
-export { toResourcePayChannel, canReuseCashQrForChannel } from './resourceSale/payChannel'
-export type { ResourcePayChannelUi, ReusableCashQrOrderLike } from './resourceSale/payChannel'
+export {
+  toResourcePayChannel,
+  canReuseCashQrForChannel,
+  parseResourcePayChannel,
+} from './resourceSale/payChannel'
+export type {
+  ResourcePayChannelUi,
+  ResourcePayDeepLinkChannel,
+  ReusableCashQrOrderLike,
+} from './resourceSale/payChannel'
 
 export { isWechatPayChannel, isWechatBrowser, wechatMiddleQuery } from './resourceSale/wechatPay'
 export type { WechatMiddleQuery } from './resourceSale/wechatPay'

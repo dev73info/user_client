@@ -1,0 +1,110 @@
+/* 首页 unslop：只收口右侧栏卡片；中间主栏保持原首页样式。 */
+
+@media (min-width: 1181px) {
+  .portal-sidebar {
+    max-height: calc(100vh - 100px);
+    max-height: calc(100dvh - 100px);
+    padding-right: 4px;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scrollbar-width: thin;
+    scrollbar-color: var(--73-border) transparent;
+  }
+}
+
+.portal-sidebar .portal-card {
+  padding: 16px;
+  border-radius: 10px;
+  box-shadow: none;
+}
+
+.portal-sidebar .portal-card__header {
+  margin-bottom: 10px;
+  padding-bottom: 8px;
+}
+
+.portal-sidebar .portal-card__title h2 {
+  font-size: 14px;
+}
+
+.portal-sidebar .portal-card-title-icon,
+.portal-sidebar .portal-card-title-icon--team {
+  color: var(--73-ink-muted);
+}
+
+.portal-sidebar .portal-card__chip,
+.portal-sidebar .portal-card__chip--muted {
+  border-color: var(--73-border);
+  background: var(--73-inset);
+  color: var(--73-ink-muted);
+  font-weight: 500;
+  letter-spacing: 0;
+}
+
+.portal-sidebar .portal-checkin-chip {
+  border-color: var(--73-border);
+  background: var(--73-inset);
+  color: var(--73-ink-muted);
+}
+
+.portal-sidebar .portal-contrib-item {
+  gap: 8px;
+  padding: 8px 0;
+  border: 0;
+  border-top: 1px solid var(--73-border-soft);
+  border-radius: 0;
+  background: transparent;
+}
+
+.portal-sidebar .portal-contrib-item:first-child {
+  border-top: 0;
+}
+
+.portal-sidebar .portal-contrib-list {
+  gap: 4px;
+}
+
+.portal-sidebar .portal-contrib-item:hover {
+  border-color: var(--73-border-soft);
+  background: transparent;
+}
+
+.portal-sidebar .portal-contrib-item__avatar {
+  border-radius: 4px;
+  background: var(--73-bg-soft);
+  color: var(--73-ink-muted);
+}
+
+.portal-sidebar .portal-rank-item {
+  gap: 8px;
+  padding: 8px 0;
+  border: 0;
+  border-top: 1px solid var(--73-border-soft);
+  border-radius: 0;
+  background: transparent;
+}
+
+.portal-sidebar .portal-rank-item:first-child {
+  border-top: 0;
+}
+
+.portal-sidebar .portal-rank-item:hover {
+  border-color: var(--73-border-soft);
+  background: transparent;
+}
+
+.portal-sidebar .portal-rank-item__avatar {
+  border-radius: 4px;
+  background: var(--73-bg-soft);
+  color: var(--73-ink-muted);
+}
+
+.portal-sidebar .portal-empty-state--compact {
+  min-height: 80px;
+}
+
+@media (max-width: 640px) {
+  .portal-sidebar .portal-card {
+    padding: 14px;
+  }
+}

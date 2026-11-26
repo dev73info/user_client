@@ -40,8 +40,8 @@ export type TeamRank = {
   resourceCount: number
 }
 
-/** 侧栏高度固定，两张榜单都只留前 4 名。 */
-export const RANK_LIMIT = 4
+/** 侧栏空间有限，两张榜单都只留前 5 名。 */
+export const RANK_LIMIT = 5
 
 export type RankBuildOptions = {
   /** 头像相对路径 → 可访问 URL；缺省原样返回（单测里不必构造后端地址） */
@@ -52,7 +52,7 @@ const identityAvatar = (raw?: string | null) => raw ?? ''
 
 /**
  * 开发者贡献榜：按 `creator`（用户名）聚合资源，先按资源数降序，
- * 再按最近更新时间降序，最后按用户名中文序兜底，取前 4。
+ * 再按最近更新时间降序，最后按用户名中文序兜底，取前 5。
  *
  * 同一开发者的多个资源里，信息按「先到先得」合并：头像 / 信用分取第一个非空值，
  * 渐变与自定义用户名色只要有一个资源带上就算带上（与原视图内联实现一致）。
@@ -148,7 +148,7 @@ export function countContribResources(ranks: readonly DeveloperRank[]): number {
 
 /**
  * 活跃团队：按 `team_id` 聚合，没有团队归属的资源直接跳过；
- * 按资源数降序取前 4，并列时保持资源的原始先后（`Array.sort` 稳定）。
+ * 按资源数降序取前 5，并列时保持资源的原始先后（`Array.sort` 稳定）。
  */
 export function buildTeamRanks(
   resources: readonly PortalRankResource[],

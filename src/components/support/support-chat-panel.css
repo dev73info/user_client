@@ -19,11 +19,11 @@
 }
 
 .support-panel--right {
-  right: var(--support-tab-width, 96px);
+  right: var(--support-tab-width, 32px);
 }
 
 .support-panel--left {
-  left: var(--support-tab-width, 96px);
+  left: var(--support-tab-width, 32px);
 }
 
 .support-panel__head {

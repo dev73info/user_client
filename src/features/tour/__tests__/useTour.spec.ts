@@ -128,21 +128,6 @@ describe('useTour 状态机', () => {
     expect(engine.hasSeen('account')).toBe(true)
   })
 
-  it('shouldOffer 只在没看过也没提示过时成立', () => {
-    const engine = createTourEngine()
-
-    expect(engine.shouldOffer('basic')).toBe(true)
-    expect(engine.shouldOffer('missing')).toBe(false)
-
-    engine.markOffered('basic')
-    expect(engine.shouldOffer('basic')).toBe(false)
-
-    window.localStorage.clear()
-    engine.markSeen('basic')
-    expect(engine.shouldOffer('basic')).toBe(false)
-    expect(engine.hasSeen('basic')).toBe(true)
-  })
-
   it('语音开关默认开启并持久化', () => {
     const engine = createTourEngine()
     expect(engine.state.voiceEnabled).toBe(true)

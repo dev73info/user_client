@@ -9,6 +9,7 @@ const routes = [
   'dev-home',
   'dev-messages',
   'dev-resource-list',
+  'dev-resource-sold-purchases',
   'dev-my-requirements',
   'dev-requirement-hall',
   'dev-oauth-clients',
@@ -67,7 +68,7 @@ describe('图标栏分组悬浮菜单（PC）', () => {
     expect(flyout!.parentElement).toBe(document.body)
 
     const items = flyout!.querySelectorAll('.workbench-icon-rail__flyout-item')
-    expect(items).toHaveLength(3)
+    expect(items).toHaveLength(4)
     expect(flyout!.textContent).not.toContain('开发者总览')
     expect(flyout!.textContent).toContain('我的接单')
     // 悬浮层出现时不再叠一层分组 tooltip

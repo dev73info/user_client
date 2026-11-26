@@ -13,6 +13,8 @@ export const MOCK_DEVELOPERS = {
   toolsmith: { username: 'toolsmith_demo', nickname: '柒参演示·铁匠' },
   zhang: { username: 'zhang_demo', nickname: '柒参演示·小张' },
   mochi: { username: 'mochi_dev', nickname: '柒参演示·麻薯' },
+  lin: { username: 'lin_demo', nickname: '柒参演示·林可' },
+  chen: { username: 'chen_demo', nickname: '柒参演示·陈默' },
 } as const
 
 /** 常用标签：id / 名称 / 别名，取自 `db/tags.ts` 的「类型」分组。 */
@@ -216,6 +218,24 @@ export const mcResources: McResourcePayload[] = [
     updatedDaysAgo: 10,
     createdDaysAgo: 24,
     team: { id: 1 },
+  }),
+  buildResource({
+    id: 9015,
+    title: '接口联调 Mock 数据生成器',
+    description: '按 OpenAPI 片段生成联调用的假数据，支持固定随机种子复现。',
+    updatedDaysAgo: 19,
+    createdDaysAgo: 84,
+    author: MOCK_DEVELOPERS.lin,
+    tags: [TAG_EFFICIENCY],
+  }),
+  buildResource({
+    id: 9016,
+    title: '发布检查清单生成器',
+    description: '按项目类型生成发布前检查清单，支持导出为 Markdown。',
+    updatedDaysAgo: 21,
+    createdDaysAgo: 96,
+    author: MOCK_DEVELOPERS.chen,
+    tags: [TAG_DATA_SYNC],
   }),
 ]
 

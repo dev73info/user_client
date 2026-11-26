@@ -2193,7 +2193,7 @@ export interface paths {
         post?: never;
         /**
          * 后台删除资源
-         * @description 后台删除任意资源，需要 `resource.admin_delete.delete` 且具备后台资源管理权限。物理删除，没有回收站，不受资源状态限制（草稿与已上架都能删）。
+         * @description 后台删除任意资源，需要 `resource.admin_delete.delete` 且具备后台资源管理权限。软删除——资源从目录与详情中消失，历史订单与版本保留，不受资源状态限制（草稿与已上架都能删）。
          */
         delete: operations["resource_admin_delete"];
         options?: never;
@@ -3013,6 +3013,54 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/auth/account/close-code": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 发送注销申请验证码
+         * @description **需要登录**，验证码发到当前账号的主邮箱。同一账号每小时最多 3 次；账号未绑定邮箱回 400 `CURRENT_EMAIL_REQUIRED`。
+         */
+        post: operations["auth_send_account_close_code"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/auth/account/close-request": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 读取注销申请状态
+         * @description **需要登录**。返回当前账号是否有待生效的注销申请、生效时间与剩余天数。
+         */
+        get: operations["auth_account_close_request"];
+        put?: never;
+        /**
+         * 提交账号注销申请
+         * @description **需要登录**。校验邮箱验证码后写入注销申请，申请期内账号仍可正常登录，到期后惰性落地软注销。生效期由管理端配置（默认 7 天，可在 1–90 天之间调整）。已有待生效申请回 409 `ACCOUNT_CLOSE_ALREADY_PENDING`；唯一超级管理员回 400 `CANNOT_DELETE_SUPER_ADMIN`。
+         */
+        post: operations["auth_request_account_close"];
+        /**
+         * 撤销注销申请
+         * @description **需要登录**。只撤销还没生效的申请；没有待生效申请回 409`ACCOUNT_CLOSE_NOT_PENDING`。
+         */
+        delete: operations["auth_cancel_account_close"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/auth/admin-auto-login": {
         parameters: {
             query?: never;
@@ -3133,6 +3181,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/auth/gitee/unbind/url": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 取 Gitee 解绑验证授权地址
+         * @description **需要登录**：与 GitHub 版同构，渠道换成 Gitee。结果由 `/api/auth/gitee/callback` 带回 `unbind=success` 或 `unbind_error`。
+         */
+        get: operations["auth_gitee_unbind_url"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/auth/gitee/url": {
         parameters: {
             query?: never;
@@ -3205,6 +3273,26 @@ export interface paths {
          * @description **免登录**：给「点一下就登录」的入口用的简化版——不返回地址，直接 302 到 GitHub 授权页。与 `/api/auth/github/url` 的区别只有这一处：那条把地址交给前端自己跳，这条由服务端跳。这条不接受 `redirect_to` 与 `request_dev_role`，登录成功后回落到平台配置的落地页。渠道未启用回 404 `OAUTH_DISABLED`；凭据不全或回调 / 落地页没配回 400。同一 IP 5 分钟 60 次，超限 429。
          */
         get: operations["auth_github_start"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/auth/github/unbind/url": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 取 GitHub 解绑验证授权地址
+         * @description **需要登录**：解绑 GitHub 前必须重新走一次 GitHub 授权，回调时用授权码换回的账号 ID 与当前绑定比对，一致才真正解绑。这样只拿到平台会话令牌的人无法把别人的 GitHub 直接摘掉。结果由 `/api/auth/github/callback` 带回 `unbind=success` 或 `unbind_error`。
+         */
+        get: operations["auth_github_unbind_url"];
         put?: never;
         post?: never;
         delete?: never;
@@ -3435,6 +3523,46 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/auth/qq/unbind/qr/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 轮询 QQ 扫码解绑状态
+         * @description **免登录**：与微信版同构。
+         */
+        get: operations["auth_qq_unbind_qr_status"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/auth/qq/unbind/qr/url": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 取 QQ 扫码解绑验证二维码地址
+         * @description **需要登录**：与微信版同构，渠道换成 QQ。扫码的 QQ 必须与当前绑定一致。
+         */
+        get: operations["auth_qq_unbind_qr_url"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/auth/refresh": {
         parameters: {
             query?: never;
@@ -3446,7 +3574,7 @@ export interface paths {
         put?: never;
         /**
          * 换一枚新的会话令牌
-         * @description **需要登录**（`Authorization: Bearer <平台会话令牌>`），但**不挂端点权限码**。用当前令牌换一枚新令牌，并重新读一次角色快照——刚被改过角色的账号刷新后就拿到新权限，前端不必让用户重新登录。令牌缺失 / 无效 / 已吊销回 401（`INVALID_TOKEN` / `TOKEN_REVOKED`）；账号在令牌有效期内被停用或注销回 403。这是一次「再签发」，不是续期：旧令牌仍按自己的过期时间自然失效，不会被延长。
+         * @description **需要登录**（`Authorization: Bearer <平台会话令牌>`），但**不挂端点权限码**。用当前令牌换一枚新令牌，并重新读一次角色快照——刚被改过角色的账号刷新后就拿到新权限，前端不必让用户重新登录。令牌缺失 / 无效 / 已吊销回 401（`INVALID_TOKEN` / `TOKEN_REVOKED`）；账号在令牌有效期内被停用或注销回 403。这是一次「再签发」，不是续期：旧令牌仍按自己的过期时间自然失效，不会被延长。响应同样带新的 `refresh_token` 与两者有效期。
          */
         post: operations["auth_refresh"];
         delete?: never;
@@ -3594,7 +3722,7 @@ export interface paths {
         put?: never;
         /**
          * 发送注册邮箱验证码
-         * @description **免登录**：注册流程的第一步，此时还没有账号与令牌，不需要带 `Authorization` 头。给指定邮箱发一封注册验证码，注册时用 `email_code` 原样交回。验证码与「用途 + 邮箱」绑定，注册与重置密码的验证码互不通用。邮箱格式非法回 400；邮箱已被注册回 409 `EMAIL_TAKEN`——这一步就告诉调用方，不等到注册再报。发信失败回 400 `MAIL_FAILED`，具体原因（SMTP 主机、端口、认证错误）只进日志，不进响应体。限流按两个维度叠加：同一 IP 每小时 20 次、同一邮箱每小时 3 次，任一条超限都是 429 并带 `Retry-After`。人机校验（Turnstile）是否启用取决于平台配置；未通过时回 403 或 400，响应头 `X-Turnstile-Error` 给出原因码，前端按它换提示文案。
+         * @description **免登录**：注册流程的第一步，此时还没有账号与令牌，不需要带 `Authorization` 头。给指定邮箱发一封注册验证码，注册时用 `email_code` 原样交回。验证码与「用途 + 邮箱」绑定，注册与重置密码的验证码互不通用。邮箱格式非法回 400；邮箱已被注册回 409 `EMAIL_TAKEN`——这一步就告诉调用方，不等到注册再报。发信失败回 400 `MAIL_FAILED`，具体原因（SMTP 主机、端口、认证错误）只进日志，不进响应体。限流按两个维度叠加：同一 IP 每小时 20 次、同一邮箱每小时 3 次，任一条超限都是 429 并带 `Retry-After`。人机校验（ALTCHA）是否启用取决于平台配置；未通过时回 403 或 503，响应头 `X-Captcha-Error` 给出原因码，前端按它换提示文案。
          */
         post: operations["auth_send_register_email_code"];
         delete?: never;
@@ -3687,9 +3815,33 @@ export interface paths {
         post: operations["identity_admin_create_user"];
         /**
          * 删除用户（管理端）
-         * @description **需要登录 + `user.delete.delete`**。按用户名删除账号，**物理删除、没有回收站**，相关角色关联与邮箱记录随外键一并清除，不可恢复。成功回 200 与被删的用户名。注意这条**没有**「最后一个超管不许删」的保护——那是账号自助注销（`DELETE /api/auth/account`）才有的限制，走这条能删掉超管自己。用户名不存在回 404 `USER_NOT_FOUND`。请求体是 DELETE 带 JSON，不是查询参数。
+         * @description **需要登录 + `user.delete.delete`**。按用户名执行**软删除**：账号立即不可登录、已签发令牌全部失效，第三方绑定被释放，但用户行、历史合同、支付与业务记录全部保留，可通过数据库审计追溯。删除后不再出现在用户列表里，同一用户名也不允许重新注册。成功回 200 与被删的用户名。用户名不存在或已删除回 404 `USER_NOT_FOUND`。请求体是 DELETE 带 JSON，不是查询参数。
          */
         delete: operations["identity_admin_delete_user"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/auth/users/account-close-policy": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 读取注销申请期（管理端）
+         * @description **需要登录 + `user.config.get`**。返回账号注销的申请期天数（默认 7 天）。
+         */
+        get: operations["identity_admin_account_close_policy"];
+        /**
+         * 修改注销申请期（管理端）
+         * @description **需要登录 + `user.config.put`**。申请期只能在 1–90 天之间，保存后对新提交的申请即时生效；已经提交的申请仍按提交时的生效时间执行。
+         */
+        put: operations["identity_admin_update_account_close_policy"];
+        post?: never;
+        delete?: never;
         options?: never;
         head?: never;
         patch?: never;
@@ -4051,6 +4203,46 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/auth/wechat/unbind/qr/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 轮询微信扫码解绑状态
+         * @description **免登录**（凭 `state` + `poll_secret`）。`confirmed` 表示已解绑，`failed` 的 `message` 会明确说明「扫的微信不是当前绑定的那个」。
+         */
+        get: operations["auth_wechat_unbind_qr_status"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/auth/wechat/unbind/qr/url": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 取微信扫码解绑验证二维码地址
+         * @description **需要登录**：解绑微信前必须重新扫码验证，且扫码的微信必须与当前绑定一致。与扫码绑定同构（`state` + `poll_secret`、会话 5 分钟过期），但会话模式为 `unbind`，轮询成功后只表示「已解绑」，不签发令牌。
+         */
+        get: operations["auth_wechat_unbind_qr_url"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/auth/{provider}/bind": {
         parameters: {
             query?: never;
@@ -4131,6 +4323,26 @@ export interface paths {
         };
         /** 用户公开徽章 */
         get: operations["badge_user"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/captcha/challenge": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 签发人机校验 challenge
+         * @description **免登录**。返回一个 ALTCHA challenge（含 `parameters` 与 `signature`），客户端解出 payload 后随登录 / 注册 / 重置密码等表单提交。有效期由服务端 `[captcha] challenge_ttl_secs` 决定，响应禁止缓存。
+         */
+        get: operations["captcha_challenge"];
         put?: never;
         post?: never;
         delete?: never;
@@ -4386,7 +4598,7 @@ export interface paths {
         put?: never;
         /**
          * 电子签渠道回调（渠道调用，前端不调）
-         * @description 电子签渠道把签署结果推到这里。**没有 Bearer 鉴权**：调用方是渠道，凭验签放行。报文的 JSON 对象与 form-urlencoded **两种都收**（渠道文档没把编码写死，实测两种都出现过），由适配器归一成键值表后交给端口验签；解析不出参数的报文按「验签失败」处理，不会因为读不出字段就放过去。**顺序是硬要求：先验签，再找合同，最后才落库**——验签失败一律 401，且一个字节都不落库，伪造回调最坏的结果只能是 401。验签通过后的回写与用户端主动同步走**同一条**路径（不是第二套状态机）：本地已签约 / 已作废不接受任何渠道改写，渠道说「签完了」时本地必须正处于「签约中」；判据不满足时**不改状态也不报错**，渠道重复回调是常态，报错只会让它一直重投。成功按渠道协议回**纯文本 `ok`**（不是 JSON 信封），渠道只看状态码与这个字符串。
+         * @description 电子签渠道把签署结果推到这里。**没有 Bearer 鉴权**：调用方是渠道，凭验签放行。报文的 JSON 对象与 form-urlencoded **两种都收**（渠道文档没把编码写死，实测两种都出现过），由适配器归一成键值表后交给端口验签；解析不出参数的报文按「验签失败」处理，不会因为读不出字段就放过去。**写库前必须验签**，验签失败一律 401，且一个字节都不落库。合同号在本地不存在时回 200 `ok`：这类历史 / 已删除合同无法回写，继续报错只会让渠道反复重投。没配渠道公钥时不采信回调报文里的状态，改为用我方签名向渠道回查，按回查结果走同一条状态机；回查失败仍返回错误，让渠道重试。验签通过后的回写与用户端主动同步走**同一条**路径：本地已签约 / 已作废不接受任何渠道改写，渠道说「签完了」时本地必须正处于「签约中」；判据不满足时**不改状态也不报错**。成功按渠道协议回**纯文本 `ok`**。
          */
         post: operations["contract_callback_channel"];
         delete?: never;
@@ -4531,6 +4743,26 @@ export interface paths {
          * @description 当事人按主键读自己的合同，需要 `contract.my_requirement.get`。**不是当事人的合同按不存在处理（404）**，不区分「没这份合同」与「不是你的合同」，免得被拿来探测主键。后台要看任意一份合同走 `GET /api/contract/{id}`。
          */
         get: operations["contract_get_mine"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/contract/mine/{id}/signing-logs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 我的合同签署记录
+         * @description 当事人按合同主键读签署流水，新的在前，需要 `contract.my_requirement.get`。**不是当事人的合同按不存在处理（404）**，与管理端日志接口的口径一致：先过当事人可见性，再按合同主键查日志。最多返回 200 条。
+         */
+        get: operations["contract_list_my_signing_logs"];
         put?: never;
         post?: never;
         delete?: never;
@@ -6135,46 +6367,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/payment/admin/breach-compensations": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * 违约赔付渠道执行记录
-         * @description 管理端查看保证金扣划之后的渠道赔付记录，需要 `payment.admin_breach_compensation_list.get`。只读。可按需求、开发者、客户与状态过滤；`status` 三态：`pending` 未确认、`paid` 渠道明确成功、`failed` 失败可重试。
-         */
-        get: operations["payment_admin_list_breach_compensations"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/payment/admin/breach-compensations/{id}/retry": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * 重试违约赔付
-         * @description 对失败或处理中的记录重新发起渠道余额支付，需要 `payment.admin_breach_compensation_retry.post`。**会真的动钱**。幂等：已赔付的直接返回；渠道明确失败的直接重发；结果不明（处理中、超时、回查失败）的先按单号回查，确认没成功才重发——余额支付不幂等，不能盲目重试。
-         */
-        post: operations["payment_admin_retry_breach_compensation"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/api/payment/admin/channel-refund-discrepancies": {
         parameters: {
             query?: never;
@@ -6267,26 +6459,6 @@ export interface paths {
          * @description 三态：`disabled`（平台没开通）/ `credentials_missing`（开通了但凭据没就绪）/ `ready`。需要 `payment.order.list.get`——调用方的能力门槛与「能不能看支付」是同一件事。前端据此决定支付按钮怎么显示：前两态都不该让人点进收银台，但文案要分开——前者是平台没开通，后者是平台配置有问题，不该让用户反复试。
          */
         get: operations["payment_availability"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/payment/breach-compensations/mine": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * 我的违约赔付记录
-         * @description 当前登录用户作为**客户**的赔付记录，需要 `payment.dev_order_deposit.get`。只读自己的：用户名取自登录态，接口不接受指定他人。用于让客户看到「平台判给的赔付款有没有真的到账」。
-         */
-        get: operations["payment_my_breach_compensations"];
         put?: never;
         post?: never;
         delete?: never;
@@ -9587,7 +9759,7 @@ export interface paths {
         post?: never;
         /**
          * 删除我的资源（legacy 前缀）
-         * @description 删除本人创建的资源，需要 `resource.self_delete.delete`；物理删除、没有回收站。与规范路径行为一致，不是本人创建的回 403。
+         * @description 删除本人创建的资源，需要 `resource.self_delete.delete`；软删除——资源立即从目录与详情中消失，但历史订单、版本与已购用户的访问记录保留。与规范路径行为一致，不是本人创建的回 403。
          */
         delete: operations["resource_self_delete_legacy"];
         options?: never;
@@ -9899,7 +10071,7 @@ export interface paths {
         post?: never;
         /**
          * 后台删除资源（legacy 单数前缀）
-         * @description 后台删除任意资源，需要 `resource.admin_delete.delete` 且具备后台资源管理权限。物理删除、没有回收站。与 `/api/admin/resources/{resource_id}` 同一处理函数。
+         * @description 后台删除任意资源，需要 `resource.admin_delete.delete` 且具备后台资源管理权限。软删除——资源从目录与详情中消失，历史订单与版本保留。与 `/api/admin/resources/{resource_id}` 同一处理函数。
          */
         delete: operations["resource_admin_delete_legacy"];
         options?: never;
@@ -10229,7 +10401,7 @@ export interface paths {
         post?: never;
         /**
          * 删除我的资源
-         * @description 删除本人创建的资源，需要 `resource.self_delete.delete`。这是物理删除（连同版本等从属记录），没有回收站，删了不可恢复。不是本人创建的回 403。已售出的资源是否允许删除由业务侧另行约定，本端点不做售出校验。
+         * @description 删除本人创建的资源，需要 `resource.self_delete.delete`。这是软删除：资源立即从目录与详情中消失，用户行、订单、支付与版本记录都保留，已购用户的历史访问不受影响。不是本人创建的回 403。已售出的资源是否允许删除由业务侧另行约定，本端点不做售出校验。
          */
         delete: operations["resource_self_delete"];
         options?: never;
@@ -10531,7 +10703,7 @@ export interface paths {
         post?: never;
         /**
          * 后台删除资源（legacy 复数前缀）
-         * @description 后台删除任意资源，需要 `resource.admin_delete.delete` 且具备后台资源管理权限。物理删除。与 `/api/admin/resources/{resource_id}` 同一处理函数。
+         * @description 后台删除任意资源，需要 `resource.admin_delete.delete` 且具备后台资源管理权限。软删除。与 `/api/admin/resources/{resource_id}` 同一处理函数。
          */
         delete: operations["resource_admin_delete_legacy_plural"];
         options?: never;
@@ -10681,6 +10853,62 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/support/attachments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 上传客服会话附件
+         * @description multipart/form-data，文件字段名 `file`。单文件 ≤20MB，返回 id 后在创建会话或发送消息时用 attachment_ids 绑定。
+         */
+        post: operations["support_upload_attachment"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/support/attachments/{attachment_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 下载客服会话附件
+         * @description 仅上传者本人、会话归属用户，以及对该会话有可见性的客服可下载。
+         */
+        get: operations["support_download_attachment"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/support/availability/public": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["support_public_availability"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/support/channels": {
         parameters: {
             query?: never;
@@ -10809,6 +11037,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/support/conversations/{id}/claim": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["support_claim_conversation"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/support/conversations/{id}/messages": {
         parameters: {
             query?: never;
@@ -10819,6 +11063,22 @@ export interface paths {
         get?: never;
         put?: never;
         post: operations["support_send_message"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/support/conversations/{id}/satisfaction": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["support_rate_conversation"];
         delete?: never;
         options?: never;
         head?: never;
@@ -10839,6 +11099,155 @@ export interface paths {
         options?: never;
         head?: never;
         patch: operations["support_update_conversation_status"];
+        trace?: never;
+    };
+    "/api/support/conversations/{id}/transfer": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["support_transfer_conversation"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/support/guest/attachments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 访客上传客服会话附件
+         * @description multipart/form-data，文件字段名 `file`。单文件 ≤20MB，返回 id 后在创建会话或发送消息时用 attachment_ids 绑定。
+         */
+        post: operations["support_upload_guest_attachment"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/support/guest/attachments/{attachment_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 下载访客客服会话附件 */
+        get: operations["support_download_guest_attachment"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/support/guest/conversations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["support_list_guest_conversations"];
+        put?: never;
+        post: operations["support_create_guest_conversation"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/support/guest/conversations/ws": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["support_stream_guest_conversations"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/support/guest/conversations/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["support_get_guest_conversation"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/support/guest/conversations/{id}/messages": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["support_send_guest_message"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/support/guest/conversations/{id}/satisfaction": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["support_rate_guest_conversation"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/support/guest/session": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["support_create_guest_session"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/api/support/knowledge/articles": {
@@ -10883,6 +11292,22 @@ export interface paths {
         get: operations["knowledge_category_list"];
         put?: never;
         post: operations["knowledge_category_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/support/presence": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put: operations["support_update_presence"];
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -11021,6 +11446,30 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/system/captcha": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 读取人机校验配置
+         * @description 自托管 ALTCHA 的开关、签名密钥、KDF 算法、迭代次数、challenge 有效期与本地旁路开关，需要 `system.config.get`。**服务端密钥不回显**：有值时返回 `***`。
+         */
+        get: operations["system_get_captcha"];
+        /**
+         * 修改人机校验配置
+         * @description 写入 ALTCHA 开关、签名密钥、算法、迭代次数与 challenge 有效期，需要 `system.config.put`。服务端密钥传 `***` 或空串表示保持原值。`algorithm` 只接受 `PBKDF2/SHA-256`、`PBKDF2/SHA-384`、`PBKDF2/SHA-512`；`cost` 范围 1000–100000，`challenge_ttl_secs` 范围 60–1800。启用但既没有密钥、又没显式打开本地旁路时回 400。**保存不等于生效**：要重启才换上。
+         */
+        put: operations["system_put_captcha"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/system/data-encryption-key": {
         parameters: {
             query?: never;
@@ -11098,12 +11547,12 @@ export interface paths {
         };
         /**
          * 读取令牌配置
-         * @description 访问令牌有效期与签名密钥，需要 `system.config.get`。**密钥不回显**：有值时返回 `***`，未配置时返回空串。PUT 时把 `***` 或空串原样传回即表示「保持原值」。
+         * @description 访问令牌与刷新令牌的有效期、签名密钥，需要 `system.config.get`。**密钥不回显**：有值时返回 `***`，未配置时返回空串。PUT 时把 `***` 或空串原样传回即表示「保持原值」。
          */
         get: operations["system_get_jwt"];
         /**
          * 修改令牌配置
-         * @description 写入签名密钥与访问令牌有效期，需要 `system.config.put`。密钥字段传 `***` 或空串表示保持原值（改有效期时不必重填密钥）。有效期为 0 回 400；生产环境沿用开发默认密钥、或缺加密密钥时校验失败也回 400。**保存不等于生效**：要重启才换上，响应带 `restart_required: true`。
+         * @description 写入签名密钥与访问令牌 / 刷新令牌有效期，需要 `system.config.put`。密钥字段传 `***` 或空串表示保持原值（改有效期时不必重填密钥）。任一边有效期（分钟）为 0 回 400；生产环境沿用开发默认密钥、或缺加密密钥时校验失败也回 400。**保存不等于生效**：要重启才换上，响应带 `restart_required: true`。
          */
         put: operations["system_put_jwt"];
         post?: never;
@@ -11618,30 +12067,6 @@ export interface paths {
          * @description 写入 SSE 开关、心跳间隔与单账号连接上限，需要 `system.config.put`。**保存不等于生效**：要重启才换上，响应带 `restart_required: true`。写盘失败回 500，原因只进日志。
          */
         put: operations["system_put_sse"];
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/system/turnstile": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * 读取人机校验配置
-         * @description Cloudflare Turnstile 的开关、前端站点密钥、hostname 白名单、超时与本地旁路开关，需要 `system.config.get`。**服务端密钥不回显**：有值时返回 `***`。
-         */
-        get: operations["system_get_turnstile"];
-        /**
-         * 修改人机校验配置
-         * @description 写入 Turnstile 开关、密钥、hostname 白名单与超时，需要 `system.config.put`。服务端密钥传 `***` 或空串表示保持原值。启用但既没有密钥、又没显式打开本地旁路时回 400——那会让所有带校验的端点在运行时才失败。超时秒数小于 1 时按 1 保存。**保存不等于生效**：要重启才换上。
-         */
-        put: operations["system_put_turnstile"];
         post?: never;
         delete?: never;
         options?: never;
@@ -12636,198 +13061,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/auth/account/close-code": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * 发送注销申请验证码
-         * @description **需要登录**，验证码发到当前账号的主邮箱。同一账号每小时最多 3 次；账号未绑定邮箱回 400 `CURRENT_EMAIL_REQUIRED`。
-         */
-        post: operations["auth_send_account_close_code"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/auth/account/close-request": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * 读取注销申请状态
-         * @description **需要登录**。返回当前账号是否有待生效的注销申请、生效时间与剩余天数。
-         */
-        get: operations["auth_account_close_request"];
-        put?: never;
-        /**
-         * 提交账号注销申请
-         * @description **需要登录**。校验邮箱验证码后写入注销申请，申请期内账号仍可正常登录，到期后惰性落地软注销。生效期由管理端配置（默认 7 天，可在 1–90 天之间调整）。已有待生效申请回 409 `ACCOUNT_CLOSE_ALREADY_PENDING`；唯一超级管理员回 400 `CANNOT_DELETE_SUPER_ADMIN`。
-         */
-        post: operations["auth_request_account_close"];
-        /**
-         * 撤销注销申请
-         * @description **需要登录**。只撤销还没生效的申请；没有待生效申请回 409`ACCOUNT_CLOSE_NOT_PENDING`。
-         */
-        delete: operations["auth_cancel_account_close"];
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/auth/gitee/unbind/url": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * 取 Gitee 解绑验证授权地址
-         * @description **需要登录**：与 GitHub 版同构，渠道换成 Gitee。结果由 `/api/auth/gitee/callback` 带回 `unbind=success` 或 `unbind_error`。
-         */
-        get: operations["auth_gitee_unbind_url"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/auth/github/unbind/url": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * 取 GitHub 解绑验证授权地址
-         * @description **需要登录**：解绑 GitHub 前必须重新走一次 GitHub 授权，回调时用授权码换回的账号 ID 与当前绑定比对，一致才真正解绑。这样只拿到平台会话令牌的人无法把别人的 GitHub 直接摘掉。结果由 `/api/auth/github/callback` 带回 `unbind=success` 或 `unbind_error`。
-         */
-        get: operations["auth_github_unbind_url"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/auth/qq/unbind/qr/status": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * 轮询 QQ 扫码解绑状态
-         * @description **免登录**：与微信版同构。
-         */
-        get: operations["auth_qq_unbind_qr_status"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/auth/qq/unbind/qr/url": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * 取 QQ 扫码解绑验证二维码地址
-         * @description **需要登录**：与微信版同构，渠道换成 QQ。扫码的 QQ 必须与当前绑定一致。
-         */
-        get: operations["auth_qq_unbind_qr_url"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/auth/users/account-close-policy": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * 读取注销申请期（管理端）
-         * @description **需要登录 + `user.config.get`**。返回账号注销的申请期天数（默认 7 天）。
-         */
-        get: operations["identity_admin_account_close_policy"];
-        /**
-         * 修改注销申请期（管理端）
-         * @description **需要登录 + `user.config.put`**。申请期只能在 1–90 天之间，保存后对新提交的申请即时生效；已经提交的申请仍按提交时的生效时间执行。
-         */
-        put: operations["identity_admin_update_account_close_policy"];
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/auth/wechat/unbind/qr/status": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * 轮询微信扫码解绑状态
-         * @description **免登录**（凭 `state` + `poll_secret`）。`confirmed` 表示已解绑，`failed` 的 `message` 会明确说明「扫的微信不是当前绑定的那个」。
-         */
-        get: operations["auth_wechat_unbind_qr_status"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/auth/wechat/unbind/qr/url": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * 取微信扫码解绑验证二维码地址
-         * @description **需要登录**：解绑微信前必须重新扫码验证，且扫码的微信必须与当前绑定一致。与扫码绑定同构（`state` + `poll_secret`、会话 5 分钟过期），但会话模式为 `unbind`，轮询成功后只表示「已解绑」，不签发令牌。
-         */
-        get: operations["auth_wechat_unbind_qr_url"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -12922,6 +13155,41 @@ export interface components {
             status: string;
             /** @description 状态的中文说明。 */
             status_label: string;
+        };
+        /** @description 修改注销申请期请求体。 */
+        AccountClosePolicyRequest: {
+            /**
+             * Format: int64
+             * @description 申请期天数（1–90）。
+             */
+            grace_days: number;
+        };
+        /** @description 注销申请期配置。 */
+        AccountClosePolicyResponse: {
+            /**
+             * Format: int64
+             * @description 申请期天数。
+             */
+            grace_days: number;
+        };
+        /** @description 注销申请请求体。 */
+        AccountCloseRequestRequest: {
+            /** @description 发到当前主邮箱的 6 位验证码。 */
+            email_code: string;
+        };
+        /** @description 注销申请状态。 */
+        AccountCloseRequestResponse: {
+            /**
+             * Format: int64
+             * @description 距生效还剩几天（向上取整）；没有申请时为 `null`。
+             */
+            days_remaining?: number | null;
+            /** @description 生效时间（RFC 3339）；没有申请时为 `null`。 */
+            effective_at?: string | null;
+            /** @description 是否有待生效的申请。 */
+            pending: boolean;
+            /** @description 提交时间（RFC 3339）；没有申请时为 `null`。 */
+            requested_at?: string | null;
         };
         AccountResponse: {
             created_at: string;
@@ -14482,7 +14750,7 @@ export interface components {
         AuthenticatorLoginRequest: {
             /** @description Authenticator 生成的 6 位动态码。 */
             code: string;
-            /** @description 人机校验令牌。 */
+            /** @description 人机校验 payload（历史字段名 `turnstile_token`，现承载 ALTCHA payload）。 */
             turnstile_token?: string | null;
             /** @description 登录名或主邮箱。 */
             username: string;
@@ -14698,88 +14966,6 @@ export interface components {
             /** @description 需求编号。 */
             requirement_id: string;
         };
-        /** @description 一笔赔付记录。 */
-        BreachCompensationItemResponse: {
-            /**
-             * Format: double
-             * @description 赔付金额（元，两位小数的展示口径）。
-             */
-            amount: number;
-            /**
-             * Format: int64
-             * @description 赔付金额（分）。
-             */
-            amount_fen: number;
-            /**
-             * Format: int32
-             * @description 已向渠道发起过几次。
-             */
-            attempts: number;
-            /** @description 渠道侧余额支付流水号。 */
-            channel_seq_id?: string | null;
-            /** @description 创建时间（东八区）。 */
-            created_time: string;
-            /** @description 客户（收款方）。 */
-            customer: string;
-            /** @description 开发者（付款方）。 */
-            developer: string;
-            /** @description 最近一次失败原因。 */
-            failure_reason?: string | null;
-            /**
-             * Format: int64
-             * @description 主键。
-             */
-            id: number;
-            /** @description 需求编号。 */
-            requirement_id: string;
-            /** @description 状态：`pending` / `paid` / `failed`。 */
-            status: string;
-            /** @description 状态中文说明。 */
-            status_label: string;
-            /** @description 最后更新时间（东八区）。 */
-            updated_time: string;
-        };
-        /** @description 赔付记录一页。 */
-        BreachCompensationPageResponse: {
-            /** @description 本页数据。 */
-            items: components["schemas"]["BreachCompensationItemResponse"][];
-            /**
-             * Format: int64
-             * @description 页码。
-             */
-            page: number;
-            /**
-             * Format: int64
-             * @description 每页条数。
-             */
-            page_size: number;
-            /**
-             * Format: int64
-             * @description 命中总数。
-             */
-            total: number;
-        };
-        /** @description 管理端筛选条件。 */
-        BreachCompensationQuery: {
-            /** @description 客户（精确匹配）。 */
-            customer?: string | null;
-            /** @description 开发者（精确匹配）。 */
-            developer?: string | null;
-            /**
-             * Format: int64
-             * @description 页码，从 1 开始。
-             */
-            page?: number | null;
-            /**
-             * Format: int64
-             * @description 每页条数（上限 100）。
-             */
-            page_size?: number | null;
-            /** @description 需求编号（精确匹配）。 */
-            requirement_id?: string | null;
-            /** @description 状态：`pending` / `paid` / `failed`。 */
-            status?: string | null;
-        };
         /** @description 违约与催告期限。 */
         BreachConfig: {
             /**
@@ -14905,6 +15091,27 @@ export interface components {
             error_description?: string | null;
             /** @description 防 CSRF 的签名 state。 */
             state?: string | null;
+        };
+        /** @description 人机校验配置的对外形状（服务端密钥掩码）。 */
+        CaptchaView: {
+            /** @description KDF 算法。 */
+            algorithm: string;
+            /** @description 未配密钥时是否旁路。 */
+            allow_bypass_without_secret: boolean;
+            /**
+             * Format: int64
+             * @description challenge 有效期（秒）。
+             */
+            challenge_ttl_secs: number;
+            /**
+             * Format: int32
+             * @description 迭代次数。
+             */
+            cost: number;
+            /** @description 是否启用。 */
+            enabled: boolean;
+            /** @description 服务端签名密钥（回显为 `***`）。 */
+            secret_key: string;
         };
         /** @description 案件详情响应。 */
         CaseDetailResponse: components["schemas"]["CaseSummaryResponse"] & {
@@ -15900,6 +16107,7 @@ export interface components {
             visibility: string;
         };
         CreateSupportConversationRequest: {
+            attachment_ids?: number[];
             content: string;
             user_role?: string | null;
         };
@@ -17300,6 +17508,11 @@ export interface components {
             perk_code: string;
             username: string;
         };
+        GuestSupportSessionResponse: {
+            display_name: string;
+            /** @description 仅返回一次，前端持久化后作为访客 Bearer 令牌使用。 */
+            token: string;
+        };
         HandleOrderRequest: {
             note?: string | null;
             status: string;
@@ -17859,7 +18072,7 @@ export interface components {
             password: string;
             /** @description 是否同时申请开发者角色。 */
             request_dev_role?: boolean | null;
-            /** @description 人机校验令牌。 */
+            /** @description 人机校验 payload（历史字段名 `turnstile_token`，现承载 ALTCHA payload）。 */
             turnstile_token?: string | null;
             /** @description 两步验证码。 */
             two_factor_code?: string | null;
@@ -18016,21 +18229,6 @@ export interface components {
             items: components["schemas"]["ActivityRewardItemResponse"][];
             payouts: components["schemas"]["ActivityPayoutItemResponse"][];
             summary: components["schemas"]["MyRewardSummaryResponse"];
-        };
-        /** @description 用户端筛选条件。 */
-        MyBreachCompensationQuery: {
-            /**
-             * Format: int64
-             * @description 页码，从 1 开始。
-             */
-            page?: number | null;
-            /**
-             * Format: int64
-             * @description 每页条数（上限 100）。
-             */
-            page_size?: number | null;
-            /** @description 需求编号（精确匹配）。 */
-            requirement_id?: string | null;
         };
         /**
          * @description 我的通知列表筛选。
@@ -18411,6 +18609,8 @@ export interface components {
             seller_net_points: number;
             /** @description 订单来源：`platform`（平台内下单）/ `oauth`（开发者站点开放下单）。 */
             source_kind: string;
+            /** @description 分账失败原因（只对卖家可见；仅分账失败且有记录时有值）。 */
+            split_failure_reason?: string | null;
             /** @description 分账状态。 */
             split_status: string;
             /** @description 订单状态。 */
@@ -19722,7 +19922,7 @@ export interface components {
             share_target_id?: string | null;
             /** @description 分享类型。 */
             share_type?: string | null;
-            /** @description 人机校验令牌。 */
+            /** @description 人机校验 payload（历史字段名 `turnstile_token`，现承载 ALTCHA payload）。 */
             turnstile_token?: string | null;
             /** @description 登录名。 */
             username: string;
@@ -19943,7 +20143,7 @@ export interface components {
             email_code: string;
             /** @description md5(明文密码)：32 位小写十六进制。 */
             password: string;
-            /** @description 人机校验令牌。 */
+            /** @description 人机校验 payload（历史字段名 `turnstile_token`，现承载 ALTCHA payload）。 */
             turnstile_token?: string | null;
         };
         /** @description 重置用户身份验证器请求体。 */
@@ -20405,6 +20605,32 @@ export interface components {
             rating: number;
         };
         /** @description 保存结果：带上「需要重启」的明确提示。 */
+        SaveOutcome_CaptchaView: {
+            /** @description 人机校验配置的对外形状（服务端密钥掩码）。 */
+            config: {
+                /** @description KDF 算法。 */
+                algorithm: string;
+                /** @description 未配密钥时是否旁路。 */
+                allow_bypass_without_secret: boolean;
+                /**
+                 * Format: int64
+                 * @description challenge 有效期（秒）。
+                 */
+                challenge_ttl_secs: number;
+                /**
+                 * Format: int32
+                 * @description 迭代次数。
+                 */
+                cost: number;
+                /** @description 是否启用。 */
+                enabled: boolean;
+                /** @description 服务端签名密钥（回显为 `***`）。 */
+                secret_key: string;
+            };
+            /** @description 是否要重启才生效。 */
+            restart_required: boolean;
+        };
+        /** @description 保存结果：带上「需要重启」的明确提示。 */
         SaveOutcome_DatabaseView: {
             /** @description 数据库配置的对外形状（连接串里的密码掩码）。 */
             config: {
@@ -20447,6 +20673,11 @@ export interface components {
                 access_token_expire_minutes: number;
                 /** @description 签名密钥（回显为 `***`；PUT 时传 `***` 或空串表示保持原值）。 */
                 jwt_secret: string;
+                /**
+                 * Format: int64
+                 * @description 刷新令牌有效期（分钟）。
+                 */
+                refresh_token_expire_minutes: number;
             };
             /** @description 是否要重启才生效。 */
             restart_required: boolean;
@@ -20591,29 +20822,6 @@ export interface components {
                  * @default 3
                  */
                 max_connections_per_user: number;
-            };
-            /** @description 是否要重启才生效。 */
-            restart_required: boolean;
-        };
-        /** @description 保存结果：带上「需要重启」的明确提示。 */
-        SaveOutcome_TurnstileView: {
-            /** @description Turnstile 配置的对外形状（服务端密钥掩码）。 */
-            config: {
-                /** @description 未配密钥时是否旁路。 */
-                allow_bypass_without_secret: boolean;
-                /** @description 是否启用。 */
-                enabled: boolean;
-                /** @description hostname 白名单。 */
-                expected_hostnames: string[];
-                /** @description 服务端密钥（回显为 `***`）。 */
-                secret_key: string;
-                /** @description 前端站点密钥。 */
-                site_key: string;
-                /**
-                 * Format: int64
-                 * @description 超时秒数。
-                 */
-                timeout_secs: number;
             };
             /** @description 是否要重启才生效。 */
             restart_required: boolean;
@@ -21071,17 +21279,18 @@ export interface components {
         SendRegisterEmailCodeRequest: {
             /** @description 邮箱。 */
             email: string;
-            /** @description 人机校验令牌。 */
+            /** @description 人机校验 payload（历史字段名 `turnstile_token`，现承载 ALTCHA payload）。 */
             turnstile_token?: string | null;
         };
         /** @description 发送重置密码验证码请求体。 */
         SendResetPasswordEmailCodeRequest: {
             /** @description 邮箱。 */
             email: string;
-            /** @description 人机校验令牌。 */
+            /** @description 人机校验 payload（历史字段名 `turnstile_token`，现承载 ALTCHA payload）。 */
             turnstile_token?: string | null;
         };
         SendSupportMessageRequest: {
+            attachment_ids?: number[];
             content: string;
         };
         /** @description 发验证码入参（两个端点同形）。 */
@@ -21711,8 +21920,25 @@ export interface components {
             account_status: string;
             created_at: string;
             permissions: string[];
+            presence: string;
+            presence_updated_at?: string | null;
             roles: string[];
             username: string;
+        };
+        SupportAttachmentResponse: {
+            content_type?: string | null;
+            created_at: string;
+            file_name: string;
+            /** Format: int64 */
+            id: number;
+            /** Format: int64 */
+            size_bytes: number;
+            url: string;
+        };
+        SupportAvailabilityResponse: {
+            online: boolean;
+            /** Format: int64 */
+            online_agents: number;
         };
         SupportConversationDetailResponse: {
             conversation: components["schemas"]["SupportConversationResponse"];
@@ -21727,14 +21953,23 @@ export interface components {
             /** Format: int64 */
             agent_last_read_message_id?: number | null;
             agent_username?: string | null;
+            assigned_at?: string | null;
             conversation_no: string;
             created_at: string;
             /** Format: int64 */
             id: number;
+            is_guest: boolean;
+            last_agent_message_at?: string | null;
             last_message?: string | null;
             last_message_at?: string | null;
             last_message_by?: string | null;
+            last_user_message_at?: string | null;
             priority: string;
+            satisfaction_comment?: string | null;
+            satisfaction_rated_at?: string | null;
+            satisfaction_rated_by?: string | null;
+            /** Format: int32 */
+            satisfaction_rating?: number | null;
             status: string;
             /** Format: int32 */
             unread_agent: number;
@@ -21747,6 +21982,7 @@ export interface components {
             user_username: string;
         };
         SupportMessageResponse: {
+            attachments: components["schemas"]["SupportAttachmentResponse"][];
             content: string;
             /** Format: int64 */
             conversation_id: number;
@@ -21755,6 +21991,17 @@ export interface components {
             id: number;
             sender_role: string;
             sender_username: string;
+        };
+        SupportPresenceRequest: {
+            status: string;
+        };
+        SupportSatisfactionRequest: {
+            comment?: string | null;
+            /** Format: int32 */
+            rating: number;
+        };
+        SupportTransferRequest: {
+            agent_username: string;
         };
         SupportUserContractBrief: {
             contract_no: string;
@@ -22388,24 +22635,6 @@ export interface components {
         };
         TransferTicketRequest: {
             assigned_to: string;
-        };
-        /** @description Turnstile 配置的对外形状（服务端密钥掩码）。 */
-        TurnstileView: {
-            /** @description 未配密钥时是否旁路。 */
-            allow_bypass_without_secret: boolean;
-            /** @description 是否启用。 */
-            enabled: boolean;
-            /** @description hostname 白名单。 */
-            expected_hostnames: string[];
-            /** @description 服务端密钥（回显为 `***`）。 */
-            secret_key: string;
-            /** @description 前端站点密钥。 */
-            site_key: string;
-            /**
-             * Format: int64
-             * @description 超时秒数。
-             */
-            timeout_secs: number;
         };
         /**
          * @description 登录 / 注册响应，结构与老接口 `AuthResponse` 一致。
@@ -23428,41 +23657,6 @@ export interface components {
             auto_withdraw_enabled_at?: string | null;
             /** @description 出款条件是否就绪（渠道已装配 + 收款账户可用）。 */
             payout_channel_ready: boolean;
-        };
-        /** @description 注销申请状态。 */
-        AccountCloseRequestResponse: {
-            /**
-             * Format: int64
-             * @description 距生效还剩几天（向上取整）；没有申请时为 `null`。
-             */
-            days_remaining?: number | null;
-            /** @description 生效时间（RFC 3339）；没有申请时为 `null`。 */
-            effective_at?: string | null;
-            /** @description 是否有待生效的申请。 */
-            pending: boolean;
-            /** @description 提交时间（RFC 3339）；没有申请时为 `null`。 */
-            requested_at?: string | null;
-        };
-        /** @description 注销申请请求体。 */
-        AccountCloseRequestRequest: {
-            /** @description 发到当前主邮箱的 6 位验证码。 */
-            email_code: string;
-        };
-        /** @description 注销申请期配置。 */
-        AccountClosePolicyResponse: {
-            /**
-             * Format: int64
-             * @description 申请期天数。
-             */
-            grace_days: number;
-        };
-        /** @description 修改注销申请期请求体。 */
-        AccountClosePolicyRequest: {
-            /**
-             * Format: int64
-             * @description 申请期天数（1–90）。
-             */
-            grace_days: number;
         };
     };
     responses: never;
@@ -31723,6 +31917,149 @@ export interface operations {
             };
         };
     };
+    auth_send_account_close_code: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 已提交发信，无响应体 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 账号未绑定邮箱（`CURRENT_EMAIL_REQUIRED`）或邮件发送失败 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 未登录，或令牌无效 / 已吊销 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 触发限流 */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    auth_account_close_request: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 注销申请状态 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AccountCloseRequestResponse"];
+                };
+            };
+            /** @description 未登录，或令牌无效 / 已吊销 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    auth_request_account_close: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AccountCloseRequestRequest"];
+            };
+        };
+        responses: {
+            /** @description 申请已提交 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AccountCloseRequestResponse"];
+                };
+            };
+            /** @description 验证码缺失 / 错误，或这是唯一的超级管理员 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 未登录，或令牌无效 / 已吊销 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 已有待生效的注销申请（`ACCOUNT_CLOSE_ALREADY_PENDING`） */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    auth_cancel_account_close: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 已撤销，无响应体 */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 未登录，或令牌无效 / 已吊销 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 没有待生效的注销申请（`ACCOUNT_CLOSE_NOT_PENDING`） */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     auth_dev_admin_auto_login: {
         parameters: {
             query?: never;
@@ -31981,6 +32318,66 @@ export interface operations {
             };
         };
     };
+    auth_gitee_unbind_url: {
+        parameters: {
+            query?: {
+                /** @description 成功后跳回的地址；必须与落地页同源，否则回落到落地页。 */
+                redirect_to?: string;
+                /** @description 是否同时申请开发者角色。 */
+                request_dev_role?: boolean;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Gitee 授权地址 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AuthorizeUrlResponse"];
+                };
+            };
+            /** @description 渠道凭据不全或回调 / 落地页没配 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 未登录，或令牌无效 / 已吊销 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 该渠道未启用（`OAUTH_DISABLED`） */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 触发限流 */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 内部错误 */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     auth_gitee_authorize_url: {
         parameters: {
             query?: {
@@ -32159,6 +32556,66 @@ export interface operations {
                 content?: never;
             };
             /** @description 触发限流，响应头 `Retry-After` 给出重试秒数 */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 内部错误 */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    auth_github_unbind_url: {
+        parameters: {
+            query?: {
+                /** @description 成功后跳回的地址；必须与落地页同源，否则回落到落地页。 */
+                redirect_to?: string;
+                /** @description 是否同时申请开发者角色。 */
+                request_dev_role?: boolean;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description GitHub 授权地址 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AuthorizeUrlResponse"];
+                };
+            };
+            /** @description 渠道凭据不全或回调 / 落地页没配 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 未登录，或令牌无效 / 已吊销 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 该渠道未启用（`OAUTH_DISABLED`） */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 触发限流 */
             429: {
                 headers: {
                     [name: string]: unknown;
@@ -32665,6 +33122,82 @@ export interface operations {
             };
         };
     };
+    auth_qq_unbind_qr_status: {
+        parameters: {
+            query: {
+                /** @description 二维码上的 state。 */
+                state: string;
+                /** @description 建码时拿到的轮询凭据。 */
+                poll_secret: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 解绑状态 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["QrStatusResponse"];
+                };
+            };
+        };
+    };
+    auth_qq_unbind_qr_url: {
+        parameters: {
+            query?: {
+                /** @description 登录成功后跳回的前端地址；留空用渠道落地页。 */
+                redirect_to?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 二维码地址与轮询凭据 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["QrUrlResponse"];
+                };
+            };
+            /** @description 渠道凭据或回调配置不全 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 未登录，或令牌无效 / 已吊销 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 该渠道未启用（`OAUTH_DISABLED`） */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 内部错误 */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     auth_refresh: {
         parameters: {
             query?: never;
@@ -33151,7 +33684,7 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description 人机校验未通过，原因见响应头 `X-Turnstile-Error` */
+            /** @description 人机校验未通过，原因见响应头 `X-Captcha-Error` */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -33208,7 +33741,7 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description 人机校验未通过，原因见响应头 `X-Turnstile-Error` */
+            /** @description 人机校验未通过，原因见响应头 `X-Captcha-Error` */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -33508,6 +34041,99 @@ export interface operations {
                 content?: never;
             };
             /** @description 权限查询失败，或内部错误 */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    identity_admin_account_close_policy: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 当前申请期 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AccountClosePolicyResponse"];
+                };
+            };
+            /** @description 未登录，或令牌无效 / 已吊销 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 没有 `user.config.get` */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 内部错误 */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    identity_admin_update_account_close_policy: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AccountClosePolicyRequest"];
+            };
+        };
+        responses: {
+            /** @description 修改后的申请期 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AccountClosePolicyResponse"];
+                };
+            };
+            /** @description 天数不在 1–90 之间（`INVALID_ARGUMENT`） */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 未登录，或令牌无效 / 已吊销 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 没有 `user.config.put` */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 内部错误 */
             500: {
                 headers: {
                     [name: string]: unknown;
@@ -34347,6 +34973,82 @@ export interface operations {
             };
         };
     };
+    auth_wechat_unbind_qr_status: {
+        parameters: {
+            query: {
+                /** @description 二维码上的 state。 */
+                state: string;
+                /** @description 建码时拿到的轮询凭据。 */
+                poll_secret: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 解绑状态 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["QrStatusResponse"];
+                };
+            };
+        };
+    };
+    auth_wechat_unbind_qr_url: {
+        parameters: {
+            query?: {
+                /** @description 登录成功后跳回的前端地址；留空用渠道落地页。 */
+                redirect_to?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 二维码地址与轮询凭据 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["QrUrlResponse"];
+                };
+            };
+            /** @description 渠道凭据或回调配置不全 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 未登录，或令牌无效 / 已吊销 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 该渠道未启用（`OAUTH_DISABLED`） */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 内部错误 */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     auth_unbind: {
         parameters: {
             query?: never;
@@ -34486,6 +35188,31 @@ export interface operations {
             };
             /** @description 用户不存在 */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    captcha_challenge: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description ALTCHA challenge */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description challenge 签发失败（算法或内部错误，原因只进日志） */
+            500: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -35476,7 +36203,7 @@ export interface operations {
             };
         };
         responses: {
-            /** @description 处理成功，回纯文本 `ok` */
+            /** @description 处理成功或合同号在本地不存在，回纯文本 `ok` */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -35492,6 +36219,20 @@ export interface operations {
             };
             /** @description 落库失败 */
             500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 渠道回查失败，等待渠道重试 */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 电子签通道未配置（连回查也无法进行） */
+            503: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -35772,6 +36513,49 @@ export interface operations {
             };
             /** @description 合同不存在，或不是当事人 */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    contract_list_my_signing_logs: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 签署日志数组（可能为空数组） */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SigningLogResponse"][];
+                };
+            };
+            /** @description 没有该接口权限 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 合同不存在，或不是当事人 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 读库失败 */
+            500: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -39984,97 +40768,6 @@ export interface operations {
             };
         };
     };
-    payment_admin_list_breach_compensations: {
-        parameters: {
-            query?: {
-                /** @description 需求编号（精确匹配）。 */
-                requirement_id?: string;
-                /** @description 开发者（精确匹配）。 */
-                developer?: string;
-                /** @description 客户（精确匹配）。 */
-                customer?: string;
-                /** @description 状态：`pending` / `paid` / `failed`。 */
-                status?: string;
-                /** @description 页码，从 1 开始。 */
-                page?: number;
-                /** @description 每页条数（上限 100）。 */
-                page_size?: number;
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description 赔付记录分页 */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["BreachCompensationPageResponse"];
-                };
-            };
-            /** @description 状态取值无法识别 */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description 没有该接口权限 */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    payment_admin_retry_breach_compensation: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description 赔付记录主键 */
-                id: number;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description 重试后的记录 */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["BreachCompensationItemResponse"];
-                };
-            };
-            /** @description 没有该接口权限 */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description 赔付记录不存在 */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description 渠道调用失败（记录已标为失败，可再次重试） */
-            502: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
     payment_admin_list_channel_refund_discrepancies: {
         parameters: {
             query?: {
@@ -40259,40 +40952,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AvailabilityResponse"];
-                };
-            };
-            /** @description 没有该接口权限 */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    payment_my_breach_compensations: {
-        parameters: {
-            query?: {
-                /** @description 需求编号（精确匹配）。 */
-                requirement_id?: string;
-                /** @description 页码，从 1 开始。 */
-                page?: number;
-                /** @description 每页条数（上限 100）。 */
-                page_size?: number;
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description 赔付记录分页 */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["BreachCompensationPageResponse"];
                 };
             };
             /** @description 没有该接口权限 */
@@ -52788,6 +53447,94 @@ export interface operations {
             };
         };
     };
+    support_upload_attachment: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SupportAttachmentResponse"];
+                };
+            };
+            /** @description 文件为空或格式不支持 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 超过 20MB */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    support_download_attachment: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                attachment_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 文件字节 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/octet-stream": unknown;
+                };
+            };
+            /** @description 无权下载 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 附件不存在 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    support_public_availability: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SupportAvailabilityResponse"];
+                };
+            };
+        };
+    };
     support_list_channels: {
         parameters: {
             query?: never;
@@ -53042,6 +53789,34 @@ export interface operations {
             };
         };
     };
+    support_claim_conversation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SupportConversationResponse"];
+                };
+            };
+            /** @description 无权限或会话已被其他客服认领 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     support_send_message: {
         parameters: {
             query?: never;
@@ -53066,6 +53841,45 @@ export interface operations {
                 };
             };
             /** @description 消息为空、过长或会话已关闭 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 不是会话归属方 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    support_rate_conversation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SupportSatisfactionRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SupportConversationResponse"];
+                };
+            };
+            /** @description 会话未结束、已评价或评分无效 */
             400: {
                 headers: {
                     [name: string]: unknown;
@@ -53117,6 +53931,351 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+        };
+    };
+    support_transfer_conversation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SupportTransferRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SupportConversationResponse"];
+                };
+            };
+            /** @description 目标客服无效 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 无权转接 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    support_upload_guest_attachment: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SupportAttachmentResponse"];
+                };
+            };
+            /** @description 文件为空或格式不支持 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 访客令牌无效 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 超过 20MB */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    support_download_guest_attachment: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                attachment_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 文件字节 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/octet-stream": unknown;
+                };
+            };
+            /** @description 访客令牌无效 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 无权下载 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 附件不存在 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    support_list_guest_conversations: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SupportConversationResponse"][];
+                };
+            };
+            /** @description 访客令牌无效 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    support_create_guest_conversation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateSupportConversationRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SupportConversationResponse"];
+                };
+            };
+            /** @description 消息无效或渠道已停用 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 访客令牌无效 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    support_stream_guest_conversations: {
+        parameters: {
+            query?: {
+                /** @description 登录令牌。WebSocket 浏览器 API 不能设置 Authorization 请求头。 */
+                token?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description WebSocket 已建立 */
+            101: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 访客令牌缺失或无效 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    support_get_guest_conversation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SupportConversationDetailResponse"];
+                };
+            };
+            /** @description 访客令牌无效 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 不是本访客的会话 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    support_send_guest_message: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SendSupportMessageRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SupportMessageResponse"];
+                };
+            };
+            /** @description 消息无效或会话已关闭 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 访客令牌无效 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    support_rate_guest_conversation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SupportSatisfactionRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SupportConversationResponse"];
+                };
+            };
+            /** @description 会话未结束、已评价或评分无效 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 访客令牌无效 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    support_create_guest_session: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GuestSupportSessionResponse"];
+                };
             };
         };
     };
@@ -53384,6 +54543,42 @@ export interface operations {
                 content?: never;
             };
             500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    support_update_presence: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SupportPresenceRequest"];
+            };
+        };
+        responses: {
+            /** @description 在线状态已更新 */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 状态无效 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 无权限 */
+            403: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -53829,6 +55024,85 @@ export interface operations {
             };
             /** @description 没有可用私钥 */
             503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    system_get_captcha: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 人机校验配置（服务端密钥已掩码） */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CaptchaView"];
+                };
+            };
+            /** @description 没有该接口权限 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 权限查询失败，或读到配置失败 */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    system_put_captcha: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CaptchaView"];
+            };
+        };
+        responses: {
+            /** @description 保存后的配置信封（服务端密钥已掩码） */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SaveOutcome_CaptchaView"];
+                };
+            };
+            /** @description 算法 / 数值越界，或启用人机校验但没有服务端密钥且未打开本地旁路 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 没有该接口权限 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 权限查询失败，或配置写盘失败 */
+            500: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -55714,85 +56988,6 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["SaveOutcome_SseConfig"];
                 };
-            };
-            /** @description 没有该接口权限 */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description 权限查询失败，或配置写盘失败 */
-            500: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    system_get_turnstile: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description 人机校验配置（服务端密钥已掩码） */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["TurnstileView"];
-                };
-            };
-            /** @description 没有该接口权限 */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description 权限查询失败，或读到配置失败 */
-            500: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    system_put_turnstile: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["TurnstileView"];
-            };
-        };
-        responses: {
-            /** @description 保存后的配置信封（服务端密钥已掩码） */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["SaveOutcome_TurnstileView"];
-                };
-            };
-            /** @description 启用人机校验但没有服务端密钥，且未打开本地旁路 */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
             };
             /** @description 没有该接口权限 */
             403: {
@@ -58437,514 +59632,6 @@ export interface operations {
             };
             /** @description 邀请码无效 */
             400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    auth_send_account_close_code: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description 已提交发信，无响应体 */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description 账号未绑定邮箱（`CURRENT_EMAIL_REQUIRED`）或邮件发送失败 */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description 未登录，或令牌无效 / 已吊销 */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description 触发限流 */
-            429: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    auth_account_close_request: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description 注销申请状态 */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["AccountCloseRequestResponse"];
-                };
-            };
-            /** @description 未登录，或令牌无效 / 已吊销 */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    auth_request_account_close: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["AccountCloseRequestRequest"];
-            };
-        };
-        responses: {
-            /** @description 申请已提交 */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["AccountCloseRequestResponse"];
-                };
-            };
-            /** @description 验证码缺失 / 错误，或这是唯一的超级管理员 */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description 未登录，或令牌无效 / 已吊销 */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description 已有待生效的注销申请（`ACCOUNT_CLOSE_ALREADY_PENDING`） */
-            409: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    auth_cancel_account_close: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description 已撤销，无响应体 */
-            204: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description 未登录，或令牌无效 / 已吊销 */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description 没有待生效的注销申请（`ACCOUNT_CLOSE_NOT_PENDING`） */
-            409: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    auth_gitee_unbind_url: {
-        parameters: {
-            query?: {
-                /** @description 成功后跳回的地址；必须与落地页同源，否则回落到落地页。 */
-                redirect_to?: string;
-                /** @description 是否同时申请开发者角色。 */
-                request_dev_role?: boolean;
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Gitee 授权地址 */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["AuthorizeUrlResponse"];
-                };
-            };
-            /** @description 渠道凭据不全或回调 / 落地页没配 */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description 未登录，或令牌无效 / 已吊销 */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description 该渠道未启用（`OAUTH_DISABLED`） */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description 触发限流 */
-            429: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description 内部错误 */
-            500: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    auth_github_unbind_url: {
-        parameters: {
-            query?: {
-                /** @description 成功后跳回的地址；必须与落地页同源，否则回落到落地页。 */
-                redirect_to?: string;
-                /** @description 是否同时申请开发者角色。 */
-                request_dev_role?: boolean;
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description GitHub 授权地址 */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["AuthorizeUrlResponse"];
-                };
-            };
-            /** @description 渠道凭据不全或回调 / 落地页没配 */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description 未登录，或令牌无效 / 已吊销 */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description 该渠道未启用（`OAUTH_DISABLED`） */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description 触发限流 */
-            429: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description 内部错误 */
-            500: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    auth_qq_unbind_qr_status: {
-        parameters: {
-            query: {
-                /** @description 二维码上的 state。 */
-                state: string;
-                /** @description 建码时拿到的轮询凭据。 */
-                poll_secret: string;
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description 解绑状态 */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["QrStatusResponse"];
-                };
-            };
-        };
-    };
-    auth_qq_unbind_qr_url: {
-        parameters: {
-            query?: {
-                /** @description 登录成功后跳回的前端地址；留空用渠道落地页。 */
-                redirect_to?: string;
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description 二维码地址与轮询凭据 */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["QrUrlResponse"];
-                };
-            };
-            /** @description 渠道凭据或回调配置不全 */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description 未登录，或令牌无效 / 已吊销 */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description 该渠道未启用（`OAUTH_DISABLED`） */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description 内部错误 */
-            500: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    identity_admin_account_close_policy: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description 当前申请期 */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["AccountClosePolicyResponse"];
-                };
-            };
-            /** @description 未登录，或令牌无效 / 已吊销 */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description 没有 `user.config.get` */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description 内部错误 */
-            500: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    identity_admin_update_account_close_policy: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["AccountClosePolicyRequest"];
-            };
-        };
-        responses: {
-            /** @description 修改后的申请期 */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["AccountClosePolicyResponse"];
-                };
-            };
-            /** @description 天数不在 1–90 之间（`INVALID_ARGUMENT`） */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description 未登录，或令牌无效 / 已吊销 */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description 没有 `user.config.put` */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description 内部错误 */
-            500: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    auth_wechat_unbind_qr_status: {
-        parameters: {
-            query: {
-                /** @description 二维码上的 state。 */
-                state: string;
-                /** @description 建码时拿到的轮询凭据。 */
-                poll_secret: string;
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description 解绑状态 */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["QrStatusResponse"];
-                };
-            };
-        };
-    };
-    auth_wechat_unbind_qr_url: {
-        parameters: {
-            query?: {
-                /** @description 登录成功后跳回的前端地址；留空用渠道落地页。 */
-                redirect_to?: string;
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description 二维码地址与轮询凭据 */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["QrUrlResponse"];
-                };
-            };
-            /** @description 渠道凭据或回调配置不全 */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description 未登录，或令牌无效 / 已吊销 */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description 该渠道未启用（`OAUTH_DISABLED`） */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description 内部错误 */
-            500: {
                 headers: {
                     [name: string]: unknown;
                 };

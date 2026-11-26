@@ -55,6 +55,11 @@
         font-family: 'Noto Sans SC', 'Microsoft YaHei', sans-serif;
       }
 
+      /* 有 JS 时由 Vue 接管 #app，静态快照只留给未执行 JS 的访问者与爬虫。 */
+      .js .seo-fallback {
+        display: none;
+      }
+
       .seo-fallback__eyebrow {
         margin: 0 0 14px;
         color: #2563eb;
@@ -204,6 +209,8 @@
         color: #1d4ed8;
       }
     </style>
+    <!-- CSP 不允许内联脚本；在首屏绘制前标记 JS 可用，避免静态快照闪现。 -->
+    <script src="/seo-shell.js"></script>
   </head>
   <body>
     <div id="app">

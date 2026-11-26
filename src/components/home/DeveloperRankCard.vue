@@ -1,10 +1,11 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 
+import type { UserBadge } from '@/api/invite'
 import type { DeveloperRank } from '@/shared/home/portalRanks'
 
 /**
- * 首页侧栏「开发者贡献榜」卡片：前 4 名开发者 + 页脚合计。
+ * 首页侧栏「开发者贡献榜」卡片：前 5 名开发者 + 页脚合计。
  *
  * 只吃 props：榜单聚合在 `composables/usePortalRanks.ts`（资源由视图传入，不在这里请求）。
  * 两处跟渲染强相关的状态留在组件内：
@@ -14,11 +15,18 @@ import type { DeveloperRank } from '@/shared/home/portalRanks'
  *
  * 样式仍在全局 `styles/home.css`（`.portal-contrib-*`），本组件不带 `<style>`。
  */
-defineProps<{
-  ranks: DeveloperRank[]
-  /** 入榜开发者名下资源数之和（页脚「本周 N 个资源」） */
-  totalResources: number
-}>()
+const props = withDefaults(
+  defineProps<{
+    ranks: DeveloperRank[]
+    /** 入榜开发者名下资源数之和（页脚「本周 N 个资源」） */
+    totalResources: number
+    /** 已佩戴徽章：按用户名索引，由视图统一拉取后传入。 */
+    badgesByUsername?: Record<string, UserBadge[]>
+  }>(),
+  {
+    badgesByUsername: () => ({}),
+  },
+)
 
 const emit = defineEmits<{ (e: 'open-developer', username: string): void }>()
 
@@ -41,6 +49,10 @@ function avatarSrc(rank: DeveloperRank): string {
 function creditClass(rank: DeveloperRank) {
   if (rank.creditScore == null) return ''
   return rank.creditScore >= 100 ? 'is-good' : 'is-warning'
+}
+
+function badgesFor(rank: DeveloperRank): UserBadge[] {
+  return rank.username ? (props.badgesByUsername[rank.username] ?? []) : []
 }
 </script>
 
@@ -67,7 +79,6 @@ function creditClass(rank: DeveloperRank) {
         :style="{ '--rank-index': String(index) }"
         @click="emit('open-developer', developer.username)"
       >
-        <span class="portal-contrib-item__rank">{{ index + 1 }}</span>
         <span class="portal-contrib-item__avatar">
           <img
             v-if="avatarSrc(developer)"
@@ -76,13 +87,53 @@ function creditClass(rank: DeveloperRank) {
             @error="handleAvatarError(developer)"
           />
           <span v-else>{{ developer.name.slice(0, 1) }}</span>
+          <span
+            v-if="index < 3"
+            class="portal-contrib-item__medal"
+            :class="`is-rank-${index + 1}`"
+            aria-hidden="true"
+          >
+            <svg viewBox="0 0 12 12" focusable="false">
+              <path
+                d="M6 1.2 7.35 4l3.05.44-2.2 2.15.52 3.04L6 8.2l-2.72 1.43.52-3.04L1.6 4.44 4.65 4 6 1.2Z"
+              />
+            </svg>
+          </span>
         </span>
         <div class="portal-contrib-item__meta">
-          <strong
-            :class="{ 'username-gradient': developer.gradient && !developer.userColor }"
-            :style="developer.userColor ? { color: developer.userColor } : {}"
-            >{{ developer.name }}</strong
-          >
+          <div class="portal-contrib-item__identity">
+            <div class="portal-contrib-item__name-row">
+              <strong
+                :class="{ 'username-gradient': developer.gradient && !developer.userColor }"
+                :style="developer.userColor ? { color: developer.userColor } : {}"
+                >{{ developer.name }}</strong
+              >
+              <span class="portal-contrib-item__badge">贡献 {{ developer.resourceCount }}</span>
+            </div>
+            <div v-if="badgesFor(developer).length" class="portal-contrib-item__badges">
+              <span
+                v-for="badge in badgesFor(developer)"
+                :key="badge.code"
+                class="portal-contrib-item__user-badge"
+                role="img"
+                tabindex="0"
+                :aria-label="`${badge.name}：${badge.description}`"
+              >
+                <img
+                  v-if="badge.icon.startsWith('badges/')"
+                  :src="`/uploads/${badge.icon}`"
+                  alt=""
+                />
+                <span v-else class="portal-contrib-item__user-badge-icon" aria-hidden="true">{{
+                  badge.icon
+                }}</span>
+                <span class="portal-contrib-item__user-badge-tooltip" aria-hidden="true">
+                  <strong>{{ badge.name }}</strong>
+                  <span>{{ badge.description }}</span>
+                </span>
+              </span>
+            </div>
+          </div>
         </div>
         <div class="portal-contrib-item__side">
           <strong class="portal-contrib-item__count" :class="creditClass(developer)">

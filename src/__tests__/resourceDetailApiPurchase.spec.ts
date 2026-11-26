@@ -194,14 +194,14 @@ beforeEach(() => {
 })
 
 describe('ResourceDetailPanel · 接口资源的平台内购买入口', () => {
-  it('接口资源不给平台内购买入口，只留到开发者站点下单的引导', async () => {
+  it('接口资源不给平台内购买入口，只留向资源提供方获取链接的引导', async () => {
     const wrapper = await mountPanel(resourceFixture({ resource_kind: 'api' }))
 
     // 平台内购买按钮不渲染
     expect(wrapper.find('.resource-detail-page__primary-btn').exists()).toBe(false)
     // 改成一句引导
     expect(wrapper.find('.resource-detail-page__api-hint').text()).toBe(
-      '接口资源不在平台内售卖，请到开发者站点下单',
+      '接口资源由开发者站点售卖，请向资源提供方获取购买链接',
     )
     // 一次平台内下单请求都不该发出去
     expect(mocks.createPurchase).not.toHaveBeenCalled()

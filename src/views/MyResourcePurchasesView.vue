@@ -100,11 +100,7 @@ function openTransfer(order: ResourcePurchaseOrder) {
       </div>
 
       <div class="wb-toolbar">
-        <TSelect
-          v-model="statusFilter"
-          class="wb-toolbar__field wb-toolbar__field--purchases-status"
-          aria-label="订单状态"
-        >
+        <TSelect v-model="statusFilter" class="wb-toolbar__field" aria-label="订单状态">
           <TOption
             v-for="item in STATUS_FILTERS"
             :key="item.value"
@@ -239,11 +235,5 @@ function openTransfer(order: ResourcePurchaseOrder) {
 
 .my-purchases-page .wallet-section :deep(.wb-pager) {
   margin-top: auto;
-}
-
-/* 状态名都不长，下拉收窄一点；宽度写成 flex 基宽而不是 width——TSelect 自带 width: 100%，
-   flex-basis 会被 width 顶掉，细节见 portal-workbench.css 里 .wb-toolbar__field 的注释。 */
-.wb-toolbar__field--purchases-status {
-  flex: 0 0 140px;
 }
 </style>

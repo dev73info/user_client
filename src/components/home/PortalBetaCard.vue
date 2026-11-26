@@ -34,16 +34,22 @@ const emit = defineEmits<{
         </span>
         <h2>今日签到</h2>
       </div>
-      <span v-if="status" class="portal-checkin-chip">连续 {{ status.streak_count }} 天</span>
+      <span v-if="status" class="portal-checkin-chip">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path
+            d="M12 22c4.4 0 7-2.8 7-6.6 0-2.7-1.5-5.1-4.4-7.2.2 1.8-.5 3.1-1.8 4.1.2-3.4-1.6-6.1-4.8-8.3.2 3.1-1 5.3-3 7.2-1.3 1.3-2 2.8-2 4.5C3 19.4 6.4 22 12 22Z"
+          />
+        </svg>
+        连签 {{ status.streak_count }} 天
+      </span>
       <span v-else class="portal-card__chip portal-card__chip--muted">内测中</span>
     </div>
 
     <p v-if="status" class="portal-checkin-copy">
-      已连续打卡 {{ status.streak_count }} 天
-      <template v-if="!status.today_checked_in">
-        · 今日可获
-        <strong>+{{ status.today_potential }} PTS</strong>
-      </template>
+      <template v-if="!status.today_checked_in"
+        >今日签到可得 <strong>+{{ status.today_potential }} PTS</strong></template
+      >
+      <template v-else>今天已签到，连签记录保持中</template>
     </p>
 
     <div class="portal-beta-notice__actions">
@@ -52,9 +58,15 @@ const emit = defineEmits<{
         class="portal-beta-notice__btn portal-primary-action"
         type="button"
         :disabled="saving"
+        :title="`今日签到可获 +${status.today_potential} PTS`"
         @click="emit('checkin')"
       >
-        {{ saving ? '签到中…' : '立即签到领取奖励' }}
+        <svg v-if="!saving" viewBox="0 0 24 24" aria-hidden="true">
+          <path
+            d="M20 12v9H4v-9M2 7h20v5H2zM12 22V7M12 7H7.5A2.5 2.5 0 1 1 10 4.5L12 7Zm0 0h4.5A2.5 2.5 0 1 0 14 4.5L12 7Z"
+          />
+        </svg>
+        {{ saving ? '签到中…' : `签到 +${status.today_potential}` }}
       </button>
       <button v-else-if="status" class="portal-beta-notice__btn" type="button" disabled>
         今日已签到

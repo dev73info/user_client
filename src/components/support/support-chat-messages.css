@@ -129,13 +129,15 @@
 .support-pop-leave-active {
   transition:
     opacity 0.2s ease,
-    transform 0.2s ease;
+    translate 0.2s ease,
+    scale 0.2s ease;
 }
 
 .support-pop-enter-from,
 .support-pop-leave-to {
   opacity: 0;
-  transform: translateY(12px) scale(0.985);
+  translate: 0 12px;
+  scale: 0.985;
 }
 
 @keyframes support-loading-bounce {

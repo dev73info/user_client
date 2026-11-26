@@ -82,6 +82,12 @@ vi.mock('@/composables/usePortalRanks', () => ({
 vi.mock('@/composables/useHomePortalActions', () => ({
   useHomePortalActions: () => ({ spotlightLikeSubmittingIds: ref(new Set()) }),
 }))
+vi.mock('@/composables/useSpotlightDownload', () => ({
+  useSpotlightDownload: () => ({
+    spotlightDownloadSubmittingIds: ref(new Set()),
+    downloadSpotlight: vi.fn(),
+  }),
+}))
 
 describe('首页签到组件接线', () => {
   beforeEach(() => {
@@ -126,7 +132,7 @@ describe('首页签到组件接线', () => {
 
     expect(mocks.status).toHaveBeenCalledWith('user-token')
     const button = wrapper.find('.portal-beta-notice__btn')
-    expect(button.text()).toBe('立即签到领取奖励')
+    expect(button.text()).toBe('签到 +10')
     expect(button.attributes('disabled')).toBeUndefined()
     expect(wrapper.find('[role="alert"]').exists()).toBe(false)
 
@@ -134,7 +140,7 @@ describe('首页签到组件接线', () => {
     await flushPromises()
     expect(mocks.checkin).toHaveBeenCalledWith('user-token')
     expect(wrapper.find('.portal-beta-notice__btn').text()).toBe('今日已签到')
-    expect(wrapper.find('.portal-checkin-chip').text()).toContain('连续')
+    expect(wrapper.find('.portal-checkin-chip').text()).toContain('连签')
     expect(wrapper.find('[role="alert"]').exists()).toBe(false)
     wrapper.unmount()
   })

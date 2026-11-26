@@ -20,7 +20,6 @@ const emit = defineEmits<{ (e: 'open-notice', notice: PortalNotice): void }>()
         <span class="portal-notice-head__icon" aria-hidden="true">◔</span>
         <h2>平台公告</h2>
       </div>
-      <span class="portal-card__chip portal-card__chip--muted">UPDATE STREAM</span>
     </div>
     <ul class="portal-notice-list">
       <li
@@ -37,9 +36,14 @@ const emit = defineEmits<{ (e: 'open-notice', notice: PortalNotice): void }>()
       >
         <div class="portal-notice-item__main">
           <strong>{{ notice.title }}</strong>
-          <span v-if="notice.tag" class="portal-tag">{{ notice.tag }}</span>
+          <span
+            v-if="notice.tag"
+            class="portal-tag"
+            :class="{ 'portal-tag--hot': notice.tagTone === 'hot' }"
+            >{{ notice.tag }}</span
+          >
+          <time>{{ notice.date }}</time>
         </div>
-        <time>{{ notice.date }}</time>
       </li>
     </ul>
   </section>

@@ -3,6 +3,7 @@ import { computed, ref, type Ref } from 'vue'
 import { apiUrl } from '@/api/http'
 import type { PublicMcResourceItem } from '@/api/resources'
 import { formatTimeLabel } from '@/shared/home/portalDisplay'
+import { isPricedResource } from '@/shared/resourceSale'
 import {
   buildResourceCardSummary,
   buildResourceCoverAlt,
@@ -28,6 +29,8 @@ export type SpotlightCard = {
   metaTime?: string
   viewCount: number
   downloadCount: number
+  /** 真正免费（不含积分价 / 版本价），下载数可直接触发下载 */
+  free: boolean
   likeCount: number
   likedByMe: boolean
   gradient?: boolean
@@ -38,7 +41,6 @@ export type SpotlightCard = {
   requirementId?: string
   resourceId?: number
   originLabel?: string
-  originRepost?: boolean
 }
 
 /** 卡片封面的四种色板，按卡片序号轮转；顺序变了首页配色的节奏就会变，别随手调。 */
@@ -90,6 +92,11 @@ export function useSpotlightCards(options: {
         metaTime: formatTimeLabel(item.updated_at),
         viewCount: item.view_count ?? 0,
         downloadCount: item.download_count ?? 0,
+        free: !isPricedResource(
+          item.buyout_price_fen,
+          item.price_points,
+          item.min_version_price_fen,
+        ),
         likeCount: item.like_count ?? 0,
         likedByMe: !!item.liked_by_me,
         gradient: !!item.author_username_gradient,
@@ -98,8 +105,7 @@ export function useSpotlightCards(options: {
         coverUrl: toCoverUrl(item.cover_url),
         coverAlt: buildResourceCoverAlt(item),
         resourceId: item.id,
-        originLabel: item.origin_type === 'repost' ? '转载' : '原创',
-        originRepost: item.origin_type === 'repost',
+        originLabel: item.origin_type === 'repost' ? '转载' : '',
       }
     })
   })

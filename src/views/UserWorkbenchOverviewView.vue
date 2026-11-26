@@ -9,7 +9,8 @@ import WorkbenchBarSlot from '@/components/WorkbenchBarSlot.vue'
 import OverviewWelcomeAvatar from '@/components/workbench/OverviewWelcomeAvatar.vue'
 import { useRequirementConversations } from '@/composables/useRequirementConversations'
 import { formatRequirementTime, useRequirementOverview } from '@/composables/useRequirementOverview'
-import { isActiveRequirement, requirementStatusLabel } from '@/shared/requirementStatus'
+import { formatRequirementDisplayStatus } from '@/shared/requirementRowRules'
+import { isActiveRequirement } from '@/shared/requirementStatus'
 import { useAuthStore } from '@/stores/auth'
 
 const router = useRouter()
@@ -18,6 +19,7 @@ const auth = useAuthStore()
 const {
   requirementLoading,
   requirementStats,
+  contractSigningStatusMap,
   sortedRequirements,
   actionableRequirements,
   loadMyRequirements,
@@ -52,6 +54,11 @@ function statusTone(status: string) {
   if (status === 'completed') return 'is-success'
   if (status === 'rejected' || status === 'cancelled') return 'is-muted'
   return isActiveRequirement(status) ? 'is-active' : 'is-pending'
+}
+function displayStatus(item: RequirementItem) {
+  return formatRequirementDisplayStatus(item, {
+    contract: contractSigningStatusMap.value[item.requirement_id] ?? null,
+  })
 }
 
 async function loadCoupons() {
@@ -202,7 +209,7 @@ onMounted(() => {
               <span>{{ item.requirement_id }} · {{ formatBudget(item) }}</span>
             </span>
             <span class="overview-status" :class="statusTone(item.status)">
-              {{ requirementStatusLabel(item.status, item.payment_mode) }}
+              {{ displayStatus(item) }}
             </span>
             <span class="overview-requirement__arrow" aria-hidden="true">›</span>
           </button>
@@ -278,7 +285,7 @@ onMounted(() => {
               >
             </span>
             <span class="overview-status" :class="statusTone(item.status)">
-              {{ requirementStatusLabel(item.status, item.payment_mode) }}
+              {{ displayStatus(item) }}
             </span>
           </button>
         </div>

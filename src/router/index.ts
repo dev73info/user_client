@@ -12,6 +12,7 @@
  */
 import { createRouter, createWebHashHistory, createWebHistory } from 'vue-router'
 
+import { installWebTelemetry } from '@/shared/telemetry'
 import { installDevRouteGuard } from '@/router/dev'
 import { installPortalRouteGuard } from '@/router/guard'
 import { routes } from '@/router/routes'
@@ -28,5 +29,7 @@ const router = createRouter({
 
 installPortalRouteGuard(router)
 installDevRouteGuard(router)
+// 埋点放在守卫之后：只记录最终落地的路由模板，不记录被重定向或拦截的中间地址。
+installWebTelemetry(router)
 
 export default router

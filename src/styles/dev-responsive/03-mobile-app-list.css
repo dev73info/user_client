@@ -109,6 +109,9 @@
 
   .user-workbench__content .dev-table tbody {
     display: grid;
+    /* 卡片模式下列内容全部 nowrap 省略；轨道必须允许收缩，否则长标题会按
+       min-content 把整张卡撑出屏幕。 */
+    grid-template-columns: minmax(0, 1fr);
     gap: 10px;
   }
 

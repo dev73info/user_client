@@ -13,9 +13,13 @@
     max-width: none;
   }
 
-  .wb-toolbar__field,
+  /* 平板档不把单个下拉拉满整行：保持与桌面同宽，换行只由工具栏自己决定。 */
+  .wb-toolbar__field {
+    flex: 0 0 150px;
+  }
+
   .wb-toolbar__field--small {
-    flex: 1 1 140px;
+    flex: 0 0 112px;
   }
 }
 
@@ -140,10 +144,16 @@
     flex: 1 1 100%;
   }
 
-  .wb-toolbar .wb-toolbar__field,
+  /* 触屏档统一收成一档固定宽：各页的「全部」下拉不再因为同排还有没有按钮而一宽一窄。 */
+  .wb-toolbar .wb-toolbar__field {
+    flex: 0 0 112px;
+    width: 112px;
+    min-width: 0;
+  }
+
   .wb-toolbar .wb-toolbar__field--small {
-    flex: 1 1 0;
-    width: auto;
+    flex: 0 0 96px;
+    width: 96px;
     min-width: 0;
   }
 
@@ -172,7 +182,7 @@
       :has(> .wb-chip-group)
     )
     .wb-toolbar__field {
-    flex: 0 1 112px;
+    flex: 0 0 112px;
     order: -1;
   }
 

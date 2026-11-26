@@ -5,11 +5,25 @@
   border-left: 1px solid var(--73-border);
 }
 
+.dev-resource-table .t73-table__td > .t73-table__cell,
+.dev-resource-table .t73-table__th > .t73-table__cell {
+  min-width: 0;
+  overflow: hidden;
+}
+
 .dev-resource-table__title-cell {
   display: flex;
   align-items: center;
   gap: 12px;
   min-width: 0;
+  overflow: hidden;
+}
+
+/* 图标固定 40px；文字区必须能收缩，否则标题会把整张表撑出列外。 */
+.dev-resource-table__title-cell > div {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
 }
 
 /* 标题 + BETA：BETA 紧跟标题，标题过长时先压缩标题（ellipsis），徽标不换行 */
@@ -21,10 +35,17 @@
 }
 
 .dev-resource-table__title-row .dev-resource-table__title-link {
+  display: block;
+  max-width: 100%;
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+/* 标题后的 BETA 不参与压缩，避免标签自身被挤成半个字。 */
+.dev-resource-table__title-row > .t73-tag {
+  flex: 0 0 auto;
 }
 
 .dev-resource-table__icon {
@@ -40,22 +61,53 @@
    这里只留资源表格特有的「图标 + 标题 + 附带信息」排布。 */
 .dev-resource-table__meta,
 .dev-resource-table__tags {
+  display: block;
+  max-width: 100%;
   margin-top: 4px;
+  overflow: hidden;
   font-size: 12px;
   line-height: 1.5;
   color: var(--dev-muted);
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-/* 标签列最多两行：与资源列 40px 图标 + 单元格上下 12px 的行高对齐。
-   超出部分省略，完整值由单元格的 title 提供。 */
-.dev-resource-table__tags {
-  display: -webkit-box;
+.dev-resource-table__exposure,
+.dev-resource-table__net {
+  display: block;
+  max-width: 100%;
   overflow: hidden;
-  overflow-wrap: anywhere;
-  white-space: normal;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
-  line-clamp: 2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dev-resource-table__status-tags {
+  max-width: 100%;
+  flex-wrap: nowrap;
+  overflow: hidden;
+}
+
+.dev-resource-table__status-tags > .t73-tag {
+  flex: 0 0 auto;
+  max-width: 100%;
+}
+
+.dev-resource-table__price-cell {
+  max-width: 100%;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.dev-resource-table__price-cell .t73-tag {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.dev-resource-table__price-cell .t73-tag__label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .dev-version-file-picker {

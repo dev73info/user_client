@@ -4,7 +4,7 @@
  *
  * 结构对齐 Stitch 源码「需求大厅（精密工程轻色工作台）」：
  * 顶部担保方式 chip 与右侧需求编号，下面标题、三行描述，
- * 底部是更新时间与「预算估算 + 查看详情」。
+ * 底部左侧是「预算估算」，右侧是更新时间；整张卡片可点，不再单独放「查看详情」。
  */
 import { computed } from 'vue'
 
@@ -63,30 +63,28 @@ function open(): void {
     </div>
 
     <div class="requirement-hall__card-bottom">
-      <div class="requirement-hall__meta-row">
-        <svg
-          viewBox="0 0 24 24"
-          width="13"
-          height="13"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="2"
-          stroke-linecap="round"
-          stroke-linejoin="round"
-          aria-hidden="true"
-        >
-          <circle cx="12" cy="12" r="9" />
-          <path d="M12 7v5l3 2" />
-        </svg>
-        <span>更新于 {{ formatTimeLabel(props.card.updated_at) }}</span>
-      </div>
-
       <div class="portal-page__card-footer">
         <div class="requirement-hall__budget">
           <span>预算估算</span>
           <strong>{{ formatMoney(props.card.budget) }}</strong>
         </div>
-        <span class="requirement-hall__view">查看详情 <span aria-hidden="true">→</span></span>
+        <div class="requirement-hall__meta-row">
+          <svg
+            viewBox="0 0 24 24"
+            width="13"
+            height="13"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            aria-hidden="true"
+          >
+            <circle cx="12" cy="12" r="9" />
+            <path d="M12 7v5l3 2" />
+          </svg>
+          <span>更新于 {{ formatTimeLabel(props.card.updated_at) }}</span>
+        </div>
       </div>
     </div>
   </article>
@@ -194,11 +192,11 @@ function open(): void {
 .requirement-hall__meta-row {
   display: flex;
   align-items: center;
+  justify-content: flex-end;
   gap: 4px;
-  padding: 8px 0;
-  border-top: 1px solid var(--73-border-soft);
   color: var(--73-ink-muted);
-  font-size: 11px;
+  font-size: 12px;
+  white-space: nowrap;
 }
 
 .requirement-hall__meta-row svg {
@@ -222,27 +220,5 @@ function open(): void {
   font-size: 18px;
   font-weight: 600;
   line-height: 1.2;
-}
-
-.requirement-hall__view {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  height: 32px;
-  padding: 0 12px;
-  border: 1px solid var(--73-border);
-  border-radius: var(--73-radius-control);
-  background: var(--73-surface);
-  color: var(--73-accent);
-  font-size: 12px;
-  font-weight: 500;
-  transition:
-    background-color var(--73-transition),
-    border-color var(--73-transition);
-}
-
-.requirement-hall__card:hover .requirement-hall__view {
-  border-color: var(--73-border-hover);
-  background: var(--73-bg-soft);
 }
 </style>

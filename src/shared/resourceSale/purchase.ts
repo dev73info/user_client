@@ -57,7 +57,7 @@ export function needsPurchase(input: {
  * 与后端 409 的口径一致：接口资源只能由开发者站点的服务端通过开放接口下单。
  */
 
-export const API_RESOURCE_PURCHASE_HINT = '接口资源不在平台内售卖，请到开发者站点下单'
+export const API_RESOURCE_PURCHASE_HINT = '接口资源由开发者站点售卖，请向资源提供方获取购买链接'
 
 /**
  * 平台内购买入口（现金购 / 积分购）是否对这个资源开放。
@@ -168,6 +168,49 @@ export function resourcePurchaseStatusLabel(status: string): string {
     default:
       return status || '未知'
   }
+}
+
+/** 分账状态展示所需的字段（订单响应里的只读快照）。 */
+export type SplitStatusOrderLike = {
+  amount_points?: number | null
+  split_status?: string | null
+  split_failure_reason?: string | null
+}
+
+/**
+ * 卖家订单的分账状态文案。
+ *
+ * 积分单没有现金分账这回事，直接说「不适用」；空值按「未分账」处理，
+ * 不能把历史空值说成成功。
+ */
+export function splitStatusLabel(order: SplitStatusOrderLike): string {
+  if (isPointsPurchaseOrder(order)) {
+    return '积分单不适用'
+  }
+  switch ((order.split_status ?? '').trim()) {
+    case 'pending':
+      return '分账中'
+    case 'succeeded':
+      return '分账成功'
+    case 'failed':
+      return '分账失败'
+    default:
+      return '未分账'
+  }
+}
+
+/**
+ * 分账失败原因文案；非失败状态返回空串。
+ *
+ * 历史失败记录可能没有落原因（首次插入漏字段），这时要明确告诉卖家
+ * 「未记录原因」，不能显示空白让人以为没有异常。
+ */
+export function splitFailureReasonLabel(order: SplitStatusOrderLike): string {
+  if ((order.split_status ?? '').trim() !== 'failed' || isPointsPurchaseOrder(order)) {
+    return ''
+  }
+  const reason = (order.split_failure_reason ?? '').trim()
+  return reason || '未记录原因（历史记录）'
 }
 
 /** 开放接口订单：来源为 `oauth`，并可能带客户端与外部用户标识。 */

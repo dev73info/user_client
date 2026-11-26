@@ -76,9 +76,7 @@ export function useResourcePurchase(options: UseResourcePurchaseOptions) {
   /** R029：本次链接带来的推广码（`?promo=`），格式不合格在落地时已拒掉，这里再校验一次兜底。 */
   const promoCode = computed(() => normalizePromoCode(route.query.promo))
 
-  /**
-   * 推广轻提示：比例 > 0 且本次带了推广码才提示（比例 0 时后端不归因，提示它同样是错的）。
-   */
+  /** 推广轻提示：比例 > 0 且本次带了推广码才提示（比例 0 时后端不归因，提示它同样是错的）。 */
   const showPromoHint = computed(
     () => Number(options.getPromoShareBps() ?? 0) > 0 && Boolean(promoCode.value),
   )
@@ -113,7 +111,10 @@ export function useResourcePurchase(options: UseResourcePurchaseOptions) {
     )
   }
 
-  async function open(target: ResourcePurchaseTargetVersion | null = null) {
+  async function open(
+    target: ResourcePurchaseTargetVersion | null = null,
+    preferredChannel?: ResourcePayChannelUi,
+  ) {
     if (!auth.isAuthed) {
       TMessage.info('请先登录后再购买')
       void openLogin()
@@ -124,9 +125,9 @@ export function useResourcePurchase(options: UseResourcePurchaseOptions) {
     panelOpen.value = true
     error.value = ''
 
-    // 现金购买默认微信；优先复用本页已有的微信待支付码，没有才重新拉单
-    channel.value = pointsMode.value ? 'points' : 'wechat'
-    if (!pointsMode.value && hasReusableCashQr('wechat')) {
+    // 现金购买默认微信（深链 `?pay=` 可指定渠道）；优先复用同渠道的待支付码，没有才重新拉单
+    channel.value = pointsMode.value ? 'points' : (preferredChannel ?? 'wechat')
+    if (!pointsMode.value && hasReusableCashQr(channel.value)) {
       startReusePoll()
       return
     }

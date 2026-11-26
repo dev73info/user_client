@@ -52,6 +52,7 @@ export function supportConversation(patch: Partial<SupportConversation> = {}): S
     last_message_by: null,
     unread_agent: 0,
     unread_user: 0,
+    is_guest: false,
     agent_last_read_message_id: null,
     user_last_read_message_id: null,
     created_at: '2026-10-28 00:00:00',
@@ -67,6 +68,7 @@ export function supportMessage(patch: Partial<SupportMessage> = {}): SupportMess
     sender_username: 'alice',
     sender_role: 'user',
     content: '用户提问',
+    attachments: [],
     created_at: '2026-10-28 00:00:00',
     ...patch,
   }

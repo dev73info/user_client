@@ -16,7 +16,8 @@ export default defineConfigWithVueTs(
     files: ['**/*.{vue,ts,mts,tsx}'],
   },
 
-  globalIgnores(['**/dist/**', '**/dist-ssr/**', '**/coverage/**']),
+  // 外部 worktree 是独立仓库，与 vitest.config.ts 的排除口径一致，不混入本仓 lint。
+  globalIgnores(['**/dist/**', '**/dist-ssr/**', '**/coverage/**', '**/.worktrees/**']),
 
   ...pluginVue.configs['flat/essential'],
   vueTsConfigs.recommended,

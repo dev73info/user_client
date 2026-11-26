@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { CheckinStatus } from '@/api/points'
+import type { UserBadge } from '@/api/invite'
 import DeveloperRankCard from '@/components/home/DeveloperRankCard.vue'
 import PortalBetaCard from '@/components/home/PortalBetaCard.vue'
 import PortalNoticeCard from '@/components/home/PortalNoticeCard.vue'
@@ -20,6 +21,7 @@ withDefaults(
     developerRanks: DeveloperRank[]
     totalContribResources: number
     teamRanks: TeamRank[]
+    developerBadges?: Record<string, UserBadge[]>
     checkinStatus?: CheckinStatus | null
     checkinSaving?: boolean
     checkinError?: string
@@ -29,6 +31,7 @@ withDefaults(
     developerRanks: () => [],
     totalContribResources: 0,
     teamRanks: () => [],
+    developerBadges: () => ({}),
     checkinStatus: null,
     checkinSaving: false,
     checkinError: '',
@@ -61,6 +64,7 @@ const emit = defineEmits<{
     <DeveloperRankCard
       :ranks="developerRanks"
       :total-resources="totalContribResources"
+      :badges-by-username="developerBadges"
       @open-developer="emit('open-developer', $event)"
     />
     <TeamRankCard

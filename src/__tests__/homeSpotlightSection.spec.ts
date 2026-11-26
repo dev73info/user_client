@@ -76,6 +76,17 @@ describe('SpotlightResourceSection 精选资源区', () => {
     expect((opens![0]![0] as { resourceId: number }).resourceId).toBe(9)
   })
 
+  it('点下载量只回抛 download，不夹带 open', async () => {
+    const wrapper = renderSection([resourceFixture({ id: 8, download_count: 12 })])
+
+    await wrapper.find('.portal-spotlight-card__stat--download').trigger('click')
+
+    const downloads = wrapper.emitted('download')
+    expect(downloads).toHaveLength(1)
+    expect(wrapper.emitted('open')).toBeUndefined()
+    expect((downloads![0]![0] as { resourceId: number }).resourceId).toBe(8)
+  })
+
   it('没有封面时回落首字占位块；「更多免费资源」回抛 more', async () => {
     const wrapper = renderSection([resourceFixture({ id: 3, title: 'vanilla 整合' })])
 
@@ -98,6 +109,23 @@ describe('SpotlightResourceSection 精选资源区', () => {
     expect(mark.text()).toBe('精选')
     expect(mark.attributes('aria-label')).toBe('精选')
     expect(mark.find('svg').exists()).toBe(true)
+  })
+
+  it('原创不显示角标；转载角标放在点赞左侧', () => {
+    const original = renderSection([resourceFixture({ id: 4, origin_type: 'original' })])
+    const repost = renderSection([resourceFixture({ id: 5, origin_type: 'repost' })])
+
+    expect(
+      original.find('.portal-spotlight-card__cover-tags .portal-spotlight-card__origin').exists(),
+    ).toBe(false)
+    expect(original.find('.portal-spotlight-card__origin').exists()).toBe(false)
+
+    const engagement = repost.get('.portal-spotlight-card__engagement')
+    expect(engagement.get('.portal-spotlight-card__origin').text()).toBe('转载')
+    expect(
+      engagement.element.firstElementChild?.classList.contains('portal-spotlight-card__origin'),
+    ).toBe(true)
+    expect(engagement.find('.portal-spotlight-card__likes').exists()).toBe(true)
   })
 
   it('没有资源时只显示空态，不渲染栅格与分页', () => {
