@@ -3,11 +3,11 @@ import type { RequirementConversation } from '@/shared/conversations'
 import type { ThreadPreference } from '@/shared/conversationPreferences'
 import type { RequirementItem } from '@/api/requirements'
 import { useClientPagination } from '@/composables/useClientPagination'
+import { isRecent } from '@/shared/messageTime'
 import {
   buildConversationThread,
   buildPendingThread,
   hasBoundResource,
-  isRecent,
   messagesEmptyTitle,
   type MessageFilter,
   type MessageThread,
@@ -39,11 +39,7 @@ export function useMessagesThreads(options: {
 
   const validConversations = computed(() =>
     options.conversations.value.filter((item): item is RequirementConversation =>
-      Boolean(
-        item &&
-          item.conversation_id &&
-          (item.scene === 'resource' || item.requirement_id),
-      ),
+      Boolean(item && item.conversation_id && (item.scene === 'resource' || item.requirement_id)),
     ),
   )
   const validRequirements = computed(() =>

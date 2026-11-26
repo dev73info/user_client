@@ -1,7 +1,7 @@
 import type { RequirementConversation } from '@/shared/conversations'
 import type { RequirementItem, RequirementPaymentMode, RequirementStatus } from '@/api/requirements'
 import { requirementStatusLabel } from '@/shared/requirementStatus'
-import { parseBackendDateTime } from '@/shared/datetime'
+import { formatMessageTime, formatShortMessageTime, parseTime } from '@/shared/messageTime'
 
 /**
  * 消息中心的展示口径（纯函数，不碰 store / 路由 / 接口）。
@@ -40,6 +40,8 @@ export type MessageThread = {
   metaLabel: string
   partnerLabel: string
   lastLabel: string
+  /** 手机档的时间口径（今天只有时刻、今年只有月/日），见 formatShortMessageTime。 */
+  lastShortLabel: string
   description: string
   actionLabel: string
   /** 查看者未读的消息数（后端口径，见 shared/conversations 的 unread_count）。 */
@@ -84,37 +86,6 @@ export function formatPaymentMode(item?: RequirementItem) {
     return '协作模式待同步'
   }
   return item.payment_mode === 'self_managed' ? '无电签约定' : '电签担保'
-}
-
-export function parseTime(value?: string | null) {
-  if (!value) {
-    return 0
-  }
-  return parseBackendDateTime(value)?.getTime() ?? 0
-}
-
-export function formatMessageTime(value?: string | null) {
-  if (!value) {
-    return '暂无消息'
-  }
-  const date = parseBackendDateTime(value)
-  if (!date) {
-    return '刚刚更新'
-  }
-  return date.toLocaleString('zh-CN', {
-    month: 'numeric',
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  })
-}
-
-export function isRecent(value?: string | null) {
-  const time = parseTime(value)
-  if (!time) {
-    return false
-  }
-  return Date.now() - time <= 7 * 24 * 60 * 60 * 1000
 }
 
 /** 对方是谁：客户视角看开发者、开发者视角看用户，都不是（管理员之类）就两边一起写。 */
@@ -190,6 +161,7 @@ export function buildConversationThread(
     metaLabel: `${item.requirement_id} · ${modeLabel}`,
     partnerLabel: partnerLabel(item, context.username),
     lastLabel: lastMessageLabel(item, context.username),
+    lastShortLabel: formatShortMessageTime(item.last_message_at),
     description: latestMessagePreview(item),
     actionLabel: item.last_message_at ? '查看沟通' : '开始沟通',
     unreadCount: item.unread_count ?? 0,
@@ -221,9 +193,9 @@ export function buildResourceConversationThread(
     tone: isOpen ? 'active' : 'closed',
     modeLabel: '插件咨询',
     metaLabel: `插件咨询 · #${item.resource_id ?? '-'}`,
-    partnerLabel:
-      username === item.customer ? `作者：${item.developer}` : `买家：${item.customer}`,
+    partnerLabel: username === item.customer ? `作者：${item.developer}` : `买家：${item.customer}`,
     lastLabel: lastMessageLabel(item, username),
+    lastShortLabel: formatShortMessageTime(item.last_message_at),
     description: latestMessagePreview(item),
     actionLabel: item.last_message_at ? '查看沟通' : '联系作者',
     unreadCount: item.unread_count ?? 0,
@@ -248,6 +220,7 @@ export function buildPendingThread(item: RequirementItem, pinned = false): Messa
     metaLabel: `${item.requirement_id} · ${modeLabel}`,
     partnerLabel: '会话待开启',
     lastLabel: '打开后创建沟通会话',
+    lastShortLabel: '待开启',
     description: '需求已接取但本地尚未拿到会话记录，打开后会自动同步。',
     actionLabel: '开启会话',
     unreadCount: 0,
