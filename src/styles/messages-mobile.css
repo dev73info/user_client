@@ -2,7 +2,8 @@
    从 messages.css 拆出来的触屏规则，import 在 messages.css 之后（MessagesView.vue 里两条
    import 的先后就是级联顺序），因此这里的同优先级规则压过主文件的桌面口径。
 
-   只收三件事：读数条隐藏与页面留白、会话行的 IM 式两行栅格、历史沟通提示条的竖排。 */
+   只收四件事：读数条隐藏与页面留白、独立入口的通栏顶栏、会话行的 IM 式两行栅格、
+   历史沟通提示条的竖排。 */
 
 /* 短时间只在手机档出现（桌面右列继续用完整口径） */
 .messages-thread-row__time-short {
@@ -33,6 +34,44 @@
      选择器带上 .t73-button 提权：组件库的 `.t73-button[data-v-*]` 也是两票，单靠类名压不过。 */
   .wb-toolbar__actions .t73-button.messages-toolbar-refresh {
     display: inline-flex;
+  }
+
+  /* 独立 `/messages` 入口：工具栏提成页面顶栏，与首页 `app-top-nav--home`、
+     工作台 `user-workbench__mobile-bar` 同一规格（贴边、白底、无圆角无阴影、底部细分隔线）。
+     工作台里的消息页没有 `.messages-page--standalone`，顶部由工作台自己的移动顶栏承担，不叠加。
+     统一层（07-mobile-app-list.css）把它定义成 999 胶囊浮卡，这里连形状带投影一起改掉；
+     那个选择器带了多层 :has()，提权成本高，直接用 !important 覆盖形状与留白。 */
+  .messages-page--standalone {
+    margin-top: 0;
+    padding-top: 0;
+  }
+
+  .messages-page--standalone .wb-toolbar {
+    position: sticky;
+    top: 0;
+    z-index: 12;
+    /* 页面外壳左右各留 24px：反向抵消成通栏，宽度不依赖 100vw，避免滚动条算进视口 */
+    width: calc(100% + 48px) !important;
+    margin: 0 -24px 8px !important;
+    min-height: 56px !important;
+    /* 工具栏里的图标键是 44px 触摸目标，6px 上下留白 + 44 + 1px 底边 = 57px，与首页顶栏同高 */
+    padding: 6px 12px !important;
+    gap: 8px !important;
+    border: 0 !important;
+    border-bottom: 1px solid color-mix(in srgb, var(--73-ink) 6%, transparent) !important;
+    border-radius: 0 !important;
+    background: var(--73-surface-strong) !important;
+    box-shadow: none !important;
+  }
+
+  /* 白底顶栏里，搜索与筛选改成浅灰填充 + 8px 圆角，与首页搜索、资源顶栏控件同一口径 */
+  .messages-page--standalone .wb-toolbar .wb-toolbar__search,
+  .messages-page--standalone .wb-toolbar .wb-toolbar__field {
+    min-height: 40px !important;
+    border-color: transparent !important;
+    border-radius: var(--73-radius-control) !important;
+    background: var(--73-bg-soft) !important;
+    box-shadow: none !important;
   }
 
   /* 触屏档：会话行改成 IM 式两行（标题行 / 预览行），main 与 side 用 display: contents
