@@ -352,16 +352,20 @@ watch(listingCounts, (counts) => emit('listing-counts', counts), { immediate: tr
       @apply="applyFilters"
     />
 
-    <MobileResourceHeader
-      :sort-mode="sortMode"
-      :keyword="keyword"
-      :listing-mode="props.listingMode"
-      :counts="listingCounts"
-      @open-menu="openMenu"
-      @update:sort-mode="(mode) => (sortMode = mode)"
-      @update:keyword="(value) => (keyword = value)"
-      @switch-listing-mode="(mode) => emit('switch-listing-mode', mode)"
-    />
+    <!-- 顶栏（筛选 / 搜索 / 排序 + 免费付费分段）与首页、工作台统一成一条通栏白底吸顶栏，
+         不再让控件各占一张圆角浮卡。吸顶与白底由外层承担，内部只排控件。 -->
+    <div class="mobile-resource-top">
+      <MobileResourceHeader
+        :sort-mode="sortMode"
+        :keyword="keyword"
+        :listing-mode="props.listingMode"
+        :counts="listingCounts"
+        @open-menu="openMenu"
+        @update:sort-mode="(mode) => (sortMode = mode)"
+        @update:keyword="(value) => (keyword = value)"
+        @switch-listing-mode="(mode) => emit('switch-listing-mode', mode)"
+      />
+    </div>
 
     <section class="mobile-card-list">
       <MobileResourceCardItem

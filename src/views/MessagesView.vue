@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { computed } from 'vue'
+import { useRoute } from 'vue-router'
 import WorkbenchBarSlot from '@/components/WorkbenchBarSlot.vue'
 import RequirementConversationModal from '@/components/RequirementConversationModal.vue'
 import ResourceConversationModal from '@/components/ResourceConversationModal.vue'
@@ -50,11 +52,19 @@ const {
   applyConversationDetail,
   resetThreadFilters,
 } = useMessagesPage()
+
+/* 独立 `/messages`（底部导航的「消息」入口）才把工具栏顶成通栏顶栏；
+   工作台里的消息页顶部已经有工作台自己的移动顶栏，不重复叠一条。 */
+const route = useRoute()
+const isStandaloneMessages = computed(() => String(route.name ?? '') === 'messages')
 </script>
 
 <template>
   <main
-    :class="isDevWorkbench ? 'dev-page' : 'page-shell custom-page-shell profile-page messages-page'"
+    :class="[
+      isDevWorkbench ? 'dev-page' : 'page-shell custom-page-shell profile-page messages-page',
+      { 'messages-page--standalone': isStandaloneMessages },
+    ]"
   >
     <!-- 顶部读数条：页面级刷新只留这一个入口（读数条右侧 __action 槽），卡片头不再重复给一颗 -->
     <WorkbenchBarSlot>

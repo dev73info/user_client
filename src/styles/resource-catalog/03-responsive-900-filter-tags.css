@@ -8,7 +8,9 @@
     margin: 0;
     width: 100%;
     min-width: 0;
-    overflow-x: hidden;
+    /* 用 clip 而不是 hidden：hidden 会把本元素变成滚动容器（overflow-y 计算成 auto），
+       里面的吸顶顶栏（.mobile-resource-top）就只相对它定位，随页面一起滚走；clip 不建滚动容器 */
+    overflow-x: clip;
   }
 
   .catalog-layout-page__browser {

@@ -9,6 +9,16 @@
   padding: 0 0 0px;
 }
 
+/* 顶栏通栏吸顶：与首页 `app-top-nav--home`、工作台 `user-workbench__mobile-bar` 同一规格——
+   贴边、白底、无圆角无阴影、底部一条细分隔线。筛选 / 搜索 / 排序与免费付费分段都收在里面。 */
+.mobile-resource-top {
+  position: sticky;
+  top: 0;
+  z-index: 12;
+  background: var(--73-surface-strong);
+  border-bottom: 1px solid color-mix(in srgb, var(--73-ink) 6%, transparent);
+}
+
 .mobile-resource-menu-backdrop {
   border: 0;
   font: inherit;

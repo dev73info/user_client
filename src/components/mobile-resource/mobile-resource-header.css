@@ -1,28 +1,27 @@
 /* 移动端资源列表顶栏的样式：筛选入口、搜索框、排序按钮与免费 / 付费分段行。
-   随模板节点从 `MobileResourceList.vue` 搬来；顶栏与控件按桌面资源页的中性描边口径对齐。 */
+   顶栏不再是一张圆角浮卡：吸顶、白底与底部分隔线由外层 `.mobile-resource-top` 统一承担
+   （与首页、工作台的移动顶栏同一规格），这里只负责把控件排成一行。 */
 
 .mobile-resource-header {
-  position: sticky;
-  top: 8px;
-  z-index: 12;
   display: flex;
   align-items: center;
   gap: 10px;
-  width: calc(100% - 16px);
-  margin: 8px 8px 12px;
+  width: 100%;
+  margin: 0;
   height: auto;
-  min-height: 66px;
-  padding: 12px;
-  border: 1px solid var(--73-border);
-  border-radius: var(--73-radius-inner);
-  background: var(--73-surface);
-  box-shadow: var(--73-shadow-card);
+  min-height: 56px;
+  padding: 6px 12px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
 }
 
 .mobile-mode-row {
   display: flex;
-  width: calc(100% - 16px);
-  margin: 0 8px 12px;
+  width: 100%;
+  margin: 0;
+  padding: 0 12px 8px;
 }
 
 .mobile-mode-row :deep(.resource-mode-switch) {
@@ -42,7 +41,8 @@
   flex: 0 0 auto;
   min-height: 44px;
   padding: 0 12px;
-  border: 1px solid var(--73-border);
+  /* 通栏白底里控件用浅灰填充分层，和首页搜索、消息工具栏同一口径；描边留给 hover / 聚焦 */
+  border: 1px solid transparent;
   border-radius: var(--73-radius-control);
   background: var(--73-bg-soft);
   color: var(--73-ink-soft);
@@ -65,10 +65,11 @@
   min-width: 0;
   gap: 9px;
   padding: 0 10px 0 12px;
-  min-height: 38px;
+  /* 与两侧 44px 的筛选 / 排序按钮同高，顶栏里三件控件对齐 */
+  min-height: 44px;
   border-radius: var(--73-radius-control);
-  border: 1px solid var(--73-border);
-  background: var(--73-surface);
+  border: 1px solid transparent;
+  background: var(--73-bg-soft);
   color: var(--73-ink-muted);
   transition:
     background-color 160ms ease,
@@ -79,7 +80,7 @@
 .mobile-search-form:hover,
 .mobile-search-form:focus-within {
   border-color: color-mix(in srgb, var(--73-accent) 40%, transparent);
-  background: var(--73-surface);
+  background: var(--73-bg-soft);
 }
 
 .mobile-search-icon {
@@ -103,7 +104,7 @@
   flex: 0 0 auto;
   min-height: 44px;
   padding: 0 12px;
-  border: 1px solid var(--73-border);
+  border: 1px solid transparent;
   border-radius: var(--73-radius-control);
   background: var(--73-bg-soft);
   color: var(--73-ink-soft);
@@ -123,7 +124,7 @@
 .mobile-search-input {
   flex: 1;
   min-width: 0;
-  height: 40px;
+  height: 44px;
   border: 0;
   outline: 0;
   appearance: none;
